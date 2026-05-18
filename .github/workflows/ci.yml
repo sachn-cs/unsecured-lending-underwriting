@@ -30,7 +30,7 @@ jobs:
       - name: Type check
         run: mypy ulu/
       - name: Test with coverage
-        run: PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 pytest -q --cov=ulu --cov-report=term-missing --cov-fail-under=80
+        run: PYTHONPATH=. pytest -q --cov=ulu --cov-report=term-missing --cov-fail-under=80
 
   container-gate:
     runs-on: ubuntu-latest

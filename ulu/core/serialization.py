@@ -7,8 +7,6 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any
 
-import orjson
-
 from ulu.core.models import STATE_SCHEMA_VERSION, ProtocolConfig, ProtocolState
 from ulu.errors import ProtocolError
 
@@ -98,27 +96,22 @@ class SerializationMixin:
         return cls.from_state(state, config=config)
 
     def save_json(self, path: str | Path) -> None:
-        """Writes state payload to a JSON file using orjson."""
-        target = Path(path)
-        payload = orjson.dumps(
-            self.to_dict(),
-            option=orjson.OPT_INDENT_2 | orjson.OPT_SORT_KEYS,
-        ).decode("utf-8")
-        try:
-            target.write_text(payload, encoding="utf-8")
-        except OSError as exc:
-            raise ProtocolError(f"failed to save state to {target}: {exc}") from exc
+        """Writes state payload to a JSON file using orjson.
+
+        Delegates to StatePersistenceAdapter to keep filesystem I/O
+        outside the pure domain core.
+        """
+        from ulu.infra.state_persistence import StatePersistenceAdapter
+
+        StatePersistenceAdapter.save_json(self, path)
 
     @classmethod
     def load_json(cls, path: str | Path):
-        """Loads a mechanism instance from JSON state file using orjson."""
-        target = Path(path)
-        try:
-            raw = target.read_text(encoding="utf-8")
-        except OSError as exc:
-            raise ProtocolError(f"failed to load state from {target}: {exc}") from exc
-        try:
-            payload = orjson.loads(raw)
-        except orjson.JSONDecodeError as exc:
-            raise ProtocolError(f"invalid JSON in state file {target}: {exc}") from exc
-        return cls.from_dict(payload)
+        """Loads a mechanism instance from JSON state file using orjson.
+
+        Delegates to StatePersistenceAdapter to keep filesystem I/O
+        outside the pure domain core.
+        """
+        from ulu.infra.state_persistence import StatePersistenceAdapter
+
+        return StatePersistenceAdapter.load_json(path, cls)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import enum
 from dataclasses import dataclass, field
+from decimal import Decimal
 from typing import Any
 
 from ulu.domain.loans import Installment
@@ -89,6 +90,77 @@ def generate_schedule(
                     payment = principal_due + interest
                 remaining -= principal_due
                 installments.append(Installment(seq, principal_due, interest, payment))
+
+    return installments
+
+
+def generate_schedule_decimal(
+    principal: Decimal,
+    term: int,
+    annual_rate: Decimal,
+    schedule_type: ScheduleType,
+    periods_per_year: int = 12,
+) -> list[Installment]:
+    """Generates a repayment schedule using Decimal for monetary precision.
+
+    Args:
+        principal: Loan principal amount (must be > 0).
+        term: Number of periods (must be > 0).
+        annual_rate: Annual interest rate as a Decimal (must be >= 0).
+        schedule_type: Type of repayment schedule.
+        periods_per_year: Number of periods per year (default 12 for monthly).
+
+    Returns:
+        List of Installment objects representing the schedule.
+    """
+    if principal <= 0 or term <= 0 or annual_rate < 0:
+        raise ValueError("principal, term must be positive; rate must be non-negative")
+    if periods_per_year <= 0:
+        raise ValueError("periods_per_year must be positive")
+
+    periodic_rate = annual_rate / Decimal(periods_per_year)
+    installments: list[Installment] = []
+    p_float = float(principal)
+
+    if schedule_type == ScheduleType.BULLET:
+        for seq in range(1, term + 1):
+            interest = float(principal * periodic_rate)
+            if seq == term:
+                installments.append(
+                    Installment(seq, p_float, interest, p_float + interest)
+                )
+            else:
+                installments.append(Installment(seq, 0.0, interest, interest))
+
+    elif schedule_type == ScheduleType.INTEREST_ONLY:
+        interest = float(principal * periodic_rate)
+        for seq in range(1, term + 1):
+            installments.append(Installment(seq, 0.0, interest, interest))
+
+    elif schedule_type == ScheduleType.AMORTIZING:
+        if periodic_rate == 0:
+            payment = principal / Decimal(term)
+            pmt_float = float(payment)
+            for seq in range(1, term + 1):
+                installments.append(Installment(seq, pmt_float, 0.0, pmt_float))
+        else:
+            payment = principal * (periodic_rate / (Decimal(1) - (Decimal(1) + periodic_rate) ** (-term)))
+            remaining = principal
+            for seq in range(1, term + 1):
+                interest = remaining * periodic_rate
+                principal_due = payment - interest
+                if principal_due > remaining:
+                    principal_due = remaining
+                    payment = principal_due + interest
+                remaining -= principal_due
+                installments.append(
+                    Installment(
+                        seq,
+                        float(principal_due),
+                        float(interest),
+                        float(payment),
+                    )
+                )
 
     return installments
 

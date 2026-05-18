@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 import pytest
 
 from ulu.servicing.schedules import (
@@ -9,6 +11,7 @@ from ulu.servicing.schedules import (
     ScheduleVersion,
     ScheduleVersionManager,
     generate_schedule,
+    generate_schedule_decimal,
     versioned_schedule,
 )
 
@@ -95,3 +98,29 @@ class TestScheduleVersionManager:
         mgr = ScheduleVersionManager()
         assert mgr.latest() is None
         assert mgr.history() == []
+
+
+class TestGenerateScheduleDecimal:
+    def test_decimal_amortizing_matches_float(self) -> None:
+        float_sched = generate_schedule(1000.0, 3, 0.12, ScheduleType.AMORTIZING)
+        dec_sched = generate_schedule_decimal(Decimal("1000"), 3, Decimal("0.12"), ScheduleType.AMORTIZING)
+        assert len(float_sched) == len(dec_sched)
+        for f, d in zip(float_sched, dec_sched, strict=True):
+            assert f.sequence == d.sequence
+            assert f.principal_due == pytest.approx(d.principal_due, rel=1e-6)
+            assert f.interest_due == pytest.approx(d.interest_due, rel=1e-6)
+            assert f.total_due == pytest.approx(d.total_due, rel=1e-6)
+
+    def test_decimal_bullet(self) -> None:
+        sched = generate_schedule_decimal(Decimal("1000"), 3, Decimal("0.12"), ScheduleType.BULLET)
+        assert len(sched) == 3
+        assert sched[-1].principal_due == pytest.approx(1000.0)
+
+    def test_decimal_zero_rate(self) -> None:
+        sched = generate_schedule_decimal(Decimal("900"), 3, Decimal("0"), ScheduleType.AMORTIZING)
+        total_principal = sum(i.principal_due for i in sched)
+        assert total_principal == pytest.approx(900.0)
+
+    def test_decimal_invalid_principal(self) -> None:
+        with pytest.raises(ValueError, match="principal"):
+            generate_schedule_decimal(Decimal("-1"), 3, Decimal("0.12"), ScheduleType.BULLET)

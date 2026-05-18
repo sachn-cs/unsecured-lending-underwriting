@@ -363,10 +363,34 @@ class IdempotencyRepository(BaseRepository[IdempotencyRecord]):
 
 
 class ProtocolSnapshotRepository(BaseRepository[ProtocolSnapshot]):
-    """Repository for ProtocolSnapshot persistence."""
+    """Repository for ProtocolSnapshot persistence with optional gzip compression."""
 
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(session, ProtocolSnapshot)
+
+    async def create_compressed(self, state: dict, schema_version: int = 1) -> ProtocolSnapshot:
+        """Creates a snapshot with gzip-compressed state payload."""
+        from ulu.infra.snapshot_compression import SnapshotCompressor
+
+        compressed = SnapshotCompressor.compress(state)
+        snapshot = ProtocolSnapshot(
+            schema_version=schema_version,
+            state=state,
+            compressed_state=compressed,
+        )
+        self.session.add(snapshot)
+        await self.session.flush()
+        await self.session.refresh(snapshot)
+        return snapshot
+
+    @staticmethod
+    def decompress_state(snapshot: ProtocolSnapshot) -> dict:
+        """Returns uncompressed state from compressed payload if present."""
+        if snapshot.compressed_state is not None:
+            from ulu.infra.snapshot_compression import SnapshotCompressor
+
+            return SnapshotCompressor.decompress(snapshot.compressed_state)
+        return dict(snapshot.state) if snapshot.state else {}
 
     async def get_latest(self) -> ProtocolSnapshot | None:
         stmt = self._active_filter(select(ProtocolSnapshot).order_by(ProtocolSnapshot.taken_at.desc())).limit(1)

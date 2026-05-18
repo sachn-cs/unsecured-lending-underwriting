@@ -217,6 +217,7 @@ def upgrade() -> None:
         ),
         sa.Column("schema_version", sa.Integer, nullable=False, default=1),
         sa.Column("state", postgresql.JSONB, default=dict),
+        sa.Column("compressed_state", sa.LargeBinary, nullable=True),
         sa.Column("taken_at", sa.DateTime(timezone=True), server_default=sa.text("now()")),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
     )

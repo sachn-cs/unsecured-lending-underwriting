@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
+from typing import Any
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -54,6 +55,37 @@ class CspMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         response.headers["Content-Security-Policy"] = "default-src 'self'; frame-ancestors 'none';"
         return response
+
+
+class ResponseCacheMiddleware(BaseHTTPMiddleware):
+    """Caches GET responses for configured paths with TTL eviction."""
+
+    DEFAULT_TTL_SECONDS = 30.0
+
+    def __init__(self, app: Any, cached_paths: set[str] | None = None, ttl: float = DEFAULT_TTL_SECONDS) -> None:
+        super().__init__(app)
+        self.cached_paths = cached_paths or {"/admin/graph", "/admin/utilization", "/admin/solvency"}
+        self.ttl = ttl
+        self._cache: dict[str, tuple[bytes, float]] = {}
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        if request.method != "GET" or request.url.path not in self.cached_paths:
+            return await call_next(request)
+        cache_key = request.url.path
+        now = time.time()
+        if cache_key in self._cache:
+            body, ts = self._cache[cache_key]
+            if now - ts < self.ttl:
+                return Response(content=body, status_code=200, headers={"X-Cache": "HIT"})
+        response = await call_next(request)
+        body = b""
+        async for chunk in response.body_iterator:
+            if isinstance(chunk, bytes):
+                body += chunk
+            else:
+                body += chunk.encode("utf-8")
+        self._cache[cache_key] = (body, now)
+        return Response(content=body, status_code=response.status_code, headers=dict(response.headers))
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):

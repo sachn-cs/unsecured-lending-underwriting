@@ -6,6 +6,7 @@ import datetime
 import enum
 import uuid
 
+import sqlalchemy as sa
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -275,4 +276,7 @@ class ProtocolSnapshot(SoftDeleteMixin, Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     schema_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     state: Mapped[dict] = mapped_column(JSON, default=dict)
+    compressed_state: Mapped[bytes | None] = mapped_column(
+        sa.LargeBinary, nullable=True,
+    )
     taken_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utc_now)

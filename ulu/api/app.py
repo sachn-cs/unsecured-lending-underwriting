@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-from collections.abc import Callable, Mapping, MutableMapping
+from collections.abc import Callable, Mapping
 from hashlib import sha256
 from pathlib import Path
 from threading import RLock
@@ -12,11 +12,39 @@ from time import perf_counter
 from typing import Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Response
-from loguru import logger
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 from pydantic import BaseModel, Field
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from ulu import AppendOnlyLedger, DelegatedUnderwriting
 from ulu.errors import ProtocolError
+from ulu.infra.config import settings
+from ulu.infra.logging import logger
+
+REQUESTS_TOTAL = Counter(
+    "ulu_requests_total",
+    "Total HTTP requests",
+    ["method", "endpoint", "status"],
+)
+REQUEST_ERRORS_TOTAL = Counter(
+    "ulu_request_errors_total",
+    "Total HTTP request errors",
+    ["method", "endpoint"],
+)
+REQUEST_LATENCY = Histogram(
+    "ulu_request_duration_seconds",
+    "HTTP request latency",
+    ["method", "endpoint"],
+)
+IDEMPOTENCY_HITS_TOTAL = Counter(
+    "ulu_idempotency_hits_total",
+    "Total idempotency cache hits",
+)
+IDEMPOTENCY_CONFLICTS_TOTAL = Counter(
+    "ulu_idempotency_conflicts_total",
+    "Total idempotency key conflicts",
+)
 
 
 class SeedRequest(BaseModel):
@@ -96,13 +124,6 @@ class ProtocolService:
         self.ledger = AppendOnlyLedger()
         self.engine = DelegatedUnderwriting(ledger=self.ledger)
         self.idempotency_cache: dict[str, tuple[str, dict[str, Any]]] = {}
-        self.metrics: MutableMapping[str, float] = {
-            "requests_total": 0.0,
-            "request_errors_total": 0.0,
-            "idempotency_hits_total": 0.0,
-            "idempotency_conflicts_total": 0.0,
-            "request_latency_seconds_total": 0.0,
-        }
 
     def _prune_idempotency_cache(self) -> None:
         if len(self.idempotency_cache) > _IDEMPOTENCY_MAX_SIZE:
@@ -121,10 +142,12 @@ async def metrics_middleware(request, call_next):
     start = perf_counter()
     response = await call_next(request)
     elapsed = perf_counter() - start
-    service.metrics["requests_total"] += 1.0
-    service.metrics["request_latency_seconds_total"] += elapsed
+    route = request.scope.get("route")
+    endpoint = route.name if route else "unknown"
+    REQUESTS_TOTAL.labels(method=request.method, endpoint=endpoint, status=str(response.status_code)).inc()
+    REQUEST_LATENCY.labels(method=request.method, endpoint=endpoint).observe(elapsed)
     if response.status_code >= 400:
-        service.metrics["request_errors_total"] += 1.0
+        REQUEST_ERRORS_TOTAL.labels(method=request.method, endpoint=endpoint).inc()
     return response
 
 
@@ -135,7 +158,7 @@ def safe_call(fn: Callable[[], Any]) -> Any:
     except ProtocolError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
-        logger.exception("unexpected error in safe_call")
+        logger.exception("unexpected_error", context="safe_call")
         raise HTTPException(status_code=500, detail="internal server error") from exc
 
 
@@ -174,12 +197,12 @@ def idempotent_mutation(
     if cached is not None:
         cached_hash, cached_response = cached
         if cached_hash != payload_hash:
-            service.metrics["idempotency_conflicts_total"] += 1.0
+            IDEMPOTENCY_CONFLICTS_TOTAL.inc()
             raise HTTPException(
                 status_code=409,
                 detail="idempotency key replayed with different payload",
             )
-        service.metrics["idempotency_hits_total"] += 1.0
+        IDEMPOTENCY_HITS_TOTAL.inc()
         return cached_response
 
     response = action()
@@ -229,27 +252,45 @@ def graph_payload() -> dict[str, Any]:
     }
 
 
+async def _db_is_healthy() -> bool:
+    """Checks PostgreSQL connectivity when DATABASE_URL is configured."""
+    if not settings.database_url:
+        return True
+    try:
+        engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        await engine.dispose()
+        return True
+    except Exception:
+        return False
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/live")
+def live() -> dict[str, str]:
+    return {"status": "alive"}
+
+
 @app.get("/ready")
-def ready() -> dict[str, str]:
+async def ready() -> dict[str, str]:
     with service.lock:
         try:
             service.engine.assert_invariants()
         except ProtocolError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
+    if not await _db_is_healthy():
+        raise HTTPException(status_code=503, detail="database unreachable")
     return {"status": "ready"}
 
 
 @app.get("/metrics")
 def metrics() -> Response:
-    with service.lock:
-        lines = [f"ulu_{name} {value}" for name, value in service.metrics.items()]
-        body = "\n".join(lines) + "\n"
-    return Response(content=body, media_type="text/plain; version=0.0.4")
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 @app.get("/state")
@@ -293,14 +334,12 @@ def admin_solvency(_: None = Depends(require_admin)) -> dict[str, Any]:
 
 @app.post("/admin/reset")
 def admin_reset(_: None = Depends(require_admin)) -> dict[str, str]:
-    """Resets all protocol state, ledger, idempotency cache, and metrics."""
+    """Resets protocol state, ledger, and idempotency cache."""
     with service.lock:
         service.ledger = AppendOnlyLedger()
         service.engine = DelegatedUnderwriting(ledger=service.ledger)
         service.idempotency_cache.clear()
-        for key in list(service.metrics):
-            service.metrics[key] = 0.0
-    logger.info("admin reset executed")
+    logger.info("admin_reset_executed")
     return {"status": "ok"}
 
 

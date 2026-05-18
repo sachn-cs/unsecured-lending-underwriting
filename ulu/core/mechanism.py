@@ -8,10 +8,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from loguru import logger
-
 from ulu.audit import AppendOnlyLedger
 from ulu.errors import InfeasibleOperationError, InvariantViolationError, ProtocolError, UnknownUserError
+from ulu.infra.logging import logger
 
 Edge = tuple[str, str]
 STATE_SCHEMA_VERSION = 1
@@ -152,7 +151,7 @@ class DelegatedUnderwriting:
         self.principal[user] = 0.0
         self.children[user] = []
 
-        logger.info("add_seed user={} base_budget={}", user, base_budget)
+        logger.info("add_seed", user=user, base_budget=float(base_budget))
         self.record_event("add_seed", {"user": user, "base_budget": float(base_budget)})
 
     def add_user(self, sponsor: str, user: str, delegation_amount: float) -> None:
@@ -173,10 +172,10 @@ class DelegatedUnderwriting:
         self.principal[user] = 0.0
 
         logger.info(
-            "add_user sponsor={} user={} delegation={}",
-            sponsor,
-            user,
-            delegation_amount,
+            "add_user",
+            sponsor=sponsor,
+            user=user,
+            delegation_amount=float(delegation_amount),
         )
         self.record_event(
             "add_user",
@@ -240,11 +239,11 @@ class DelegatedUnderwriting:
 
         self.delegation[edge] = float(new_delegation)
         logger.info(
-            "revoke sponsor={} child={} old={} new={}",
-            sponsor,
-            child,
-            old_delegation,
-            new_delegation,
+            "revoke",
+            sponsor=sponsor,
+            child=child,
+            old_delegation=float(old_delegation),
+            new_delegation=float(new_delegation),
         )
         self.record_event(
             "revoke",
@@ -263,7 +262,7 @@ class DelegatedUnderwriting:
             raise ProtocolError("delta earned must be >= 0")
         self.earned[user] += float(delta_earned)
 
-        logger.info("repay user={} delta_earned={}", user, delta_earned)
+        logger.info("repay", user=user, delta_earned=float(delta_earned))
         self.record_event("repay", {"user": user, "delta_earned": float(delta_earned)})
 
     def path_seed_to(self, user: str) -> list[str]:
@@ -455,10 +454,10 @@ class DelegatedUnderwriting:
         self.principal[borrower] = principal
 
         logger.info(
-            "originate_loan borrower={} principal={} term={}",
-            borrower,
-            principal,
-            term,
+            "originate_loan",
+            borrower=borrower,
+            principal=float(principal),
+            term=float(term),
         )
         self.record_event(
             "originate_loan",
@@ -499,7 +498,7 @@ class DelegatedUnderwriting:
             self.base_budget[seed] -= loss
 
         self.principal[borrower] = 0.0
-        logger.info("default borrower={} principal={}", borrower, borrower_principal)
+        logger.info("default", borrower=borrower, principal=float(borrower_principal))
         self.record_event("default", {"borrower": borrower, "principal": float(borrower_principal)})
 
     def assert_invariants(self) -> None:

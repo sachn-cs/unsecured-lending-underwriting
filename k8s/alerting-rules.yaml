@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ulu-alerting-rules
+  namespace: ulu
+  labels:
+    app: ulu-api
+data:
+  ulu.rules: |
+    groups:
+      - name: ulu-api.rules
+        rules:
+          - alert: HighErrorRate
+            expr: rate(ulu_request_errors_total[5m]) > 0.1
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "ULU API high error rate"
+              description: "Error rate is {{ $value }} errors/sec over the last 5 minutes"
+
+          - alert: HighLatencyP99
+            expr: histogram_quantile(0.99, rate(ulu_request_duration_seconds_bucket[5m])) > 1.0
+            for: 3m
+            labels:
+              severity: warning
+            annotations:
+              summary: "ULU API p99 latency above 1s"
+              description: "p99 latency is {{ $value }}s over the last 5 minutes"
+
+          - alert: DLGPoolDepleted
+            expr: ulu_dlg_pool_balance / ulu_portfolio_outstanding < 0.05
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "DLG pool below regulatory minimum"
+              description: "DLG pool ratio is {{ $value }} (required >= 0.05)"
+
+          - alert: IdempotencyCacheHighConflict
+            expr: rate(ulu_idempotency_conflicts_total[5m]) > 1
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High idempotency key conflicts"
+              description: "Conflict rate is {{ $value }} /sec"
+
+          - alert: LowHealthyReplicas
+            expr: kube_deployment_status_replicas_available{deployment="ulu-api"} < 2
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "ULU API healthy replicas below 2"
+              description: "Available replicas: {{ $value }}"

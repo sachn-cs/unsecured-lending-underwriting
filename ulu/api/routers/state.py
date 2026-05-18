@@ -2,21 +2,19 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from fastapi import APIRouter, Depends, Request
 
 from ulu import DelegatedUnderwriting
-from ulu.api.schemas import LoadRequest, SaveRequest, StatusResponse
+from ulu.api.schemas import LoadRequest, SaveRequest, StateResponse, StatusResponse
 from ulu.api.service import ProtocolService, _validate_path, get_protocol_service, limiter, safe_call
 
 router = APIRouter()
 
 
-@router.get("/state", response_model=dict[str, Any])
-async def get_state(protocol_service: ProtocolService = Depends(get_protocol_service)) -> dict[str, Any]:
+@router.get("/state", response_model=StateResponse)
+async def get_state(protocol_service: ProtocolService = Depends(get_protocol_service)) -> StateResponse:
     with protocol_service.lock:
-        return protocol_service.engine.to_dict()
+        return StateResponse(state=protocol_service.engine.to_dict())
 
 
 @router.post("/state/save", response_model=StatusResponse)

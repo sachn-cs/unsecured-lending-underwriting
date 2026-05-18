@@ -7,7 +7,76 @@ from datetime import datetime, timezone
 import pytest
 
 from ulu.anti_fraud.auctions import DelegationAuction
+from ulu.anti_fraud.device_fingerprint import DeviceFingerprintService
 from ulu.anti_fraud.graph_analysis import GraphAnomalyDetector
+
+
+class TestDeviceFingerprintService:
+    def test_record_and_retrieve(self) -> None:
+        svc = DeviceFingerprintService()
+        fp = svc.record(
+            borrower_id="b1",
+            device_id="d1",
+            ip_address="192.168.1.1",
+            user_agent="Mozilla/5.0",
+            timestamp="2026-05-18T10:00:00Z",
+        )
+        assert fp.borrower_id == "b1"
+        assert fp.device_id == "d1"
+        history = svc.get_history("b1")
+        assert len(history) == 1
+
+    def test_is_new_device_true(self) -> None:
+        svc = DeviceFingerprintService()
+        svc.record("b1", "d1", "1.1.1.1", "ua", "2026-05-18T10:00:00Z")
+        assert svc.is_new_device("b1", "d2") is True
+
+    def test_is_new_device_false(self) -> None:
+        svc = DeviceFingerprintService()
+        svc.record("b1", "d1", "1.1.1.1", "ua", "2026-05-18T10:00:00Z")
+        assert svc.is_new_device("b1", "d1") is False
+
+    def test_suspicious_location_change_no_history(self) -> None:
+        svc = DeviceFingerprintService()
+        assert svc.is_suspicious_location_change("b1", "geohash1") is False
+
+    def test_suspicious_location_change_below_min_history(self) -> None:
+        svc = DeviceFingerprintService()
+        svc.record("b1", "d1", "1.1.1.1", "ua", "2026-05-18T10:00:00Z", geo_hash="abcd")
+        assert svc.is_suspicious_location_change("b1", "wxyz") is False
+
+    def test_suspicious_location_change_detected(self) -> None:
+        svc = DeviceFingerprintService()
+        svc.record("b1", "d1", "1.1.1.1", "ua", "2026-05-18T10:00:00Z", geo_hash="abcd")
+        svc.record("b1", "d2", "1.1.1.2", "ua", "2026-05-18T11:00:00Z", geo_hash="abcd")
+        assert svc.is_suspicious_location_change("b1", "wxyz") is True
+
+    def test_suspicious_location_change_not_detected_for_empty_geo(self) -> None:
+        svc = DeviceFingerprintService()
+        svc.record("b1", "d1", "1.1.1.1", "ua", "2026-05-18T10:00:00Z", geo_hash="abcd")
+        svc.record("b1", "d2", "1.1.1.2", "ua", "2026-05-18T11:00:00Z", geo_hash="abcd")
+        assert svc.is_suspicious_location_change("b1", "") is False
+
+    def test_detect_anomalies_new_device(self) -> None:
+        svc = DeviceFingerprintService()
+        svc.record("b1", "d1", "1.1.1.1", "ua", "2026-05-18T10:00:00Z")
+        result = svc.detect_anomalies("b1", "d2", "1.1.1.2")
+        assert result["new_device"] is True
+        assert any(a["type"] == "new_device" for a in result["anomalies"])
+
+    def test_detect_anomalies_many_devices(self) -> None:
+        svc = DeviceFingerprintService()
+        for i in range(6):
+            svc.record("b1", f"d{i}", f"1.1.1.{i}", "ua", f"2026-05-18T1{i}:00:00Z")
+        result = svc.detect_anomalies("b1", "d6", "1.1.1.6")
+        assert any(a["type"] == "many_devices" and a["severity"] == "high" for a in result["anomalies"])
+
+    def test_detect_anomalies_no_anomaly(self) -> None:
+        svc = DeviceFingerprintService()
+        svc.record("b1", "d1", "1.1.1.1", "ua", "2026-05-18T10:00:00Z")
+        result = svc.detect_anomalies("b1", "d1", "1.1.1.1")
+        assert result["anomalies"] == []
+        assert result["unique_devices"] == 1
 
 
 class TestGraphAnomalyDetector:

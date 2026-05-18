@@ -2,8 +2,101 @@
 
 from __future__ import annotations
 
+from ulu.risk.early_warning import EarlyWarningService, RiskSignal
 from ulu.risk.scoring import CreditScoringService
 from ulu.risk.stress import StressTestEngine
+
+
+class TestEarlyWarningService:
+    def test_no_signals_when_all_metrics_healthy(self) -> None:
+        svc = EarlyWarningService()
+        result = svc.evaluate_borrower()
+        assert result["signals"] == []
+        assert result["score"] == 0.0
+        assert result["risk_level"] == "low"
+
+    def test_payment_delay_medium(self) -> None:
+        svc = EarlyWarningService()
+        signal = svc.evaluate_payment_delay(2.0)
+        assert signal is not None
+        assert signal.severity == "medium"
+
+    def test_payment_delay_high(self) -> None:
+        svc = EarlyWarningService(payment_delay_threshold_days=3.0)
+        signal = svc.evaluate_payment_delay(5.0)
+        assert signal is not None
+        assert signal.severity == "high"
+
+    def test_cash_flow_drop_medium(self) -> None:
+        svc = EarlyWarningService()
+        signal = svc.evaluate_cash_flow_drop(current_monthly_inflow=7000.0, avg_monthly_inflow=10000.0)
+        assert signal is not None
+        assert signal.severity == "medium"
+
+    def test_cash_flow_drop_high(self) -> None:
+        svc = EarlyWarningService()
+        signal = svc.evaluate_cash_flow_drop(current_monthly_inflow=4000.0, avg_monthly_inflow=10000.0)
+        assert signal is not None
+        assert signal.severity == "high"
+
+    def test_cash_flow_drop_zero_average(self) -> None:
+        svc = EarlyWarningService()
+        signal = svc.evaluate_cash_flow_drop(current_monthly_inflow=1000.0, avg_monthly_inflow=0.0)
+        assert signal is None
+
+    def test_bounce_events_below_threshold(self) -> None:
+        svc = EarlyWarningService(bounce_event_threshold=3)
+        signal = svc.evaluate_bounce_events(2)
+        assert signal is None
+
+    def test_bounce_events_at_threshold(self) -> None:
+        svc = EarlyWarningService(bounce_event_threshold=2)
+        signal = svc.evaluate_bounce_events(2)
+        assert signal is not None
+        assert signal.severity == "high"
+
+    def test_utilization_spike_no_history(self) -> None:
+        svc = EarlyWarningService()
+        signal = svc.evaluate_utilization_spike(current_utilization=0.3, historical_avg_utilization=0.0)
+        assert signal is not None
+        assert signal.metric_value == 0.3
+
+    def test_utilization_spike_medium(self) -> None:
+        svc = EarlyWarningService()
+        signal = svc.evaluate_utilization_spike(current_utilization=0.13, historical_avg_utilization=0.1)
+        assert signal is not None
+        assert signal.severity == "medium"
+
+    def test_utilization_spike_high(self) -> None:
+        svc = EarlyWarningService()
+        signal = svc.evaluate_utilization_spike(current_utilization=0.6, historical_avg_utilization=0.1)
+        assert signal is not None
+        assert signal.severity == "high"
+
+    def test_composite_score_computes_correctly(self) -> None:
+        svc = EarlyWarningService()
+        result = svc.evaluate_borrower(days_overdue=5.0, bounce_count=3)
+        assert result["score"] == 12.0
+        assert result["risk_level"] == "medium"
+
+    def test_score_to_level_boundary_low(self) -> None:
+        assert EarlyWarningService._score_to_level(0.0) == "low"
+        assert EarlyWarningService._score_to_level(5.0) == "low"
+
+    def test_score_to_level_boundary_medium(self) -> None:
+        assert EarlyWarningService._score_to_level(6.0) == "medium"
+        assert EarlyWarningService._score_to_level(15.0) == "medium"
+
+    def test_score_to_level_boundary_high(self) -> None:
+        assert EarlyWarningService._score_to_level(16.0) == "high"
+        assert EarlyWarningService._score_to_level(30.0) == "high"
+
+    def test_score_to_level_boundary_critical(self) -> None:
+        assert EarlyWarningService._score_to_level(31.0) == "critical"
+
+    def test_score_capped_at_100(self) -> None:
+        signals = [RiskSignal("x", "critical", "", 1.0, 1.0) for _ in range(12)]
+        assert EarlyWarningService._compute_score(signals) == 100.0
 
 
 class TestCreditScoringService:

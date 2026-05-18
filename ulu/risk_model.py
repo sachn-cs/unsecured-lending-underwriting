@@ -4,18 +4,59 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import numpy as np
-from sklearn.base import clone
-from sklearn.ensemble import ExtraTreesClassifier, GradientBoostingClassifier
-from sklearn.exceptions import ConvergenceWarning
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import roc_auc_score
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.neural_network import MLPClassifier
-from sklearn.svm import SVC
 
-ArrayF = np.ndarray
+if TYPE_CHECKING:
+    from numpy import ndarray as ArrayF
+else:
+    ArrayF = np.ndarray
+
+
+def _clone(estimator):
+    from sklearn.base import clone
+
+    return clone(estimator)
+
+
+def _roc_auc_score(y_true, y_score):
+    from sklearn.metrics import roc_auc_score
+
+    return roc_auc_score(y_true, y_score)
+
+
+def _build_model_specs():
+    """Lazy loads sklearn estimators to avoid importing at package load time."""
+    from sklearn.ensemble import ExtraTreesClassifier, GradientBoostingClassifier
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.neighbors import KNeighborsClassifier
+    from sklearn.neural_network import MLPClassifier
+    from sklearn.svm import SVC
+
+    return {
+        "gb": (
+            GradientBoostingClassifier(random_state=7),
+            SearchSpace(bounds=((50, 200), (3, 10), (0.01, 0.1)), int_dims=(0, 1)),
+        ),
+        "mlp": (
+            MLPClassifier(random_state=7, max_iter=200),
+            SearchSpace(bounds=((50, 200), (0.0001, 0.01)), int_dims=(0,)),
+        ),
+        "svm": (
+            SVC(probability=True, random_state=7),
+            SearchSpace(bounds=((0.1, 10.0), (0.001, 0.1)), int_dims=()),
+        ),
+        "knn": (KNeighborsClassifier(), SearchSpace(bounds=((3, 20),), int_dims=(0,))),
+        "lr": (
+            LogisticRegression(max_iter=200, random_state=7),
+            SearchSpace(bounds=((0.1, 10.0),), int_dims=()),
+        ),
+        "extra_trees": (
+            ExtraTreesClassifier(random_state=7),
+            SearchSpace(bounds=((50, 200), (10, 20), (2, 10)), int_dims=(0, 1, 2)),
+        ),
+    }
 
 
 @dataclass(frozen=True)
@@ -63,34 +104,12 @@ class OptimizedGreedyWeightedRiskModel:
         self.model_specs = self.build_model_specs()
         self.fitted_models: dict[str, object] = {}
         self.weights: ArrayF | None = None
-        self.meta_model: MLPClassifier | None = None
+        self.meta_model: object | None = None
 
     @staticmethod
     def build_model_specs() -> dict[str, tuple[object, SearchSpace]]:
         """Builds base models and PSO search spaces from the paper table."""
-        return {
-            "gb": (
-                GradientBoostingClassifier(random_state=7),
-                SearchSpace(bounds=((50, 200), (3, 10), (0.01, 0.1)), int_dims=(0, 1)),
-            ),
-            "mlp": (
-                MLPClassifier(random_state=7, max_iter=200),
-                SearchSpace(bounds=((50, 200), (0.0001, 0.01)), int_dims=(0,)),
-            ),
-            "svm": (
-                SVC(probability=True, random_state=7),
-                SearchSpace(bounds=((0.1, 10.0), (0.001, 0.1)), int_dims=()),
-            ),
-            "knn": (KNeighborsClassifier(), SearchSpace(bounds=((3, 20),), int_dims=(0,))),
-            "lr": (
-                LogisticRegression(max_iter=200, random_state=7),
-                SearchSpace(bounds=((0.1, 10.0),), int_dims=()),
-            ),
-            "extra_trees": (
-                ExtraTreesClassifier(random_state=7),
-                SearchSpace(bounds=((50, 200), (10, 20), (2, 10)), int_dims=(0, 1, 2)),
-            ),
-        }
+        return _build_model_specs()
 
     def vector_to_params(self, model_name: str, vec: ArrayF) -> dict[str, float]:
         """Converts PSO particle vector to estimator parameter mapping."""
@@ -132,7 +151,7 @@ class OptimizedGreedyWeightedRiskModel:
         """Returns fitness score for PSO (AUC on validation set)."""
         estimator.fit(x_train, y_train)
         prob = estimator.predict_proba(x_val)[:, 1]
-        return float(roc_auc_score(y_val, prob))
+        return float(_roc_auc_score(y_val, prob))
 
     def run_pso(
         self,
@@ -163,7 +182,7 @@ class OptimizedGreedyWeightedRiskModel:
             for p in range(cfg.particles):
                 candidate = self.clip_vector(positions[p], space)
                 params = self.vector_to_params(model_name, candidate)
-                model = clone(estimator).set_params(**params)
+                model = _clone(estimator).set_params(**params)
                 score = self.score_model(model, x_train, y_train, x_val, y_val)
 
                 if score > personal_best_score[p]:
@@ -185,7 +204,7 @@ class OptimizedGreedyWeightedRiskModel:
                 positions[p] = positions[p] + velocities[p]
 
         best_params = self.vector_to_params(model_name, global_best)
-        return clone(estimator).set_params(**best_params)
+        return _clone(estimator).set_params(**best_params)
 
     def brier_with_regularization(self, y_true: ArrayF, pred_matrix: ArrayF, weights: ArrayF) -> float:
         """Computes Brier + L2 objective from the paper."""
@@ -244,6 +263,9 @@ class OptimizedGreedyWeightedRiskModel:
 
         x_meta_train = self.build_meta_features(train_mat, self.weights)
         x_meta_val = self.build_meta_features(val_mat, self.weights)
+
+        from sklearn.exceptions import ConvergenceWarning
+        from sklearn.neural_network import MLPClassifier
 
         meta = MLPClassifier(
             hidden_layer_sizes=(128, 64, 32),

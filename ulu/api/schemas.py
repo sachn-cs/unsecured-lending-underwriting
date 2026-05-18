@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from ulu.api.validators import validate_aadhaar, validate_pan
 
 
 class SeedRequest(BaseModel):
@@ -115,6 +117,26 @@ class ReadyResponse(BaseModel):
 
 class LiveResponse(BaseModel):
     status: str
+
+
+class KycRequest(BaseModel):
+    borrower_id: str
+    pan_number: str = ""
+    aadhaar_hash: str = ""
+
+    @field_validator("pan_number")
+    @classmethod
+    def _check_pan(cls, v: str) -> str:
+        if v and not validate_pan(v):
+            raise ValueError("invalid PAN format")
+        return v
+
+    @field_validator("aadhaar_hash")
+    @classmethod
+    def _check_aadhaar(cls, v: str) -> str:
+        if v and not validate_aadhaar(v):
+            raise ValueError("invalid Aadhaar format")
+        return v
 
 
 class ErrorResponse(BaseModel):

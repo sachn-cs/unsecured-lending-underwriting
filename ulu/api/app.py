@@ -12,7 +12,7 @@ from prometheus_client import Counter, Histogram
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from ulu.api.middleware import CorrelationIdMiddleware, TimingMiddleware
+from ulu.api.middleware import CorrelationIdMiddleware, PayloadSizeMiddleware, TimingMiddleware
 from ulu.api.routers import admin, health, ledger, loans, repayments, revocations, seeds, state, users
 from ulu.api.schemas import ErrorResponse
 from ulu.api.service import limiter, service  # noqa: F401
@@ -66,6 +66,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
 
 app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(TimingMiddleware)
+app.add_middleware(PayloadSizeMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(
     CORSMiddleware,

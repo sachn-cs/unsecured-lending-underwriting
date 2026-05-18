@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ulu.api.validators import validate_pan
 from ulu.domain.users import AmlStatus, KycStatus, User
 
 
@@ -10,7 +11,10 @@ class KycAmlService:
 
     def verify_kyc(self, user: User, pan_number: str, aadhaar_hash: str) -> KycStatus:
         """Verifies user identity against government databases."""
-        if not pan_number or not aadhaar_hash:
+        if not validate_pan(pan_number):
+            user.kyc_status = KycStatus.REJECTED
+            return KycStatus.REJECTED
+        if not aadhaar_hash:
             user.kyc_status = KycStatus.REJECTED
             return KycStatus.REJECTED
         raise NotImplementedError(

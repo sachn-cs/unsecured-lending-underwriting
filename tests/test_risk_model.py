@@ -9,7 +9,8 @@ pytest.importorskip("sklearn")
 from sklearn.datasets import make_classification
 from sklearn.model_selection import train_test_split
 
-from ulu import DelegatedUnderwriting, OptimizedGreedyWeightedRiskModel
+from ulu import DelegatedUnderwriting
+from ulu.risk_model import OptimizedGreedyWeightedRiskModel
 
 
 def dataset() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:

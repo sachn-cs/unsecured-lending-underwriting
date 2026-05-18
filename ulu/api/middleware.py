@@ -33,3 +33,15 @@ class TimingMiddleware(BaseHTTPMiddleware):
         elapsed = time.perf_counter() - start
         response.headers["X-Response-Time"] = f"{elapsed:.6f}"
         return response
+
+
+class PayloadSizeMiddleware(BaseHTTPMiddleware):
+    """Rejects requests with Content-Length exceeding 1 MB."""
+
+    MAX_CONTENT_LENGTH = 1 * 1024 * 1024
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        content_length = request.headers.get("content-length")
+        if content_length and int(content_length) > self.MAX_CONTENT_LENGTH:
+            return Response(status_code=413, content=b"payload too large")
+        return await call_next(request)

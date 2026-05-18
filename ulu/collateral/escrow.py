@@ -29,6 +29,10 @@ class CollateralEscrowService:
             raise ValueError("collateral must be free to apply lien")
         escrow.apply_lien()
 
+    def revaluate(self, escrow: CollateralEscrow, new_nominal_value: float) -> None:
+        """Revalues collateral with market data or bank rate updates."""
+        escrow.revaluate(new_nominal_value)
+
     def liquidate(self, escrow: CollateralEscrow) -> float:
         if escrow.lien_status != LienStatus.LIENED:
             raise ValueError("collateral must be liened before liquidation")

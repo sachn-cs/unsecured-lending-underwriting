@@ -34,6 +34,19 @@ class TestCollateralEscrowService:
         with pytest.raises(ValueError):
             svc.apply_lien(escrow)
 
+    def test_revaluate(self) -> None:
+        svc = CollateralEscrowService()
+        escrow = svc.create_escrow("u1", CollateralType.CASH_DEPOSIT, 10000.0, 0.2)
+        svc.revaluate(escrow, 12000.0)
+        assert escrow.nominal_value == 12000.0
+        assert escrow.effective_value == 9600.0
+
+    def test_revaluate_invalid_value(self) -> None:
+        svc = CollateralEscrowService()
+        escrow = svc.create_escrow("u1", CollateralType.CASH_DEPOSIT, 10000.0, 0.2)
+        with pytest.raises(ValueError):
+            svc.revaluate(escrow, -1000.0)
+
     def test_liquidate(self) -> None:
         svc = CollateralEscrowService()
         escrow = svc.create_escrow("u1", CollateralType.CASH_DEPOSIT, 10000.0, 0.2)

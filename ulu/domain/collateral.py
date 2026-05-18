@@ -38,6 +38,13 @@ class CollateralEscrow:
     def apply_lien(self) -> None:
         self.lien_status = LienStatus.LIENED
 
+    def revaluate(self, new_nominal_value: float) -> None:
+        """Updates nominal value and recomputes effective_value."""
+        if new_nominal_value <= 0:
+            raise ValueError("new_nominal_value must be positive")
+        self.nominal_value = new_nominal_value
+        self.effective_value = new_nominal_value * (1.0 - self.haircut)
+
     def liquidate(self) -> float:
         self.lien_status = LienStatus.LIQUIDATED
         return self.effective_value

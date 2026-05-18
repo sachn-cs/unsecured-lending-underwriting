@@ -61,6 +61,12 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
+[tool.mutmut]
+paths_to_mutate = "ulu/"
+backup = false
+runner = "pytest -q"
+tests_dir = "tests/"
+
 [tool.ruff.lint.per-file-ignores]
 "ulu/api/app.py" = ["B008"]
 "ulu/api/deps.py" = ["B008"]

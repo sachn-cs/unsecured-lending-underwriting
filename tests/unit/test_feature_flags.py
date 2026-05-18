@@ -6,40 +6,41 @@ from ulu.infra.feature_flags import FeatureFlagService
 
 
 class TestFeatureFlagService:
-    def test_is_enabled_from_env(self, monkeypatch) -> None:
-        monkeypatch.setenv("ULU_FEATURE_TEST_FLAG", "true")
+    def test_register_default_false(self) -> None:
         svc = FeatureFlagService()
-        assert svc.is_enabled("test_flag") is True
+        svc.register("new_ui", default=False)
+        assert svc.is_enabled("new_ui") is False
 
-    def test_is_disabled_from_env(self, monkeypatch) -> None:
-        monkeypatch.setenv("ULU_FEATURE_TEST_FLAG", "false")
+    def test_register_default_true(self) -> None:
         svc = FeatureFlagService()
-        assert svc.is_enabled("test_flag") is False
+        svc.register("new_ui", default=True)
+        assert svc.is_enabled("new_ui") is True
 
-    def test_is_enabled_from_override(self) -> None:
-        svc = FeatureFlagService(overrides={"my_feature": True})
-        assert svc.is_enabled("my_feature") is True
-
-    def test_enable_disable_runtime(self) -> None:
+    def test_enable_disable(self) -> None:
         svc = FeatureFlagService()
-        svc.enable("runtime_feature")
-        assert svc.is_enabled("runtime_feature") is True
-        svc.disable("runtime_feature")
-        assert svc.is_enabled("runtime_feature") is False
+        svc.register("beta")
+        svc.enable("beta")
+        assert svc.is_enabled("beta") is True
+        svc.disable("beta")
+        assert svc.is_enabled("beta") is False
 
-    def test_list_flags(self, monkeypatch) -> None:
-        monkeypatch.setenv("ULU_FEATURE_ALPHA", "true")
-        monkeypatch.setenv("ULU_FEATURE_BETA", "false")
+    def test_env_override_true(self, monkeypatch) -> None:
+        monkeypatch.setenv("FF_BETA", "true")
         svc = FeatureFlagService()
-        flags = svc.list_flags()
-        names = {f.name for f in flags}
-        assert "alpha" in names
-        assert "beta" in names
+        svc.register("beta", default=False)
+        assert svc.is_enabled("beta") is True
 
-    def test_clear_cache(self, monkeypatch) -> None:
-        monkeypatch.setenv("ULU_FEATURE_CACHED", "true")
+    def test_env_override_false(self, monkeypatch) -> None:
+        monkeypatch.setenv("FF_BETA", "0")
         svc = FeatureFlagService()
-        assert svc.is_enabled("cached") is True
-        monkeypatch.setenv("ULU_FEATURE_CACHED", "false")
-        svc.clear_cache()
-        assert svc.is_enabled("cached") is False
+        svc.register("beta", default=True)
+        assert svc.is_enabled("beta") is False
+
+    def test_state_snapshot(self) -> None:
+        svc = FeatureFlagService(overrides={"a": True, "b": False})
+        assert svc.state() == {"a": True, "b": False}
+
+    def test_check(self) -> None:
+        svc = FeatureFlagService(overrides={"dark_mode": True})
+        assert svc.check("dark_mode", on_enabled="yes", on_disabled="no") == "yes"
+        assert svc.check("missing", on_enabled="yes", on_disabled="no") == "no"

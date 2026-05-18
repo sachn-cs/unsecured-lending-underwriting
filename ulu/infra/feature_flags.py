@@ -1,66 +1,60 @@
-"""Simple environment-based feature flag service.
+"""Feature flag service for toggling functionality without deployment.
 
-Items 81 and 112 from production roadmap.
+Item 81 from production roadmap.
 """
 
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from typing import Any
 
-
-@dataclass
-class FeatureFlag:
-    """Represents a single feature flag with metadata."""
-
-    name: str
-    enabled: bool
-    description: str = ""
+from ulu.infra.logging import logger
 
 
 class FeatureFlagService:
-    """Manages feature flags from environment variables.
+    """In-memory feature flag store with environment override support.
 
-    Flags are read from env vars prefixed with ULU_FEATURE_.
-    Example: ULU_FEATURE_NEW_UI=true enables the "new_ui" flag.
+    Production should use LaunchDarkly, Unleash, or Redis backend.
     """
 
-    PREFIX = "ULU_FEATURE_"
-
     def __init__(self, overrides: dict[str, bool] | None = None) -> None:
-        self._overrides = overrides or {}
-        self._cache: dict[str, bool] = {}
+        self._flags: dict[str, bool] = dict(overrides or {})
+
+    def register(self, name: str, default: bool = False) -> None:
+        """Registers a flag with a default value."""
+        env_val = os.environ.get(f"FF_{name.upper()}")
+        if env_val is not None:
+            value = env_val.lower() in {"1", "true", "yes", "on"}
+            self._flags[name] = value
+            logger.info("feature_flag_env_override", name=name, value=value)
+        elif name not in self._flags:
+            self._flags[name] = default
+            logger.info("feature_flag_registered", name=name, default=default)
 
     def is_enabled(self, name: str) -> bool:
-        """Returns True if the named feature flag is enabled."""
-        if name in self._overrides:
-            return self._overrides[name]
-        if name not in self._cache:
-            env_key = f"{self.PREFIX}{name.upper()}"
-            self._cache[name] = os.environ.get(env_key, "").lower() in ("true", "1", "yes", "on")
-        return self._cache[name]
+        """Returns current state of a flag."""
+        return self._flags.get(name, False)
 
     def enable(self, name: str) -> None:
-        """Enables a flag at runtime (in-memory only)."""
-        self._overrides[name] = True
+        """Enables a flag at runtime."""
+        self._flags[name] = True
+        logger.info("feature_flag_enabled", name=name)
 
     def disable(self, name: str) -> None:
-        """Disables a flag at runtime (in-memory only)."""
-        self._overrides[name] = False
+        """Disables a flag at runtime."""
+        self._flags[name] = False
+        logger.info("feature_flag_disabled", name=name)
 
-    def list_flags(self) -> list[FeatureFlag]:
-        """Returns all known feature flags from environment."""
-        flags: list[FeatureFlag] = []
-        for key, value in os.environ.items():
-            if key.startswith(self.PREFIX):
-                name = key[len(self.PREFIX) :].lower()
-                enabled = value.lower() in ("true", "1", "yes", "on")
-                flags.append(FeatureFlag(name=name, enabled=enabled))
-        for name, enabled in self._overrides.items():
-            if not any(f.name == name for f in flags):
-                flags.append(FeatureFlag(name=name, enabled=enabled))
-        return sorted(flags, key=lambda f: f.name)
+    def state(self) -> dict[str, bool]:
+        """Returns snapshot of all flags."""
+        return dict(self._flags)
 
-    def clear_cache(self) -> None:
-        """Clears the env-var cache (useful in tests)."""
-        self._cache.clear()
+    def check(
+        self,
+        name: str,
+        *,
+        on_enabled: Any | None = None,
+        on_disabled: Any | None = None,
+    ) -> Any | None:
+        """Returns on_enabled if flag is on, otherwise on_disabled."""
+        return on_enabled if self.is_enabled(name) else on_disabled

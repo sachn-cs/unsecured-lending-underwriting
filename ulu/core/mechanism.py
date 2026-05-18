@@ -41,6 +41,7 @@ class DelegatedUnderwriting(GraphMixin, PricingMixin, AccountingMixin, Serializa
         self.base_budget: dict[str, float] = {}
         self.earned: dict[str, float] = {}
         self.principal: dict[str, float] = {}
+        self.loans: dict[str, list[LoanQuote]] = {}
         self._graph_cache: dict[str, Any] = {}
 
     def _clear_graph_cache(self) -> None:
@@ -178,6 +179,10 @@ class DelegatedUnderwriting(GraphMixin, PricingMixin, AccountingMixin, Serializa
         self._clear_graph_cache()
         return super().total_credit_limit()
 
+    def list_loans(self, borrower: str) -> list[LoanQuote]:
+        """Returns all originated loans for a borrower."""
+        return list(self.loans.get(borrower, []))
+
     def originate_loan(
         self,
         borrower: str,
@@ -197,13 +202,16 @@ class DelegatedUnderwriting(GraphMixin, PricingMixin, AccountingMixin, Serializa
             protocol_rate=protocol_rate,
             max_delegation_rate=max_delegation_rate,
         )
-        self.principal[borrower] = principal
+        self.principal[borrower] = self.principal.get(borrower, 0.0) + principal
+        self.loans.setdefault(borrower, []).append(quote)
 
         logger.info(
             "originate_loan",
             borrower=borrower,
             principal=float(principal),
             term=float(term),
+            total_principal=self.principal[borrower],
+            loan_count=len(self.loans[borrower]),
         )
         self.record_event(
             "originate_loan",
@@ -245,5 +253,6 @@ class DelegatedUnderwriting(GraphMixin, PricingMixin, AccountingMixin, Serializa
             self.base_budget[seed] -= loss
 
         self.principal[borrower] = 0.0
+        self.loans.pop(borrower, None)
         logger.info("default", borrower=borrower, principal=float(borrower_principal))
         self.record_event("default", {"borrower": borrower, "principal": float(borrower_principal)})

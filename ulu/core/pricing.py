@@ -32,8 +32,6 @@ class PricingMixin:
         max_delegation_rate: float,
     ) -> None:
         self.require_user(borrower)
-        if self.principal[borrower] != 0:
-            raise InfeasibleOperationError("borrower already has outstanding principal")
         if self.credit_limit(borrower) < principal:
             raise InfeasibleOperationError("borrower principal exceeds credit limit")
         if term <= 0 or principal <= 0:

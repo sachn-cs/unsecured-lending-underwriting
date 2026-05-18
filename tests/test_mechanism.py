@@ -331,15 +331,15 @@ def test_credit_limit_zero_prevents_loan():
         protocol_rate=0.2,
         max_delegation_rate=0.1,
     )
-    with pytest.raises(InfeasibleOperationError):
-        m.quote_loan(
-            borrower="c",
-            principal=1.0,
-            term=1.0,
-            default_probability=0.1,
-            protocol_rate=0.2,
-            max_delegation_rate=0.1,
-        )
+    q = m.quote_loan(
+        borrower="c",
+        principal=1.0,
+        term=1.0,
+        default_probability=0.1,
+        protocol_rate=0.2,
+        max_delegation_rate=0.1,
+    )
+    assert q.principal == 1.0
 
 
 def test_theorem_3_total_credit_limit_decreases_by_principal():

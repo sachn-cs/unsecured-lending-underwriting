@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
+from typing import Any, Generic, TypeVar
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,21 +29,31 @@ from ulu.infra.models import (
     UserBalance,
 )
 
+T = TypeVar("T")
 
-class UserRepository:
+
+class BaseRepository(Generic[T]):
+    """Generic base repository with common CRUD operations."""
+
+    def __init__(self, session: AsyncSession, model: type[T]) -> None:
+        self.session = session
+        self.model = model
+
+    async def create(self, entity: T) -> T:
+        self.session.add(entity)
+        await self.session.flush()
+        await self.session.refresh(entity)
+        return entity
+
+    async def get_by_id(self, entity_id: Any) -> T | None:
+        return await self.session.get(self.model, entity_id)
+
+
+class UserRepository(BaseRepository[User]):
     """Repository for User entity persistence."""
 
     def __init__(self, session: AsyncSession) -> None:
-        self.session = session
-
-    async def create(self, user: User) -> User:
-        self.session.add(user)
-        await self.session.flush()
-        await self.session.refresh(user)
-        return user
-
-    async def get_by_id(self, user_id: uuid.UUID) -> User | None:
-        return await self.session.get(User, user_id)
+        super().__init__(session, User)
 
     async def get_by_identifier(self, identifier: str) -> User | None:
         result = await self.session.execute(select(User).where(User.identifier == identifier))
@@ -67,17 +78,11 @@ class UserRepository:
         await self.session.flush()
 
 
-class SponsorEdgeRepository:
+class SponsorEdgeRepository(BaseRepository[SponsorEdge]):
     """Repository for SponsorEdge persistence."""
 
     def __init__(self, session: AsyncSession) -> None:
-        self.session = session
-
-    async def create(self, edge: SponsorEdge) -> SponsorEdge:
-        self.session.add(edge)
-        await self.session.flush()
-        await self.session.refresh(edge)
-        return edge
+        super().__init__(session, SponsorEdge)
 
     async def get_by_sponsor_child(self, sponsor_id: uuid.UUID, child_id: uuid.UUID) -> SponsorEdge | None:
         result = await self.session.execute(
@@ -93,27 +98,21 @@ class SponsorEdgeRepository:
         return result.scalars().all()
 
     async def update_delegation(self, edge_id: uuid.UUID, new_amount: float) -> None:
-        edge = await self.session.get(SponsorEdge, edge_id)
+        edge = await self.get_by_id(edge_id)
         if edge is None:
             raise NotFoundError(f"SponsorEdge {edge_id} not found for delegation update")
         edge.delegation_amount = new_amount
         await self.session.flush()
 
 
-class UserBalanceRepository:
+class UserBalanceRepository(BaseRepository[UserBalance]):
     """Repository for UserBalance persistence."""
 
     def __init__(self, session: AsyncSession) -> None:
-        self.session = session
-
-    async def create(self, balance: UserBalance) -> UserBalance:
-        self.session.add(balance)
-        await self.session.flush()
-        await self.session.refresh(balance)
-        return balance
+        super().__init__(session, UserBalance)
 
     async def get_by_user_id(self, user_id: uuid.UUID) -> UserBalance | None:
-        return await self.session.get(UserBalance, user_id)
+        return await self.get_by_id(user_id)
 
     async def update_balance(
         self,
@@ -123,7 +122,7 @@ class UserBalanceRepository:
         outstanding_principal: float | None = None,
         credit_limit: float | None = None,
     ) -> None:
-        balance = await self.get_by_user_id(user_id)
+        balance = await self.get_by_id(user_id)
         if balance is None:
             raise NotFoundError(f"UserBalance for {user_id} not found for update")
         if base_budget is not None:
@@ -137,20 +136,11 @@ class UserBalanceRepository:
         await self.session.flush()
 
 
-class LoanRepository:
+class LoanRepository(BaseRepository[Loan]):
     """Repository for Loan persistence."""
 
     def __init__(self, session: AsyncSession) -> None:
-        self.session = session
-
-    async def create(self, loan: Loan) -> Loan:
-        self.session.add(loan)
-        await self.session.flush()
-        await self.session.refresh(loan)
-        return loan
-
-    async def get_by_id(self, loan_id: uuid.UUID) -> Loan | None:
-        return await self.session.get(Loan, loan_id)
+        super().__init__(session, Loan)
 
     async def list_by_borrower(self, borrower_id: uuid.UUID) -> Sequence[Loan]:
         result = await self.session.execute(select(Loan).where(Loan.borrower_id == borrower_id))
@@ -164,54 +154,33 @@ class LoanRepository:
         await self.session.flush()
 
 
-class RepaymentRepository:
+class RepaymentRepository(BaseRepository[Repayment]):
     """Repository for Repayment persistence."""
 
     def __init__(self, session: AsyncSession) -> None:
-        self.session = session
-
-    async def create(self, repayment: Repayment) -> Repayment:
-        self.session.add(repayment)
-        await self.session.flush()
-        await self.session.refresh(repayment)
-        return repayment
+        super().__init__(session, Repayment)
 
     async def list_by_loan(self, loan_id: uuid.UUID) -> Sequence[Repayment]:
         result = await self.session.execute(select(Repayment).where(Repayment.loan_id == loan_id))
         return result.scalars().all()
 
 
-class DefaultRepository:
+class DefaultRepository(BaseRepository[Default]):
     """Repository for Default persistence."""
 
     def __init__(self, session: AsyncSession) -> None:
-        self.session = session
-
-    async def create(self, default: Default) -> Default:
-        self.session.add(default)
-        await self.session.flush()
-        await self.session.refresh(default)
-        return default
+        super().__init__(session, Default)
 
     async def list_by_loan(self, loan_id: uuid.UUID) -> Sequence[Default]:
         result = await self.session.execute(select(Default).where(Default.loan_id == loan_id))
         return result.scalars().all()
 
 
-class CollateralEscrowRepository:
+class CollateralEscrowRepository(BaseRepository[CollateralEscrow]):
     """Repository for CollateralEscrow persistence."""
 
     def __init__(self, session: AsyncSession) -> None:
-        self.session = session
-
-    async def create(self, escrow: CollateralEscrow) -> CollateralEscrow:
-        self.session.add(escrow)
-        await self.session.flush()
-        await self.session.refresh(escrow)
-        return escrow
-
-    async def get_by_id(self, escrow_id: uuid.UUID) -> CollateralEscrow | None:
-        return await self.session.get(CollateralEscrow, escrow_id)
+        super().__init__(session, CollateralEscrow)
 
     async def list_by_owner(self, owner_id: uuid.UUID) -> Sequence[CollateralEscrow]:
         result = await self.session.execute(select(CollateralEscrow).where(CollateralEscrow.owner_id == owner_id))
@@ -225,17 +194,11 @@ class CollateralEscrowRepository:
         await self.session.flush()
 
 
-class NpaEventRepository:
+class NpaEventRepository(BaseRepository[NpaEvent]):
     """Repository for NpaEvent persistence."""
 
     def __init__(self, session: AsyncSession) -> None:
-        self.session = session
-
-    async def create(self, event: NpaEvent) -> NpaEvent:
-        self.session.add(event)
-        await self.session.flush()
-        await self.session.refresh(event)
-        return event
+        super().__init__(session, NpaEvent)
 
     async def get_by_loan_id(self, loan_id: uuid.UUID) -> NpaEvent | None:
         result = await self.session.execute(select(NpaEvent).where(NpaEvent.loan_id == loan_id))
@@ -251,24 +214,18 @@ class NpaEventRepository:
         return result.scalars().all()
 
     async def mark_dlg_invoked(self, event_id: uuid.UUID) -> None:
-        event = await self.session.get(NpaEvent, event_id)
+        event = await self.get_by_id(event_id)
         if event is None:
             raise NotFoundError(f"NpaEvent {event_id} not found for DLG invocation mark")
         event.dlg_invoked = True
         await self.session.flush()
 
 
-class AuditEventRepository:
+class AuditEventRepository(BaseRepository[AuditEvent]):
     """Repository for AuditEvent persistence."""
 
     def __init__(self, session: AsyncSession) -> None:
-        self.session = session
-
-    async def create(self, event: AuditEvent) -> AuditEvent:
-        self.session.add(event)
-        await self.session.flush()
-        await self.session.refresh(event)
-        return event
+        super().__init__(session, AuditEvent)
 
     async def get_max_seq(self) -> int:
         result = await self.session.execute(select(func.max(AuditEvent.seq)))
@@ -285,33 +242,21 @@ class AuditEventRepository:
         return result.scalars().all()
 
 
-class IdempotencyRepository:
+class IdempotencyRepository(BaseRepository[IdempotencyRecord]):
     """Repository for IdempotencyRecord persistence."""
 
     def __init__(self, session: AsyncSession) -> None:
-        self.session = session
+        super().__init__(session, IdempotencyRecord)
 
     async def get(self, operation_name: str, idempotency_key: str) -> IdempotencyRecord | None:
         return await self.session.get(IdempotencyRecord, (operation_name, idempotency_key))
 
-    async def create(self, record: IdempotencyRecord) -> IdempotencyRecord:
-        self.session.add(record)
-        await self.session.flush()
-        await self.session.refresh(record)
-        return record
 
-
-class ProtocolSnapshotRepository:
+class ProtocolSnapshotRepository(BaseRepository[ProtocolSnapshot]):
     """Repository for ProtocolSnapshot persistence."""
 
     def __init__(self, session: AsyncSession) -> None:
-        self.session = session
-
-    async def create(self, snapshot: ProtocolSnapshot) -> ProtocolSnapshot:
-        self.session.add(snapshot)
-        await self.session.flush()
-        await self.session.refresh(snapshot)
-        return snapshot
+        super().__init__(session, ProtocolSnapshot)
 
     async def get_latest(self) -> ProtocolSnapshot | None:
         result = await self.session.execute(

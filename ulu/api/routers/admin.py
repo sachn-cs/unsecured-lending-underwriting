@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import time
+from collections.abc import Callable
+from typing import Any
+
 from fastapi import APIRouter, Depends, Request
 
 from ulu import AppendOnlyLedger, DelegatedUnderwriting
@@ -12,6 +16,25 @@ from ulu.infra.logging import logger
 
 router = APIRouter()
 
+_ADMIN_CACHE_TTL = 30.0
+_admin_cache: dict[str, tuple[Any, float]] = {}
+
+
+def clear_admin_cache() -> None:
+    """Clears the admin endpoint response cache."""
+    _admin_cache.clear()
+
+
+def _cached(key: str, factory: Callable[[], Any]) -> Any:
+    now = time.time()
+    if key in _admin_cache:
+        value, ts = _admin_cache[key]
+        if now - ts < _ADMIN_CACHE_TTL:
+            return value
+    value = factory()
+    _admin_cache[key] = (value, now)
+    return value
+
 
 @router.get("/admin/graph", response_model=GraphResponse)
 async def admin_graph(
@@ -19,7 +42,7 @@ async def admin_graph(
     protocol_service: ProtocolService = Depends(get_protocol_service),
 ) -> GraphResponse:
     with protocol_service.lock:
-        payload = graph_payload(protocol_service)
+        payload = _cached("graph", lambda: graph_payload(protocol_service))
     return GraphResponse(
         seeds=payload["seeds"],
         parent=payload["parent"],
@@ -33,7 +56,10 @@ async def admin_utilization(
     protocol_service: ProtocolService = Depends(get_protocol_service),
 ) -> UtilizationResponse:
     with protocol_service.lock:
-        util = safe_call(protocol_service.engine.seed_delegation_utilization)
+        util = _cached(
+            "utilization",
+            lambda: safe_call(protocol_service.engine.seed_delegation_utilization),
+        )
     return UtilizationResponse(delegation_utilization=util)
 
 
@@ -62,5 +88,6 @@ async def admin_reset(
         protocol_service.ledger = AppendOnlyLedger()
         protocol_service.engine = DelegatedUnderwriting(ledger=protocol_service.ledger)
         protocol_service.idempotency_cache.clear()
+    _admin_cache.clear()
     logger.info("admin_reset_executed")
     return StatusResponse(status="ok")

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from ulu.core.models import LoanQuote
 from ulu.errors import InfeasibleOperationError, ProtocolError
 
@@ -92,24 +90,3 @@ class PricingMixin:
             total_interest=protocol_premium + delegation_premium,
         )
 
-    def quote_loan_with_estimated_default(
-        self,
-        borrower: str,
-        principal: float,
-        term: float,
-        default_probability_estimator: Any,
-        feature_row: Any,
-        protocol_rate: float,
-        max_delegation_rate: float,
-    ) -> LoanQuote:
-        """Quotes a loan using externally estimated default probability."""
-        probabilities = default_probability_estimator.predict_default_probability(feature_row)
-        default_probability = float(probabilities[0])
-        return self.quote_loan(
-            borrower=borrower,
-            principal=principal,
-            term=term,
-            default_probability=default_probability,
-            protocol_rate=protocol_rate,
-            max_delegation_rate=max_delegation_rate,
-        )

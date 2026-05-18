@@ -277,3 +277,29 @@ class OptimizedGreedyWeightedRiskModel:
         mat = np.column_stack(base_probs)
         x_meta = self.build_meta_features(mat, self.weights)
         return self.meta_model.predict_proba(x_meta)[:, 1]
+
+
+def quote_with_estimated_default(
+    engine,
+    borrower: str,
+    principal: float,
+    term: float,
+    default_probability_estimator: OptimizedGreedyWeightedRiskModel,
+    feature_row: ArrayF,
+    protocol_rate: float,
+    max_delegation_rate: float,
+):
+    """Quotes a loan using an externally estimated default probability.
+
+    Decouples the ML estimator from the core mechanism.
+    """
+    probabilities = default_probability_estimator.predict_default_probability(feature_row)
+    default_probability = float(probabilities[0])
+    return engine.quote_loan(
+        borrower=borrower,
+        principal=principal,
+        term=term,
+        default_probability=default_probability,
+        protocol_rate=protocol_rate,
+        max_delegation_rate=max_delegation_rate,
+    )

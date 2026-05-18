@@ -10,6 +10,7 @@ pytest.importorskip("httpx")
 from fastapi.testclient import TestClient
 
 from ulu.api.app import app, limiter, service
+from ulu.api.routers.admin import clear_admin_cache
 from ulu.audit import AppendOnlyLedger
 from ulu.infra.config import settings
 
@@ -32,6 +33,7 @@ def reset_service() -> None:
     service.ledger = AppendOnlyLedger()
     service.engine = service.engine.__class__(ledger=service.ledger)
     limiter._storage.reset()
+    clear_admin_cache()
 
 
 def test_append_only_ledger_round_trip(tmp_path: Path):

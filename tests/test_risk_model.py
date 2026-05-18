@@ -10,7 +10,7 @@ from sklearn.datasets import make_classification
 from sklearn.model_selection import train_test_split
 
 from ulu import DelegatedUnderwriting
-from ulu.risk_model import OptimizedGreedyWeightedRiskModel
+from ulu.risk_model import OptimizedGreedyWeightedRiskModel, quote_with_estimated_default
 
 
 def dataset() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -51,7 +51,8 @@ def test_mechanism_quote_uses_estimated_default_probability() -> None:
     mech.add_seed("s", 100.0)
     mech.add_user("s", "u", 30.0)
 
-    quote = mech.quote_loan_with_estimated_default(
+    quote = quote_with_estimated_default(
+        mech,
         borrower="u",
         principal=5.0,
         term=1.0,

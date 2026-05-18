@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+from collections.abc import Generator, Mapping
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -65,17 +65,26 @@ class AppendOnlyLedger:
         )
 
     @classmethod
-    def load_jsonl(cls, path: str | Path) -> AppendOnlyLedger:
-        """Loads a ledger from JSONL file."""
-        ledger = cls()
+    def stream_jsonl(cls, path: str | Path) -> Generator[LedgerEvent, None, None]:
+        """Yields ledger events from a JSONL file without loading all into memory."""
         file_path = Path(path)
         if not file_path.exists():
             raise FileNotFoundError(f"ledger file not found: {path}")
 
-        lines = [line for line in file_path.read_text(encoding="utf-8").splitlines() if line.strip()]
-        for line in lines:
-            row = json.loads(line)
-            ledger.events_store.append(cls.event_from_row(row))
+        with open(file_path, encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                row = json.loads(line)
+                yield cls.event_from_row(row)
+
+    @classmethod
+    def load_jsonl(cls, path: str | Path) -> AppendOnlyLedger:
+        """Loads a ledger from JSONL file."""
+        ledger = cls()
+        for event in cls.stream_jsonl(path):
+            ledger.events_store.append(event)
 
         for index, event in enumerate(ledger.events_store, start=1):
             if event.seq != index:

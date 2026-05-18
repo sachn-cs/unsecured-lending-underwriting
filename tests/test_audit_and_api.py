@@ -8,7 +8,7 @@ pytest.importorskip("fastapi")
 pytest.importorskip("httpx")
 from fastapi.testclient import TestClient
 
-from ulu.api.app import app, service
+from ulu.api.app import app, limiter, service
 from ulu.audit import AppendOnlyLedger
 
 client = TestClient(app)
@@ -19,6 +19,7 @@ _ADMIN_HEADERS = {"Authorization": "Bearer test-admin-token"}
 def reset_service() -> None:
     service.ledger = AppendOnlyLedger()
     service.engine = service.engine.__class__(ledger=service.ledger)
+    limiter._storage.reset()
 
 
 def test_append_only_ledger_round_trip(tmp_path: Path):

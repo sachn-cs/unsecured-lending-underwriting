@@ -16,6 +16,7 @@ dependencies = [
     "prometheus-client>=0.17",
     "structlog>=24.1",
     "slowapi>=0.1",
+    "pybreaker>=1.0",
 ]
 
 [project.optional-dependencies]

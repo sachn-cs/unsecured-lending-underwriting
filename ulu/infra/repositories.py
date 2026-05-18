@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 import uuid
 from collections.abc import Sequence
 from typing import Any, Generic, TypeVar
@@ -48,6 +49,17 @@ class BaseRepository(Generic[T]):
     async def get_by_id(self, entity_id: Any) -> T | None:
         return await self.session.get(self.model, entity_id)
 
+    async def soft_delete(self, entity_id: Any) -> None:
+        entity = await self.get_by_id(entity_id)
+        if entity is not None and hasattr(entity, "deleted_at"):
+            entity.deleted_at = datetime.datetime.now(datetime.timezone.utc)
+            await self.session.flush()
+
+    def _active_filter(self, stmt):
+        if hasattr(self.model, "deleted_at"):
+            return stmt.where(self.model.deleted_at.is_(None))
+        return stmt
+
 
 class UserRepository(BaseRepository[User]):
     """Repository for User entity persistence."""
@@ -56,11 +68,18 @@ class UserRepository(BaseRepository[User]):
         super().__init__(session, User)
 
     async def get_by_identifier(self, identifier: str) -> User | None:
-        result = await self.session.execute(select(User).where(User.identifier == identifier))
+        stmt = self._active_filter(select(User).where(User.identifier == identifier))
+        result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
     async def list_by_type(self, user_type: str) -> Sequence[User]:
-        result = await self.session.execute(select(User).where(User.user_type == user_type))
+        stmt = self._active_filter(select(User).where(User.user_type == user_type))
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
+
+    async def list_active(self) -> Sequence[User]:
+        stmt = self._active_filter(select(User))
+        result = await self.session.execute(stmt)
         return result.scalars().all()
 
     async def update_kyc(self, user_id: uuid.UUID, kyc_status: KycStatus) -> None:
@@ -85,16 +104,23 @@ class SponsorEdgeRepository(BaseRepository[SponsorEdge]):
         super().__init__(session, SponsorEdge)
 
     async def get_by_sponsor_child(self, sponsor_id: uuid.UUID, child_id: uuid.UUID) -> SponsorEdge | None:
-        result = await self.session.execute(
+        stmt = self._active_filter(
             select(SponsorEdge).where(
                 SponsorEdge.sponsor_id == sponsor_id,
                 SponsorEdge.child_id == child_id,
             )
         )
+        result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
     async def list_by_sponsor(self, sponsor_id: uuid.UUID) -> Sequence[SponsorEdge]:
-        result = await self.session.execute(select(SponsorEdge).where(SponsorEdge.sponsor_id == sponsor_id))
+        stmt = self._active_filter(select(SponsorEdge).where(SponsorEdge.sponsor_id == sponsor_id))
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
+
+    async def list_active(self) -> Sequence[SponsorEdge]:
+        stmt = self._active_filter(select(SponsorEdge))
+        result = await self.session.execute(stmt)
         return result.scalars().all()
 
     async def update_delegation(self, edge_id: uuid.UUID, new_amount: float) -> None:
@@ -113,6 +139,11 @@ class UserBalanceRepository(BaseRepository[UserBalance]):
 
     async def get_by_user_id(self, user_id: uuid.UUID) -> UserBalance | None:
         return await self.get_by_id(user_id)
+
+    async def list_active(self) -> Sequence[UserBalance]:
+        stmt = self._active_filter(select(UserBalance))
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
 
     async def update_balance(
         self,
@@ -143,7 +174,13 @@ class LoanRepository(BaseRepository[Loan]):
         super().__init__(session, Loan)
 
     async def list_by_borrower(self, borrower_id: uuid.UUID) -> Sequence[Loan]:
-        result = await self.session.execute(select(Loan).where(Loan.borrower_id == borrower_id))
+        stmt = self._active_filter(select(Loan).where(Loan.borrower_id == borrower_id))
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
+
+    async def list_active(self) -> Sequence[Loan]:
+        stmt = self._active_filter(select(Loan))
+        result = await self.session.execute(stmt)
         return result.scalars().all()
 
     async def update_status(self, loan_id: uuid.UUID, status: LoanStatus) -> None:
@@ -161,7 +198,13 @@ class RepaymentRepository(BaseRepository[Repayment]):
         super().__init__(session, Repayment)
 
     async def list_by_loan(self, loan_id: uuid.UUID) -> Sequence[Repayment]:
-        result = await self.session.execute(select(Repayment).where(Repayment.loan_id == loan_id))
+        stmt = self._active_filter(select(Repayment).where(Repayment.loan_id == loan_id))
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
+
+    async def list_active(self) -> Sequence[Repayment]:
+        stmt = self._active_filter(select(Repayment))
+        result = await self.session.execute(stmt)
         return result.scalars().all()
 
 
@@ -172,7 +215,13 @@ class DefaultRepository(BaseRepository[Default]):
         super().__init__(session, Default)
 
     async def list_by_loan(self, loan_id: uuid.UUID) -> Sequence[Default]:
-        result = await self.session.execute(select(Default).where(Default.loan_id == loan_id))
+        stmt = self._active_filter(select(Default).where(Default.loan_id == loan_id))
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
+
+    async def list_active(self) -> Sequence[Default]:
+        stmt = self._active_filter(select(Default))
+        result = await self.session.execute(stmt)
         return result.scalars().all()
 
 
@@ -183,7 +232,13 @@ class CollateralEscrowRepository(BaseRepository[CollateralEscrow]):
         super().__init__(session, CollateralEscrow)
 
     async def list_by_owner(self, owner_id: uuid.UUID) -> Sequence[CollateralEscrow]:
-        result = await self.session.execute(select(CollateralEscrow).where(CollateralEscrow.owner_id == owner_id))
+        stmt = self._active_filter(select(CollateralEscrow).where(CollateralEscrow.owner_id == owner_id))
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
+
+    async def list_active(self) -> Sequence[CollateralEscrow]:
+        stmt = self._active_filter(select(CollateralEscrow))
+        result = await self.session.execute(stmt)
         return result.scalars().all()
 
     async def update_lien_status(self, escrow_id: uuid.UUID, lien_status: LienStatus) -> None:
@@ -201,16 +256,23 @@ class NpaEventRepository(BaseRepository[NpaEvent]):
         super().__init__(session, NpaEvent)
 
     async def get_by_loan_id(self, loan_id: uuid.UUID) -> NpaEvent | None:
-        result = await self.session.execute(select(NpaEvent).where(NpaEvent.loan_id == loan_id))
+        stmt = self._active_filter(select(NpaEvent).where(NpaEvent.loan_id == loan_id))
+        result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
     async def list_pending_dlg(self) -> Sequence[NpaEvent]:
-        result = await self.session.execute(
+        stmt = self._active_filter(
             select(NpaEvent).where(
                 NpaEvent.status.in_([NpaStatus.SUBSTANDARD, NpaStatus.DOUBTFUL, NpaStatus.LOSS]),
                 NpaEvent.dlg_invoked.is_(False),
             )
         )
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
+
+    async def list_active(self) -> Sequence[NpaEvent]:
+        stmt = self._active_filter(select(NpaEvent))
+        result = await self.session.execute(stmt)
         return result.scalars().all()
 
     async def mark_dlg_invoked(self, event_id: uuid.UUID) -> None:
@@ -232,13 +294,19 @@ class AuditEventRepository(BaseRepository[AuditEvent]):
         return result.scalar() or 0
 
     async def list_by_type(self, event_type: str, limit: int = 100, offset: int = 0) -> Sequence[AuditEvent]:
-        result = await self.session.execute(
+        stmt = self._active_filter(
             select(AuditEvent)
             .where(AuditEvent.event_type == event_type)
             .order_by(AuditEvent.timestamp_utc.desc())
             .offset(offset)
             .limit(limit)
         )
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
+
+    async def list_active(self) -> Sequence[AuditEvent]:
+        stmt = self._active_filter(select(AuditEvent))
+        result = await self.session.execute(stmt)
         return result.scalars().all()
 
 
@@ -249,7 +317,15 @@ class IdempotencyRepository(BaseRepository[IdempotencyRecord]):
         super().__init__(session, IdempotencyRecord)
 
     async def get(self, operation_name: str, idempotency_key: str) -> IdempotencyRecord | None:
-        return await self.session.get(IdempotencyRecord, (operation_name, idempotency_key))
+        record = await self.session.get(IdempotencyRecord, (operation_name, idempotency_key))
+        if record is not None and getattr(record, "deleted_at", None) is not None:
+            return None
+        return record
+
+    async def list_active(self) -> Sequence[IdempotencyRecord]:
+        stmt = self._active_filter(select(IdempotencyRecord))
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
 
 
 class ProtocolSnapshotRepository(BaseRepository[ProtocolSnapshot]):
@@ -259,7 +335,11 @@ class ProtocolSnapshotRepository(BaseRepository[ProtocolSnapshot]):
         super().__init__(session, ProtocolSnapshot)
 
     async def get_latest(self) -> ProtocolSnapshot | None:
-        result = await self.session.execute(
-            select(ProtocolSnapshot).order_by(ProtocolSnapshot.taken_at.desc()).limit(1)
-        )
+        stmt = self._active_filter(select(ProtocolSnapshot).order_by(ProtocolSnapshot.taken_at.desc())).limit(1)
+        result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def list_active(self) -> Sequence[ProtocolSnapshot]:
+        stmt = self._active_filter(select(ProtocolSnapshot))
+        result = await self.session.execute(stmt)
+        return result.scalars().all()

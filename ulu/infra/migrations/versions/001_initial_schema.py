@@ -52,6 +52,7 @@ def upgrade() -> None:
         sa.Column("aml_status", _aml, default="clear"),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()")),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()")),
+        sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
     )
     op.create_index("ix_users_identifier", "users", ["identifier"])
     op.create_index("ix_users_user_type", "users", ["user_type"])
@@ -69,6 +70,7 @@ def upgrade() -> None:
         sa.Column("delegation_amount", sa.Float, nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()")),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()")),
+        sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.UniqueConstraint("sponsor_id", "child_id", name="uq_sponsor_child"),
     )
     op.create_index("ix_sponsor_edges_sponsor_child", "sponsor_edges", ["sponsor_id", "child_id"])
@@ -81,6 +83,7 @@ def upgrade() -> None:
         sa.Column("outstanding_principal", sa.Float, default=0.0),
         sa.Column("credit_limit", sa.Float, default=0.0),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()")),
+        sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
     )
 
     op.create_table(
@@ -98,6 +101,7 @@ def upgrade() -> None:
         sa.Column("originated_at", sa.DateTime(timezone=True), server_default=sa.text("now()")),
         sa.Column("matured_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()")),
+        sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
     )
     op.create_index("ix_loans_borrower_id", "loans", ["borrower_id"])
     op.create_index("ix_loans_status", "loans", ["status"])
@@ -114,6 +118,7 @@ def upgrade() -> None:
         sa.Column("delta_earned", sa.Float, default=0.0),
         sa.Column("repayment_type", _repay, default="scheduled"),
         sa.Column("repaid_at", sa.DateTime(timezone=True), server_default=sa.text("now()")),
+        sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
     )
     op.create_index("ix_repayments_loan_id", "repayments", ["loan_id"])
     op.create_index("ix_repayments_repaid_at", "repayments", ["repaid_at"])
@@ -129,6 +134,7 @@ def upgrade() -> None:
         sa.Column("logical_loss", sa.Float, nullable=False),
         sa.Column("physical_recovery", sa.Float, default=0.0),
         sa.Column("defaulted_at", sa.DateTime(timezone=True), server_default=sa.text("now()")),
+        sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
     )
     op.create_index("ix_defaults_loan_id", "defaults", ["loan_id"])
     op.create_index("ix_defaults_defaulted_at", "defaults", ["defaulted_at"])
@@ -146,6 +152,7 @@ def upgrade() -> None:
         sa.Column("effective_value", sa.Float, nullable=False),
         sa.Column("lien_status", _lien, default="free"),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()")),
+        sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
     )
     op.create_index("ix_collateral_escrows_owner_id", "collateral_escrows", ["owner_id"])
     op.create_index("ix_collateral_escrows_owner_type", "collateral_escrows", ["owner_id", "collateral_type"])
@@ -163,6 +170,7 @@ def upgrade() -> None:
         sa.Column("dlg_invoked", sa.Boolean, default=False),
         sa.Column("triggered_at", sa.DateTime(timezone=True), server_default=sa.text("now()")),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()")),
+        sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
     )
     op.create_index("ix_npa_events_loan_id", "npa_events", ["loan_id"])
     op.create_index("ix_npa_events_status", "npa_events", ["status"])
@@ -185,6 +193,7 @@ def upgrade() -> None:
         sa.Column("payload", postgresql.JSONB, default=dict),
         sa.Column("timestamp_utc", sa.DateTime(timezone=True), server_default=sa.text("now()")),
         sa.Column("merkle_root", sa.String(128), nullable=True),
+        sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
     )
     op.create_index("ix_audit_events_seq", "audit_events", ["seq"])
     op.create_index("ix_audit_events_event_type", "audit_events", ["event_type"])
@@ -197,6 +206,7 @@ def upgrade() -> None:
         sa.Column("payload_hash", sa.String(64), nullable=False),
         sa.Column("response", postgresql.JSONB, default=dict),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()")),
+        sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
     )
 
     op.create_table(
@@ -208,6 +218,7 @@ def upgrade() -> None:
         sa.Column("schema_version", sa.Integer, nullable=False, default=1),
         sa.Column("state", postgresql.JSONB, default=dict),
         sa.Column("taken_at", sa.DateTime(timezone=True), server_default=sa.text("now()")),
+        sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
     )
 
 

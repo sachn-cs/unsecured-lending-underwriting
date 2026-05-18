@@ -24,6 +24,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from ulu.infra.db import Base
 
 
+class SoftDeleteMixin:
+    """Mixin adding soft-delete support via deleted_at timestamp."""
+
+    deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+
+
 def utc_now() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
 
@@ -96,7 +102,7 @@ class RecoveryType(enum.Enum):
     WRITE_OFF = "write_off"
 
 
-class User(Base):
+class User(SoftDeleteMixin, Base):
     __tablename__ = "users"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -118,7 +124,7 @@ class User(Base):
     collateral: Mapped[list[CollateralEscrow]] = relationship("CollateralEscrow", back_populates="owner")
 
 
-class SponsorEdge(Base):
+class SponsorEdge(SoftDeleteMixin, Base):
     __tablename__ = "sponsor_edges"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -137,7 +143,7 @@ class SponsorEdge(Base):
     )
 
 
-class UserBalance(Base):
+class UserBalance(SoftDeleteMixin, Base):
     __tablename__ = "user_balances"
 
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True)
@@ -150,7 +156,7 @@ class UserBalance(Base):
     user: Mapped[User] = relationship("User", back_populates="balance")
 
 
-class Loan(Base):
+class Loan(SoftDeleteMixin, Base):
     __tablename__ = "loans"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -174,7 +180,7 @@ class Loan(Base):
     __table_args__ = (Index("ix_loans_borrower_status", "borrower_id", "status"),)
 
 
-class Repayment(Base):
+class Repayment(SoftDeleteMixin, Base):
     __tablename__ = "repayments"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -187,7 +193,7 @@ class Repayment(Base):
     loan: Mapped[Loan] = relationship("Loan", back_populates="repayments")
 
 
-class Default(Base):
+class Default(SoftDeleteMixin, Base):
     __tablename__ = "defaults"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -200,7 +206,7 @@ class Default(Base):
     loan: Mapped[Loan] = relationship("Loan", back_populates="defaults")
 
 
-class CollateralEscrow(Base):
+class CollateralEscrow(SoftDeleteMixin, Base):
     __tablename__ = "collateral_escrows"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -217,7 +223,7 @@ class CollateralEscrow(Base):
     __table_args__ = (Index("ix_collateral_escrows_owner_type", "owner_id", "collateral_type"),)
 
 
-class NpaEvent(Base):
+class NpaEvent(SoftDeleteMixin, Base):
     __tablename__ = "npa_events"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -240,7 +246,7 @@ class NpaEvent(Base):
     )
 
 
-class AuditEvent(Base):
+class AuditEvent(SoftDeleteMixin, Base):
     __tablename__ = "audit_events"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -253,7 +259,7 @@ class AuditEvent(Base):
     __table_args__ = (Index("ix_audit_events_type_time", "event_type", "timestamp_utc"),)
 
 
-class IdempotencyRecord(Base):
+class IdempotencyRecord(SoftDeleteMixin, Base):
     __tablename__ = "idempotency_records"
 
     operation_name: Mapped[str] = mapped_column(String(64), nullable=False, primary_key=True)
@@ -263,7 +269,7 @@ class IdempotencyRecord(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
-class ProtocolSnapshot(Base):
+class ProtocolSnapshot(SoftDeleteMixin, Base):
     __tablename__ = "protocol_snapshots"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

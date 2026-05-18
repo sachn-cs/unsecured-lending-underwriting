@@ -10,19 +10,37 @@ from ulu.infra.config import settings
 Base = declarative_base()
 
 
-def _get_engine():
+class DatabaseConnectionError(Exception):
+    """Raised when the database is unreachable after retries."""
+
+
+def _create_engine_with_retry(retries: int = 3, backoff: float = 1.0):
     url = settings.database_url
     if not url:
         raise ValueError("DATABASE_URL is not configured")
-    return create_async_engine(
-        url,
-        echo=settings.app_env == "development",
-        future=True,
-        pool_size=10,
-        max_overflow=20,
-        pool_pre_ping=True,
-        pool_recycle=3600,
-    )
+    last_exc = None
+    for attempt in range(retries):
+        try:
+            return create_async_engine(
+                url,
+                echo=settings.app_env == "development",
+                future=True,
+                pool_size=10,
+                max_overflow=20,
+                pool_pre_ping=True,
+                pool_recycle=3600,
+            )
+        except (ConnectionError, TimeoutError) as exc:
+            last_exc = exc
+            if attempt < retries - 1:
+                import time
+
+                time.sleep(backoff * (2 ** attempt))
+    raise DatabaseConnectionError(f"database unreachable after {retries} attempts: {last_exc}") from last_exc
+
+
+def _get_engine():
+    return _create_engine_with_retry()
 
 
 def _get_session_maker():

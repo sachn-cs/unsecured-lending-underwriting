@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ulu"
+version = "0.2.0"
+description = "Production-grade middleware for Unsecured Lending via Delegated Underwriting"
+requires-python = ">=3.10"
+dependencies = [
+    "loguru>=0.7",
+    "sqlalchemy[asyncio]>=2.0",
+    "asyncpg>=0.29",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "prometheus-client>=0.17",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-asyncio>=0.21",
+    "aiosqlite>=0.22",
+    "ruff>=0.6",
+    "fastapi>=0.112",
+    "uvicorn>=0.30",
+    "httpx>=0.27",
+    "numpy>=1.26",
+    "scikit-learn>=1.5",
+]
+api = [
+    "fastapi>=0.112",
+    "uvicorn>=0.30",
+    "httpx>=0.27",
+]
+risk = [
+    "numpy>=1.26",
+    "scikit-learn>=1.5",
+]
+blockchain = [
+    "py-algorand-sdk>=2.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+"ulu/api/deps.py" = ["B008"]

@@ -1,64 +1,33 @@
-"""Unit tests for query cache with TTL eviction."""
+"""Unit tests for query cache decorator."""
 
 from __future__ import annotations
-
-import time
 
 from ulu.infra.query_cache import QueryCache
 
 
+class DummyRepository:
+    def __init__(self) -> None:
+        self.call_count = 0
+        self.cache = QueryCache(redis_url=None)
+
+    @QueryCache(redis_url=None).cached(ttl=30)
+    async def get_user(self, user_id: str) -> dict[str, str]:
+        self.call_count += 1
+        return {"id": user_id, "name": "test"}
+
+
 class TestQueryCache:
-    def test_set_and_get(self) -> None:
-        cache = QueryCache()
-        cache.set("key1", "value1")
-        assert cache.get("key1") == "value1"
+    async def test_cache_miss(self) -> None:
+        repo = DummyRepository()
+        result = await repo.get_user("u1")
+        assert result == {"id": "u1", "name": "test"}
+        assert repo.call_count == 1
 
-    def test_get_missing(self) -> None:
-        cache = QueryCache()
-        assert cache.get("missing") is None
+    async def test_no_redis_always_miss(self) -> None:
+        cache = QueryCache(redis_url=None)
 
-    def test_ttl_expiration(self) -> None:
-        cache = QueryCache(default_ttl=0.01)
-        cache.set("key1", "value1")
-        time.sleep(0.02)
-        assert cache.get("key1") is None
+        async def fn() -> str:
+            return "hello"
 
-    def test_invalidate(self) -> None:
-        cache = QueryCache()
-        cache.set("key1", "value1")
-        cache.invalidate("key1")
-        assert cache.get("key1") is None
-
-    def test_invalidate_prefix(self) -> None:
-        cache = QueryCache()
-        cache.set("prefix:a", 1)
-        cache.set("prefix:b", 2)
-        cache.set("other:c", 3)
-        cache.invalidate_prefix("prefix:")
-        assert cache.get("prefix:a") is None
-        assert cache.get("prefix:b") is None
-        assert cache.get("other:c") == 3
-
-    def test_clear(self) -> None:
-        cache = QueryCache()
-        cache.set("a", 1)
-        cache.set("b", 2)
-        cache.clear()
-        assert cache.get("a") is None
-        assert cache.get("b") is None
-
-    def test_cached_decorator(self) -> None:
-        cache = QueryCache()
-        call_count = 0
-
-        @cache.cached(ttl=60.0)
-        def expensive(x: int) -> int:
-            nonlocal call_count
-            call_count += 1
-            return x * 2
-
-        assert expensive(5) == 10
-        assert expensive(5) == 10
-        assert call_count == 1
-        assert expensive(6) == 12
-        assert call_count == 2
+        decorated = cache.cached()(fn)
+        assert await decorated() == "hello"

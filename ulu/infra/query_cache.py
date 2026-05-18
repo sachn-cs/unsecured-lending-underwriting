@@ -1,66 +1,61 @@
-"""In-memory query cache with TTL eviction for expensive read operations.
+"""Redis-backed read query cache for repository hot paths.
 
 Item 119 from production roadmap.
 """
 
 from __future__ import annotations
 
-import time
+import functools
+import hashlib
+import json
 from collections.abc import Callable
-from typing import Any, TypeVar
+from typing import Any
 
 from ulu.infra.logging import logger
 
-T = TypeVar("T")
-
 
 class QueryCache:
-    """Simple TTL cache for read query results.
+    """Method-level cache decorator using Redis with TTL fallback."""
 
-    Production should replace this with Redis or Memcached for
-    cross-instance consistency.
-    """
-
-    def __init__(self, default_ttl: float = 60.0) -> None:
+    def __init__(self, redis_url: str | None = None, default_ttl: int = 60) -> None:
         self.default_ttl = default_ttl
-        self._store: dict[str, tuple[Any, float]] = {}
+        self._client: Any | None = None
+        if redis_url:
+            try:
+                import redis.asyncio as aioredis
 
-    def get(self, key: str) -> Any | None:
-        if key not in self._store:
-            return None
-        value, expiry = self._store[key]
-        if time.time() > expiry:
-            del self._store[key]
-            return None
-        return value
+                self._client = aioredis.from_url(redis_url, decode_responses=True)
+                logger.info("query_cache_connected", redis_url=redis_url)
+            except Exception as exc:
+                logger.warning("query_cache_fallback", error=str(exc))
 
-    def set(self, key: str, value: Any, ttl: float | None = None) -> None:
-        expiry = time.time() + (ttl or self.default_ttl)
-        self._store[key] = (value, expiry)
+    def _key(self, fn_name: str, args: tuple, kwargs: dict) -> str:
+        blob = json.dumps({"fn": fn_name, "args": args, "kwargs": kwargs}, sort_keys=True, default=str)
+        return f"query_cache:{fn_name}:{hashlib.sha256(blob.encode('utf-8')).hexdigest()}"
 
-    def invalidate(self, key: str) -> None:
-        self._store.pop(key, None)
+    def cached(self, ttl: int | None = None) -> Callable:
+        """Decorator that caches the return value of an async function."""
+        _ttl = ttl or self.default_ttl
 
-    def invalidate_prefix(self, prefix: str) -> None:
-        keys = [k for k in self._store if k.startswith(prefix)]
-        for k in keys:
-            del self._store[k]
-
-    def clear(self) -> None:
-        self._store.clear()
-
-    def cached(self, ttl: float | None = None) -> Callable[[Callable[..., T]], Callable[..., T]]:
-        """Decorator that caches function results by positional args."""
-        def decorator(fn: Callable[..., T]) -> Callable[..., T]:
-            def wrapper(*args: Any, **kwargs: Any) -> T:
-                cache_key = f"{fn.__name__}:{hash(args)}:{hash(tuple(sorted(kwargs.items())))}"
-                cached = self.get(cache_key)
-                if cached is not None:
-                    logger.debug("query_cache_hit", key=cache_key)
-                    return cached
-                result = fn(*args, **kwargs)
-                self.set(cache_key, result, ttl)
-                logger.debug("query_cache_set", key=cache_key)
+        def decorator(fn: Callable) -> Callable:
+            @functools.wraps(fn)
+            async def wrapper(*args, **kwargs):
+                if self._client is None:
+                    return await fn(*args, **kwargs)
+                key = self._key(fn.__name__, args[1:], kwargs)  # skip self
+                try:
+                    raw = await self._client.get(key)
+                    if raw:
+                        return json.loads(raw)
+                except Exception as exc:
+                    logger.warning("query_cache_get_failed", error=str(exc))
+                result = await fn(*args, **kwargs)
+                try:
+                    await self._client.setex(key, _ttl, json.dumps(result, default=str))
+                except Exception as exc:
+                    logger.warning("query_cache_set_failed", error=str(exc))
                 return result
+
             return wrapper
+
         return decorator

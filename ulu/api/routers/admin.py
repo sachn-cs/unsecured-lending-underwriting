@@ -36,13 +36,28 @@ def _cached(key: str, factory: Callable[[], Any]) -> Any:
     return value
 
 
+def _audit_log(request: Request, action: str, outcome: str) -> None:
+    """Logs admin endpoint access with IP, timestamp, and outcome."""
+    client_ip = request.client.host if request.client else "unknown"
+    logger.info(
+        "admin_action_audit",
+        action=action,
+        outcome=outcome,
+        client_ip=client_ip,
+        path=str(request.url.path),
+        method=request.method,
+    )
+
+
 @router.get("/admin/graph", response_model=GraphResponse)
 async def admin_graph(
+    request: Request,
     _: None = Depends(require_admin),
     protocol_service: ProtocolService = Depends(get_protocol_service),
 ) -> GraphResponse:
     with protocol_service.lock:
         payload = _cached("graph", lambda: graph_payload(protocol_service))
+    _audit_log(request, "admin_graph", "success")
     return GraphResponse(
         seeds=payload["seeds"],
         parent=payload["parent"],
@@ -52,6 +67,7 @@ async def admin_graph(
 
 @router.get("/admin/utilization", response_model=UtilizationResponse)
 async def admin_utilization(
+    request: Request,
     _: None = Depends(require_admin),
     protocol_service: ProtocolService = Depends(get_protocol_service),
 ) -> UtilizationResponse:
@@ -60,11 +76,13 @@ async def admin_utilization(
             "utilization",
             lambda: safe_call(protocol_service.engine.seed_delegation_utilization),
         )
+    _audit_log(request, "admin_utilization", "success")
     return UtilizationResponse(delegation_utilization=util)
 
 
 @router.get("/admin/solvency", response_model=SolvencyResponse)
 async def admin_solvency(
+    request: Request,
     _: None = Depends(require_admin),
     protocol_service: ProtocolService = Depends(get_protocol_service),
 ) -> SolvencyResponse:
@@ -74,6 +92,7 @@ async def admin_solvency(
         for user in sorted(protocol_service.engine.earned):
             if user not in protocol_service.engine.seeds:
                 required[user] = protocol_service.engine.required_delegation(user)
+    _audit_log(request, "admin_solvency", "success")
     return SolvencyResponse(invariants="ok", required_delegation=required)
 
 
@@ -89,5 +108,6 @@ async def admin_reset(
         protocol_service.engine = DelegatedUnderwriting(ledger=protocol_service.ledger)
         protocol_service.idempotency_cache.clear()
     _admin_cache.clear()
+    _audit_log(request, "admin_reset", "success")
     logger.info("admin_reset_executed")
     return StatusResponse(status="ok")

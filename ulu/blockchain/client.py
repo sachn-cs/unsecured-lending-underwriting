@@ -127,3 +127,66 @@ class AlgorandClient:
             return await self._async_call(self.client.suggested_params)
         except AlgodHTTPError as exc:
             raise BlockchainConnectionError(f"Algorand node returned error: {exc}") from exc
+
+    async def submit_note_transaction(
+        self,
+        sender: str,
+        private_key: str,
+        note: str,
+        amount: int = 1000,
+    ) -> str:
+        """Submits a payment transaction with a note payload for anchoring.
+
+        Returns the transaction ID.
+        """
+        from algosdk.future import transaction
+
+        try:
+            sp = await self.suggested_params()
+            txn = transaction.PaymentTxn(
+                sender=sender,
+                sp=sp,
+                receiver=sender,
+                amt=amount,
+                note=note.encode("utf-8"),
+            )
+            signed = txn.sign(private_key)
+            txid = await self._async_call(lambda: self.client.send_transaction(signed))
+            return str(txid)
+        except AlgodHTTPError as exc:
+            raise BlockchainConnectionError(f"transaction submission failed: {exc}") from exc
+
+    async def submit_asa_create(
+        self,
+        sender: str,
+        private_key: str,
+        unit_name: str,
+        asset_name: str,
+        total: int = 1,
+        decimals: int = 0,
+    ) -> str:
+        """Submits an ASA creation transaction. Returns asset ID."""
+        from algosdk.future import transaction
+
+        try:
+            sp = await self.suggested_params()
+            txn = transaction.AssetConfigTxn(
+                sender=sender,
+                sp=sp,
+                total=total,
+                decimals=decimals,
+                default_frozen=False,
+                unit_name=unit_name,
+                asset_name=asset_name,
+                manager=sender,
+                reserve=sender,
+                freeze=sender,
+                clawback=sender,
+                strict_empty_address_check=False,
+            )
+            signed = txn.sign(private_key)
+            txid = await self._async_call(lambda: self.client.send_transaction(signed))
+            result = await self._async_call(lambda: self.client.pending_transaction_info(txid))
+            return str(result.get("asset-index", ""))
+        except AlgodHTTPError as exc:
+            raise BlockchainConnectionError(f"ASA creation failed: {exc}") from exc

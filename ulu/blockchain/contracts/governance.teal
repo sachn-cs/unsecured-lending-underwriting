@@ -1,0 +1,58 @@
+// TEAL smart contract for on-chain governance parameter storage.
+// Item 48 from production roadmap.
+//
+// Global state keys:
+//   "admin"     -> admin address (32 bytes)
+//   "param_key" -> parameter name
+//   "param_val" -> parameter value
+//
+// Application call arguments:
+//   arg[0] = "update"
+//   arg[1] = new_value
+//
+// Only the admin address can submit updates.
+
+#pragma version 6
+
+txn TypeEnum
+int appl
+==
+assert
+
+// On creation, initialize admin from sender
+txn ApplicationID
+int 0
+==
+bnz init
+
+// Verify sender is admin
+txn Sender
+global Admin
+==
+assert
+
+// Parse action from first argument
+txna ApplicationArgs 0
+byte "update"
+==
+bnz update_param
+
+// Unknown action -> reject
+int 0
+return
+
+init:
+    // Store sender as admin
+    txn Sender
+    global Admin
+    app_global_put
+    int 1
+    return
+
+update_param:
+    // Update param_val from second argument
+    txna ApplicationArgs 1
+    byte "param_val"
+    app_global_put
+    int 1
+    return

@@ -120,16 +120,21 @@ class TestRepaymentService:
 class TestRecoveryService:
     def test_liquidation_recovery(self) -> None:
         svc = RecoveryService()
-        recovered, event = svc.initiate_recovery("l1", "b1", 1000.0, RecoveryType.LIQUIDATION, collateral_value=600.0)
+        recovered, default_event, recovery_event = svc.initiate_recovery(
+            "l1", "b1", 1000.0, RecoveryType.LIQUIDATION, collateral_value=600.0
+        )
         assert recovered == 600.0
-        assert event.physical_recovery == 600.0
+        assert default_event.physical_recovery == 600.0
+        assert recovery_event.recovery_type == "liquidation"
 
     def test_write_off_recovery(self) -> None:
         svc = RecoveryService()
-        recovered, event = svc.initiate_recovery("l1", "b1", 1000.0, RecoveryType.WRITE_OFF)
+        recovered, default_event, recovery_event = svc.initiate_recovery("l1", "b1", 1000.0, RecoveryType.WRITE_OFF)
         assert recovered == 0.0
+        assert recovery_event.recovered_amount == 0.0
 
     def test_workout_recovery(self) -> None:
         svc = RecoveryService()
-        recovered, event = svc.initiate_recovery("l1", "b1", 1000.0, RecoveryType.WORKOUT)
+        recovered, default_event, recovery_event = svc.initiate_recovery("l1", "b1", 1000.0, RecoveryType.WORKOUT)
         assert recovered == 500.0
+        assert recovery_event.recovery_type == "workout"

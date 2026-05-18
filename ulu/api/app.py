@@ -19,7 +19,7 @@ from ulu.api.middleware import (
     RequestLoggingMiddleware,
     TimingMiddleware,
 )
-from ulu.api.routers import admin, health, ledger, loans, repayments, revocations, seeds, state, users
+from ulu.api.routers import admin, bulk, health, ledger, loans, repayments, revocations, seeds, state, users
 from ulu.api.schemas import ErrorResponse
 from ulu.api.service import limiter, service  # noqa: F401
 from ulu.infra.logging import logger
@@ -110,6 +110,7 @@ _routers = [
     state.router,
     ledger.router,
     admin.router,
+    bulk.router,
 ]
 
 for _router in _routers:

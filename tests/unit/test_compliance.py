@@ -67,14 +67,32 @@ class TestKycAmlService:
     def test_screen_aml_clear(self) -> None:
         svc = KycAmlService()
         user = User("u1", UserRole.BORROWER)
-        status = svc.screen_aml(user, watchlist_hit=False)
+        status, event = svc.screen_aml(user, watchlist_hit=False)
         assert status == AmlStatus.CLEAR
+        assert event is None
 
     def test_screen_aml_frozen(self) -> None:
         svc = KycAmlService()
         user = User("u1", UserRole.BORROWER)
-        status = svc.screen_aml(user, watchlist_hit=True)
+        status, event = svc.screen_aml(user, watchlist_hit=True)
         assert status == AmlStatus.FROZEN
+        assert event is not None
+        assert event.new_status == "frozen"
+
+    def test_kyc_state_machine_transition(self) -> None:
+        svc = KycAmlService()
+        user = User("u1", UserRole.BORROWER)
+        event = svc.transition_kyc(user, KycStatus.VERIFIED, "test")
+        assert user.kyc_status == KycStatus.VERIFIED
+        assert event is not None
+        assert event.new_status == "verified"
+
+    def test_invalid_kyc_transition_rejected(self) -> None:
+        svc = KycAmlService()
+        user = User("u1", UserRole.BORROWER)
+        user.kyc_status = KycStatus.VERIFIED
+        with pytest.raises(ValueError):
+            svc.transition_kyc(user, KycStatus.REJECTED)
 
     def test_is_compliant_requires_both(self) -> None:
         svc = KycAmlService()

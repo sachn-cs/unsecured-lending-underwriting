@@ -77,3 +77,34 @@ class DlgInvocationEvent(DomainEvent):
     loan_id: str
     recovery_amount: float
     invoked_at: str
+
+
+@dataclass(frozen=True)
+class RecoveryEvent(DomainEvent):
+    """Emitted when a recovery workflow is initiated."""
+
+    loan_id: str
+    borrower_id: str
+    recovery_type: str
+    recovered_amount: float
+    default_amount: float
+
+
+@dataclass(frozen=True)
+class KycStatusChangeEvent(DomainEvent):
+    """Emitted when KYC status changes."""
+
+    user_id: str
+    old_status: str
+    new_status: str
+    reason: str
+
+
+@dataclass(frozen=True)
+class AmlStatusChangeEvent(DomainEvent):
+    """Emitted when AML status changes."""
+
+    user_id: str
+    old_status: str
+    new_status: str
+    reason: str

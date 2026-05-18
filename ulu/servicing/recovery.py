@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ulu.domain.events import DefaultEvent
+from ulu.domain.events import DefaultEvent, RecoveryEvent
 from ulu.domain.loans import RecoveryType
 
 
@@ -29,7 +29,7 @@ class RecoveryService:
         else:
             raise ValueError(f"unrecognized recovery type: {recovery_type}")
 
-        event = DefaultEvent(
+        default_event = DefaultEvent(
             event_type="default",
             payload={
                 "loan_id": loan_id,
@@ -44,4 +44,19 @@ class RecoveryService:
             logical_loss=default_amount,
             physical_recovery=recovered,
         )
-        return recovered, event
+        recovery_event = RecoveryEvent(
+            event_type="recovery",
+            payload={
+                "loan_id": loan_id,
+                "borrower_id": borrower_id,
+                "recovery_type": recovery_type.value,
+                "recovered_amount": recovered,
+                "default_amount": default_amount,
+            },
+            loan_id=loan_id,
+            borrower_id=borrower_id,
+            recovery_type=recovery_type.value,
+            recovered_amount=recovered,
+            default_amount=default_amount,
+        )
+        return recovered, default_event, recovery_event

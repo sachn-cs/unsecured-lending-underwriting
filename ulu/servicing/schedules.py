@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import enum
+from dataclasses import dataclass, field
+from typing import Any
 
 from ulu.domain.loans import Installment
 
@@ -11,6 +13,21 @@ class ScheduleType(enum.Enum):
     AMORTIZING = "amortizing"
     BULLET = "bullet"
     INTEREST_ONLY = "interest_only"
+
+
+@dataclass(frozen=True)
+class ScheduleVersion:
+    """Versioned repayment schedule with change metadata."""
+
+    version: int
+    created_at: str
+    change_reason: str
+    principal: float
+    term: int
+    annual_rate: float
+    schedule_type: ScheduleType
+    installments: list[Installment] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 def generate_schedule(
@@ -74,3 +91,82 @@ def generate_schedule(
                 installments.append(Installment(seq, principal_due, interest, payment))
 
     return installments
+
+
+def versioned_schedule(
+    principal: float,
+    term: int,
+    annual_rate: float,
+    schedule_type: ScheduleType,
+    version: int = 1,
+    change_reason: str = "origination",
+    created_at: str = "",
+    periods_per_year: int = 12,
+    metadata: dict[str, Any] | None = None,
+) -> ScheduleVersion:
+    """Generates a versioned repayment schedule."""
+    installments = generate_schedule(
+        principal=principal,
+        term=term,
+        annual_rate=annual_rate,
+        schedule_type=schedule_type,
+        periods_per_year=periods_per_year,
+    )
+    return ScheduleVersion(
+        version=version,
+        created_at=created_at,
+        change_reason=change_reason,
+        principal=principal,
+        term=term,
+        annual_rate=annual_rate,
+        schedule_type=schedule_type,
+        installments=installments,
+        metadata=metadata or {},
+    )
+
+
+class ScheduleVersionManager:
+    """Manages version history for a borrower's repayment schedules."""
+
+    def __init__(self) -> None:
+        self._versions: list[ScheduleVersion] = []
+
+    def add_version(self, version: ScheduleVersion) -> None:
+        """Appends a new schedule version."""
+        self._versions.append(version)
+
+    def latest(self) -> ScheduleVersion | None:
+        """Returns the most recent schedule version."""
+        if not self._versions:
+            return None
+        return self._versions[-1]
+
+    def history(self) -> list[ScheduleVersion]:
+        """Returns all versions in chronological order."""
+        return list(self._versions)
+
+    def restructure(
+        self,
+        principal: float,
+        term: int,
+        annual_rate: float,
+        schedule_type: ScheduleType,
+        reason: str,
+        created_at: str = "",
+        periods_per_year: int = 12,
+    ) -> ScheduleVersion:
+        """Creates a new schedule version with incremented version number."""
+        next_version = len(self._versions) + 1
+        new_schedule = versioned_schedule(
+            principal=principal,
+            term=term,
+            annual_rate=annual_rate,
+            schedule_type=schedule_type,
+            version=next_version,
+            change_reason=reason,
+            created_at=created_at,
+            periods_per_year=periods_per_year,
+            metadata={"previous_version": next_version - 1},
+        )
+        self.add_version(new_schedule)
+        return new_schedule

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import base64
 import datetime
+import json
 import uuid
 from collections.abc import Sequence
 from typing import Any, Generic, TypeVar
@@ -73,6 +75,39 @@ class BaseRepository(Generic[T]):
         if limit < 1:
             raise ValueError("limit must be positive")
         return stmt.offset(offset).limit(limit)
+
+    @staticmethod
+    def _encode_cursor(offset: int, limit: int) -> str:
+        blob = base64.urlsafe_b64encode(
+            json.dumps({"o": offset, "l": limit}).encode("utf-8")
+        )
+        return blob.decode("utf-8").rstrip("=")
+
+    @staticmethod
+    def _decode_cursor(cursor: str | None) -> tuple[int, int]:
+        if not cursor:
+            return 0, 100
+        padded = cursor + "=" * (4 - len(cursor) % 4)
+        decoded = json.loads(base64.urlsafe_b64decode(padded.encode("utf-8")))
+        return decoded.get("o", 0), decoded.get("l", 100)
+
+    async def paginate_cursor(
+        self,
+        stmt,
+        cursor: str | None = None,
+        default_limit: int = 100,
+    ) -> dict[str, Any]:
+        """Executes a statement with cursor-based pagination and returns items + next cursor."""
+        offset, limit = self._decode_cursor(cursor)
+        if limit < 1 or limit > 1000:
+            limit = default_limit
+        paginated = stmt.offset(offset).limit(limit + 1)
+        result = await self.session.execute(paginated)
+        items = result.scalars().all()
+        has_more = len(items) > limit
+        items = items[:limit]
+        next_cursor = self._encode_cursor(offset + limit, limit) if has_more else None
+        return {"items": list(items), "next_cursor": next_cursor, "has_more": has_more}
 
 
 class UserRepository(BaseRepository[User]):
@@ -342,6 +377,14 @@ class AuditEventRepository(BaseRepository[AuditEvent]):
         stmt = self._paginate(self._active_filter(select(AuditEvent)), offset=offset, limit=limit)
         result = await self.session.execute(stmt)
         return result.scalars().all()
+
+    async def list_by_type_cursor(self, event_type: str, cursor: str | None = None) -> dict[str, Any]:
+        stmt = (
+            self._active_filter(select(AuditEvent))
+            .where(AuditEvent.event_type == event_type)
+            .order_by(AuditEvent.timestamp_utc.desc())
+        )
+        return await self.paginate_cursor(stmt, cursor=cursor)
 
 
 class IdempotencyRepository(BaseRepository[IdempotencyRecord]):

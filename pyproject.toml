@@ -19,6 +19,7 @@ dependencies = [
     "pybreaker>=1.0",
     "PyJWT>=2.8",
     "orjson>=3.9",
+    "redis>=5.0",
 ]
 
 [project.optional-dependencies]

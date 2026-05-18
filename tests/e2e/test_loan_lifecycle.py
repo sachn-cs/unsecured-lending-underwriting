@@ -11,8 +11,9 @@ pytest.importorskip("fastapi")
 pytest.importorskip("httpx")
 from fastapi.testclient import TestClient
 
-from ulu.api.app import app, limiter, service
+from ulu.api.app import app, limiter
 from ulu.api.routers.admin import clear_admin_cache
+from ulu.api.service import get_protocol_service
 from ulu.audit import AppendOnlyLedger
 from ulu.infra.config import settings
 
@@ -32,8 +33,9 @@ _ADMIN_HEADERS = {"Authorization": _admin_jwt()}
 
 
 def reset_service() -> None:
-    service.ledger = AppendOnlyLedger()
-    service.engine = service.engine.__class__(ledger=service.ledger)
+    svc = get_protocol_service()
+    svc.ledger = AppendOnlyLedger()
+    svc.engine = svc.engine.__class__(ledger=svc.ledger)
     limiter._storage.reset()
     clear_admin_cache()
 

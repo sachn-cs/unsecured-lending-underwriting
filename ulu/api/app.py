@@ -21,7 +21,7 @@ from ulu.api.middleware import (
 )
 from ulu.api.routers import admin, bulk, health, ledger, loans, repayments, revocations, seeds, state, users
 from ulu.api.schemas import ErrorResponse
-from ulu.api.service import limiter, service  # noqa: F401
+from ulu.api.service import limiter
 from ulu.infra.logging import logger
 
 REQUESTS_TOTAL = Counter(

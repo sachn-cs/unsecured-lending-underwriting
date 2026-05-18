@@ -157,12 +157,15 @@ async def _db_is_healthy() -> bool:
         return False
 
 
-service = ProtocolService()
+_protocol_service: ProtocolService | None = None
 limiter = Limiter(key_func=get_remote_address)
 
 
 def get_protocol_service() -> ProtocolService:
-    return service
+    global _protocol_service
+    if _protocol_service is None:
+        _protocol_service = ProtocolService()
+    return _protocol_service
 
 
 def get_limiter() -> Limiter:

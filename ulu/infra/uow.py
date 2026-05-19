@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ulu.infra.db import _get_session_maker
+from ulu.infra.db import _get_engine, _get_session_maker
 
 
 class UnitOfWork:
@@ -29,7 +29,7 @@ async def get_uow() -> AsyncGenerator[UnitOfWork, None]:
 
     Commits on clean exit; rolls back on exception.
     """
-    AsyncSessionLocal = _get_session_maker()
+    AsyncSessionLocal = _get_session_maker(_get_engine())
     async with AsyncSessionLocal() as session:
         uow = UnitOfWork(session)
         try:

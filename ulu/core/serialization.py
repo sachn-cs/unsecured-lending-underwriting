@@ -48,7 +48,7 @@ class SerializationMixin:
     @classmethod
     def from_state(cls, state: ProtocolState, config: ProtocolConfig | None = None):
         """Builds a mechanism instance from a ProtocolState."""
-        instance = cls(config=config)
+        instance: Any = cls(config=config)
         instance._seeds = set(state.seeds)
         instance._parent = dict(state.parent)
         instance._children = {user: list(child_list) for user, child_list in state.children.items()}

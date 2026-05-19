@@ -48,8 +48,9 @@ class TestingConfig(BaseConfig):
 
 
 _env = os.environ.get("APP_ENV", "development")
+settings: BaseConfig
 if _env == "production":
-    settings = ProductionConfig()
+    settings = ProductionConfig()  # type: ignore[call-arg]
 elif _env == "testing":
     settings = TestingConfig()
 else:

@@ -147,17 +147,17 @@ def generate_schedule_decimal(
             payment = principal * (periodic_rate / (Decimal(1) - (Decimal(1) + periodic_rate) ** (-term)))
             remaining = principal
             for seq in range(1, term + 1):
-                interest = remaining * periodic_rate
-                principal_due = payment - interest
+                int_due = remaining * periodic_rate
+                principal_due = payment - int_due
                 if principal_due > remaining:
                     principal_due = remaining
-                    payment = principal_due + interest
+                    payment = principal_due + int_due
                 remaining -= principal_due
                 installments.append(
                     Installment(
                         seq,
                         float(principal_due),
-                        float(interest),
+                        float(int_due),
                         float(payment),
                     )
                 )

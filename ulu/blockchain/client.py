@@ -6,7 +6,7 @@ import asyncio
 import time
 from typing import Any
 
-import requests
+import requests  # type: ignore[import-untyped]
 from algosdk.error import AlgodHTTPError
 from algosdk.v2client.algod import AlgodClient
 

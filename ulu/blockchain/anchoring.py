@@ -78,7 +78,9 @@ class IncrementalMerkleTree:
             current = self._hash_branch(orphan, current)
             self._orphans[level] = None
             level += 1
-        return self.root()
+        root = self.root()
+        assert root is not None
+        return root
 
     def root(self) -> str | None:
         """Returns the current Merkle root."""

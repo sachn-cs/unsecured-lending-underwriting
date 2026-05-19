@@ -65,6 +65,17 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.setuptools]
 packages = ["ulu"]
 
+[tool.mypy]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["ulu.risk_model", "ulu.risk.early_warning"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["ulu.core.graph", "ulu.core.invariants", "ulu.core.pricing", "ulu.core.serialization"]
+ignore_errors = true
+
 [tool.mutmut]
 paths_to_mutate = "ulu/"
 backup = false

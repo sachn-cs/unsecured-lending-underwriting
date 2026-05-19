@@ -28,7 +28,7 @@ class RecoveryService:
         default_amount: float,
         recovery_type: RecoveryType,
         collateral_value: float = 0.0,
-    ) -> tuple[float, DefaultEvent]:
+    ) -> tuple[float, DefaultEvent, RecoveryEvent]:
         """Initiates a recovery workflow and returns recovered amount plus event."""
         if recovery_type == RecoveryType.LIQUIDATION:
             recovered = collateral_value

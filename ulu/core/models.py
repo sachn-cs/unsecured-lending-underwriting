@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 Edge = tuple[str, str]
@@ -37,10 +38,10 @@ class ProtocolConfig:
 class ProtocolState:
     """Serializable protocol state used for deterministic persistence."""
 
-    seeds: list[str]
-    parent: dict[str, str]
-    children: dict[str, list[str]]
-    delegation: dict[str, float]
-    base_budget: dict[str, float]
-    earned: dict[str, float]
-    principal: dict[str, float]
+    seeds: Sequence[str]
+    parent: Mapping[str, str]
+    children: Mapping[str, Sequence[str]]
+    delegation: Mapping[str, float]
+    base_budget: Mapping[str, float]
+    earned: Mapping[str, float]
+    principal: Mapping[str, float]

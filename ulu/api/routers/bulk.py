@@ -52,7 +52,7 @@ async def bulk_create_users(
                 sponsor = payload.get("sponsor")
                 user = payload.get("user")
                 amount = payload.get("delegation_amount")
-                if not all(isinstance(v, (str, int, float)) for v in (sponsor, user, amount)):
+                if not isinstance(sponsor, str) or not isinstance(user, str) or not isinstance(amount, (int, float)):
                     errors.append({"user": str(user), "error": "invalid payload"})
                     continue
                 protocol_service.engine.add_user(sponsor, user, float(amount))

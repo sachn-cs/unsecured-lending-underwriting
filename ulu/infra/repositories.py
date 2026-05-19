@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ulu.errors import NotFoundError
 from ulu.infra.models import (
+    AmlAuditRecord,
     AmlStatus,
     AuditEvent,
     CollateralEscrow,
@@ -394,6 +395,40 @@ class AuditEventRepository(BaseRepository[AuditEvent]):
             .order_by(AuditEvent.timestamp_utc.desc())
         )
         return await self.paginate_cursor(stmt, cursor=cursor)
+
+
+class AmlAuditRepository(BaseRepository[AmlAuditRecord]):
+    """Repository for AML audit trail persistence."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, AmlAuditRecord)
+
+    async def list_by_user(
+        self,
+        user_id: str,
+        offset: int = 0,
+        limit: int = 100,
+    ) -> Sequence[AmlAuditRecord]:
+        stmt = self._paginate(
+            self._active_filter(
+                select(AmlAuditRecord)
+                .where(AmlAuditRecord.user_id == user_id)
+                .order_by(AmlAuditRecord.created_at.desc())
+            ),
+            offset=offset,
+            limit=limit,
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
+
+    async def list_active(self, offset: int = 0, limit: int = 100) -> Sequence[AmlAuditRecord]:
+        stmt = self._paginate(
+            self._active_filter(select(AmlAuditRecord).order_by(AmlAuditRecord.created_at.desc())),
+            offset=offset,
+            limit=limit,
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
 
 
 class IdempotencyRepository(BaseRepository[IdempotencyRecord]):

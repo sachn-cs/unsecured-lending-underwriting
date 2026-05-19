@@ -276,6 +276,24 @@ class IdempotencyRecord(SoftDeleteMixin, Base):
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
+class AmlAuditRecord(SoftDeleteMixin, Base):
+    """Immutable audit trail for AML screening events."""
+
+    __tablename__ = "aml_audit_records"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    screen_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    source: Mapped[str] = mapped_column(String(64), nullable=False)
+    status_before: Mapped[str] = mapped_column(String(16), nullable=False)
+    status_after: Mapped[str] = mapped_column(String(16), nullable=False)
+    reason: Mapped[str] = mapped_column(String(256), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+    __table_args__ = (Index("ix_aml_audit_user_time", "user_id", "created_at"),)
+
+
 class ProtocolSnapshot(SoftDeleteMixin, Base):
     __tablename__ = "protocol_snapshots"
 

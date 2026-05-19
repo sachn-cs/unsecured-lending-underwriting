@@ -62,6 +62,9 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
+[tool.setuptools]
+packages = ["ulu"]
+
 [tool.mutmut]
 paths_to_mutate = "ulu/"
 backup = false

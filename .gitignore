@@ -1,36 +1,43 @@
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
+*.pyo
 *.egg-info/
 dist/
 build/
+*.egg
+
+# Virtual environment
 .venv/
 venv/
-
-# Environment
-.env
-.env.local
-
-# Data
-data/
-*.json
-*.jsonl
+env/
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# OS
-.DS_Store
+*~
 
 # Testing
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .coverage
 htmlcov/
+coverage.xml
+.benchmarks/
+.hypothesis/
 
-# Agents
-.agents/
+# OS
+.DS_Store
+Thumbs.db
+
+# Project-specific
+data/
+*.sha256
+
+# Build artifacts
+dist/
+build/
+*.egg-info/

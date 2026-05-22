@@ -1,0 +1,21 @@
+site_name: underwrite
+site_description: Delegated Underwriting Protocol — nano-service platform for unsecured lending
+repo_url: https://github.com/sachn-cs/unsecured-lending-underwriting
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    primary: indigo
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Architecture: architecture.md
+  - API Reference: api-reference.md
+
+markdown_extensions:
+  - admonition
+  - codehilite
+  - toc:
+      permalink: true

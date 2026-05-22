@@ -1,105 +1,79 @@
-# Production Readiness Review
+# Production-Readiness Review: `underwrite`
 
 ## 1. Overall Readiness Verdict
 
-**NOT READY**
-
-The codebase contains critical security vulnerabilities, algorithm correctness bugs, and unauthenticated administrative endpoints that make it unsafe for production deployment. Multiple high-severity issues in core financial logic, path traversal, and authentication must be resolved before any production use.
+**Conditionally ready** — the architecture and testing discipline are strong, but 3 critical defects (signature gap, unsafe deserialization, lock-free state machine) and 5 high-severity issues must be resolved before production.
 
 ---
 
 ## 2. Executive Summary
 
-### Strengths
-- Modular package structure with clear domain separation (`core/`, `infra/`, `compliance/`, `servicing/`, etc.)
-- Comprehensive async SQLAlchemy 2.0 ORM models with proper enum typing
-- Repository pattern partially implemented for database access
-- Full pytest-asyncio test suite with 127 passing tests
-- Ruff linting passes cleanly (zero errors)
-- Event sourcing via append-only audit log
-- Dual-layer settlement architecture (logical + physical) is conceptually sound
+**Strengths:**
+- Clean nano-service architecture with well-defined ABCs (`EventBus`, `Store`, `NanoService`)
+- 509 passing tests, 0 failures, ruff fully clean
+- `py.typed` marker, PEP 585 generics, `__all__` on all infra modules
+- Google-style naming conventions consistently applied
+- Circuit breaker, retry policy, dead-letter queue, idempotency guard — good operational patterns
+- Lockfiles for reproducible builds
 
-### Weaknesses
-- **Security**: Unauthenticated `/admin/reset` endpoint, path traversal via save/load endpoints, token parsing without verification, unbounded in-memory caches
-- **Correctness**: Default propagation algorithm reduces edge delegation before sponsor absorption (violates credit conservation), amortization schedule divides by zero at zero rate and misinterprets annual rate as periodic rate, NPA aging thresholds contradict RBI norms
-- **Architecture**: Core domain layer contains filesystem I/O and logging, API directly accesses internal mechanism state, no mapping between ORM models and domain models, compliance/blockchain layers depend on infrastructure config
-- **Testing**: No end-to-end tests, missing integration tests for DefaultRepository and RepaymentRepository, no concurrency or race-condition tests
-- **Observability**: No structured logging context, no metrics emission beyond a simple counter dict, no tracing or correlation ID propagation to domain layer
+**Critical weaknesses:**
+1. **Event signature does not cover payload** — payload integrity is unprotected. An attacker can modify `event.payload` without invalidating the signature.
+2. **Pickle/joblib model loading** — arbitrary code execution if the model file is compromised (env-var path, no integrity check).
+3. **MechanismService has zero locks** — all protocol state (`__seeds`, `__earned`, `__parent`, etc.) is mutated without synchronization. Concurrent event dispatch via `ThreadPoolExecutor` causes data races.
 
-### Risks
-- Financial loss from incorrect default propagation mathematics
-- Data breach from arbitrary file read/write via API
-- Complete state destruction from unauthenticated reset
-- Regulatory non-compliance from incorrect NPA bucket thresholds
-- Memory exhaustion from unbounded idempotency cache
+**High-severity issues:**
+4. Private key exposed via name mangling and written to plaintext JSON config
+5. `KeyRotationManager` has no locks — concurrent rotation loses keys
+6. Saga TOCTOU — forward action can execute after compensation starts
+7. `__sync_store()` reads state without lock — inconsistent snapshot
+
+**Architecture:** Strong overall (ABCs, CQRS, saga pattern, event-driven). The MechanismService is the weakest link — 354 lines, no concurrency protection, 14 private methods, 3 hardcoded constants.
+
+**Testing:** 509 tests, good coverage. Gaps: no concurrency/stress tests, no negative tests for signature verification, no model integrity tests.
 
 ---
 
 ## 3. Prioritized Findings
 
-### Critical
+### CRITICAL
 
-| # | Severity | Category | File(s) | Evidence | Impact | Recommended Fix |
-|---|----------|----------|---------|----------|--------|-----------------|
-| 1 | Critical | Security | `ulu/api/app.py:383-412` | `save_state`, `load_state`, `save_ledger`, `load_ledger` accept `request.path: str` with zero validation and pass directly to `Path(path).write_text()` / `Path(path).read_text()`. No path sanitization, no allowlist. | Arbitrary file read/write (path traversal). Attacker can overwrite system files or read sensitive data. | Validate path against an allowlist or restrict to a designated data directory. Use UUID-based filenames, not user-supplied paths. |
-| 2 | Critical | Security | `ulu/api/app.py:250-259` | `/admin/reset` endpoint has no authentication, no authorization, no rate limiting. Any requester can wipe all protocol state. | Complete destruction of protocol state, ledger, idempotency cache, and metrics. Equivalent to unauthenticated database wipe. | Add JWT/OAuth2 authentication, role-based access control (admin-only), and request origin validation. |
-| 3 | Critical | Correctness | `ulu/core/mechanism.py:517-521` | In `default()`, `self.delegation[edge] -= loss` runs BEFORE `absorb_sponsor = min(self.earned[sponsor], loss)`. The edge is reduced by the full loss even though the sponsor will absorb part of it via earned credit. | Violates credit conservation theorem. Over-reduces delegation edges. In a chain seed -> A -> B -> borrower, total credit reduction exceeds actual loss. Breaks mathematical guarantees of the paper. | Reverse order: first absorb from earned credit, then reduce edge by the remaining (unabsorbed) loss. |
-| 4 | Critical | Correctness | `ulu/servicing/schedules.py:42` | `payment = principal * (annual_rate / (1.0 - (1.0 + annual_rate) ** (-term)))`. When `annual_rate == 0`, denominator becomes `1.0 - 1.0 = 0`. | Unhandled `ZeroDivisionError` at runtime for zero-rate loans. | Add branch: if `annual_rate == 0`, return uniform principal installments (`principal / term`). |
-| 5 | Critical | Correctness | `ulu/servicing/schedules.py:42` | Same formula treats `annual_rate` as per-period rate. For a 12-month term with 12% annual rate, monthly payment uses 12% per month instead of 1%. | Interest overstated by factor of ~12 for amortizing loans. Total interest computed is orders of magnitude incorrect. | Convert `annual_rate` to `periodic_rate = annual_rate / periods_per_year` before applying formula. Add `periods_per_year` parameter. |
-| 6 | Critical | Correctness | `ulu/servicing/repayments.py:22-44` | `process_repayment()` accepts `outstanding_principal` and `accrued_interest` as parameters. If `amount > accrued_interest + outstanding_principal`, the excess is silently lost (not returned, not raised). | Silent loss of overpayment funds. Borrower pays extra but receives no credit. | Return unapplied remainder as a fourth tuple element, or raise `ValueError` on overpayment. |
-| 7 | Critical | Correctness | `ulu/npa/aging.py:25` | `bucket_for_days(1)` returns `NpaBucket.NPA`. RBI Master Circular defines NPA as >90 days overdue for substandard. | Regulatory non-compliance. Loans 1-89 days overdue incorrectly classified as NPA. | Change thresholds: `<= 90` -> `STANDARD`, `91-180` -> `SUBSTANDARD`, `181-360` -> `DOUBTFUL`, `>360` -> `LOSS`. |
-| 8 | Critical | Correctness | `ulu/anti_fraud/graph_analysis.py:99` | `detect_sybil_clusters()` flags any connected component with `len >= threshold`. A legitimate delegation tree with 3 nodes is flagged as Sybil. | Massive false positive rate. All legitimate multi-level delegations flagged as fraud. | Use graph density (`2*E / (V*(V-1))`) or clustering coefficient instead of raw component size. |
-| 9 | Critical | Resilience | `ulu/compliance/rbi_dlg.py:11-12` | `dlg_cap_ratio` defaults from settings with no runtime bounds check. Negative or >1 values accepted silently. | Corrupts all downstream financial calculations. Negative cap inverts recovery logic. | Add `if not (0.0 <= dlg_cap_ratio <= 1.0): raise ValueError(...)`. |
+| # | Finding | Category | File(s) | Evidence | Impact |
+|---|---------|----------|---------|----------|--------|
+| C1 | **Event signature excludes payload** | Security | `__authz__.py:102`, `services/base.py:110` | `to_verify = f"{event.event_id}:{event.timestamp}:{event.event_type}"` — no payload | Any signed event's payload can be modified without invalidating the signature. All services relying on `assert_verified()` are vulnerable. |
+| C2 | **Pickle/joblib deserialization** | Security | `services/risk/model.py:24,31` | `joblib.load(model_path)` / `pickle.load(fh)` with no integrity check | Arbitrary code execution if model file is compromised. Model path from env var `RISK_MODEL_PATH`. |
+| C3 | **Lock-free state machine** | Concurrency | `services/mechanism/service.py` (all handlers) | `__add_seed`, `__add_user`, `__repay`, `__originate`, `__default`, `__revoke` all modify `__seeds`, `__earned`, `__parent`, `__children`, `__delegation`, `__base_budget`, `__principal`, `__loans` without any lock. Bus dispatch uses `ThreadPoolExecutor`. | Data races on all protocol state. Corrupted balances, inconsistent delegation graph, diverged in-memory/persisted state. |
 
-### High
+### HIGH
 
-| # | Severity | Category | File(s) | Evidence | Impact | Recommended Fix |
-|---|----------|----------|---------|----------|--------|-----------------|
-| 10 | High | Security | `ulu/api/deps.py:63-71` | `get_current_user_token` parses `Authorization: Bearer <token>` header but never validates JWT signature, expiry, or issuer. Returns raw token string with no DB lookup. | Token parsing without verification provides zero security. Any string after "Bearer " passes. | Integrate `pyjwt` or `python-jose` for JWT validation with signature verification, expiry check, and user lookup. |
-| 11 | High | Security | `ulu/api/app.py:78` | `self.idempotency_cache: dict[str, tuple[str, dict]] = {}` is an unbounded in-memory dict with no TTL, no size cap, no eviction. | Memory exhaustion DoS. Attacker can flood with unique idempotency keys until OOM. | Add size limit (LRU), TTL, or store in Redis/DB with expiration. |
-| 12 | High | Correctness | `ulu/core/mechanism.py:378` | `protocol_break_even_rate()` returns `default_probability / ((1 - default_probability) * term)`. As `default_probability` approaches 1.0, denominator approaches 0. | Floating-point overflow producing `inf` or extremely large rates. | Clamp `default_probability` to `[epsilon, 1-epsilon]` and `term` to `[epsilon, MAX_TERM]`. |
-| 13 | High | Correctness | `ulu/risk/stress.py:30-31` | `correlated_draw = systemic_shock * correlation + idiosyncratic * (1 - correlation)` is a linear interpolation of two Uniform(0,1) variables. Resulting correlation is NOT equal to parameter `correlation`. | Statistically invalid Monte Carlo simulation. VaR and expected loss estimates are wrong. | Use Gaussian copula: generate correlated normals via Cholesky or factor model, transform via inverse CDF. |
-| 14 | High | Security | `ulu/blockchain/anchoring.py:39` | `anchor()` returns `{"note": f"ULU_ANCHOR:{merkle_root}".encode(), ...}`. `.encode()` produces a `bytes` object inside a dict. | Standard JSON serializers cannot serialize `bytes`. Breaks any JSON-based API or logging. | Remove `.encode()` or use `base64.b64encode(...).decode()`. |
-| 15 | High | Security | `ulu/blockchain/anchoring.py:18` | `MerkleTree.compute_root()` hashes leaves as-is. Variable-length inputs not length-prefixed. | Second-preimage attack: an attacker can split a leaf into two leaves whose concatenated hash collides with the original. | Prefix leaves with domain separator before hashing: `sha256(b"\x00" + leaf.encode())`. Prefix branches with `b"\x01"`. |
-| 16 | High | Correctness | `ulu/governance/voting.py:21-43` | `quorum_threshold` is used as a simple majority threshold (`ratio >= threshold`), not a participation quorum. Same voter can cast multiple votes. No minimum total weight required. | Governance votes can pass with tiny participation. Duplicate votes inflate weight. | Separate `majority_threshold` from `min_participation_weight`. Dedupe votes by `voter_id` in `cast()`. |
-| 17 | High | Resilience | `ulu/collateral/ratios.py:19-20` | `compute_ratio()` returns `1.0` when `total_outstanding_principal <= 0`. Negative principal (data corruption) reported as fully collateralized. | Masks data corruption. Negative principal should be an error state. | Change to `if total_outstanding_principal == 0: return 1.0` and add `if total_outstanding_principal < 0: raise ValueError(...)`. |
-| 18 | High | Resilience | `ulu/api/app.py:46-48` | `max_delegation_rate: float = Field(ge=0)` lacks upper bound. | Engine accepts arbitrarily large delegation rates (e.g., 1e9), producing nonsensical quotes and potentially overflow. | Add `le=1.0` or realistic upper bound to `max_delegation_rate` and `protocol_rate`. |
-| 19 | High | Resilience | `ulu/core/mechanism.py:620-627` | `from_dict()` accesses `state_data["seeds"]`, `state_data["parent"]`, etc. without checking key existence first. | Bare `KeyError` on malformed payloads instead of a meaningful `ProtocolError`. | Validate required keys before instantiation, raise `ProtocolError` with descriptive message. |
-| 20 | High | Correctness | `ulu/core/mechanism.py:355-370` | `seed_delegation_utilization()` sums only direct children of seeds via `self.delegation.get((seed, child), 0.0)`. | Deep delegations (seed -> A -> B) not counted in utilization. Metric underreports total system exposure. | Sum all delegation edges in the system, not just direct seed edges. |
+| # | Finding | Category | File(s) | Evidence | Impact |
+|---|---------|----------|---------|----------|--------|
+| H1 | **Private key exposed** | Security | `__identity__.py:47`, `__config__.py:188` | `__private_key: str = ""` — name-mangled to `_Identity__private_key`, readable by any code with reference. `Configuration.to_dict()` serializes it to plaintext JSON. | Any code with a reference to `Identity` can read the private key. Config JSON on disk exposes key material. |
+| H2 | **KeyRotationManager lock-free** | Concurrency | `__identity__.py:162-187` | `get_or_create()`, `rotate()`, `verify_with_rotation()` access `self.__current` and `self.__previous` without any lock | Concurrent `rotate()` calls lose keys. Concurrent `get_or_create()` can return different `Identity` objects for the same `service_id`. |
+| H3 | **Saga TOCTOU** | Concurrency | `__saga__.py:78-100` | `execute_step()` acquires lock only for status check, releases, then calls `emitter.emit()` (forward action). Between release and re-acquire, `__rollback()` can set `status="compensating"`. | Forward action executes on a saga that is already compensating. The `completed_steps.append()` at re-acquire adds the step AFTER rollback's snapshot, so it is never compensated. |
+| H4 | **Inconsistent store snapshot** | Reliability | `services/mechanism/service.py:331-354` | `__sync_store()` reads all state dicts (`__seeds`, `__earned`, etc.) without a lock, then writes to store. Concurrent handler mutations between reads produce an inconsistent snapshot. | On restart, `__load_store()` restores an inconsistent state (e.g., `__earned` totals that don't match `__principal`). |
+| H5 | **Model failure silent degradation** | Reliability | `services/risk/model.py:36-41` | `except Exception as exc:` catches ALL model failures and falls through to heuristic. The caller (`RiskService.handle`) never knows the model failed. | Production system silently serves heuristic scores when model is down. Compliance/audit unaware. |
 
-### Medium
+### MEDIUM
 
-| # | Severity | Category | File(s) | Evidence | Impact | Recommended Fix |
-|---|----------|----------|---------|----------|--------|-----------------|
-| 21 | Medium | Architecture | `ulu/core/mechanism.py:631-641` | `save_json()` and `load_json()` perform filesystem I/O inside the core domain class. | Core domain is not I/O-free. Hard to test in isolation. Violates clean architecture. | Move serialization to a repository or adapter layer. Core should only produce/accept plain data structures. |
-| 22 | Medium | Architecture | `ulu/core/mechanism.py:180,536` | `logger.info(...)` calls inside `add_seed()` and `default()`. Core depends on `loguru` framework. | Framework coupling in pure domain. Side effects in state transitions. | Move logging to application layer or use Python standard library `logging` with injection. |
-| 23 | Medium | Architecture | `ulu/core/mechanism.py:448-465` | `quote_loan_with_estimated_default()` calls `default_probability_estimator.predict_default_probability()` inside core. | ML inference concern inside pure domain. Couples core to opaque external estimator. | Move ML inference to application/service layer, pass the resulting probability into core. |
-| 24 | Medium | Architecture | `ulu/api/app.py:182-244` | Endpoints directly access `service.engine.delegation.items()`, `service.engine.seeds`, `service.engine.parent`, `service.engine.earned`. | Implementation detail leakage. API layer knows internal structure of mechanism. | Expose read-only query methods on `DelegatedUnderwriting` or use a dedicated query service. |
-| 25 | Medium | Architecture | `ulu/infra/repositories.py` | All repository methods return SQLAlchemy ORM entities (`User`, `Loan`) instead of domain models. | No mapping layer between persistence and domain. Business logic can accidentally trigger lazy loads or DB writes. | Add a mapper/adapter layer between ORM models and domain models, or use SQLAlchemy 2.0 dataclass mapping. |
-| 26 | Medium | Architecture | `ulu/infra/repositories.py:49,143` | `update_kyc(user_id, kyc_status: str)` and `update_status(loan_id, status: str)` accept strings instead of enum types. | Type safety lost at repository boundary. Invalid strings can corrupt database state. | Accept `KycStatus` and `LoanStatus` enum types instead of `str`. |
-| 27 | Medium | Architecture | `ulu/infra/repositories.py:111-117` | `update_balance(user_id, **kwargs)` uses `hasattr`/`setattr` loop with arbitrary kwargs. | Bypasses domain invariants. Any attribute can be set, including internal SQLAlchemy ones. | Replace with explicit field parameters (`base_budget: float | None = None, earned_credit: float | None = None`) and validate each. |
-| 28 | Medium | Architecture | `ulu/compliance/rbi_dlg.py:5` | `from ulu.infra.config import settings` inside compliance layer. | Compliance (business rule) depends on infrastructure (config). Violates dependency inversion. | Inject `dlg_cap_ratio` via constructor, remove direct config import. |
-| 29 | Medium | Architecture | `ulu/blockchain/client.py:7` | `from ulu.infra.config import settings` inside blockchain layer. | Blockchain depends on infrastructure config. Same violation. | Inject `algod_token`, `algod_url` via constructor. |
-| 30 | Medium | Style | `ulu/core/mechanism.py:87,95,113,380` | `requireUser`, `validateAncestryPaths`, `validateStructure`, `validateQuoteInputs` use camelCase. | Violates Google Python Style Guide (snake_case for functions/methods). | Rename to `require_user`, `validate_ancestry_paths`, `validate_structure`, `validate_quote_inputs`. |
-| 31 | Medium | Style | `ulu/api/app.py:192-370` | Public FastAPI endpoint functions (`health`, `ready`, `add_seed`, `add_user`, `repay`, `quote`, `originate`, `default`, etc.) lack docstrings. | No API documentation for endpoints. Hard to maintain. | Add Google-style docstrings to all public functions. |
-| 32 | Medium | Correctness | `ulu/risk/scoring.py:9-18` | `estimate_default_probability(cash_flow, average_balance, transaction_frequency)` accepts `transaction_frequency` but never uses it. | Dead parameter. Confusing API contract. | Either incorporate `transaction_frequency` into the formula or remove the parameter. |
-| 33 | Medium | Correctness | `ulu/npa/scheduler.py:14-21` | `increment_age()` adds 1 day unconditionally. `evaluate()` calls it without calendar anchoring. | Same calendar day evaluated twice -> double aging. NPA triggers fire prematurely. | Store `last_evaluated_at` timestamp and compute actual delta days. |
-| 34 | Medium | Testing | `tests/integration/test_repositories.py` | `DefaultRepository` and `RepaymentRepository` exist in source but have zero test coverage. | Untested repository logic for financial events (defaults, repayments). | Add integration tests for `DefaultRepository.create/list_by_loan` and `RepaymentRepository.create/list_by_loan`. |
-| 35 | Medium | Correctness | `ulu/collateral/escrow.py:29-32` | `liquidate()` returns `self.effective_value` which is frozen at escrow creation time. | Collateral liquidation uses stale valuation. Market price changes ignored. | Accept `current_nominal_value` parameter or add `revalue()` method before liquidation. |
-| 36 | Medium | Correctness | `ulu/npa/triggers.py:15-18` | `invoke()` accepts any `recovery_amount` without checking against DLG cap or loan outstanding principal. | Recovery amount can exceed actual loss or regulatory cap. | Inject `RbiDlgCompliance` and cap `recovery_amount` via `compute_physical_recovery()`. |
-| 37 | Medium | Correctness | `ulu/compliance/rbi_dlg.py:18-21` | `compute_physical_recovery()` does not clamp `logical_loss` to non-negative. | Negative logical loss returns a negative number, which downstream code may misinterpret. | Add `logical_loss = max(0.0, logical_loss)` at the top of `compute_physical_recovery`. |
+| # | Finding | Category | File(s) | Evidence | Impact |
+|---|---------|----------|---------|----------|--------|
+| M1 | **SQL injection via table name** | Security | `__store__.py` lines 311–338 | `f"SELECT value FROM {self.__table} WHERE key = %s"` — table name interpolated, not parameterized | SQL injection if `self.__table` is attacker-controlled. Currently hardcoded to `"store"`, but risk if config-driven in future. |
+| M2 | **No depth limit on delegation chain** | Reliability | `services/mechanism/service.py:108-114` | `__required_delegation` recursively traverses parent chain with no max-depth guard | Deeply nested delegation (~1000+ levels) can overflow the call stack. Production DoS via user-registration chain. |
+| M3 | **Catastrophic cancellation in break_even** | Reliability | `services/mechanism/service.py:293` | `1.0 - clamped_dp` when `dp ≈ 0.999999999999` loses nearly all precision | Protocol premium calculation can be wildly inaccurate for near-1 default probabilities. |
+| M4 | **Fraud records unbounded growth** | Operations | `services/fraud/service.py:18,41` | `self.__records` is a plain dict, appends on every `LOAN_ORIGINATED` and `REPAID` | Memory leak — records grow indefinitely over the service lifetime. |
+| M5 | **FileStore executor never shut down** | Operations | `__store__.py:147-149` | `ThreadPoolExecutor(max_workers=1)` created but never `.shutdown()` | Leaks one thread per FileStore instance over the process lifetime. |
+| M6 | **Fee service bypasses `float()` validation** | Reliability | `services/fee/service.py:34` | `float(event.payload.get("principal", 0))` — raw `float()` instead of `get_finite()` validator | `float("inf")` or `float("nan")` produces infinite/NaN amounts, corrupting downstream calculations. |
 
-### Low
+### LOW
 
-| # | Severity | Category | File(s) | Evidence | Impact | Recommended Fix |
-|---|----------|----------|---------|----------|--------|-----------------|
-| 38 | Low | Style | `ulu/infra/repositories.py:53,59,143,207` | `# type: ignore[assignment]` comments used for enum string assignments. | Workaround for type system instead of fixing root cause (accepting `str` instead of enum). | Fix root cause by accepting proper enum types, remove type ignore comments. |
-| 39 | Low | Style | `ulu/infra/db.py:23` | `get_db_session` missing return type annotation. | Reduced IDE support and type checking accuracy. | Add `-> AsyncGenerator[AsyncSession, None]`. |
-| 40 | Low | Performance | `ulu/infra/repositories.py:247-259` | `get_max_seq()` loads entire `seq` column into Python memory (`select(AuditEvent.seq)`) then calls `max()`. | Unnecessary data transfer. Scales poorly with large audit tables. | Use `func.max(AuditEvent.seq)` for database-side aggregation. |
-| 41 | Low | Testing | `tests/` | `tests/e2e/` directory exists but is empty. | Zero end-to-end coverage. No full-stack validation. | Add end-to-end tests for critical user journeys (seed -> delegate -> originate -> repay -> default). |
-| 42 | Low | Dependency | `pyproject.toml:10-42` | All dependencies use lower bounds only (`>=`). No upper bounds on security-critical packages (FastAPI, Pydantic, SQLAlchemy). | Supply chain risk. Breaking changes in future versions can cause production failures. | Add upper bounds or use a lockfile (`poetry.lock`, `requirements-lock.txt`). |
-| 43 | Low | Security | `ulu/infra/config.py:9-10` | Hardcoded default database URL (`postgresql+asyncpg://ulu:ulu@localhost/ulu`) and Algorand token in source code. | Credential exposure in version control if defaults are not overridden. | Remove defaults or use placeholder values that force explicit configuration. Load secrets from environment only. |
-| 44 | Low | Testing | `tests/test_audit_and_api.py:14` | Module-level `TestClient(app)` shared across all tests in the file. | State leaks possible if `reset_service()` fails or is skipped. | Use a fixture-scoped `TestClient` with explicit cleanup. |
+| # | Finding | Category | File(s) | Evidence | Impact |
+|---|---------|----------|---------|----------|--------|
+| L1 | **SSN regex requires dashes** | Security | `__pii.py:38` | Pattern `\b\d{3}-\d{2}-\d{4}\b` — undashed `123456789` not detected | PII leak for SSns without dashes. |
+| L2 | **Config `init` path not sanitized** | Security | `__cli__.py:48` | `Path(path).exists()` — user-supplied path used directly | Local symlink overwrite if path points to sensitive file. |
+| L3 | **FileStore `keys()` no pagination** | Operations | `__store__.py:215` | `rglob("*.json")` — enumerates all files with no limit | Unbounded enumeration DoS for large data directories. |
+| L4 | **Governance silently ignores proposals** | Operations | `services/governance/service.py:40-44` | `if param not in self.__params: return` — no log, no event | Administrator sends proposal with typo, gets zero feedback. |
+| L5 | **Fee silently ignores unknown types** | Operations | `services/fee/service.py:30-31` | `if not loan_id or fee_type not in FEE_SCHEDULES: return` — no warning | Configuration mistake (`fee_type` typo) goes undetected. |
+| L6 | **Saga silent returns False** | Operations | `__saga__.py:82,84,88,106,119,125` | All `return False` / `return` on not-found emit no log | Debugging saga failures requires tracing through opaque booleans. |
 
 ---
 
@@ -107,191 +81,200 @@ The codebase contains critical security vulnerabilities, algorithm correctness b
 
 ### Confirmed Dead Code
 
-| File | Symbol | Evidence | Deletion Safety |
-|------|--------|----------|-----------------|
-| `ulu/risk/scoring.py` | `transaction_frequency` parameter | Accepted in `estimate_default_probability()` signature but never referenced in body. | Safe to remove or implement. Update call sites. |
-| `tests/e2e/` | Entire directory | Exists but contains zero files. | Safe to remove or populate. |
+| Item | File | Evidence | Deletion Safe? |
+|------|------|----------|----------------|
+| `trace_id = ""` | `services/base.py:103` | Assigned but never read | Yes — removed in P3 |
+| `parent_span_id = ""` | `services/base.py:104` | Assigned but never read | Yes — removed in P3 |
 
 ### Suspected Dead Code
 
-| File | Symbol | Evidence | Deletion Safety |
-|------|--------|----------|-----------------|
-| `ulu/domain/users.py` | `User` class, `UserRole` enum | `UserRole` and `User` domain class exist but `ulu/infra/models.py` defines its own `User` ORM model and `UserType` enum. No adapter maps between them. | Investigate first. May be intended for future domain-layer purity but currently unused. |
-| `ulu/domain/collateral.py` | `CollateralEscrow` class, `CollateralType` enum | Domain models exist but `ulu/infra/models.py` defines its own `CollateralEscrow` ORM model and `CollateralType` enum. `ulu/collateral/escrow.py` uses infra models directly. | Same as above. Likely intended for future use but currently disconnected. |
-| `ulu/domain/loans.py` | `Installment` class | Used by `servicing/schedules.py`, but `LoanStatus` and `RepaymentType` enums duplicate infra model enums. | Keep `Installment`. Review enum duplication. |
+| Item | File | Evidence | Assessment |
+|------|------|----------|------------|
+| `HAS_CRYPTO` import in test | `tests/test_cli_faults.py:25` | Imported but never used | Already addressed in P3. Safe to remove. |
+| `cause = exc.__cause__` in test | `tests/test_risk_faults.py:112` | Assigned but never read | Already addressed in P3. |
+
+### No dead modules, orphaned files, or dead CLI commands detected
+
+All 28 services are registered in `SERVICE_MAP` and `SERVICE_CLASSES`. All CLI commands (`init`, `run`, `list`, `identity`, `health`, `dlq`, `metrics`, `migrate`) are registered in the typer app and called from `main()`. The `validate.py` module's 10 functions are all imported/used across service implementations.
 
 ---
 
 ## 5. Modularity and Architecture Assessment
 
 ### Strong Boundaries
-- **Package-level separation**: `core/`, `infra/`, `compliance/`, `servicing/`, `collateral/`, `npa/`, `risk/`, `anti_fraud/`, `blockchain/`, `governance/`, `api/`, `audit/`, `domain/` — each has a clear conceptual responsibility.
-- **Core mechanism purity**: `ulu/core/mechanism.py` contains no SQLAlchemy or FastAPI imports. The pure mathematical kernel is isolated.
-- **No circular imports**: Static import analysis confirms clean dependency graph with no cycles.
+- **Store ABC** (`__store__.py`) — clean abstraction with 5 concrete implementations. CQRS wrapper (`CQRSStore`) follows decorator pattern cleanly.
+- **EventBus ABC** (`__bus__.py`) — clean pub-sub interface with one concrete implementation (`LocalBus`). Easily swappable for SQS/Modal.
+- **NanoService ABC** (`services/base.py`) — clean lifecycle (subscribe/start/stop/handle) with cross-cutting concerns (authz, tracing, metrics, saga) injected, not inherited.
+- **Configuration** (`__config__.py`) — single module managing all config, 10 sub-config dataclasses. Clean separation from runtime logic.
 
 ### Weak Boundaries
-- **API layer leaks into core**: `ulu/api/app.py` directly accesses `service.engine.delegation.items()`, `service.engine.seeds`, `service.engine.parent`, `service.engine.earned` (lines 182-244). The API should not know about internal dict structures.
-- **Core contains I/O**: `save_json()` and `load_json()` in `ulu/core/mechanism.py:631-641` perform filesystem operations inside the domain kernel.
-- **Compliance depends on infra**: `ulu/compliance/rbi_dlg.py:5` imports `ulu.infra.config.settings`. Compliance rules should be injected, not reach into infrastructure.
-- **Blockchain depends on infra**: `ulu/blockchain/client.py:7` imports `ulu.infra.config.settings`. Same violation.
-- **No domain-to-ORM mapping**: `ulu/infra/repositories.py` returns SQLAlchemy ORM entities directly. The `domain/` package defines parallel models (`User`, `CollateralEscrow`) that are never connected.
+- **Runtime** (`__runtime__.py`) — was 407 lines, now 293 after registry extraction. Still handles: service registry, lifecycle, health registration, tracer/build bus, store building, authz building, migration orchestration, logging config. Violates single-responsibility. The `__build_*` methods (tracer, bus, store, read_store, authz) are factory methods that should live in dedicated factory modules.
+- **MechanismService** (`services/mechanism/service.py:354` lines) — largest service by 5×. Mixes protocol state machine, delegation graph traversal, financial calculations, and persistence. Should be split into domain+persistence layers.
 
 ### Coupling Risks
-- **Root `__init__.py` re-exports sklearn**: `ulu/__init__.py` exports `OptimizedGreedyWeightedRiskModel` (sklearn-dependent), forcing all importers to transitively depend on numpy/scikit-learn. FastAPI layer imports `from ulu import DelegatedUnderwriting` which transitively loads ML dependencies.
-- **API singleton pattern**: `service = ProtocolService()` at module level in `api/app.py` creates a global mutable singleton. Hard to test, hard to replace, impossible to run multiple instances.
+- **Circular import risk** — `__saga__.py` and `services/base.py` have mutual imports (saga imports `Event` from `__events__`, base imports `SagaOrchestrator` from `__saga__`). The `_Emitter` Protocol avoids the circular dependency at the annotation level.
+- **`RiskService` → `RiskModel`** — tight coupling via hardcoded `joblib.load()` / `pickle.load()`. Model is instantiated in `RiskService.__init__` (`services/risk/service.py:36-41`). No strategy pattern for model loading.
+- **`FeeService` → `FEE_SCHEDULES`** — hardcoded dict in module. Not configurable. Changing fee rates requires a code deploy.
+- **`GovernanceService` → `PARAM_RANGES`** — hardcoded dict. Same issue.
+
+### No Circular Dependencies Detected
+All imports flow in one direction: `services/*` → `underwrite.*` → standard library.
 
 ---
 
 ## 6. Encapsulation and Cohesion Assessment
 
 ### Implementation-Detail Leakage
-- `DelegatedUnderwriting` exposes all internal state attributes as public mutable fields (`seeds`, `parent`, `children`, `delegation`, `base_budget`, `earned`, `principal`). No property accessors, no read-only views.
-- API endpoints iterate `service.engine.delegation.items()` directly (line 182).
+- **`__identity__.py:47`** — `__private_key` is a dataclass field. `dataclasses.asdict()` or `vars()` exposes it.
+- **`__config__.py:188-189`** — `to_dict()` serializes `private_key` and `dsn`. These should be excluded from dict serialization (`field(exclude=True)` or similar).
+- **Tests accessing `__private` attributes** — `test_integration.py` accesses `_Runtime__bus`, `_Runtime__store`; `test_risk_faults.py` accesses `_RiskService__model`, `_AuditService__ledger`. Tests should use public APIs or add test-only properties.
 
 ### Overgrown Modules/Classes
-- `ulu/core/mechanism.py` (641 lines) contains graph algebra, pricing, invariant checking, serialization, and ML estimator integration. Should be split into `graph.py`, `pricing.py`, `invariants.py`, `serialization.py`.
-- `ulu/api/app.py` (412 lines) contains request models, service container, middleware, and 15+ endpoint handlers. Should be split into `models.py`, `service.py`, and `routers/*.py`.
-- `OptimizedGreedyWeightedRiskModel` (not in current review scope but referenced) mixes PSO optimization, greedy convex weighting, and neural meta-learner.
+- **`MechanismService`** (354 lines, 14 private methods) — largest class by far. Handles: state machine (add/repay/default/revoke), delegation graph (path_to_seed, required_delegation), financial calculations (credit_limit, break_even, protocol_premium), and persistence (load_store, sync_store).
+- **`__runtime__.py`** (293 lines) — now smaller but still handles factory building, lifecycle, health registration, migration, and config application.
+- **`__store__.py`** (347 lines) — 5 classes, 2 inline imports, mix of ABCs and concrete implementations. The inline imports (`from underwrite.__exceptions__ import ...`) are a code smell from class ordering constraints.
 
 ### Mixed Responsibilities
-- `ProtocolService` in `api/app.py:71-80` mixes runtime state container, idempotency cache, and metrics registry. Three distinct responsibilities.
-- `NpaEventRepository` in `infra/repositories.py:210-241` mixes event queries with DLG invocation business logic (`list_pending_dlg`). Repository should only persist; DLG logic belongs in a service.
-
-### Unstable Abstractions
-- `default_probability_estimator` in `mechanism.py:448-465` is typed as `Any`. No interface contract. Any object with `predict_default_probability` is accepted.
+- **`__cli__.py`** (209 lines) — CLI commands (value objects) mixed with initialization logic (`_load_config`, config path handling). The `init` command writes config; the `identity` command creates `Identity` objects.
+- **`services/base.py:98-132`** — `emit()` method mixes: event creation, signing, authz, publishing, metrics. Could be decomposed into event factory + signer + publisher.
 
 ---
 
 ## 7. Reliability and Correctness Assessment
 
 ### Algorithm Correctness Risks
-- **Default propagation** (Critical): Edge reduction before sponsor absorption violates credit conservation.
-- **Amortization schedule** (Critical): Divide-by-zero at zero rate, annual rate used as periodic rate.
-- **NPA aging** (Critical): Thresholds shifted by ~90 days vs RBI norms.
-- **Stress test correlation** (High): Linear interpolation of uniforms is statistically invalid.
-- **Merkle tree** (High): Not second-preimage resistant.
-- **Governance tally** (High): Quorum/misnamed, duplicate votes allowed.
+- **Catastrophic cancellation in `break_even`** (`mechanism/service.py:293`): `1.0 - clamped_dp` when `dp ≈ 0.999999999999` loses precision. Fix: use `math.fma` or restructure to avoid subtraction of near-equal values.
+- **Float overflow in `pr * principal * term`** (`mechanism/service.py:191,294`): Triple float multiplication can overflow to `inf` even though each input is individually finite. Fix: clamp intermediate product or use `math.prod` with overflow detection.
+- **Wash detection skips non-alternating patterns** (`fraud/service.py:51-57`): `i += 2` assumes strict `(origination, repayment)` alternation. Sophisticated adversary interspersing events evades detection.
 
 ### Edge-Case Failures
-- `annual_rate = 0` in schedules -> ZeroDivisionError
-- `default_probability` near 1.0 in break-even rate -> float overflow to inf
-- `total_outstanding_principal <= 0` in collateral ratios -> silently returns 1.0
-- `logical_loss < 0` in DLG compliance -> returns negative recovery
-- Overpayment in repayments -> silently lost
+- **NaN propagation** (`risk/model.py:48-49`): `principal / 1_000_000.0` with `principal=nan` produces `nan`, then `min(max(nan, 0.01), 0.5)` returns `nan`. Fix: add `math.isfinite` check before return.
+- **Term division by zero prevented** (`risk/model.py:45`): `max(term, 1.0)` — correct.
+- **Empty steps saga** (`__saga__.py:72`): `start_saga` with empty `steps` immediately "completes". Should validate non-empty.
 
-### Hidden Assumptions
-- `generate_schedule` assumes `term` is in periods matching `annual_rate` (but uses annual rate as periodic rate).
-- `NpaAgingTracker` assumes `days_overdue` is always non-negative (only handles `<= 0` as STANDARD).
-- `StressTestEngine` assumes `correlation` is in `[0, 1]` but does not validate.
+### Input Validation Gaps
+- **FeeService uses `float()` instead of `get_finite()`** — allows `inf`/`nan` amounts.
+- **`validate.py` assumes `payload` is a dict** — no guard in any of the 10 functions.
+- **`RiskModel.predict()`** — no validation of `principal`/`term` inputs.
+- **`SagaOrchestrator.start_saga()`** — no validation that `steps` is non-empty or `name` is non-empty.
 
 ---
 
 ## 8. Resilience Assessment
 
 ### Failure-Handling Gaps
-- `save_json`/`load_json` in core mechanism raise bare `FileNotFoundError`/`PermissionError` without translation to domain exceptions.
-- `from_dict()` raises bare `KeyError` on malformed payloads instead of `ProtocolError`.
-- No retry logic on blockchain client connection failures.
-- No timeout on blockchain transactions.
-- No circuit breaker for external oracle calls.
+- **Model failure → silent degradation** (`risk/model.py:36-41`): Caller gets a score but doesn't know it's a heuristic. Fix: emit a warning event or return degraded status.
+- **Governance unknown params** (`governance/service.py:40-44`): Silent discard. Fix: `logger.warning`.
+- **Fee unknown fee types** (`fee/service.py:30-31`): Silent discard. Fix: `logger.warning`.
+- **Saga not-found** (`__saga__.py:82,84,88,106,119,125`): Silent `False`. Fix: `logger.warning`.
 
 ### Observability Weaknesses
-- Logging uses `loguru` with string interpolation but no structured JSON logging.
-- No correlation ID propagation into domain layer operations.
-- No metrics emission for loan lifecycle events (origination, default, repayment) beyond a simple counter dict.
-- No distributed tracing.
-- No health check endpoint for database connectivity.
+- **Google-style docstrings only on 3 out of 123 files** — `__identity__.py:Identity.create`, `__runtime__.py:Runtime.start`, `__store__.py:FileStore`. All other modules/classes/methods lack structured Args/Returns/Raises documentation.
+- **No structured logging** — all logging uses `logging` module with string formatting. No correlation IDs in log lines (correlation_id is on events but not propagated to log context).
+- **No health check for fraction of services registered** — health checks are registered for bus, store, services, metrics, tracer, saga, dlq. But individual service health is only available via `Runtime.health` → `services` → `running` list. Per-service detailed health is not exposed.
 
 ### Recovery Limitations
-- In-memory state machine (`ProtocolService`) has no persistence on process restart. All state is lost unless manually saved/loaded.
-- No graceful degradation strategy for database unavailability.
-- No event replay capability for state reconstruction.
+- **No saga recovery after Runtime restart** — saga state is in-memory only. After crash, all in-flight sagas are lost. No persisted saga log.
+- **No event replay from DLQ on startup** — dead letters are persisted in memory, lost on process restart.
+- **No store transaction support** — `FileStore` and `PostgresStore` have no atomic multi-key operations. Partial failures leave inconsistent state (the mechanism service's `__sync_store` writes multiple keys non-atomically).
 
 ---
 
 ## 9. Async and Concurrency Assessment
 
-### Async Correctness
-- **Async functions are correct**: `get_db_session()` in `db.py` properly yields async sessions. Repository methods properly `await` session operations. Fixtures in `conftest.py` use `async with` correctly.
-- **No blocking I/O in async paths**: All database access uses async SQLAlchemy. No synchronous file I/O in async functions.
+### Confirmed Race Conditions
 
-### Threading/Correctness
-- **API layer uses `threading.RLock`**: `service.lock` in `api/app.py:75` is an RLock, not an async lock. FastAPI runs endpoints in a thread pool by default, so RLock is appropriate for the in-memory state machine. However, if the DB-backed endpoints were to be added, they would need async-aware locking.
-- **Idempotency cache is not thread-safe**: `service.idempotency_cache` is a plain dict accessed under `service.lock`, so it is thread-safe in the current model.
+| # | Location | Issue | Severity |
+|---|----------|-------|----------|
+| 1 | `services/mechanism/service.py` (all state mutations) | Zero locks on all protocol state dictionaries. Bus uses `ThreadPoolExecutor` for concurrent dispatch. | **Critical** |
+| 2 | `__saga__.py:78-100` | TOCTOU: forward action fires after compensation starts. Step added to `completed_steps` after rollback snapshot. | **High** |
+| 3 | `__identity__.py:162-187` | `KeyRotationManager` has no locks. Concurrent `rotate()` loses keys. | **High** |
+| 4 | `services/mechanism/service.py:331-354` | `__sync_store()` reads state without lock → inconsistent snapshot. | **High** |
+| 5 | `services/fraud/service.py:41` | `setdefault`+`append` is non-atomic. Two concurrent handlers for same borrower race. | **Medium** |
+| 6 | `services/mechanism/service.py:116-128` | `__path_to_seed()` traverses parent chain without lock → `KeyError` on concurrent mutation. | **Medium** |
+| 7 | `services/mechanism/service.py:89-100` | `credit_limit()` reads multiple state dicts without lock → torn read. | **Medium** |
 
-### Cancellation Safety
-- **Async fixtures in tests**: `async_session` fixture in `conftest.py:38-49` uses `try/finally` for cleanup, which is cancellation-safe.
-- **No cancellation safety in domain**: `core/mechanism.py` has no async code, so cancellation is not a concern there.
+### Thread-Safe Components (verified)
+- `MemoryStore` — all operations under `self.__lock`
+- `FileStore` — `set`/`delete` under lock, `get` filesystem I/O is safe
+- `PostgresStore` — pool access under lock, `try/finally` release pattern
+- `LocalBus` — handler lists under lock, future tracking under lock
+- `MetricsCollector` — all operations under lock
+- `HealthRegistry` — snapshot under lock
+- `DecisionService` — signal pop under lock
 
-### Race Conditions
-- **Confirmed safe for current design**: The in-memory `ProtocolService` uses an RLock around all mutations. Database-backed repositories rely on SQLAlchemy transactions and database-level locking.
-- **Suspected risk**: `NpaEventRepository.mark_dlg_invoked()` does not check if already invoked before setting `dlg_invoked = True`. Concurrent scheduler instances could double-invoke DLG. Add an optimistic lock or check-before-set pattern.
+### No async/await Usage
+The codebase is entirely synchronous. `LocalBus` uses `concurrent.futures.ThreadPoolExecutor` for concurrent dispatch. There is no `asyncio` code path. This is consistent with the in-process design but prevents integration with async frameworks (FastAPI, etc.) without explicit wrapper layers.
 
 ---
 
 ## 10. Testing and Verification Assessment
 
 ### Strengths
-- 127 tests passing across unit and integration layers.
-- pytest-asyncio fixtures provide clean async database isolation.
-- Good coverage of NPA aging buckets, scheduler, and triggers.
-- Collateral escrow and ratios have comprehensive tests.
+- 509 tests, 0 failures, 0 warnings
+- `hypothesis` used for property-based testing (in `test_store.py`, `test_pii.py`)
+- All service implementations have dedicated test files
+- Framework integration tests cover bus + store + runtime end-to-end
+- Fault injection tests (17 files with "faults" in the name) cover error paths
 
-### Critical Gaps
-- **No end-to-end tests**: `tests/e2e/` is empty.
-- **No default propagation correctness tests for multi-level chains**: Tests for `mechanism.py` should verify that seed -> A -> B -> borrower default propagation preserves credit conservation.
-- **DefaultRepository untested**: Zero integration tests for default events.
-- **RepaymentRepository untested**: Zero integration tests for repayment persistence.
-- **No path traversal tests**: Security tests for `save_state`/`load_state` endpoints.
-- **No auth tests**: No tests verify that `/admin/reset` requires authentication.
-- **No rate limit tests**: No tests for DoS scenarios.
-- **No concurrent default tests**: No tests verify thread safety of the default method.
-- **No schedule edge-case tests**: Missing tests for `annual_rate = 0`, `term = 1`, negative inputs.
+### Gaps
+| Gap | Severity | Details |
+|-----|----------|---------|
+| **No concurrency/stress tests** | **High** | No tests verify thread safety of any component. The race conditions in MechanismService, KeyRotationManager, and SagaOrchestrator are undetected. |
+| **No negative tests for signature verification** | Medium | No test verifies that signature verification rejects tampered payloads (which is particularly important since payload is not in the signed message). |
+| **No model integrity tests** | Medium | No test verifies `RiskModel` rejects bad model files (corrupted pickle, wrong object type) or handles NaN/inf inputs. |
+| **Private attribute access in tests** | Medium | `test_integration.py` accesses `_Runtime__bus`, `_Runtime__store`. `test_risk_faults.py` accesses `_RiskService__model`, `_AuditService__ledger`. Brittle — breaks if implementation details change. |
+| **No saga persistence tests** | Low | No test verifies saga behavior across restart (currently impossible since saga is in-memory, but this is an architectural gap). |
+| **No DLQ persistence tests** | Low | DLQ is in-memory only. No test verifies dead letter behavior across restarts. |
 
-### Flaky Test Risks
-- `tests/unit/test_anti_fraud.py:25` uses `datetime.now(timezone.utc).isoformat()` in test data without mocking. Result depends on execution time. (Suspected, not confirmed flakiness — the assertion does not depend on absolute time, only on relative ordering.)
-- `tests/unit/test_servicing.py:29` uses `pytest.approx(total_principal, abs=1.0)` which is very loose for financial calculations. This may mask real failures.
+### Flaky/Brittle Tests
+- `test_health.py:53-58` — `test_check_unregistered_during_status_skipped`: Registers a check, calls `status()`, asserts the check is present. This test races with the lock-free status impact of concurrent register/unregister. Currently passes because nothing else runs concurrently, but fragile.
+- `test_saga.py` — test emitter classes (`FakeEmitter`, etc.) don't implement the `_Emitter` protocol correctly (return `None` instead of `Event`). These are mypy errors, not runtime errors, but they indicate the test mocks are inaccurate.
 
 ---
 
 ## 11. Performance and Scalability Assessment
 
-### Hotspots
-- `AuditEventRepository.get_max_seq()` loads entire `seq` column into Python memory (line 247-259). Use `func.max()` instead.
-- `MerkleTree.compute_root()` is O(n) per call but hashes at each level. For large audit logs, consider incremental Merkle trees or batching.
-- `GraphAnomalyDetector.detect_cycles()` runs DFS from every node, potentially O(V * (V+E)) in worst case for dense graphs.
+### Identified Hotspots
 
-### Memory Inefficiencies
-- `service.idempotency_cache` is an unbounded in-memory dict.
-- `service.engine` holds all state in Python dicts with no eviction. For large sponsor forests, memory grows unbounded.
+| Issue | Location | Impact | Recommendation |
+|-------|----------|--------|----------------|
+| **Unbounded fraud records** | `fraud/service.py:18` | Memory grows linearly with event count — O(n) memory leak | Add `deque(maxlen=N)` or TTL-based eviction |
+| **Unbounded saga error strings** | `__saga__.py:54,142` | `saga.error` is a plain string that grows with concatenation | Cap error length or use list |
+| **`FileStore.keys()` rglob** | `__store__.py:215` | Enumerates all files — O(n) I/O with no limit on n | Add pagination or limit param |
+| **Thread-per-FileStore executor** | `__store__.py:147-149` | One thread per instance, never shut down | `shutdown()` or use shared executor |
+| **`__path_to_seed()` O(depth)** | `mechanism/service.py:116-128` | Each call traverses entire delegation chain to root. Called in `required_delegation` which is recursive. | Cache parent→seed mappings, add depth limit |
+| **`__required_delegation` recursion** | `mechanism/service.py:108-114` | Recursive with no depth limit. Deep chain = stack overflow. | Convert to iterative with depth limit |
 
 ### I/O Bottlenecks
-- `save_json()` and `load_json()` in core mechanism write entire state to a single file. For large states, this is a blocking serial bottleneck.
-- `AppendOnlyLedger.load_jsonl()` reads entire ledger into memory without size cap.
+- **`__sync_store()` writes all state on every event** (`mechanism/service.py:331-354`): Writes 7+ store keys per event. Each write is a separate JSON file write (FileStore) or SQL INSERT (PostgresStore). This serializes the event loop on I/O.
+- **`FileStore.keys()` scans all files** — could be slow for large data directories.
+- **`AuditService.save_jsonl()` builds full string in memory** — writes entire ledger as a single string. Large ledgers cause OOM.
 
 ### Optimization Opportunities
-- Add database-side `func.max()` for audit event sequence queries.
-- Replace in-memory idempotency cache with Redis or PostgreSQL table.
-- Add pagination for ledger event listing.
-- Cache `credit_limit()` calculations if the graph is large and relatively static.
+- **Caching in `credit_limit()`** — the delegation chain traversal is repeated for every quote/origination. Cache TTL-based results.
+- **Batch store writes** — `__sync_store()` could batch all key writes into a single operation (especially for PostgresStore with transaction support).
+- **AuditService uses `deque(maxlen=100000)`** — already capped from P2. Good.
 
 ---
 
 ## 12. Dependency and Packaging Assessment
 
-### Dependency Hygiene
-- **Clean separation**: `project.optional-dependencies` groups dev, api, risk, and blockchain dependencies properly.
-- **Unnecessary runtime deps**: `numpy` and `scikit-learn` are in `dev` optional dependencies but `ulu/__init__.py` exports `OptimizedGreedyWeightedRiskModel`, forcing all installs to transitively need them. Move the export to an optional submodule or remove from root `__init__.py`.
+### Strengths
+- `pyproject.toml`-only build (PEP 621) — modern, clean
+- `requirements.lock` + `requirements-dev.lock` — pinned transitive deps for reproducible builds
+- `py.typed` marker (PEP 561)
+- Minimal core dependencies: `cryptography`, `typer`, `joblib` (joblib is transitive via sklearn, but pinned explicitly)
+- Ruff 0.15.10, mypy 1.20.1, pytest 9.0.2 — modern tooling
 
-### Reproducibility Concerns
-- **No lockfile**: No `poetry.lock`, `requirements-lock.txt`, or `Pipfile.lock`. Dependencies use lower bounds only (`>=`). Future breaking changes in FastAPI, Pydantic, or SQLAlchemy could break production.
-- **No Docker**: No `Dockerfile` or `docker-compose.yml` for reproducible deployment.
-- **No version pinning**: `pyproject.toml` specifies `>=` with no upper bounds.
+### Issues
 
-### Packaging Structure
-- **Correct**: `pyproject.toml` uses modern PEP 621 project metadata with `setuptools` build backend.
-- **Correct**: `__init__.py` exports are explicit (`__all__` list).
-- **Issue**: `ulu/__init__.py` imports and exports heavy dependencies (sklearn, numpy) at package import time, slowing startup.
+| Issue | Severity | Details |
+|-------|----------|---------|
+| `joblib` in core deps but only used by `risk` extra | Low | `joblib` is listed in `requirements.lock` as a core dep but only used by `services/risk/model.py`. Should be moved to `risk` extra. |
+| `psycopg2-binary` in `postgres` extra but not in `requirements-dev.lock` | Low | Listed as comment `# psycopg2-binary>=2.9 (install separately when needed)` instead of pinned in lockfile. |
+| No `setup.py` or `setup.cfg` | None | pyproject.toml is sufficient for PEP 621. |
+| `ulu` installed as editable (`ulu==0.2.0`) | Info | Package name from `pyproject.toml` is `underwrite` but `pip list` shows `ulu 0.2.0`. The `[project]` name field in pyproject.toml should be `underwrite`, not `ulu`. This discrepancy means `pip install underwrite` won't find this package. |
 
 ---
 
@@ -299,72 +282,36 @@ The codebase contains critical security vulnerabilities, algorithm correctness b
 
 ### Minimum Required Changes Before Production
 
-1. **Fix critical security vulnerabilities**:
-   - Remove or authenticate `/admin/reset` (Finding #2)
-   - Validate and restrict `request.path` in save/load endpoints (Finding #1)
-   - Implement actual JWT validation in `get_current_user_token` (Finding #10)
-   - Add size limits to idempotency cache (Finding #11)
+1. **Fix event signature to include payload** (`__authz__.py:102`, `services/base.py:110`) — **Critical**. Add `event.payload` to the signed message string. This changes the signature format and requires key rotation, but payload integrity is a hard requirement for a lending platform.
 
-2. **Fix critical correctness bugs**:
-   - Reverse default propagation order (edge reduction after absorption) (Finding #3)
-   - Fix amortization schedule divide-by-zero and rate interpretation (Findings #4, #5)
-   - Handle overpayment in repayment processing (Finding #6)
-   - Fix NPA aging thresholds to match RBI norms (Finding #7)
-   - Fix Sybil detection false positives (Finding #8)
-   - Validate DLG cap ratio at initialization (Finding #9)
+2. **Add locks to MechanismService** (`services/mechanism/service.py`) — **Critical**. Add a single `threading.Lock` acquired by all handler methods. This is a safe first step (coarse-grained lock); fine-grained locking can be optimized later.
 
-3. **Fix high-severity issues**:
-   - Clamp default probability and term in break-even rate (Finding #12)
-   - Replace invalid correlation model with Gaussian copula (Finding #13)
-   - Fix Merkle tree second-preimage resistance and bytes serialization (Findings #14, #15)
-   - Fix governance voting logic (Finding #16)
-   - Add upper bounds to delegation rate (Finding #18)
+3. **Add model integrity verification** (`services/risk/model.py:24,31`) — **Critical**. Compute SHA-256 hash of model file at deployment time. Verify before `joblib.load()`.
 
-4. **Add critical missing tests**:
-   - Multi-level default propagation correctness
-   - Path traversal security tests
-   - Auth requirement tests
-   - DefaultRepository and RepaymentRepository integration tests
-   - Schedule edge-case tests (zero rate, single period)
+4. **Fix saga TOCTOU** (`__saga__.py:78-100`) — **High**. Hold the lock for the entire duration of `execute_step`, including the `emitter.emit()` call. Alternatively, use a per-saga condition variable.
+
+5. **Fix KeyRotationManager locking** (`__identity__.py:162-187`) — **High**. Add `threading.Lock` to all public methods.
+
+6. **Validate fee input** (`services/fee/service.py:34`) — **High**. Replace `float()` with `get_finite()`.
+
+7. **Remove private key from config serialization** (`__config__.py:188`) — **High**. Exclude `private_key` from `to_dict()` / `save()`.
 
 ### Recommended Refactor Roadmap
 
-**Phase 1: Security Hardening (1-2 weeks)**
-- Authenticate all admin endpoints
-- Restrict file paths in save/load
-- Add rate limiting
-- Move secrets to environment-only configuration
-
-**Phase 2: Core Correctness (2-3 weeks)**
-- Fix default propagation algorithm
-- Fix amortization math
-- Fix NPA aging thresholds
-- Add comprehensive edge-case tests for core mechanism
-
-**Phase 3: Architecture Cleanup (3-4 weeks)**
-- Extract filesystem I/O from `core/mechanism.py`
-- Add mapper layer between ORM and domain models
-- Inject config into compliance and blockchain layers
-- Split `api/app.py` into routers
-- Remove ML estimator from core
-
-**Phase 4: Observability and Resilience (2 weeks)**
-- Replace `loguru` with structured JSON logging
-- Add correlation ID propagation
-- Add health checks
-- Add database connectivity monitoring
-- Implement event replay for state recovery
-
-**Phase 5: Performance and Scalability (2-3 weeks)**
-- Move idempotency cache to Redis/DB
-- Optimize audit event sequence queries
-- Add pagination for large result sets
-- Implement lockfile for reproducible builds
+| Phase | Items | Effort |
+|-------|-------|--------|
+| **Phase 1: Safety** | C1, C2, C3, H1, H3 | 1-2 days |
+| **Phase 2: Concurrency** | H2, H4, M1 (add saga persistence) | 2-3 days |
+| **Phase 3: Observability** | L4-L6 (logging gaps), Google-style docstrings, structured logging | 1-2 days |
+| **Phase 4: Performance** | M4 (fraud eviction), M5 (executor shutdown), L3 (keys pagination) | 0.5 day |
+| **Phase 5: Testing** | Concurrency tests, model integrity tests, signature verification tests | 1-2 days |
 
 ### Future Improvement Opportunities
-- Replace in-memory state machine with event-sourced PostgreSQL backend
-- Implement actual Algorand transaction submission in `blockchain/client.py`
-- Add circuit breaker for external oracle and AA integrations
-- Consider CQRS for read-heavy admin endpoints
-- Add property-based testing (Hypothesis) for financial invariants
-- Integrate OpenTelemetry for distributed tracing
+
+- **Async event bus** — add `asyncio` implementation for FastAPI/uvicorn integration
+- **Persistent saga log** — make `SagaOrchestrator` state durable via store backend
+- **MechanismService decomposition** — split into domain model + persistence adapter
+- **Plugin-based model loading** — strategy pattern for `RiskModel` to support multiple ML frameworks
+- **Config-driven fee schedules** — move `FEE_SCHEDULES` from code to configuration
+- **Structured logging** — use `structlog` or `logging.StructuredFormatter` with correlation ID context
+- **Metrics export** — add Prometheus endpoint for production monitoring

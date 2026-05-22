@@ -1,59 +1,81 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ulu"
-version = "0.2.0"
-description = "Production-grade middleware for Unsecured Lending via Delegated Underwriting"
+name = "underwrite"
+version = "0.1.0"
+description = "Delegated Underwriting Protocol — nano-service platform for unsecured lending"
+readme = "README.md"
 requires-python = ">=3.10"
+license = "MIT"
+keywords = [
+    "underwriting",
+    "lending",
+    "nano-services",
+    "event-driven",
+    "delegated-protocol",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Financial",
+    "Typing :: Typed",
+]
 dependencies = [
-    "loguru>=0.7",
-    "sqlalchemy[asyncio]>=2.0",
-    "asyncpg>=0.29",
-    "pydantic>=2.0",
-    "pydantic-settings>=2.0",
-    "prometheus-client>=0.17",
-    "structlog>=24.1",
-    "slowapi>=0.1",
-    "pybreaker>=1.0",
-    "PyJWT>=2.8",
-    "orjson>=3.9",
-    "redis>=5.0",
-    "alembic>=1.12",
+    "cryptography>=41.0",
+    "typer>=0.12",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.4",
-    "pytest-asyncio>=0.21",
     "pytest-cov>=5.0",
-    "aiosqlite>=0.22",
+    "hypothesis>=6.0",
     "ruff>=0.6",
     "mypy>=1.10",
-    "fastapi>=0.112",
-    "uvicorn>=0.30",
-    "httpx>=0.27",
-    "numpy>=1.26",
-    "scikit-learn>=1.5",
-]
-api = [
-    "fastapi>=0.112",
-    "uvicorn>=0.30",
-    "httpx>=0.27",
 ]
 risk = [
     "numpy>=1.26",
     "scikit-learn>=1.5",
 ]
-blockchain = [
-    "py-algorand-sdk>=2.0",
+postgres = [
+    "psycopg2-binary>=2.9",
 ]
+otlp = [
+    "opentelemetry-api>=1.20",
+    "opentelemetry-sdk>=1.20",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.20",
+]
+serve = ["uvicorn[standard]>=0.24", "fastapi>=0.104"]
+vault = ["hvac>=2.0"]
+aws = ["boto3>=1.33"]
+all = [
+    "underwrite[postgres]",
+    "underwrite[otlp]",
+    "underwrite[serve]",
+    "underwrite[vault]",
+    "underwrite[aws]",
+]
+
+[project.urls]
+Homepage = "https://github.com/sachn-cs/unsecured-lending-underwriting"
+Repository = "https://github.com/sachn-cs/unsecured-lending-underwriting"
+Issues = "https://github.com/sachn-cs/unsecured-lending-underwriting/issues"
+
+[project.scripts]
+underwrite = "underwrite.__cli__:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
 asyncio_mode = "auto"
+python_files = ["test_*.py"]
 
 [tool.ruff]
 line-length = 120
@@ -62,37 +84,11 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
-[tool.setuptools]
-packages = ["ulu"]
+[tool.setuptools.packages.find]
+include = ["underwrite*"]
+
+[tool.setuptools.package-data]
+underwrite = ["py.typed"]
 
 [tool.mypy]
 ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = ["ulu.risk_model", "ulu.risk.early_warning"]
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = ["ulu.core.graph", "ulu.core.invariants", "ulu.core.pricing", "ulu.core.serialization"]
-ignore_errors = true
-
-[tool.mutmut]
-paths_to_mutate = "ulu/"
-backup = false
-runner = "pytest -q"
-tests_dir = "tests/"
-
-[tool.ruff.lint.per-file-ignores]
-"ulu/api/app.py" = ["B008"]
-"ulu/api/deps.py" = ["B008"]
-"ulu/api/routers/admin.py" = ["B008"]
-"ulu/api/routers/health.py" = ["B008"]
-"ulu/api/routers/ledger.py" = ["B008"]
-"ulu/api/routers/loans.py" = ["B008"]
-"ulu/api/routers/repayments.py" = ["B008"]
-"ulu/api/routers/revocations.py" = ["B008"]
-"ulu/api/routers/seeds.py" = ["B008"]
-"ulu/api/routers/state.py" = ["B008"]
-"ulu/api/routers/users.py" = ["B008"]
-"ulu/api/routers/bulk.py" = ["B008"]
-"ulu/api/api_keys.py" = ["B008"]

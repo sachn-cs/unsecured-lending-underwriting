@@ -1,85 +1,127 @@
-# Unsecured Lending via Delegated Underwriting (ULU)
+# underwrite — Delegated Underwriting Protocol
 
-Pure-Python implementation of arXiv:2605.03307v1.
+A **nano-service platform** for unsecured lending underwriting. Each service is independently deployable, configuration-driven, and communicates over a shared in-process event bus with cryptographic attestation.
 
-## Setup
+## Features
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
-pip install pytest
-pip install -e ".[dev]"
-```
+- **28 nano-services** — risk scoring, fraud detection, KYC/AML, collateral management, loan origination, collections, recovery, governance, and more
+- **Event-driven architecture** — services communicate via typed events with Ed25519 signatures
+- **Saga orchestration** — distributed transaction coordination with automatic rollback
+- **Pluggable backends** — in-memory, filesystem, or Postgres for state; local or cloud for event bus
+- **Built-in resilience** — circuit breakers, dead-letter queues, idempotency guards, retry policies
+- **Production observability** — distributed tracing, metrics collection, health checks, structured logging
+- **Type-safe** — fully typed with PEP 585/604 generics, `py.typed` marker, ruff-clean
 
-## Run demo
-
-```bash
-PYTHONPATH=. python demo.py run-demo
-PYTHONPATH=. python demo.py run-demo --state-path ./state.json
-```
-
-## Run API
+## Installation
 
 ```bash
-pip install -e ".[api]"
-uvicorn ulu.api:app --host 0.0.0.0 --port 8000
+pip install underwrite
+
+# With risk scoring (scikit-learn)
+pip install "underwrite[risk]"
+
+# With Postgres backend
+pip install "underwrite[postgres]"
+
+# Development
+pip install "underwrite[dev,risk,postgres]"
 ```
 
-## Ops endpoints
+## Quick Start
 
-- `GET /health` liveness
-- `GET /ready` invariant-checked readiness
-- `GET /metrics` Prometheus plaintext metrics
-- `GET /admin/graph` graph inspection
-- `GET /admin/solvency` solvency inspection
-- `GET /admin/utilization` utilization inspection
-- `POST /admin/reset` runtime reset
+```python
+from underwrite import Runtime, Configuration
 
-Mutation endpoints support optional `Idempotency-Key` header.
-See `RUNBOOK.md` for operational procedures.
+# Load config
+config = Configuration.load("config.json")
 
-## Risk model estimation (`D_v`)
+# Start runtime
+rt = Runtime(config=config)
+rt.start()
 
-Latest integrated paper source:
-- https://arxiv.org/abs/2603.18927
-
-Implemented module:
-- `ulu.risk_model.OptimizedGreedyWeightedRiskModel`
-
-Install risk dependencies:
-```bash
-pip install -e ".[risk]"
+# Runtime handles event dispatch, health checks, and lifecycle
+rt.stop()
 ```
 
-## Run tests
+## CLI Usage
 
 ```bash
-PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 pytest -q
+# Show available services
+underwrite list
+
+# Run specific services
+underwrite run mechanism risk audit
+
+# Health check
+underwrite health
+
+# View dead letter queue
+underwrite dlq
+
+# Metrics snapshot
+underwrite metrics
 ```
 
-## Quality checks
+## Development
 
 ```bash
-ruff check ulu/ tests/ demo.py
+# Install in editable mode with dev extras
+pip install -e ".[dev,risk,postgres]"
+
+# Run tests
+make test
+
+# Lint
+make lint
+
+# Type check
+make typecheck
+
+# Build distribution
+make build
 ```
 
-## Documentation
+## Testing
 
-- `FIDELITY_REPORT.md`: theorem/definition-level fidelity status.
-- `GAP_ANALYSIS.md`: what was missing/partial and what was fixed.
-- `PRODUCTION_READINESS.md`: operational hardening summary.
-- `docs/setup.md`: environment setup.
-- `docs/running.md`: running the simulator and API.
-- `docs/revocation.md`: revocation rules and solvency.
-- `docs/default.md`: default propagation logic.
-- `docs/pricing.md`: protocol and delegation premium formulas.
-- `docs/theorems.md`: theorem evaluation and test references.
-- `docs/extensions.md`: review of possible extensions.
+```bash
+pytest tests/ -v --tb=short
+```
 
-## Scope and assumptions
+## Project Structure
 
-- Source of truth: arXiv e-print TeX for `2605.03307v1`.
-- Runtime dependency footprint: `loguru` plus optional `api`/`risk` extras.
-- One active loan per borrower at origination (`x_u = 0` precondition).
-- Default probability estimation `D_v` is exogenous per paper.
+```
+underwrite/             # Source package
+  __init__.py           # Public API exports
+  __bus__.py            # Event bus (pub/sub)
+  __store__.py          # State store (memory/file/postgres)
+  __saga__.py           # Saga orchestrator
+  __authz__.py          # Access control & signature verification
+  __circuit__.py        # Circuit breaker & retry
+  __config__.py         # Configuration engine
+  __runtime__.py        # Service lifecycle manager
+  __cli__.py            # CLI (typer-based)
+  services/             # 28 nano-service implementations
+    base.py             # NanoService ABC
+    mechanism/          # Core state machine
+    risk/               # ML risk scoring
+    fee/                # Fee assessment
+    audit/              # Event audit log
+    ...
+tests/                  # Test suite (separate from source)
+docs/                   # Documentation
+```
+
+## Architecture
+
+Each nano-service extends `NanoService` and implements a single `handle(event)` method. Services:
+
+1. Subscribe to event types via the shared bus
+2. Receive events through `__dispatch` (handles authz, idempotency, tracing, metrics)
+3. Emit new events with Ed25519 signatures via `emit()`
+4. Persist state through the `Store` abstraction
+
+Cross-cutting concerns (authz, tracing, metrics, sagas) are injected, not inherited.
+
+## License
+
+MIT — see [LICENSE](LICENSE) for details.

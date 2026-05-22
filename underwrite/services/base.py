@@ -1,0 +1,216 @@
+"""Abstract base class for every nano service.
+
+Each service:
+  - Has a unique ``service_id``
+  - Owns an Ed25519 ``Identity`` for signing its emitted events
+  - Subscribes to events on a shared ``EventBus``
+  - Persists state through a ``Store``
+  - Implements ``handle(event) -> None`` to process incoming events
+  - Emits events via ``emit(event_type, payload)`` which auto-signs
+  - Tracks handler duration via distributed tracing
+  - Supports saga orchestration for multi-step transactions
+  - Guards against duplicate event processing via idempotency
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import time
+from abc import ABC, abstractmethod
+from typing import Any
+
+from underwrite.__authz__ import AccessControl
+from underwrite.__bus__ import EventBus, LocalBus
+from underwrite.__events__ import Event
+from underwrite.__health__ import HealthRegistry
+from underwrite.__identity__ import Identity
+from underwrite.__metrics__ import MetricsCollector
+from underwrite.__saga__ import SagaOrchestrator
+from underwrite.__store__ import MemoryStore, Store
+from underwrite.__tracer__ import Span, Tracer
+
+logger = logging.getLogger("underwrite")
+
+
+class NanoService(ABC):
+    """Base class that all nano services extend.
+
+    Provides event emission/subscription, identity-based signing,
+    state persistence, distributed tracing, saga orchestration,
+    idempotency, metrics collection, health checks, and authz gating.
+    """
+
+    def __init__(
+        self,
+        service_id: str,
+        identity: Identity | None = None,
+        bus: EventBus | None = None,
+        store: Store | None = None,
+        metrics: MetricsCollector | None = None,
+        health: HealthRegistry | None = None,
+        authz: AccessControl | None = None,
+        tracer: Tracer | None = None,
+        saga: SagaOrchestrator | None = None,
+    ) -> None:
+        """Initialise the nano service.
+
+        Args:
+            service_id: Unique identifier for this service instance.
+            identity: Ed25519 identity for signing events. Created if omitted.
+            bus: Event bus for pub/sub. Uses LocalBus if omitted.
+            store: State persistence backend. Uses MemoryStore if omitted.
+            metrics: Optional metrics collector for instrumentation.
+            health: Optional health registry for liveness checks.
+            authz: Optional access control for authz gating.
+            tracer: Optional distributed tracer for handler timing.
+            saga: Optional saga orchestrator for multi-step transactions.
+        """
+        self.__service_id: str = service_id
+        self.__identity: Identity = identity or Identity.create(service_id)
+        self.__bus: EventBus = bus or LocalBus()
+        self.__store: Store = store or MemoryStore()
+        self.__metrics: MetricsCollector | None = metrics
+        self.__health: HealthRegistry | None = health
+        self.__authz: AccessControl | None = authz
+        self.__tracer: Tracer | None = tracer
+        self.__saga: SagaOrchestrator | None = saga
+        self.__subscriptions: list[str] = []
+        self.__running: bool = False
+
+        if self.__saga:
+            self.__saga.register_emitter(self.__service_id, self)
+
+    @property
+    def service_id(self) -> str:
+        """Return the unique identifier for this service instance."""
+        return self.__service_id
+
+    @property
+    def is_running(self) -> bool:
+        """Return True if the service is currently processing events."""
+        return self.__running
+
+    @property
+    def store(self) -> Store:
+        """Return the state persistence backend for this service."""
+        return self.__store
+
+    def subscribe(self, event_type: str) -> None:
+        """Registers this service to receive *event_type* events."""
+        if self.__authz and not self.__authz.check_subscribe(
+                self.__service_id, event_type):
+            logger.warning("%s not authorized to subscribe to %s",
+                           self.__service_id, event_type)
+            return
+        sid: str = self.__bus.subscribe(event_type, self.__dispatch)
+        self.__subscriptions.append(sid)
+
+    def start(self) -> None:
+        """Starts event processing for this service."""
+        self.__running = True
+
+    def stop(self) -> None:
+        """Stops event processing and unsubscribes from the bus."""
+        self.__running = False
+        for sid in self.__subscriptions:
+            self.__bus.unsubscribe(sid)
+        self.__subscriptions.clear()
+
+    def emit(self,
+             event_type: str,
+             payload: dict[str, Any],
+             correlation_id: str = "") -> Event:
+        """Creates, signs, publishes and returns a new event."""
+        event: Event = Event(
+            event_type=event_type,
+            source=self.__service_id,
+            source_key=self.__identity.public_key,
+            payload=payload,
+            correlation_id=correlation_id or "",
+        )
+        payload_str: str = json.dumps(payload, sort_keys=True, default=str)
+        to_sign: str = f"{event.event_id}:{event.timestamp}:{event.event_type}:{payload_str}"
+        signed: Event = Event(
+            event_id=event.event_id,
+            event_type=event.event_type,
+            source=event.source,
+            source_key=event.source_key,
+            timestamp=event.timestamp,
+            payload=event.payload,
+            correlation_id=event.correlation_id,
+            signature=self.__identity.sign(to_sign),
+        )
+        if self.__authz:
+            self.__authz.assert_publish(self.__service_id, event_type)
+            self.__authz.trust(self.__service_id, self.__identity.public_key)
+        self.__bus.publish(signed)
+        if self.__metrics:
+            self.__metrics.increment("events.emitted", {
+                "service": self.__service_id,
+                "event_type": event_type,
+            })
+        return signed
+
+    def sign_event(self, payload: str) -> str:
+        """Signs an arbitrary payload with this service's identity."""
+        return self.__identity.sign(payload)
+
+    def __dispatch(self, event: Event) -> None:
+        if not self.__running:
+            return
+        if self.__authz:
+            try:
+                self.__authz.assert_verified(event)
+            except Exception as exc:
+                logger.warning(
+                    "signature verification failed for %s from %s: %s",
+                    event.event_id, event.source, exc)
+                return
+        if self.__bus.idempotency.is_duplicate(self.__service_id,
+                                               event.event_id):
+            logger.debug("duplicate event %s dropped by %s", event.event_id,
+                         self.__service_id)
+            return
+        start = time.perf_counter()
+        span: Span | None = None
+        if self.__tracer:
+            span = self.__tracer.start_span(
+                f"handle.{event.event_type}",
+                trace_id=event.correlation_id or event.event_id,
+                tags={
+                    "service": self.__service_id,
+                    "event_type": event.event_type
+                },
+            )
+        try:
+            self.handle(event)
+            if self.__metrics:
+                elapsed = (time.perf_counter() - start) * 1000.0
+                self.__metrics.timer("handle.duration", elapsed, {
+                    "service": self.__service_id,
+                    "event_type": event.event_type,
+                })
+                self.__metrics.increment("events.handled", {
+                    "service": self.__service_id,
+                    "event_type": event.event_type,
+                })
+        except Exception:
+            logger.exception("handler %s failed processing %s",
+                             self.__service_id, event.event_type)
+            if self.__metrics:
+                self.__metrics.increment("events.failed", {
+                    "service": self.__service_id,
+                    "event_type": event.event_type,
+                })
+        finally:
+            if span is not None and self.__tracer is not None:
+                self.__tracer.end_span(span)
+
+    @abstractmethod
+    def handle(self, event: Event) -> None:
+        """Process an incoming event.  Override in subclasses."""
+
+    def health_check(self) -> dict[str, Any]:
+        """Health check for this service.  Override to add service-specific checks."""
+        return {"ok": self.__running, "service_id": self.__service_id}

@@ -29,6 +29,7 @@ from underwrite.__identity__ import Identity
 from underwrite.__metrics__ import MetricsCollector
 from underwrite.__saga__ import SagaOrchestrator
 from underwrite.__store__ import MemoryStore, Store
+from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Span, Tracer
 
 logger = logging.getLogger(__name__)
@@ -60,6 +61,7 @@ class NanoService(ABC):
         authz: AccessControl | None = None,
         tracer: Tracer | None = None,
         saga: SagaOrchestrator | None = None,
+        supervisor: ServiceSupervisor | None = None,
     ) -> None:
         """Initialise the nano service.
 
@@ -83,6 +85,8 @@ class NanoService(ABC):
         self.__authz: AccessControl | None = authz
         self.__tracer: Tracer | None = tracer
         self.__saga: SagaOrchestrator | None = saga
+        self.__supervisor: ServiceSupervisor | None = supervisor
+        self.__counter_lock: threading.Lock = threading.Lock()
         self.__subscriptions: list[str] = []
         self.__running: bool = False
         self.__events_handled: int = 0
@@ -197,8 +201,11 @@ class NanoService(ABC):
         try:
             _log_context.correlation_id = event.correlation_id or ""
             self.handle(event)
-            self.__events_handled += 1
-            self.__last_event_time = start
+            with self.__counter_lock:
+                self.__events_handled += 1
+                self.__last_event_time = start
+            if self.__supervisor:
+                self.__supervisor.record_success(self.__service_id)
             if self.__metrics:
                 elapsed = (time.perf_counter() - start) * 1000.0
                 self.__metrics.timer("handle.duration", elapsed, {
@@ -210,7 +217,10 @@ class NanoService(ABC):
                     "event_type": event.event_type,
                 })
         except Exception:
-            self.__events_failed += 1
+            with self.__counter_lock:
+                self.__events_failed += 1
+            if self.__supervisor:
+                self.__supervisor.record_failure(self.__service_id)
             logger.exception("handler %s failed processing %s",
                              self.__service_id, event.event_type)
             if self.__metrics:
@@ -229,10 +239,11 @@ class NanoService(ABC):
 
     def health_check(self) -> dict[str, Any]:
         """Health check for this service.  Override to add service-specific checks."""
-        return {
-            "ok": self.__running,
-            "service_id": self.__service_id,
-            "events_handled": self.__events_handled,
-            "events_failed": self.__events_failed,
-            "last_event_time": self.__last_event_time,
-        }
+        with self.__counter_lock:
+            return {
+                "ok": self.__running,
+                "service_id": self.__service_id,
+                "events_handled": self.__events_handled,
+                "events_failed": self.__events_failed,
+                "last_event_time": self.__last_event_time,
+            }

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 from datetime import datetime, timezone
 from typing import Any
@@ -9,6 +10,8 @@ from typing import Any
 from underwrite.__events__ import Event, EventType
 from underwrite.services import NanoService
 from underwrite.validate import get_finite, get_non_empty
+
+logger = logging.getLogger(__name__)
 
 
 class CollateralService(NanoService):
@@ -43,6 +46,9 @@ class CollateralService(NanoService):
                       correlation_id=event.correlation_id)
         elif event.event_type == EventType.DEFAULT_OCCURRED:
             borrower = event.payload.get("borrower", "")
+            if not borrower:
+                logger.warning("dropping DEFAULT_OCCURRED with missing borrower")
+                return
             with self.__lock:
                 col = self.__collateral.pop(borrower, None)
                 if col:

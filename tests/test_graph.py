@@ -225,7 +225,9 @@ class TestEdgeCases:
     def test_ignores_unknown_event_type(self) -> None:
         svc = graph({})
         svc.handle(Event(event_type="unrelated", source="test", payload={}))
+        assert svc.is_running is False
 
     def test_handles_none_store(self) -> None:
         svc = GraphService(service_id="graph", store=MemoryStore())
         svc.handle(Event(event_type="graph_users", source="test", payload={}))
+        assert svc.is_running is False

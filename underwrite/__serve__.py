@@ -130,4 +130,29 @@ def create_app(
                 content={"error": "prometheus export not available; install underwrite[serve]"},
             )
 
+    @app.post("/publish")
+    async def publish_event(request: Request) -> JSONResponse:
+        body = await request.json()
+        event_type = body.get("event_type", "")
+        if not event_type:
+            return JSONResponse(status_code=400, content={"error": "event_type is required"})
+        rt = runtime
+        try:
+            if hasattr(rt, "async_publish"):
+                await rt.async_publish(
+                    event_type=event_type,
+                    payload=body.get("payload", {}),
+                    correlation_id=body.get("correlation_id", ""),
+                )
+            else:
+                rt.publish(
+                    event_type=event_type,
+                    payload=body.get("payload", {}),
+                    correlation_id=body.get("correlation_id", ""),
+                )
+            return JSONResponse(status_code=202, content={"status": "accepted"})
+        except Exception as exc:
+            logger.exception("publish failed")
+            return JSONResponse(status_code=500, content={"error": str(exc)})
+
     return app

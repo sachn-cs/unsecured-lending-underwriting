@@ -25,28 +25,29 @@ class DocumentService(NanoService):
         self.__load_store()
 
     def handle(self, event: Event) -> None:
-        if event.event_type != EventType.UNDERWRITER_APPROVED:
-            return
-        p = event.payload
-        borrower: str = get_non_empty(p, "borrower")
-        principal: float = get_finite(p, "principal")
-        doc_id: str = str(uuid.uuid4())[:8]
+        with self.__lock:
+            if event.event_type != EventType.UNDERWRITER_APPROVED:
+                return
+            p = event.payload
+            borrower: str = get_non_empty(p, "borrower")
+            principal: float = get_finite(p, "principal")
+            doc_id: str = str(uuid.uuid4())[:8]
 
-        record = {
-            "doc_id": doc_id,
-            "borrower": borrower,
-            "principal": principal,
-            "status": "generated",
-        }
-        self.__documents.setdefault(borrower, []).append(record)
-        self.__sync_store()
+            record = {
+                "doc_id": doc_id,
+                "borrower": borrower,
+                "principal": principal,
+                "status": "generated",
+            }
+            self.__documents.setdefault(borrower, []).append(record)
+            self.__sync_store()
 
-        self.emit(EventType.DOCUMENT_GENERATED, {
-            "borrower": borrower,
-            "principal": principal,
-            "doc_id": doc_id,
-        },
-                  correlation_id=event.correlation_id)
+            self.emit(EventType.DOCUMENT_GENERATED, {
+                "borrower": borrower,
+                "principal": principal,
+                "doc_id": doc_id,
+            },
+                      correlation_id=event.correlation_id)
 
     def documents_for(self, borrower: str) -> list[dict[str, Any]]:
         """Retrieve all documents generated for a borrower.
@@ -57,7 +58,8 @@ class DocumentService(NanoService):
         Returns:
             List of document records for the borrower.
         """
-        return list(self.__documents.get(borrower, []))
+        with self.__lock:
+            return list(self.__documents.get(borrower, []))
 
     # -- state persistence ---------------------------------------------------
 

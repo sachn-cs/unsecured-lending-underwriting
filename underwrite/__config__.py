@@ -61,6 +61,7 @@ class BusConfig:
     backend: str = "local"  # local | sqs | modal
     rate_limit: float = 0.0  # 0 = unlimited
     max_workers: int = 0  # 0 = synchronous, >0 = thread pool size
+    max_futures: int = 10000  # max pending futures before backpressure
 
 
 @dataclass
@@ -239,6 +240,7 @@ class Configuration:
                         "backend": {"type": "string", "enum": ["local", "sqs", "modal"]},
                         "rate_limit": {"type": "number", "minimum": 0},
                         "max_workers": {"type": "integer", "minimum": 0},
+                        "max_futures": {"type": "integer", "minimum": 1},
                     },
                     "additionalProperties": False,
                 },
@@ -497,8 +499,12 @@ class Configuration:
         # Try env-specific config files first
         for candidate in ([path] if path else []):
             if candidate and Path(candidate).exists():
-                with open(candidate) as fh:
-                    data = json.load(fh)
+                try:
+                    with open(candidate) as fh:
+                        data = json.load(fh)
+                except (FileNotFoundError, json.JSONDecodeError) as exc:
+                    logger.warning("failed to load config %s: %s", candidate, exc)
+                    continue
                 if not isinstance(data, dict):
                     raise ConfigurationError("config root must be a JSON object")
                 cls._validate(data)
@@ -509,12 +515,17 @@ class Configuration:
             if env:
                 env_path = f"config.{env}.json"
                 if Path(env_path).exists():
-                    with open(env_path) as fh:
-                        data = json.load(fh)
-                    if not isinstance(data, dict):
-                        raise ConfigurationError("config root must be a JSON object")
-                    cls._validate(data)
-                    config = cls.__merge(config, data)
+                    try:
+                        with open(env_path) as fh:
+                            data = json.load(fh)
+                    except (FileNotFoundError, json.JSONDecodeError) as exc:
+                        logger.warning("failed to load env config %s: %s",
+                                       env_path, exc)
+                    else:
+                        if not isinstance(data, dict):
+                            raise ConfigurationError("config root must be a JSON object")
+                        cls._validate(data)
+                        config = cls.__merge(config, data)
         config = cls.__apply_env_overrides(config)
         return config
 
@@ -532,7 +543,8 @@ class Configuration:
             "bus": {
                 "backend": self.bus.backend,
                 "rate_limit": self.bus.rate_limit,
-                "max_workers": self.bus.max_workers
+                "max_workers": self.bus.max_workers,
+                "max_futures": self.bus.max_futures,
             },
             "store": {
                 "backend": self.store.backend,
@@ -623,6 +635,8 @@ class Configuration:
                                                     config.bus.rate_limit)
             config.bus.max_workers = data["bus"].get("max_workers",
                                                      config.bus.max_workers)
+            config.bus.max_futures = data["bus"].get("max_futures",
+                                                     config.bus.max_futures)
         if "store" in data:
             config.store.backend = data["store"].get("backend",
                                                      config.store.backend)
@@ -715,6 +729,7 @@ class Configuration:
             "UNDERWRITE_BUS_BACKEND": ("bus", "backend", str),
             "UNDERWRITE_BUS_RATE_LIMIT": ("bus", "rate_limit", float),
             "UNDERWRITE_BUS_MAX_WORKERS": ("bus", "max_workers", int),
+            "UNDERWRITE_BUS_MAX_FUTURES": ("bus", "max_futures", int),
             "UNDERWRITE_STORE_BACKEND": ("store", "backend", str),
             "UNDERWRITE_STORE_DSN": ("store", "dsn", str),
             "UNDERWRITE_STORE_POOL_SIZE": ("store", "pool_size", int),

@@ -5,6 +5,32 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] — 2026-05-26
+
+### Added
+
+- **Async event bus** — `AsyncEventBus` ABC and `AsyncLocalBus` implementation for non-blocking event dispatch. (`__bus__.py`)
+- **Configurable max futures** — `BusConfig.max_futures` controls pending future cap (default 10000). (`__config__.py`, `__bus__.py`)
+- **FraudService borrower cap** — `MAX_BORROWERS = 100000` prevents unbounded dict growth; oldest borrower evicted via `OrderedDict`. (`services/fraud/service.py`)
+- **NaN/Inf guard in RiskModel** — inputs validated with `math.isfinite` before prediction. (`services/risk/model.py`)
+- **Runtime.async_publish()** — async-compatible publish for use in FastAPI endpoints without blocking. (`__runtime__.py`)
+- **HTTP `/publish` endpoint** — POST endpoint in FastAPI for external event publishing. (`__serve__.py`)
+- **`__all__` in `__events__.py`, `validate.py`, `__exceptions__.py`, `prometheus_export.py`** — missing module exports. (`__events__.py`, `validate.py`, `__exceptions__.py`, `prometheus_export.py`)
+- **DLQ CLI `--replay` command** — replay dead-letter events from the CLI. (`__cli__.py`)
+
+### Changed
+
+- **`__build_authz()` narrowed exception handling** — `except Exception` replaced with specific `(json.JSONDecodeError, OSError)`. (`__runtime__.py`)
+- **`break_even` catastrophic cancellation** — `clamped_dp` now bounded above by `1.0 - EPSILON` so `1.0 - clamped_dp ≥ EPSILON`. (`services/mechanism/service.py`)
+- **Metrics eviction** — evicts excess entries rather than trimming to `max_metrics // 3` per type in a while loop; reduces total pops to exactly `excess`. (`__metrics__.py`)
+- **Audit `save_jsonl` streaming** — writes chunks of 1000 records at a time instead of building one giant string. (`services/audit/service.py`)
+- **FeeService PAYMENT_OVERDUE** — added missing loan_id warning log. (`services/fee/service.py`)
+- **`.env.example`** — added `UNDERWRITE_BUS_MAX_FUTURES` var. (`.env.example`)
+
+### Fixed
+
+- **Path traversal in FileStore** — additional `relative_to()` check ensures resolved path stays under data directory. (`__store__.py`) — already partially fixed in v0.1.0.
+
 ## [0.1.0] — 2026-05-22
 
 ### Added

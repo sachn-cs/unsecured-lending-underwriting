@@ -7,6 +7,11 @@ Usage:
 
 from __future__ import annotations
 
+__all__ = [
+    "PrometheusMiddleware",
+    "metrics_as_text",
+]
+
 from typing import Any
 
 

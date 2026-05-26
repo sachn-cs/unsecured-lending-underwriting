@@ -316,9 +316,9 @@ class MechanismService(NanoService):
 
         if not (0.0 < dp < 1.0):
             raise ProtocolError("default probability must be in (0,1)")
-        clamped_dp: float = max(dp, EPSILON)
+        clamped_dp: float = max(min(dp, 1.0 - EPSILON), EPSILON)
         clamped_term: float = max(term, EPSILON)
-        one_minus_dp: float = max(1.0 - clamped_dp, EPSILON)
+        one_minus_dp: float = 1.0 - clamped_dp
         break_even: float = min(
             clamped_dp / (one_minus_dp * clamped_term), 1e6)
         protocol_premium: float = pr * principal * term

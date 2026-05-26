@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 from underwrite.__runtime__ import Runtime
 
@@ -43,8 +41,9 @@ class TestRuntimeOtlpTracer:
         config = _config_with_otlp()
         rt = Runtime(config)
         assert rt.tracer is not None
-        # The tracer falls back gracefully — it just logs and skips
-        assert True
+        span = rt.tracer.start_span("fallback-test")
+        rt.tracer.end_span(span)
+        assert span.operation == "fallback-test"
 
 
 def _config_with_otlp() -> Any:

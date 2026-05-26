@@ -70,12 +70,15 @@ class MetricsCollector:
         if total <= self.__max_metrics:
             return
         target = self.__max_metrics // 3
-        while len(self.__counters) > target:
-            self.__counters.pop(next(iter(self.__counters)))
-        while len(self.__timers) > target:
-            self.__timers.pop(next(iter(self.__timers)))
-        while len(self.__gauges) > target:
-            self.__gauges.pop(next(iter(self.__gauges)))
+        for metric_map in (self.__counters, self.__timers, self.__gauges):
+            excess = len(metric_map) - target
+            if excess <= 0:
+                continue
+            for _ in range(excess):
+                try:
+                    metric_map.pop(next(iter(metric_map)))
+                except KeyError:
+                    break
 
     def __key(self, name: str, tags: dict[str, str]) -> str:
         parts = [name]

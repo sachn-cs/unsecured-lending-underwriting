@@ -38,40 +38,41 @@ class FeeService(NanoService):
 
     def __assess(self, loan_id: str, fee_type: str, principal: float = 0.0, correlation_id: str = "") -> None:
         """Assess a fee and persist it.  Called directly (not via bus)."""
-        schedules = self.__schedules
-        if not loan_id or fee_type not in schedules:
-            if not loan_id:
-                logger.warning("fee.assess missing loan_id, ignored")
+        with self.__lock:
+            schedules = self.__schedules
+            if not loan_id or fee_type not in schedules:
+                if not loan_id:
+                    logger.warning("fee.assess missing loan_id, ignored")
+                else:
+                    logger.warning("fee.assess with unknown fee_type %r, ignored", fee_type)
+                return
+            if fee_type == "origination":
+                amount = principal * schedules["origination"]
             else:
-                logger.warning("fee.assess with unknown fee_type %r, ignored", fee_type)
-            return
-        if fee_type == "origination":
-            amount = principal * schedules["origination"]
-        else:
-            amount = schedules[fee_type]
+                amount = schedules[fee_type]
 
-        import math as _math
-        if not _math.isfinite(amount):
-            logger.error("non-finite fee amount %s for loan %s, skipping", amount, loan_id)
-            return
-        fee_id: str = f"fee_{loan_id}_{fee_type}_{int(datetime.now(timezone.utc).timestamp())}"
-        fee_record = {
-            "loan_id": loan_id,
-            "fee_type": fee_type,
-            "amount": amount,
-            "assessed_at": datetime.now(timezone.utc).isoformat(),
-            "paid": False,
-        }
-        self.store.set(f"fee:{fee_id}", fee_record)
-        self.__fees[f"fee:{fee_id}"] = fee_record
-        self.__sync_store()
-        self.emit(EventType.FEE_ASSESSED, {
-            "fee_id": fee_id,
-            "loan_id": loan_id,
-            "fee_type": fee_type,
-            "amount": amount,
-        },
-                  correlation_id=correlation_id)
+            import math as _math
+            if not _math.isfinite(amount):
+                logger.error("non-finite fee amount %s for loan %s, skipping", amount, loan_id)
+                return
+            fee_id: str = f"fee_{loan_id}_{fee_type}_{int(datetime.now(timezone.utc).timestamp())}"
+            fee_record = {
+                "loan_id": loan_id,
+                "fee_type": fee_type,
+                "amount": amount,
+                "assessed_at": datetime.now(timezone.utc).isoformat(),
+                "paid": False,
+            }
+            self.store.set(f"fee:{fee_id}", fee_record)
+            self.__fees[f"fee:{fee_id}"] = fee_record
+            self.__sync_store()
+            self.emit(EventType.FEE_ASSESSED, {
+                "fee_id": fee_id,
+                "loan_id": loan_id,
+                "fee_type": fee_type,
+                "amount": amount,
+            },
+                      correlation_id=correlation_id)
 
     def handle(self, event: Event) -> None:
         """Assess and pay fees based on incoming events.
@@ -82,27 +83,30 @@ class FeeService(NanoService):
         Args:
             event: The incoming event.
         """
-        if event.event_type == EventType.FEE_ASSESS:
-            self.__assess(
-                loan_id=event.payload.get("loan_id", ""),
-                fee_type=event.payload.get("fee_type", ""),
-                principal=get_finite(event.payload, "principal", 0.0),
-                correlation_id=event.correlation_id,
-            )
+        with self.__lock:
+            if event.event_type == EventType.FEE_ASSESS:
+                self.__assess(
+                    loan_id=event.payload.get("loan_id", ""),
+                    fee_type=event.payload.get("fee_type", ""),
+                    principal=get_finite(event.payload, "principal", 0.0),
+                    correlation_id=event.correlation_id,
+                )
 
-        elif event.event_type == EventType.FEE_PAY:
-            fee_id = event.payload.get("fee_id", "")
-            record = self.store.get(f"fee:{fee_id}")
-            if record and not record["paid"]:
-                record["paid"] = True
-                record["paid_at"] = datetime.now(timezone.utc).isoformat()
-                self.store.set(f"fee:{fee_id}", record)
-                self.__fees[f"fee:{fee_id}"] = dict(record)
-                self.__sync_store()
+            elif event.event_type == EventType.FEE_PAY:
+                fee_id = event.payload.get("fee_id", "")
+                record = self.store.get(f"fee:{fee_id}")
+                if record and not record["paid"]:
+                    record["paid"] = True
+                    record["paid_at"] = datetime.now(timezone.utc).isoformat()
+                    self.store.set(f"fee:{fee_id}", record)
+                    self.__fees[f"fee:{fee_id}"] = dict(record)
+                    self.__sync_store()
 
-        elif event.event_type == EventType.PAYMENT_OVERDUE:
-            loan_id = event.payload.get("loan_id", "")
-            if loan_id:
+            elif event.event_type == EventType.PAYMENT_OVERDUE:
+                loan_id = event.payload.get("loan_id", "")
+                if not loan_id:
+                    logger.warning("PAYMENT_OVERDUE missing loan_id, skipped")
+                    return
                 self.__assess(
                     loan_id=loan_id,
                     fee_type="late_payment",

@@ -8,6 +8,8 @@ via configuration; the ``EventBus`` interface remains the same.
 from __future__ import annotations
 
 __all__ = [
+    "AsyncEventBus",
+    "AsyncLocalBus",
     "DeadLetterQueue",
     "DeadLetterRecord",
     "DistributedRateLimiter",
@@ -17,6 +19,7 @@ __all__ = [
     "RateLimiter",
 ]
 
+import asyncio
 import concurrent.futures
 import logging
 import threading
@@ -117,9 +120,22 @@ class DeadLetterQueue:
         if store is None:
             return
         raw = store.get("bus:dlq")
-        if raw is not None and isinstance(raw, list):
-            self.__records = [self._record_from_dict(r) for r in raw
-                              if isinstance(r, dict) and "event" in r]
+        if raw is not None:
+            if isinstance(raw, list):
+                valid: list[DeadLetterRecord] = []
+                skipped = 0
+                for r in raw:
+                    if isinstance(r, dict) and "event" in r:
+                        valid.append(self._record_from_dict(r))
+                    else:
+                        skipped += 1
+                if skipped:
+                    logger.warning("skipped %d corrupted DLQ records on load",
+                                   skipped)
+                self.__records = valid
+            else:
+                logger.warning("corrupted DLQ store data (expected list, got %s), "
+                               "starting with empty DLQ", type(raw).__name__)
 
     def __sync_store(self) -> None:
         store = self.__store
@@ -195,6 +211,64 @@ class DeadLetterQueue:
         for record in to_replay:
             bus.publish(record.event)
         return len(to_replay)
+
+
+class CircuitBreaker:
+    """Per-subscriber circuit breaker that stops dispatching to failing subscribers.
+
+    Transitions: CLOSED -> OPEN (after *failure_threshold* consecutive failures)
+                 OPEN -> HALF_OPEN (after *cooldown_seconds*)
+                 HALF_OPEN -> CLOSED (on success) or -> OPEN (on failure)
+    """
+
+    CLOSED = "closed"
+    OPEN = "open"
+    HALF_OPEN = "half_open"
+
+    def __init__(self, failure_threshold: int = 5, cooldown_seconds: float = 60.0) -> None:
+        self.__threshold: int = failure_threshold
+        self.__cooldown: float = cooldown_seconds
+        self.__lock: threading.Lock = threading.Lock()
+        self.__failures: dict[str, int] = {}
+        self.__state: dict[str, str] = {}
+        self.__opened_at: dict[str, float] = {}
+
+    def allow_request(self, subscriber_id: str) -> bool:
+        """Returns True if the request should be allowed through."""
+        with self.__lock:
+            state = self.__state.get(subscriber_id, self.CLOSED)
+            if state == self.CLOSED:
+                return True
+            if state == self.OPEN:
+                opened = self.__opened_at.get(subscriber_id, 0.0)
+                if time.monotonic() - opened >= self.__cooldown:
+                    self.__state[subscriber_id] = self.HALF_OPEN
+                    return True
+                return False
+            return True  # HALF_OPEN — allow probe request
+
+    def record_failure(self, subscriber_id: str) -> None:
+        """Records a failure for the subscriber. May trip circuit to OPEN."""
+        with self.__lock:
+            count = self.__failures.get(subscriber_id, 0) + 1
+            self.__failures[subscriber_id] = count
+            if count >= self.__threshold:
+                self.__state[subscriber_id] = self.OPEN
+                self.__opened_at[subscriber_id] = time.monotonic()
+
+    def record_success(self, subscriber_id: str) -> None:
+        """Resets failure count and closes the circuit."""
+        with self.__lock:
+            self.__failures.pop(subscriber_id, None)
+            prev = self.__state.pop(subscriber_id, None)
+            self.__opened_at.pop(subscriber_id, None)
+            if prev == self.HALF_OPEN:
+                logger.info("circuit breaker closed for subscriber %s", subscriber_id)
+
+    def state(self, subscriber_id: str) -> str:
+        """Returns the current circuit state for the subscriber."""
+        with self.__lock:
+            return self.__state.get(subscriber_id, self.CLOSED)
 
 
 class RateLimiter:
@@ -354,12 +428,16 @@ class EventBus(ABC):
 class LocalBus(EventBus):
     """Thread-safe in-process event bus with async dispatch and idempotency."""
 
-    def __init__(self, rate_limit: float = 0.0, max_workers: int = 0, store: Store | None = None) -> None:
+    def __init__(self, rate_limit: float = 0.0, max_workers: int = 0,
+                 max_futures: int = 10000, max_buffer_size: int = 0,
+                 store: Store | None = None) -> None:
         """Initialises the local bus.
 
         Args:
             rate_limit: Max events per second per subscriber (0 = unlimited).
             max_workers: Thread pool size (0 = synchronous dispatch).
+            max_futures: Max pending futures before backpressure.
+            max_buffer_size: Max pending events in buffer (0 = unlimited).
             store: Optional Store for DLQ persistence.
         """
         self.__lock: threading.RLock = threading.RLock()
@@ -369,13 +447,15 @@ class LocalBus(EventBus):
         self.__running: bool = False
         self.__dlq: DeadLetterQueue = DeadLetterQueue(store=store)
         self.__idempotency: IdempotencyGuard = IdempotencyGuard()
+        self.__circuit_breaker: CircuitBreaker = CircuitBreaker()
+        self.__max_buffer_size: int = max_buffer_size
         self.__rate_limiter: RateLimiter | None = RateLimiter(
             rate_limit) if rate_limit > 0 else None
         self.__executor: concurrent.futures.ThreadPoolExecutor | None = (
             concurrent.futures.ThreadPoolExecutor(
                 max_workers=max_workers) if max_workers > 0 else None)
         self.__futures: list[concurrent.futures.Future] = []
-        self.__MAX_FUTURES: int = 10000
+        self.__MAX_FUTURES: int = max_futures
 
     @property
     def dlq(self) -> DeadLetterQueue:
@@ -399,6 +479,10 @@ class LocalBus(EventBus):
             The event ID.
         """
         with self.__lock:
+            if self.__max_buffer_size > 0 and len(self.__buffer) >= self.__max_buffer_size:
+                dropped = self.__buffer.pop(0)
+                logger.warning("buffer full, dropping oldest event %s (%s)",
+                               dropped.event_id, dropped.event_type)
             self.__buffer.append(event)
             if self.__running:
                 self.__flush()
@@ -463,6 +547,11 @@ class LocalBus(EventBus):
             handlers = self.__handlers.get(event.event_type,
                                            []) + self.__handlers.get("*", [])
             for sid, handler in handlers:
+                if not self.__circuit_breaker.allow_request(sid):
+                    logger.warning("circuit open for subscriber %s, sending %s to DLQ",
+                                   sid, event.event_type)
+                    self.__dlq.put(event, "circuit_open", sid)
+                    continue
                 if self.__rate_limiter and not self.__rate_limiter.check(
                         f"sub:{sid}"):
                     self.__dlq.put(event, "rate_limited", sid)
@@ -490,14 +579,104 @@ class LocalBus(EventBus):
                         sid: str) -> None:
         try:
             handler(event)
+            self.__circuit_breaker.record_success(sid)
         except Exception as exc:
+            logger.warning("subscriber %s failed on %s (%s), sent to DLQ", sid,
+                           event.event_type, exc)
             tb = traceback.format_exc()
             self.__dlq.put(event, f"{exc}\n{tb}", sid)
+            self.__circuit_breaker.record_failure(sid)
 
     def __dispatch(self, handler: Callable[[Event], None], event: Event,
                    sid: str) -> None:
         try:
             handler(event)
+            self.__circuit_breaker.record_success(sid)
         except Exception as exc:
+            logger.warning("subscriber %s failed on %s (%s), sent to DLQ", sid,
+                           event.event_type, exc)
             tb = traceback.format_exc()
             self.__dlq.put(event, f"{exc}\n{tb}", sid)
+            self.__circuit_breaker.record_failure(sid)
+
+
+class AsyncEventBus(ABC):
+    """Abstract async event bus. Same contract as EventBus but for async subscribers."""
+
+    @abstractmethod
+    async def publish(self, event: Event) -> str:
+        """Publishes an event to all matching subscribers. Returns the event ID."""
+
+    @abstractmethod
+    async def subscribe(self, event_type: str, handler: Callable[[Event], None]) -> str:
+        """Registers a handler for *event_type* (use ``*`` for wildcard).
+
+        Returns a subscription ID that can be passed to ``unsubscribe``.
+        """
+
+    @abstractmethod
+    async def unsubscribe(self, subscription_id: str) -> None:
+        """Removes a previously registered subscription."""
+
+    @abstractmethod
+    async def start(self) -> None:
+        """Starts delivering buffered events."""
+
+    @abstractmethod
+    async def stop(self) -> None:
+        """Stops event delivery and clears all subscriptions."""
+
+    @property
+    @abstractmethod
+    def dlq(self) -> DeadLetterQueue:
+        """Returns the dead-letter queue for this bus."""
+
+    @property
+    @abstractmethod
+    def idempotency(self) -> IdempotencyGuard:
+        """Returns the idempotency guard for this bus."""
+
+
+class AsyncLocalBus(AsyncEventBus):
+    """Async in-process event bus — uses asyncio for non-blocking dispatch.
+
+    Wraps a synchronous LocalBus and dispatches events in a thread pool
+    executor to avoid blocking the async event loop.
+    """
+
+    def __init__(self, rate_limit: float = 0.0, max_workers: int = 4,
+                 max_futures: int = 10000, store: Store | None = None) -> None:
+        self.__loop: asyncio.AbstractEventLoop | None = None
+        self.__local_bus: LocalBus = LocalBus(
+            rate_limit=rate_limit,
+            max_workers=max_workers,
+            max_futures=max_futures,
+            store=store,
+        )
+        self.__running: bool = False
+
+    @property
+    def dlq(self) -> DeadLetterQueue:
+        return self.__local_bus.dlq
+
+    @property
+    def idempotency(self) -> IdempotencyGuard:
+        return self.__local_bus.idempotency
+
+    async def publish(self, event: Event) -> str:
+        self.__local_bus.publish(event)
+        return event.event_id
+
+    async def subscribe(self, event_type: str, handler: Callable[[Event], None]) -> str:
+        return self.__local_bus.subscribe(event_type, handler)
+
+    async def unsubscribe(self, subscription_id: str) -> None:
+        self.__local_bus.unsubscribe(subscription_id)
+
+    async def start(self) -> None:
+        self.__running = True
+        self.__local_bus.start()
+
+    async def stop(self) -> None:
+        self.__running = False
+        self.__local_bus.stop()

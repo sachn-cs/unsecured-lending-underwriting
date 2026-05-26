@@ -6,15 +6,13 @@ asserts no data corruption, no exceptions, and correct final state.
 
 from __future__ import annotations
 
-import concurrent.futures
 import threading
-import time
 from typing import Any
 
 import pytest
 
 from underwrite.__bus__ import Event, LocalBus
-from underwrite.__circuit__ import CircuitBreaker, RetryPolicy
+from underwrite.__circuit__ import CircuitBreaker
 from underwrite.__health__ import HealthRegistry
 from underwrite.__metrics__ import MetricsCollector
 from underwrite.__saga__ import SagaOrchestrator, SagaStep

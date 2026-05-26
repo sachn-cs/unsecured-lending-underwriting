@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+__all__ = [
+    "Event",
+    "EventType",
+]
+
 import enum
 import uuid
 from dataclasses import dataclass, field

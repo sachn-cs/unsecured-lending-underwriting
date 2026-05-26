@@ -253,7 +253,7 @@ class TestEdgeCases:
         # Access private __records to verify deque maxlen
         records = svc._FraudService__records
         borrower = "maxlen_test"
-        for i in range(2000):
+        for _i in range(2000):
             svc.handle(
                 Event(event_type=EventType.LOAN_ORIGINATED,
                       source="test",

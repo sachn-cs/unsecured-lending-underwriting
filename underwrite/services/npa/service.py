@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import logging
 import threading
+from datetime import datetime, timezone
 from typing import Any
 
 from underwrite.__events__ import Event, EventType
 from underwrite.services import NanoService
 from underwrite.validate import get_finite, get_non_empty
+
+logger = logging.getLogger(__name__)
 
 
 class NPAService(NanoService):
@@ -29,33 +32,37 @@ class NPAService(NanoService):
         self.__load_store()
 
     def handle(self, event: Event) -> None:
-        if event.event_type == EventType.LOAN_ORIGINATED:
-            borrower: str = get_non_empty(event.payload, "borrower")
-            self.__accounts[borrower] = {
-                "originated_at": datetime.now(timezone.utc).isoformat(),
-                "days_overdue": 0,
-                "dlg_invoked": False,
-            }
-            self.__sync_store()
-        elif event.event_type == EventType.DEFAULT_OCCURRED:
-            borrower = event.payload.get("borrower", "")
-            record = self.__accounts.get(borrower, {})
-            days: int = record.get("days_overdue", self.__trigger_days)
-            bucket: str = self.classify_overdue_days(days)
-            self.emit(EventType.NPA_BUCKET_CHANGED, {
-                "borrower": borrower,
-                "bucket": bucket,
-            },
-                      correlation_id=event.correlation_id)
-            if borrower in self.__accounts and days >= self.__trigger_days and not record.get(
-                    "dlg_invoked", False):
-                self.__accounts[borrower]["dlg_invoked"] = True
+        with self.__lock:
+            if event.event_type == EventType.LOAN_ORIGINATED:
+                borrower: str = get_non_empty(event.payload, "borrower")
+                self.__accounts[borrower] = {
+                    "originated_at": datetime.now(timezone.utc).isoformat(),
+                    "days_overdue": 0,
+                    "dlg_invoked": False,
+                }
                 self.__sync_store()
-                self.emit(EventType.DLG_TRIGGERED, {
-                    "loan_id": borrower,
-                    "recovery_amount": get_finite(event.payload, "principal", 0.0),
+            elif event.event_type == EventType.DEFAULT_OCCURRED:
+                borrower = event.payload.get("borrower", "")
+                if not borrower:
+                    logger.warning("dropping DEFAULT_OCCURRED with missing borrower")
+                    return
+                record = self.__accounts.get(borrower, {})
+                days: int = record.get("days_overdue", self.__trigger_days)
+                bucket: str = self.classify_overdue_days(days)
+                self.emit(EventType.NPA_BUCKET_CHANGED, {
+                    "borrower": borrower,
+                    "bucket": bucket,
                 },
                           correlation_id=event.correlation_id)
+                if borrower in self.__accounts and days >= self.__trigger_days and not record.get(
+                        "dlg_invoked", False):
+                    self.__accounts[borrower]["dlg_invoked"] = True
+                    self.__sync_store()
+                    self.emit(EventType.DLG_TRIGGERED, {
+                        "loan_id": borrower,
+                        "recovery_amount": get_finite(event.payload, "principal", 0.0),
+                    },
+                              correlation_id=event.correlation_id)
 
     def mark_overdue(self, borrower: str, days: int) -> None:
         """Update the days-past-due counter for a borrower.
@@ -64,9 +71,10 @@ class NPAService(NanoService):
             borrower: The borrower identifier.
             days: Number of days past due to record.
         """
-        if borrower in self.__accounts:
-            self.__accounts[borrower]["days_overdue"] = days
-            self.__sync_store()
+        with self.__lock:
+            if borrower in self.__accounts:
+                self.__accounts[borrower]["days_overdue"] = days
+                self.__sync_store()
 
     # -- state persistence ---------------------------------------------------
 

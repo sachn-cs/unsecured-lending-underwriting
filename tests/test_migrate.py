@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
+
+from underwrite.__exceptions__ import MigrationError
 from underwrite.__migrate__ import Migration, MigrationPlan, default_plan
 
 
@@ -29,11 +32,8 @@ class TestMigrationPlan:
     def test_duplicate_version_raises(self) -> None:
         plan = MigrationPlan()
         plan.add(Migration(version=1, description="first"))
-        try:
+        with pytest.raises(MigrationError, match="duplicate migration version 1"):
             plan.add(Migration(version=1, description="dupe"))
-            raise AssertionError("expected error")
-        except Exception:
-            pass
 
     def test_latest_version(self) -> None:
         plan = MigrationPlan()

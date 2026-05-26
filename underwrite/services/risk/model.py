@@ -154,6 +154,11 @@ class RiskModel:
 
     def predict(self, principal: float, term: float) -> float:
         """Returns a default-probability score in [0.0, 1.0]."""
+        import math as _math
+        if not _math.isfinite(principal) or not _math.isfinite(term):
+            logger.warning("non-finite inputs to risk model: principal=%r, term=%r", principal, term)
+            principal = max(principal, 0.0) if _math.isfinite(principal) else 0.0
+            term = max(term, 1.0) if _math.isfinite(term) else 1.0
         try:
             return self.__strategy.predict(principal, term)
         except Exception as exc:

@@ -199,8 +199,15 @@ class SagaOrchestrator:
             self.__persist_saga(saga)
         return saga.saga_id
 
+    def __step_idempotency_key(self, saga_id: str, step_index: int) -> str:
+        return f"saga_step:{saga_id}:{step_index}"
+
     def execute_step(self, saga_id: str, step_index: int) -> bool:
         """Executes a single saga step and rolls back on failure.
+
+        Checks idempotency via the store — if ``saga_step:{saga_id}:{step_index}``
+        already exists the step is considered already completed and skipped.
+        This guarantees safe replay after a crash.
 
         Args:
             saga_id: Target saga ID.
@@ -209,6 +216,11 @@ class SagaOrchestrator:
         Returns:
             ``True`` if the step succeeded, ``False`` otherwise.
         """
+        idem_key = self.__step_idempotency_key(saga_id, step_index)
+        if self.__store.get(idem_key) is not None:
+            logger.debug("saga %s step %d already completed (idempotency), skipping",
+                         saga_id, step_index)
+            return True
         with self.__lock:
             saga = self.__sagas.get(saga_id)
             if not saga or saga.status != "started":
@@ -230,6 +242,7 @@ class SagaOrchestrator:
                 if saga_id in self.__sagas:
                     self.__sagas[saga_id].completed_steps.append(step_index)
                     self.__persist_saga(self.__sagas[saga_id])
+                self.__store.set(idem_key, True)
                 return True
             except Exception as exc:
                 tb = traceback.format_exc()

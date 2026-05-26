@@ -12,6 +12,7 @@ __all__ = [
     "RetryPolicy",
 ]
 
+import logging
 import threading
 import time
 from collections.abc import Callable
@@ -19,6 +20,8 @@ from enum import Enum
 from typing import Any
 
 from underwrite.__exceptions__ import CircuitBreakerOpenError
+
+logger = logging.getLogger(__name__)
 
 
 class CircuitState(Enum):
@@ -94,19 +97,30 @@ class CircuitBreaker:
                 if time.monotonic(
                 ) - self.__last_failure_time >= self.__recovery_timeout:
                     self.__state = CircuitState.HALF_OPEN
+                    logger.info("circuit %s half-open (recovery timeout elapsed)",
+                                self.__name)
             return self.__state
 
     def __on_success(self) -> None:
         with self.__lock:
+            prev = self.__state
             self.__failure_count = 0
             self.__state = CircuitState.CLOSED
+        if prev != CircuitState.CLOSED:
+            logger.info("circuit %s recovered (%s -> closed)", self.__name, prev.value)
 
     def __on_failure(self) -> None:
+        tripped = False
         with self.__lock:
             self.__failure_count += 1
             self.__last_failure_time = time.monotonic()
             if self.__failure_count >= self.__failure_threshold:
+                if self.__state != CircuitState.OPEN:
+                    tripped = True
                 self.__state = CircuitState.OPEN
+        if tripped:
+            logger.warning("circuit %s tripped open (%d failures)", self.__name,
+                           self.__failure_threshold)
 
 
 class RetryPolicy:

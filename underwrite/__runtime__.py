@@ -176,6 +176,7 @@ class Runtime:
         return LocalBus(
             rate_limit=self.__config.bus.rate_limit,
             max_workers=self.__config.bus.max_workers,
+            max_futures=self.__config.bus.max_futures,
             store=self.__store,
         )
 
@@ -219,8 +220,12 @@ class Runtime:
             import json as json_mod
             p = Path(policy_file)
             if p.exists():
-                with open(p) as fh:
-                    rules = json_mod.load(fh)
+                try:
+                    with open(p) as fh:
+                        rules = json_mod.load(fh)
+                except (json_mod.JSONDecodeError, OSError) as exc:
+                    logger.error("failed to load authz policy file %s: %s", policy_file, exc)
+                    return None
                 for rule in rules.get("allow", []):
                     acl.allow(rule.get("subject", "*"),
                               rule.get("resource", "*"))
@@ -392,6 +397,7 @@ class Runtime:
             authz=self.__authz,
             tracer=self.__tracer,
             saga=self.__saga,
+            supervisor=self.__supervisor,
             **extra,
         )
         self.__services[service_name] = svc
@@ -458,6 +464,19 @@ class Runtime:
             correlation_id=correlation_id or "",
         )
         return self.__bus.publish(event)
+
+    async def async_publish(self,
+                            event_type: str,
+                            payload: dict[str, Any],
+                            correlation_id: str = "") -> str:
+        """Async variant of ``publish`` for use in async contexts (e.g. FastAPI).
+
+        Dispatches the synchronous publish to a thread pool to avoid
+        blocking the async event loop.
+        """
+        import asyncio
+        return await asyncio.to_thread(
+            self.publish, event_type, payload, correlation_id)
 
     def replay_saga(self, saga_id: str) -> bool:
         """Replays an incomplete saga for crash recovery.

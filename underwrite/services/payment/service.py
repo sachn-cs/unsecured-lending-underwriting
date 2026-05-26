@@ -26,70 +26,71 @@ class PaymentService(NanoService):
         self.__load_store()
 
     def handle(self, event: Event) -> None:
-        if event.event_type == EventType.PAYMENT_RECEIVE:
-            loan_id: str = event.payload.get("loan_id", "")
-            amount: float = get_finite(event.payload, "amount", 0.0)
-            if not loan_id or amount <= 0:
-                return
-            payment_id: str = f"pay_{loan_id}_{int(datetime.now(timezone.utc).timestamp())}"
-            receipt = {
-                "loan_id": loan_id,
-                "amount": amount,
-                "received_at": datetime.now(timezone.utc).isoformat(),
-            }
-            self.store.set(f"payment:{payment_id}", receipt)
-            self.__payments[f"payment:{payment_id}"] = receipt
-            self.__sync_store()
-            self.emit(EventType.PAYMENT_RECEIVED, {
-                "payment_id": payment_id,
-                "loan_id": loan_id,
-                "amount": amount,
-            },
-                      correlation_id=event.correlation_id)
+        with self.__lock:
+            if event.event_type == EventType.PAYMENT_RECEIVE:
+                loan_id: str = event.payload.get("loan_id", "")
+                amount: float = get_finite(event.payload, "amount", 0.0)
+                if not loan_id or amount <= 0:
+                    return
+                payment_id: str = f"pay_{loan_id}_{int(datetime.now(timezone.utc).timestamp())}"
+                receipt = {
+                    "loan_id": loan_id,
+                    "amount": amount,
+                    "received_at": datetime.now(timezone.utc).isoformat(),
+                }
+                self.store.set(f"payment:{payment_id}", receipt)
+                self.__payments[f"payment:{payment_id}"] = receipt
+                self.__sync_store()
+                self.emit(EventType.PAYMENT_RECEIVED, {
+                    "payment_id": payment_id,
+                    "loan_id": loan_id,
+                    "amount": amount,
+                },
+                          correlation_id=event.correlation_id)
 
-        elif event.event_type == EventType.PAYMENT_SCHEDULE:
-            loan_id = event.payload.get("loan_id", "")
-            due_date: str = event.payload.get("due_date", "")
-            amount = get_finite(event.payload, "amount", 0.0)
-            if not loan_id or not due_date:
-                return
-            schedule_key: str = f"schedule:{loan_id}:{due_date}"
-            schedule = {
-                "loan_id": loan_id,
-                "due_date": due_date,
-                "amount": amount,
-                "status": "pending",
-            }
-            self.store.set(schedule_key, schedule)
-            self.__payments[schedule_key] = schedule
-            self.__sync_store()
-            self.emit(EventType.PAYMENT_DUE, {
-                "loan_id": loan_id,
-                "due_date": due_date,
-                "amount": amount,
-            },
-                      correlation_id=event.correlation_id)
+            elif event.event_type == EventType.PAYMENT_SCHEDULE:
+                loan_id = event.payload.get("loan_id", "")
+                due_date: str = event.payload.get("due_date", "")
+                amount = get_finite(event.payload, "amount", 0.0)
+                if not loan_id or not due_date:
+                    return
+                schedule_key: str = f"schedule:{loan_id}:{due_date}"
+                schedule = {
+                    "loan_id": loan_id,
+                    "due_date": due_date,
+                    "amount": amount,
+                    "status": "pending",
+                }
+                self.store.set(schedule_key, schedule)
+                self.__payments[schedule_key] = schedule
+                self.__sync_store()
+                self.emit(EventType.PAYMENT_DUE, {
+                    "loan_id": loan_id,
+                    "due_date": due_date,
+                    "amount": amount,
+                },
+                          correlation_id=event.correlation_id)
 
-        elif event.event_type == EventType.PAYMENT_CHECK_OVERDUE:
-            loan_id = event.payload.get("loan_id", "")
-            if not loan_id:
-                return
-            cutoff: datetime = datetime.now(timezone.utc) - timedelta(days=30)
-            for key in self.store.keys(f"schedule:{loan_id}:"):
-                schedule = self.store.get(key)
-                if schedule and schedule.get("status") == "pending":
-                    due = datetime.fromisoformat(schedule["due_date"])
-                    if due < cutoff:
-                        schedule["status"] = "overdue"
-                        self.store.set(key, schedule)
-                        self.__payments[key] = dict(schedule)
-                        self.__sync_store()
-                        self.emit(EventType.PAYMENT_OVERDUE, {
-                            "loan_id": loan_id,
-                            "due_date": schedule["due_date"],
-                            "amount": schedule["amount"],
-                        },
-                                  correlation_id=event.correlation_id)
+            elif event.event_type == EventType.PAYMENT_CHECK_OVERDUE:
+                loan_id = event.payload.get("loan_id", "")
+                if not loan_id:
+                    return
+                cutoff: datetime = datetime.now(timezone.utc) - timedelta(days=30)
+                for key in self.store.keys(f"schedule:{loan_id}:"):
+                    schedule = self.store.get(key)
+                    if schedule and schedule.get("status") == "pending":
+                        due = datetime.fromisoformat(schedule["due_date"])
+                        if due < cutoff:
+                            schedule["status"] = "overdue"
+                            self.store.set(key, schedule)
+                            self.__payments[key] = dict(schedule)
+                            self.__sync_store()
+                            self.emit(EventType.PAYMENT_OVERDUE, {
+                                "loan_id": loan_id,
+                                "due_date": schedule["due_date"],
+                                "amount": schedule["amount"],
+                            },
+                                      correlation_id=event.correlation_id)
 
     # -- state persistence ---------------------------------------------------
 

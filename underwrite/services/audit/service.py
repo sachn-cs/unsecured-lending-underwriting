@@ -134,16 +134,22 @@ class AuditService(NanoService):
         except Exception as exc:
             logger.exception("audit GCS export failed: %s", exc)
 
-    def save_jsonl(self, path: str) -> None:
-        """Write the entire audit ledger to a JSONL file.
+    def save_jsonl(self, path: str, chunk_size: int = 1000) -> None:
+        """Write the audit ledger to a JSONL file, streaming in chunks.
 
         Args:
             path: Destination file path.
+            chunk_size: Records per chunk to avoid holding full ledger in memory.
         """
-        lines: list[str] = []
-        for record in self.__ledger:
-            lines.append(json.dumps(record, sort_keys=True))
-        Path(path).write_text("\n".join(lines) + "\n")
+        with open(path, "w") as fh:
+            batch: list[str] = []
+            for record in self.__ledger:
+                batch.append(json.dumps(record, sort_keys=True))
+                if len(batch) >= chunk_size:
+                    fh.write("\n".join(batch) + "\n")
+                    batch.clear()
+            if batch:
+                fh.write("\n".join(batch) + "\n")
 
     def load_jsonl(self, path: str) -> None:
         """Load audit records from a JSONL file, replacing the current ledger.

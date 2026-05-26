@@ -134,7 +134,7 @@ class TestAuditService:
         svc.export()  # should not raise
 
     def test_export_s3_calls_boto3(self) -> None:
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import MagicMock, patch
         put_called = [False]
 
         mock_s3 = MagicMock()

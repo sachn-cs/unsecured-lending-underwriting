@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import threading
-from collections import deque
+from collections import OrderedDict, deque
 from datetime import datetime, timezone
 from typing import Any
 
@@ -15,6 +15,8 @@ from underwrite.validate import get_finite, get_non_empty
 class FraudService(NanoService):
     """Detects wash lending, burst origination patterns, and configurable fraud rules."""
 
+    MAX_BORROWERS: int = 100000
+
     def __init__(self, **kwargs: Any) -> None:
         """Initialise the fraud service with an empty activity record store.
 
@@ -23,7 +25,7 @@ class FraudService(NanoService):
         """
         super().__init__(**kwargs)
         self.__lock: threading.RLock = threading.RLock()
-        self.__records: dict[str, deque[dict[str, Any]]] = {}
+        self.__records: OrderedDict[str, deque[dict[str, Any]]] = OrderedDict()
         self.__load_store()
 
     def handle(self, event: Event) -> None:
@@ -35,28 +37,35 @@ class FraudService(NanoService):
         Args:
             event: The incoming event. LOAN_ORIGINATED and REPAID are processed.
         """
-        if event.event_type == EventType.LOAN_ORIGINATED:
-            borrower: str = get_non_empty(event.payload, "borrower")
-            principal: float = get_finite(event.payload, "principal")
-            self.__record(borrower, "origination", principal)
-            self.__check_wash(borrower, event.correlation_id)
-            self.__check_burst(borrower, event.correlation_id)
-            if principal > 1_000_000:
-                self.emit(EventType.FRAUD_ALERT, {
-                    "rule": "large_origination",
-                    "borrower": borrower,
-                    "principal": principal,
-                },
-                          correlation_id=event.correlation_id)
-        elif event.event_type == EventType.REPAID:
-            user: str = get_non_empty(event.payload, "user")
-            delta: float = get_finite(event.payload, "delta_earned")
-            self.__record(user, "repayment", delta)
-            self.__check_wash(user, event.correlation_id)
+        with self.__lock:
+            if event.event_type == EventType.LOAN_ORIGINATED:
+                borrower: str = get_non_empty(event.payload, "borrower")
+                principal: float = get_finite(event.payload, "principal")
+                self.__record(borrower, "origination", principal)
+                self.__check_wash(borrower, event.correlation_id)
+                self.__check_burst(borrower, event.correlation_id)
+                if principal > 1_000_000:
+                    self.emit(EventType.FRAUD_ALERT, {
+                        "rule": "large_origination",
+                        "borrower": borrower,
+                        "principal": principal,
+                    },
+                              correlation_id=event.correlation_id)
+            elif event.event_type == EventType.REPAID:
+                user: str = get_non_empty(event.payload, "user")
+                delta: float = get_finite(event.payload, "delta_earned")
+                self.__record(user, "repayment", delta)
+                self.__check_wash(user, event.correlation_id)
 
     def __record(self, borrower: str, event_type: str, amount: float) -> None:
         with self.__lock:
-            records = self.__records.setdefault(borrower, deque(maxlen=1000))
+            if borrower not in self.__records:
+                if len(self.__records) >= self.MAX_BORROWERS:
+                    self.__records.popitem(last=False)
+                self.__records[borrower] = deque(maxlen=1000)
+            else:
+                self.__records.move_to_end(borrower)
+            records = self.__records[borrower]
             records.append({
                 "event_type": event_type,
                 "amount": amount,
@@ -65,7 +74,8 @@ class FraudService(NanoService):
             self.__sync_store()
 
     def __check_wash(self, borrower: str, correlation_id: str) -> None:
-        records = self.__records.get(borrower, deque())
+        with self.__lock:
+            records = self.__records.get(borrower, deque())
         cycles: int = 0
         i: int = 0
         while i < len(records) - 1:
@@ -84,7 +94,8 @@ class FraudService(NanoService):
                       correlation_id=correlation_id)
 
     def __check_burst(self, borrower: str, correlation_id: str) -> None:
-        records = self.__records.get(borrower, deque())
+        with self.__lock:
+            records = self.__records.get(borrower, deque())
         recent = [r for r in records if r["event_type"] == "origination"]
         if len(recent) > 3:
             self.emit(EventType.VELOCITY_FLAG, {
@@ -108,6 +119,9 @@ class FraudService(NanoService):
         raw = self.store.get(f"{self.service_id}:records")
         if raw is None or not isinstance(raw, dict):
             return
-        self.__records = {
-            k: deque(v, maxlen=1000) for k, v in raw.items()
-        }
+        with self.__lock:
+            result: OrderedDict[str, deque[dict[str, Any]]] = OrderedDict()
+            for k, v in raw.items():
+                if isinstance(v, list):
+                    result[k] = deque(v, maxlen=1000)
+            self.__records = result

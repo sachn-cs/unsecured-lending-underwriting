@@ -7,11 +7,14 @@ settlement services.
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 
 from underwrite.__events__ import Event, EventType
 from underwrite.services.base import NanoService
 from underwrite.validate import get_finite
+
+logger = logging.getLogger(__name__)
 
 
 class ServicingService(NanoService):
@@ -23,6 +26,7 @@ class ServicingService(NanoService):
             borrower: str = event.payload.get("borrower", "")
             principal: float = get_finite(event.payload, "principal", 0.0)
             if not loan_id:
+                logger.warning("dropping LOAN_ORIGINATED with missing loan_id")
                 return
             self.store.set(
                 f"loan:{loan_id}", {
@@ -35,6 +39,9 @@ class ServicingService(NanoService):
 
         elif event.event_type == EventType.REPAID:
             loan_id = event.payload.get("loan_id", "")
+            if not loan_id:
+                logger.warning("dropping REPAID with missing loan_id")
+                return
             amount: float = get_finite(event.payload, "amount", 0.0)
             record = self.store.get(f"loan:{loan_id}")
             if record:
@@ -46,6 +53,9 @@ class ServicingService(NanoService):
 
         elif event.event_type == EventType.DEFAULT_OCCURRED:
             loan_id = event.payload.get("loan_id", "")
+            if not loan_id:
+                logger.warning("dropping DEFAULT_OCCURRED with missing loan_id")
+                return
             record = self.store.get(f"loan:{loan_id}")
             if record:
                 record["status"] = "defaulted"

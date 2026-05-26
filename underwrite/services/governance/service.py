@@ -63,23 +63,24 @@ class GovernanceService(NanoService):
         Args:
             event: The incoming event. Only GOVERNANCE_PROPOSAL events are processed.
         """
-        if event.event_type == EventType.GOVERNANCE_PROPOSAL:
-            p = event.payload
-            param: str = get_non_empty(p, "param")
-            value: float = get_finite(p, "value")
-            if param not in self.__params:
-                logger.warning("governance proposal for unknown param %r ignored", param)
-                return
-            lo, hi = self.__ranges[param]
-            if not (lo <= value <= hi):
-                return
-            self.__params[param] = value
-            self.__sync_store()
-            self.emit(EventType.GOVERNANCE_EXECUTED, {
-                "param": param,
-                "value": value,
-            },
-                      correlation_id=event.correlation_id)
+        with self.__lock:
+            if event.event_type == EventType.GOVERNANCE_PROPOSAL:
+                p = event.payload
+                param: str = get_non_empty(p, "param")
+                value: float = get_finite(p, "value")
+                if param not in self.__params:
+                    logger.warning("governance proposal for unknown param %r ignored", param)
+                    return
+                lo, hi = self.__ranges[param]
+                if not (lo <= value <= hi):
+                    return
+                self.__params[param] = value
+                self.__sync_store()
+                self.emit(EventType.GOVERNANCE_EXECUTED, {
+                    "param": param,
+                    "value": value,
+                },
+                          correlation_id=event.correlation_id)
 
     # -- state persistence ---------------------------------------------------
 
@@ -98,11 +99,13 @@ class GovernanceService(NanoService):
     @property
     def params(self) -> dict[str, float]:
         """Return a snapshot of all current protocol parameters."""
-        return dict(self.__params)
+        with self.__lock:
+            return dict(self.__params)
 
     def health_check(self) -> dict[str, Any]:
         """Governance-specific health: reports active param count."""
-        return {
-            **super().health_check(),
-            "param_count": len(self.__params),
-        }
+        with self.__lock:
+            return {
+                **super().health_check(),
+                "param_count": len(self.__params),
+            }

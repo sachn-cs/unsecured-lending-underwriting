@@ -9,19 +9,20 @@ from typing import Any
 import pytest
 
 from underwrite.__exceptions__ import StoreError
+from underwrite.__metrics__ import MetricsCollector
 from underwrite.__store__ import CQRSStore, FileStore, MemoryStore, PostgresStore, ReadStore, Store
 
 
 class TestFileStoreCorruption:
 
-    def test_corrupted_json_returns_none(self) -> None:
+    def test_corrupted_json_raises_store_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             store = FileStore(tmp)
             store.set("key1", {"value": 42})
             path = Path(tmp) / "key1.json"
             path.write_text("not valid json{{{")
-            result = store.get("key1")
-            assert result is None
+            with pytest.raises(StoreError, match="corrupted store file"):
+                store.get("key1")
 
     def test_missing_file_returns_none(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -29,14 +30,38 @@ class TestFileStoreCorruption:
             result = store.get("nonexistent")
             assert result is None
 
-    def test_corrupted_file_logs_error(self) -> None:
+    def test_corrupted_file_raises_store_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             store = FileStore(tmp)
             store.set("key1", {"value": 42})
             path = Path(tmp) / "key1.json"
             path.write_text("{bad json]")
-            result = store.get("key1")
-            assert result is None
+            with pytest.raises(StoreError, match="corrupted store file"):
+                store.get("key1")
+
+    def test_corruption_increments_metric(self) -> None:
+        metrics = MetricsCollector()
+        with tempfile.TemporaryDirectory() as tmp:
+            store = FileStore(tmp, metrics_collector=metrics)
+            store.set("key1", {"value": 42})
+            path = Path(tmp) / "key1.json"
+            path.write_text("garbage{{{")
+            with pytest.raises(StoreError):
+                store.get("key1")
+        snapshot = metrics.snapshot()
+        assert any(k.startswith("store.corruption") for k in snapshot["counters"])
+
+    def test_io_error_increments_metric(self) -> None:
+        metrics = MetricsCollector()
+        with tempfile.TemporaryDirectory() as tmp:
+            store = FileStore(tmp, metrics_collector=metrics)
+            store.set("key1", {"value": 42})
+            path = Path(tmp) / "key1.json"
+            path.chmod(0o200)
+            with pytest.raises(StoreError):
+                store.get("key1")
+        snapshot = metrics.snapshot()
+        assert any(k.startswith("store.io_error") for k in snapshot["counters"])
 
 
 class TestMemoryStore:
@@ -151,11 +176,30 @@ class TestCQRSStore:
         cqrs = CQRSStore(write, read)
         assert cqrs.exists("k") is True
 
-    def test_health_delegates_to_read(self) -> None:
+    def test_health_checks_both_stores(self) -> None:
         write = MockStore()
         read = MockReadStore()
         cqrs = CQRSStore(write, read)
-        assert cqrs.health() == {"ok": True}
+        result = cqrs.health()
+        assert result["ok"] is True
+        assert result["read_store"]["ok"] is True
+        assert result["write_store"]["ok"] is True
+
+    def test_health_detects_write_failure(self) -> None:
+        class BrokenWriteStore(Store):
+            def get(self, key: str) -> None: return None
+            def set(self, key: str, value: Any) -> None: pass
+            def delete(self, key: str) -> bool: return False
+            def exists(self, key: str) -> bool: return False
+            def keys(self, pattern: str | None = None, limit: int = 0, offset: int = 0) -> list[str]: return []
+            def health(self) -> dict[str, Any]:
+                raise RuntimeError("write store down")
+        write = BrokenWriteStore()
+        read = MockReadStore()
+        cqrs = CQRSStore(write, read)
+        result = cqrs.health()
+        assert result["ok"] is False
+        assert result["write_store"]["ok"] is False
 
 
 class TestFileStorePathTraversal:

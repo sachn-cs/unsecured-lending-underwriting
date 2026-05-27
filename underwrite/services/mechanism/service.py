@@ -7,6 +7,7 @@ state-transition commands.  Every other service either queries this state
 
 from __future__ import annotations
 
+import logging
 import threading
 from typing import Any
 
@@ -14,6 +15,8 @@ from underwrite.__events__ import Event, EventType
 from underwrite.__exceptions__ import InfeasibleOperationError, ProtocolError
 from underwrite.services import NanoService
 from underwrite.validate import get_finite, get_non_empty, get_non_negative, get_positive
+
+logger = logging.getLogger(__name__)
 
 EPSILON: float = 1e-12
 
@@ -68,6 +71,39 @@ class MechanismService(NanoService):
             return dict(self.__principal)
 
     # -- NanoService interface -----------------------------------------------
+
+    def __snapshot(self) -> dict[str, Any]:
+        """Capture current in-memory state for rollback on persist failure."""
+        return {
+            "seeds": set(self.__seeds),
+            "parent": dict(self.__parent),
+            "children": {k: list(v) for k, v in self.__children.items()},
+            "delegation": dict(self.__delegation),
+            "base_budget": dict(self.__base_budget),
+            "earned": dict(self.__earned),
+            "principal": dict(self.__principal),
+            "loans": {k: list(v) for k, v in self.__loans.items()},
+        }
+
+    def __restore(self, snap: dict[str, Any]) -> None:
+        """Restore in-memory state from a snapshot after a persist failure."""
+        self.__seeds = snap["seeds"]
+        self.__parent = snap["parent"]
+        self.__children = snap["children"]
+        self.__delegation = snap["delegation"]
+        self.__base_budget = snap["base_budget"]
+        self.__earned = snap["earned"]
+        self.__principal = snap["principal"]
+        self.__loans = snap["loans"]
+
+    def __persist_or_rollback(self, snap: dict[str, Any]) -> None:
+        """Persist state to store; roll back in-memory state on failure."""
+        try:
+            self.__sync_store()
+        except Exception:
+            logger.exception("failed to persist mechanism state, rolling back in-memory state")
+            self.__restore(snap)
+            raise
 
     def handle(self, event: Event) -> None:
         """Dispatch a command event to the appropriate handler.
@@ -162,13 +198,14 @@ class MechanismService(NanoService):
         budget: float = get_positive(p, "base_budget")
         if user in self.__earned:
             raise ProtocolError(f"user already exists: {user}")
+        snap = self.__snapshot()
         self.__seeds.add(user)
         self.__base_budget[user] = budget
         self.__earned[user] = 0.0
         self.__principal[user] = 0.0
         self.__children[user] = []
+        self.__persist_or_rollback(snap)
         self.emit(EventType.SEED_ADDED, p, correlation_id=event.correlation_id)
-        self.__sync_store()
 
     def __add_user(self, event: Event) -> None:
         p = event.payload
@@ -180,23 +217,25 @@ class MechanismService(NanoService):
             raise ProtocolError(f"user already exists: {user}")
         if self.credit_limit(sponsor) < amount:
             raise InfeasibleOperationError("insufficient sponsor credit limit")
+        snap = self.__snapshot()
         self.__parent[user] = sponsor
         self.__children[user] = []
         self.__children[sponsor].append(user)
         self.__delegation[(sponsor, user)] = amount
         self.__earned[user] = 0.0
         self.__principal[user] = 0.0
+        self.__persist_or_rollback(snap)
         self.emit(EventType.USER_ADDED, p, correlation_id=event.correlation_id)
-        self.__sync_store()
 
     def __repay(self, event: Event) -> None:
         p = event.payload
         user: str = get_non_empty(p, "user")
         delta: float = get_non_negative(p, "delta_earned")
         self.__require_user(user)
+        snap = self.__snapshot()
         self.__earned[user] += delta
+        self.__persist_or_rollback(snap)
         self.emit(EventType.REPAID, p, correlation_id=event.correlation_id)
-        self.__sync_store()
 
     def __originate(self, event: Event) -> None:
         p = event.payload
@@ -218,6 +257,8 @@ class MechanismService(NanoService):
             raise ProtocolError("default probability must be in (0,1)")
 
         protocol_premium: float = pr * principal * term
+        p["protocol_premium"] = protocol_premium
+        snap = self.__snapshot()
         self.__principal[borrower] = self.__principal.get(borrower,
                                                           0.0) + principal
         loan: dict[str, Any] = {
@@ -230,11 +271,10 @@ class MechanismService(NanoService):
             "protocol_premium": protocol_premium,
         }
         self.__loans.setdefault(borrower, []).append(loan)
-        p["protocol_premium"] = protocol_premium
+        self.__persist_or_rollback(snap)
         self.emit(EventType.LOAN_ORIGINATED,
                   p,
                   correlation_id=event.correlation_id)
-        self.__sync_store()
 
     def __default(self, event: Event) -> None:
         p = event.payload
@@ -244,6 +284,7 @@ class MechanismService(NanoService):
         if borrower_principal <= 0:
             raise InfeasibleOperationError("no outstanding principal")
 
+        snap = self.__snapshot()
         absorb: float = min(self.__earned.get(borrower, 0.0),
                             borrower_principal)
         self.__earned[borrower] = self.__earned.get(borrower, 0.0) - absorb
@@ -275,10 +316,10 @@ class MechanismService(NanoService):
 
         self.__principal[borrower] = 0.0
         self.__loans.pop(borrower, None)
+        self.__persist_or_rollback(snap)
         self.emit(EventType.DEFAULT_OCCURRED,
                   p,
                   correlation_id=event.correlation_id)
-        self.__sync_store()
 
     def __revoke(self, event: Event) -> None:
         p = event.payload
@@ -302,9 +343,10 @@ class MechanismService(NanoService):
             if self.credit_limit(sponsor) < delta:
                 raise InfeasibleOperationError(
                     "insufficient credit limit to increase delegation")
+        snap = self.__snapshot()
         self.__delegation[edge] = new_amount
+        self.__persist_or_rollback(snap)
         self.emit(EventType.REVOKED, p, correlation_id=event.correlation_id)
-        self.__sync_store()
 
     def __quote(self, event: Event) -> None:
         p = event.payload

@@ -16,6 +16,7 @@ from underwrite.__secrets__ import (
     SecretsManager,
     VaultSecretsBackend,
 )
+from underwrite.__metrics__ import MetricsCollector
 
 
 class TestEnvSecretsBackend:
@@ -255,6 +256,29 @@ class TestAwsSecretsBackend:
             mock_client_method.side_effect = ImportError("no boto3")
             with pytest.raises(ImportError, match="no boto3"):
                 backend.get("k")
+
+    def test_client_error_increments_metric(self) -> None:
+        metrics = MetricsCollector()
+
+        class FakeClientError(Exception):
+            pass
+
+        class FakeResourceNotFound(Exception):
+            pass
+
+        mock_boto3 = Mock()
+        mock_client = Mock()
+        mock_client.exceptions.ClientError = FakeClientError
+        mock_client.exceptions.ResourceNotFoundException = FakeResourceNotFound
+        mock_client.get_secret_value.side_effect = FakeClientError(
+            {"Error": {"Code": "AccessDeniedException"}}, "get_secret_value")
+        mock_boto3.client.return_value = mock_client
+        with patch.dict("sys.modules", {"boto3": mock_boto3}):
+            backend = AwsSecretsBackend(metrics_collector=metrics)
+            with pytest.raises(FakeClientError):
+                backend.get("my-key")
+        snapshot = metrics.snapshot()
+        assert any(k.startswith("secrets.failures") for k in snapshot["counters"])
 
 
 class TestSecretsManager:

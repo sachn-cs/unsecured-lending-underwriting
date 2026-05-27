@@ -148,3 +148,25 @@ class TestServiceSupervisor:
         assert sup.record_failure("svc-a") is False  # exceeded
         sup.record_success("svc-a")
         assert sup.record_failure("svc-a") is True  # fresh start
+
+    def test_should_restart_returns_true_within_limit(self) -> None:
+        sup = ServiceSupervisor(max_restarts=3)
+        sup.record_failure("svc-a")
+        assert sup.should_restart("svc-a") is True
+
+    def test_should_restart_returns_false_when_limit_exceeded(self) -> None:
+        sup = ServiceSupervisor(max_restarts=2)
+        sup.record_failure("svc-a")
+        sup.record_failure("svc-a")
+        sup.record_failure("svc-a")
+        assert sup.should_restart("svc-a") is False
+
+    def test_failing_services_returns_only_failing(self) -> None:
+        sup = ServiceSupervisor(max_restarts=3)
+        sup.record_failure("svc-a")
+        sup.record_failure("svc-b")
+        sup.record_failure("svc-b")
+        sup.record_success("svc-a")  # healthy now
+        failing = sup.failing_services()
+        assert "svc-b" in failing
+        assert "svc-a" not in failing

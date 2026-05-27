@@ -175,17 +175,17 @@ class TestMetricsConcurrency:
         mc = MetricsCollector(max_metrics=50000)
         errors: list[Exception] = []
 
-        def ops() -> None:
+        def ops(tid: int) -> None:
             try:
                 for i in range(OPS_PER_THREAD):
-                    mc.increment("counter.test", {"t": str(threading.get_ident())})
-                    mc.gauge("gauge.test", float(i), {"t": str(threading.get_ident())})
-                    mc.timer("timer.test", float(i % 100), {"t": str(threading.get_ident())})
+                    mc.increment("counter.test", {"t": str(tid)})
+                    mc.gauge("gauge.test", float(i), {"t": str(tid)})
+                    mc.timer("timer.test", float(i % 100), {"t": str(tid)})
             except Exception as exc:
                 errors.append(exc)
 
         threads = [
-            threading.Thread(target=ops) for _ in range(NUM_THREADS)
+            threading.Thread(target=ops, args=(i,)) for i in range(NUM_THREADS)
         ]
         for t in threads:
             t.start()

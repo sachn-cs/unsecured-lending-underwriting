@@ -5,7 +5,10 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import MagicMock
 
+import pytest
+
 from underwrite.__runtime__ import Runtime
+from underwrite.services.base import NanoService
 
 
 class TestRuntimeOtlpTracer:
@@ -52,3 +55,22 @@ def _config_with_otlp() -> Any:
     config.tracing.enabled = True
     config.tracing.exporter = "otlp"
     return config
+
+
+class TestRuntimeRestartFailingServices:
+
+    def test_restart_no_supervisor_returns_empty(self) -> None:
+        from underwrite.__config__ import Configuration
+        config = Configuration.default()
+        rt = Runtime(config)
+        rt._Runtime__supervisor = None  # type: ignore[attr-defined]
+        assert rt.restart_failing_services() == []
+
+    def test_restart_returns_empty_when_no_failures(self) -> None:
+        from underwrite.__config__ import Configuration
+        config = Configuration.default()
+        rt = Runtime(config)
+        if rt._Runtime__supervisor is not None:
+            rt._Runtime__supervisor.record_failure("svc-a")
+            rt._Runtime__supervisor.record_success("svc-a")
+        assert rt.restart_failing_services() == []

@@ -164,7 +164,8 @@ class FileStore(Store):
                  operation_timeout: float = 0.0,
                  use_circuit_breaker: bool = False,
                  failure_threshold: int = 3,
-                 fsync: bool = True) -> None:
+                 fsync: bool = True,
+                 metrics_collector: Any | None = None) -> None:
         self.__data_dir: Path = Path(data_dir)
         self.__data_dir.mkdir(parents=True, exist_ok=True)
         self.__lock: threading.Lock = threading.Lock()
@@ -178,6 +179,7 @@ class FileStore(Store):
                            recovery_timeout=30.0,
                            name="filestore") if use_circuit_breaker else None)
         self.__fsync: bool = fsync
+        self.__metrics: Any | None = metrics_collector
 
     def shutdown(self, wait: bool = True) -> None:
         """Shuts down the internal thread-pool executor if present."""
@@ -205,7 +207,11 @@ class FileStore(Store):
         return self.__circuit.call(lambda: self.__timeout(fn, *args, **kwargs))
 
     def get(self, key: str) -> Any | None:
-        """Returns the value for *key*, or ``None``."""
+        """Returns the value for *key*, or ``None`` if key not found.
+        
+        Raises:
+            StoreError: If the file exists but is corrupted or unreadable.
+        """
         def _read() -> Any | None:
             path = self.__path(key)
             if not path.exists():
@@ -213,23 +219,32 @@ class FileStore(Store):
             try:
                 with open(path) as fh:
                     return json.load(fh)
-            except (json.JSONDecodeError, OSError):
+            except json.JSONDecodeError:
                 self.__logger.exception("corrupted store file %s", path)
-                return None
+                if self.__metrics:
+                    self.__metrics.increment("store.corruption", {"path": path.name})
+                raise StoreError(f"corrupted store file for key {key}") from None
+            except OSError:
+                self.__logger.exception("I/O error reading store file %s", path)
+                if self.__metrics:
+                    self.__metrics.increment("store.io_error", {"path": path.name})
+                raise StoreError(f"I/O error reading store key {key}") from None
 
         return self.__circuit_call(_read)
 
     def set(self, key: str, value: Any) -> None:
-        """Persists *value* under *key* as a JSON file."""
+        """Persists *value* under *key* as a JSON file (atomic write)."""
         def _write() -> None:
             path = self.__path(key)
             path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_suffix(f".tmp.{os.getpid()}")
             with self.__lock:
-                with open(path, "w") as fh:
+                with open(tmp, "w") as fh:
                     json.dump(value, fh, default=str)
                     if self.__fsync:
                         fh.flush()
                         os.fsync(fh.fileno())
+                os.replace(tmp, path)
 
         self.__circuit_call(_write)
 
@@ -488,8 +503,18 @@ class CQRSStore(Store):
         return self.__read.keys(pattern, limit=limit, offset=offset)
 
     def health(self) -> dict[str, Any]:
-        """Returns the read store's health status."""
-        return self.__read.health()
+        """Returns health status for both read and write stores."""
+        read_health = self.__read.health()
+        try:
+            write_health = self.__write.health()
+        except Exception as exc:
+            write_health = {"ok": False, "detail": str(exc)}
+        combined_ok = read_health.get("ok", False) and write_health.get("ok", False)
+        return {
+            "ok": combined_ok,
+            "read_store": read_health,
+            "write_store": write_health,
+        }
 
     def shutdown(self) -> None:
         """Shuts down both write and read stores."""

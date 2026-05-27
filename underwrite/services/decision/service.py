@@ -64,8 +64,7 @@ class DecisionService(NanoService):
 
         elif event.event_type == EventType.DECISION_EVALUATE:
             with self.__lock:
-                signals = self.__signals.pop(entity_id, [])
-                self.__sync_store()
+                signals = list(self.__signals.get(entity_id, []))
             high_signals: int = sum(
                 1 for s in signals if s.get("severity") == "high")
             medium_signals: int = sum(
@@ -87,6 +86,9 @@ class DecisionService(NanoService):
                     "signals": signals,
                     "decided_at": datetime.now(timezone.utc).isoformat(),
                 })
+            with self.__lock:
+                self.__signals.pop(entity_id, None)
+                self.__sync_store()
             self.emit(EventType.DECISION_MADE, {
                 "entity_id": entity_id,
                 "action": action,

@@ -141,7 +141,10 @@ class DeadLetterQueue:
         store = self.__store
         if store is None:
             return
-        store.set("bus:dlq", [self._record_to_dict(r) for r in self.__records])
+        try:
+            store.set("bus:dlq", [self._record_to_dict(r) for r in self.__records])
+        except Exception:
+            logger.exception("failed to persist DLQ records to store")
 
     def __should_sync(self) -> bool:
         self.__sync_counter += 1
@@ -344,6 +347,9 @@ class DistributedRateLimiter(RateLimiter):
         super().__init__(max_rate=max_rate, interval=interval)
         self.__store: Store | None = store
         self.__prefix: str = prefix
+        if store is None:
+            logger.warning("DistributedRateLimiter created without store, "
+                           "falling back to in-memory rate limiter")
 
     def check(self, key: str) -> bool:
         if self.__store is None:
@@ -359,12 +365,28 @@ class DistributedRateLimiter(RateLimiter):
 
 
 class IdempotencyGuard:
-    """Prevents duplicate event processing by tracking seen event IDs per handler."""
+    """Prevents duplicate event processing by tracking seen event IDs per handler.
+    
+    Bounded per-handler to prevent unbounded memory growth.
+    """
 
-    def __init__(self) -> None:
-        """Initialises an empty idempotency guard."""
+    def __init__(self, max_ids_per_handler: int = 100000) -> None:
+        """Initialises an empty idempotency guard.
+
+        Args:
+            max_ids_per_handler: Maximum event IDs tracked per handler
+                before oldest entries are evicted.
+        """
         self.__lock: threading.Lock = threading.Lock()
         self.__seen: dict[str, set[str]] = {}
+        self.__order: dict[str, list[str]] = {}
+        self.__max_ids: int = max_ids_per_handler
+
+    @property
+    def total_tracked_events(self) -> int:
+        """Returns the total number of event IDs tracked across all handlers."""
+        with self.__lock:
+            return sum(len(ids) for ids in self.__seen.values())
 
     def is_duplicate(self, handler_id: str, event_id: str) -> bool:
         """Checks whether an event has already been processed by a handler.
@@ -381,9 +403,14 @@ class IdempotencyGuard:
         """
         with self.__lock:
             seen = self.__seen.setdefault(handler_id, set())
+            order = self.__order.setdefault(handler_id, [])
             if event_id in seen:
                 return True
             seen.add(event_id)
+            order.append(event_id)
+            if len(seen) > self.__max_ids:
+                evicted = order.pop(0)
+                seen.discard(evicted)
             return False
 
 

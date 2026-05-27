@@ -55,6 +55,17 @@ class ServiceSupervisor:
                 return 0.0
             return min(self.__backoff * (2.0 ** (count - 1)), 60.0)
 
+    def should_restart(self, service_id: str) -> bool:
+        """Returns True if the service should be restarted based on failure count."""
+        with self.__lock:
+            count = self.__failures.get(service_id, 0)
+            return 0 < count <= self.__max_restarts
+
+    def failing_services(self) -> list[str]:
+        """Returns list of service IDs that have recorded failures."""
+        with self.__lock:
+            return list(self.__failures.keys())
+
     def health(self) -> dict[str, Any]:
         """Returns health status for all tracked services."""
         with self.__lock:

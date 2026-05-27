@@ -41,25 +41,30 @@ class VaultSecretsBackend(SecretsBackend):
 
     def __init__(self, url: str = "http://localhost:8200",
                  token: str | None = None,
-                 mount_point: str = "secret") -> None:
+                 mount_point: str = "secret",
+                 metrics_collector: Any | None = None) -> None:
         self.__url = url
         self.__token = token or os.environ.get("VAULT_TOKEN", "")
         self.__mount_point = mount_point
+        self.__metrics: Any | None = metrics_collector
 
     def get(self, key: str) -> str | None:
         try:
             import hvac
         except ImportError:
             raise ImportError("VaultSecretsBackend requires hvac; pip install hvac") from None
+        from hvac.exceptions import VaultError
         client = hvac.Client(url=self.__url, token=self.__token)
         try:
             resp = client.secrets.kv.v2.read_secret_version(
                 path=key, mount_point=self.__mount_point)
             data = resp.get("data", {}).get("data", {})
             return data.get("value")
-        except Exception:
+        except VaultError:
             logger.exception("vault read failed for %s", key)
-            return None
+            if self.__metrics:
+                self.__metrics.increment("secrets.failures", {"backend": "vault", "key": key})
+            raise
 
     def set(self, key: str, value: str) -> None:
         try:
@@ -74,8 +79,10 @@ class VaultSecretsBackend(SecretsBackend):
 class AwsSecretsBackend(SecretsBackend):
     """AWS Secrets Manager backend."""
 
-    def __init__(self, region: str = "us-east-1") -> None:
+    def __init__(self, region: str = "us-east-1",
+                 metrics_collector: Any | None = None) -> None:
         self.__region = region
+        self.__metrics: Any | None = metrics_collector
 
     def _client(self):
         try:
@@ -91,9 +98,11 @@ class AwsSecretsBackend(SecretsBackend):
             return resp.get("SecretString")
         except client.exceptions.ResourceNotFoundException:
             return None
-        except Exception:
+        except client.exceptions.ClientError:
             logger.exception("aws secrets read failed for %s", key)
-            return None
+            if self.__metrics:
+                self.__metrics.increment("secrets.failures", {"backend": "aws", "key": key})
+            raise
 
     def set(self, key: str, value: str) -> None:
         client = self._client()

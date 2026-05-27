@@ -52,7 +52,12 @@ class CollateralService(NanoService):
             with self.__lock:
                 col = self.__collateral.pop(borrower, None)
                 if col:
-                    self.__sync_store()
+                    try:
+                        self.__sync_store()
+                    except Exception:
+                        logger.exception("failed to persist collateral removal for %s, restoring in-memory state", borrower)
+                        self.__collateral[borrower] = col
+                        raise
             if col:
                 self.emit(EventType.COLLATERAL_LIQUIDATED, {
                     "borrower": borrower,

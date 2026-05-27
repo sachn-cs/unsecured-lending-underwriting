@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from underwrite.__events__ import Event, EventType
 from underwrite.services import NanoService
+
+logger = logging.getLogger(__name__)
 
 
 class GraphService(NanoService):
@@ -25,7 +28,10 @@ class GraphService(NanoService):
 
     def __query_path(self, event: Event) -> None:
         user: str = event.payload.get("user", "")
-        state: dict[str, Any] = self.store.get("protocol:state") or {}
+        state: dict[str, Any] | None = self.safe_store_get("protocol:state")
+        if state is None:
+            logger.warning("graph path query for %s: protocol state not available", user)
+            state = {}
         parent: dict[str, str] = state.get("parent", {})
         seeds: list[str] = state.get("seeds", [])
         path: list[str] = [user]
@@ -44,7 +50,10 @@ class GraphService(NanoService):
 
     def __query_credit_limit(self, event: Event) -> None:
         user: str = event.payload.get("user", "")
-        state: dict[str, Any] = self.store.get("protocol:state") or {}
+        state: dict[str, Any] | None = self.safe_store_get("protocol:state")
+        if state is None:
+            logger.warning("graph credit-limit query for %s: protocol state not available", user)
+            state = {}
         earned: dict[str, float] = state.get("earned", {})
         base_budget: dict[str, float] = state.get("base_budget", {})
         parent: dict[str, str] = state.get("parent", {})

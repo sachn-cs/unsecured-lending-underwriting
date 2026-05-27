@@ -427,12 +427,48 @@ class Runtime:
         """
         if service_names is None:
             service_names = self.__config.enabled_services()
+        self.__service_names = list(service_names)
         for name in service_names:
             if name not in self.__services:
                 self.register(name)
             self.wire(name)
             self.__services[name].start()
         self.__bus.start()
+
+    def restart_failing_services(self) -> list[str]:
+        """Restarts services that have recorded failures under the supervisor.
+        
+        Each failing service is stopped, re-registered, re-wired, and started.
+        Services that have exceeded max restarts are not restarted.
+        
+        Returns:
+            List of service IDs that were restarted.
+        """
+        if self.__supervisor is None:
+            return []
+        restarted: list[str] = []
+        for service_id in self.__supervisor.failing_services():
+            if not self.__supervisor.should_restart(service_id):
+                continue
+            if service_id not in self.__services:
+                self.__supervisor.reset(service_id)
+                continue
+            logger.warning("restarting failing service %s", service_id)
+            try:
+                old = self.__services.pop(service_id)
+                old.stop()
+            except Exception:
+                logger.exception("error stopping service %s during restart", service_id)
+            try:
+                svc = self.register(service_id)
+                self.wire(service_id)
+                svc.start()
+                self.__supervisor.reset(service_id)
+                restarted.append(service_id)
+                logger.info("service %s restarted successfully", service_id)
+            except Exception:
+                logger.exception("failed to restart service %s", service_id)
+        return restarted
 
     def stop(self) -> None:
         """Stops all services, the metrics export loop, and the event bus."""

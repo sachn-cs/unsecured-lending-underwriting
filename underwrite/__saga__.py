@@ -241,8 +241,9 @@ class SagaOrchestrator:
                 emitter.emit(step.forward_event_type, step.forward_payload)
                 if saga_id in self.__sagas:
                     self.__sagas[saga_id].completed_steps.append(step_index)
-                    self.__persist_saga(self.__sagas[saga_id])
                 self.__store.set(idem_key, True)
+                if saga_id in self.__sagas:
+                    self.__persist_saga(self.__sagas[saga_id])
                 return True
             except Exception as exc:
                 tb = traceback.format_exc()

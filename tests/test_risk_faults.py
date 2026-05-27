@@ -11,7 +11,7 @@ from underwrite.services.risk.service import RiskService
 
 class TestRiskServiceFaults:
 
-    def test_model_failure_logs_and_skips(self) -> None:
+    def test_model_failure_emits_sentinel_score(self) -> None:
         emitted: list = []
 
         class FaultyModel:
@@ -40,7 +40,8 @@ class TestRiskServiceFaults:
         )
         svc.handle(event)
         risk_scored = [e for e in emitted if e[0] == EventType.RISK_SCORED]
-        assert len(risk_scored) == 0
+        assert len(risk_scored) == 1
+        assert risk_scored[0][1]["score"] == -1.0
 
     def test_early_warning_emitted_for_high_dp(self) -> None:
         emitted: list = []

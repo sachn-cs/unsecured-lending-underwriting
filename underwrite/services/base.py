@@ -21,7 +21,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any
 
-from underwrite.__authz__ import AccessControl
+from underwrite.__authz__ import AccessControl, AuthzError
 from underwrite.__bus__ import EventBus, LocalBus
 from underwrite.__events__ import Event
 from underwrite.__health__ import HealthRegistry
@@ -111,6 +111,47 @@ class NanoService(ABC):
         """Return the state persistence backend for this service."""
         return self.__store
 
+    @property
+    def metrics_collector(self) -> MetricsCollector | None:
+        """Return the metrics collector for this service, or None if disabled."""
+        return self.__metrics
+
+    def safe_store_get(self, key: str, default: Any = None) -> Any | None:
+        """Get a value from the store, logging and returning *default* on failure.
+
+        Args:
+            key: Store key to retrieve.
+            default: Value returned when the key is missing or the read fails.
+
+        Returns:
+            The stored value, *default* if the key is missing, or *default*
+            if the read raises an exception.
+        """
+        try:
+            return self.__store.get(key)
+        except Exception:
+            logger.exception("store get failed for %s in service %s",
+                             key, self.__service_id)
+            return default
+
+    def safe_store_set(self, key: str, value: Any) -> bool:
+        """Write a value to the store, logging and returning False on failure.
+
+        Args:
+            key: Store key for the value.
+            value: Value to persist.
+
+        Returns:
+            True if the write succeeded, False otherwise.
+        """
+        try:
+            self.__store.set(key, value)
+            return True
+        except Exception:
+            logger.exception("store set failed for %s in service %s",
+                             key, self.__service_id)
+            return False
+
     def subscribe(self, event_type: str) -> None:
         """Registers this service to receive *event_type* events."""
         if self.__authz and not self.__authz.check_subscribe(
@@ -177,10 +218,15 @@ class NanoService(ABC):
         if self.__authz:
             try:
                 self.__authz.assert_verified(event)
-            except Exception as exc:
+            except AuthzError:
                 logger.warning(
-                    "signature verification failed for %s from %s: %s",
-                    event.event_id, event.source, exc)
+                    "signature verification failed for %s from %s",
+                    event.event_id, event.source)
+                if self.__metrics:
+                    self.__metrics.increment("authz.failures", {
+                        "service": self.__service_id,
+                        "event_type": event.event_type,
+                    })
                 return
         if self.__bus.idempotency.is_duplicate(self.__service_id,
                                                event.event_id):

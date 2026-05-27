@@ -49,14 +49,19 @@ class NPAService(NanoService):
                 record = self.__accounts.get(borrower, {})
                 days: int = record.get("days_overdue", self.__trigger_days)
                 bucket: str = self.classify_overdue_days(days)
+                should_trigger_dlg: bool = (
+                    borrower in self.__accounts
+                    and days >= self.__trigger_days
+                    and not record.get("dlg_invoked", False)
+                )
+                if should_trigger_dlg:
+                    self.__accounts[borrower]["dlg_invoked"] = True
                 self.emit(EventType.NPA_BUCKET_CHANGED, {
                     "borrower": borrower,
                     "bucket": bucket,
                 },
                           correlation_id=event.correlation_id)
-                if borrower in self.__accounts and days >= self.__trigger_days and not record.get(
-                        "dlg_invoked", False):
-                    self.__accounts[borrower]["dlg_invoked"] = True
+                if should_trigger_dlg:
                     self.__sync_store()
                     self.emit(EventType.DLG_TRIGGERED, {
                         "loan_id": borrower,

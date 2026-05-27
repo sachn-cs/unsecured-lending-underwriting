@@ -66,14 +66,20 @@ class RiskService(NanoService):
                     principal: float = get_finite(event.payload, "principal")
                     term: float = get_finite(event.payload, "term", 1.0)
                     score: float = self.__model.predict(principal, term)
-                    self.emit(EventType.RISK_SCORED, {
-                        "borrower": borrower,
-                        "score": score,
-                    },
-                              correlation_id=event.correlation_id)
                 except Exception as exc:
                     logger.exception("risk scoring failed for %s: %s", borrower,
                                      exc)
+                    if self.metrics_collector:
+                        self.metrics_collector.increment("risk.scoring.failures", {
+                            "service": self.service_id,
+                            "borrower": borrower,
+                        })
+                    score = -1.0
+                self.emit(EventType.RISK_SCORED, {
+                    "borrower": borrower,
+                    "score": score,
+                },
+                          correlation_id=event.correlation_id)
 
     def health_check(self) -> dict[str, Any]:
         """Risk-specific health: reports model presence."""

@@ -713,3 +713,46 @@ class TestMechanismStoreLoad:
         assert "bank" in svc.earned
         # Test through public API: bank is seed with no base_budget, credit_limit uses 0
         assert svc.credit_limit("bank") == 0.0
+
+
+class TestMechanismStateOrdering:
+
+    def test_add_seed_emits_after_persist(self) -> None:
+        captured: dict[str, Any] = {}
+
+        def spy(event_type: str, payload: dict[str, Any], correlation_id: str = "") -> None:
+            if event_type == EventType.SEED_ADDED:
+                captured["emit_seen"] = True
+                captured["user_in_earned_at_emit"] = payload["user"] in svc.earned
+
+        svc = make_svc()
+        svc.emit = spy  # type: ignore[assignment]
+        svc.start()
+        command(svc, "add_seed", {"user": "bank", "base_budget": 100_000})
+        assert captured.get("emit_seen") is True
+        # Emit fires after state is persisted, so the user is already in earned
+        assert captured.get("user_in_earned_at_emit") is True
+
+    def test_originate_emits_after_persist(self) -> None:
+        captured: dict[str, Any] = {}
+
+        def spy(event_type: str, payload: dict[str, Any], correlation_id: str = "") -> None:
+            if event_type == EventType.LOAN_ORIGINATED:
+                captured["emit_seen"] = True
+                captured["loans_at_emit"] = len(svc._MechanismService__loans.get("bank", []))
+
+        svc = make_svc()
+        svc.emit = spy  # type: ignore[assignment]
+        svc.start()
+        command(svc, "add_seed", {"user": "bank", "base_budget": 100_000})
+        command(svc, "originate", {
+            "borrower": "bank",
+            "principal": 10000,
+            "term": 12,
+            "default_probability": 0.02,
+            "protocol_rate": 0.1,
+            "max_delegation_rate": 0.5,
+        })
+        assert captured.get("emit_seen") is True
+        # Emit fires after state is persisted, so the loan IS in the loans list
+        assert captured.get("loans_at_emit") == 1

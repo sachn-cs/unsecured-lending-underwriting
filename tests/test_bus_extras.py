@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 
-from underwrite.__bus__ import DeadLetterQueue, DistributedRateLimiter, LocalBus, RateLimiter
+from underwrite.__bus__ import DeadLetterQueue, DistributedRateLimiter, IdempotencyGuard, LocalBus, RateLimiter
 from underwrite.__events__ import Event
 from underwrite.__exceptions__ import RateLimitError
 from underwrite.__store__ import MemoryStore
@@ -187,3 +187,38 @@ class TestDistributedRateLimiter:
         rl1.check("k")
         # Different prefix = independent bucket
         assert rl2.check("k") is True
+
+
+class TestIdempotencyGuard:
+
+    def test_new_event_not_duplicate(self) -> None:
+        guard = IdempotencyGuard()
+        assert guard.is_duplicate("h1", "e1") is False
+
+    def test_repeat_event_is_duplicate(self) -> None:
+        guard = IdempotencyGuard()
+        guard.is_duplicate("h1", "e1")
+        assert guard.is_duplicate("h1", "e1") is True
+
+    def test_tracked_separately_per_handler(self) -> None:
+        guard = IdempotencyGuard()
+        guard.is_duplicate("h1", "e1")
+        assert guard.is_duplicate("h2", "e1") is False
+
+    def test_total_tracked_events(self) -> None:
+        guard = IdempotencyGuard()
+        guard.is_duplicate("h1", "a")
+        guard.is_duplicate("h1", "b")
+        guard.is_duplicate("h2", "a")
+        assert guard.total_tracked_events == 3
+
+    def test_total_tracked_events_eviction(self) -> None:
+        guard = IdempotencyGuard(max_ids_per_handler=3)
+        guard.is_duplicate("h1", "e1")
+        guard.is_duplicate("h1", "e2")
+        guard.is_duplicate("h1", "e3")
+        assert guard.total_tracked_events == 3
+        guard.is_duplicate("h1", "e4")  # evicts e1
+        assert guard.total_tracked_events == 3
+        # e1 is no longer duplicate
+        assert guard.is_duplicate("h1", "e1") is False

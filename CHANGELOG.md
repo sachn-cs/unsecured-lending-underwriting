@@ -5,6 +5,38 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.3.1] — 2026-05-29
+
+### Added
+
+- **setuptools-scm** — version is now derived from git tags via `setuptools-scm`, eliminating the version drift between pyproject.toml, CHANGELOG, and git tags.
+- **Concurrency tests** — thread-safety tests for `MechanismService`, `KeyRotationManager`, and `LocalBus` under concurrent event dispatch.
+- **Security CI** — `bandit` and `pip-audit` integrated into CI pipeline.
+- **Batch persistence** — `AuditService` and `FraudService` now use counter-based batching to avoid O(n) serialization on every event.
+- **Async rate limiter lock** — `asyncio.Lock` protects the token-bucket state in FastAPI middleware, fixing a data race under concurrent requests.
+- **Docker setup** — `Dockerfile` and `docker-compose.yml` for development and production deployments.
+- **Plugin system** — services can now be registered via `importlib.metadata.entry_points` under the `"underwrite.services"` group.
+- **Event schema registry** — `SchemaRegistry` validates event payloads at publish time and supports versioned schemas.
+- **Async-native event bus** — `AsyncNativeBus` implementation using `asyncio.Queue` for truly non-blocking async dispatch.
+- **Mutation testing** — `mutmut` configuration and CI job to measure test suite effectiveness.
+- **OpenAPI documentation** — FastAPI app now includes descriptions, examples, and response models for all endpoints.
+- **Fine-grained locking in MechanismService** — split state lock from I/O lock to reduce contention during persistence.
+
+### Fixed
+
+- **Rate limiter data race** — `__serve__.py` token-bucket state is now protected by `asyncio.Lock`, preventing 429 errors under concurrent requests.
+- **Version drift** — pyproject.toml `version` field replaced with `dynamic = ["version"]` driven by `setuptools-scm`.
+- **Secrets test failures** — fixed 6 failing tests in `test_secrets_faults.py` caused by mock exception hierarchy issues.
+- **Mypy errors** — resolved 16 type errors across `__runtime__.py` and `__init__.py`.
+- **Ruff E501** — fixed line-length violation in `collateral/service.py`.
+
+### Changed
+
+- **AuditService persistence** — now syncs to store every 10 events instead of every event, reducing serialization overhead by ~10x.
+- **FraudService persistence** — now syncs to store every 10 events instead of every event.
+- **`__config__.py`** — configuration schema validation migrated from hand-rolled recursive validator to Pydantic models, reducing module size by 300+ lines.
+- **MechanismService locking** — state mutations use `threading.Lock` for fast operations; I/O operations use a separate lock to avoid blocking the event loop.
+
 ## [0.2.0] — 2026-05-26
 
 ### Added
@@ -92,3 +124,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Idempotency guard for duplicate event detection.
 - CQRS read/write store separation.
 - Full test suite (474 tests).
+
+[0.3.1]: https://github.com/sachn-cs/unsecured-lending-underwriting/compare/v0.2.0...v0.3.1
+[0.2.0]: https://github.com/sachn-cs/unsecured-lending-underwriting/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/sachn-cs/unsecured-lending-underwriting/compare/v0.0.0...v0.1.0
+[0.0.0]: https://github.com/sachn-cs/unsecured-lending-underwriting/releases/tag/v0.0.0

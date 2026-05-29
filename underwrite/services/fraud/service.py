@@ -8,11 +8,11 @@ from datetime import datetime, timezone
 from typing import Any
 
 from underwrite.__events__ import Event, EventType
-from underwrite.services import NanoService
+from underwrite.services import BatchPersistenceMixin, NanoService
 from underwrite.validate import get_finite, get_non_empty
 
 
-class FraudService(NanoService):
+class FraudService(BatchPersistenceMixin, NanoService):
     """Detects wash lending, burst origination patterns, and configurable fraud rules."""
 
     MAX_BORROWERS: int = 100000
@@ -23,7 +23,8 @@ class FraudService(NanoService):
         Args:
             **kwargs: Forwarded to NanoService.__init__.
         """
-        super().__init__(**kwargs)
+        BatchPersistenceMixin.__init__(self, sync_interval=10)
+        NanoService.__init__(self, **kwargs)
         self.__lock: threading.RLock = threading.RLock()
         self.__records: OrderedDict[str, deque[dict[str, Any]]] = OrderedDict()
         self.__load_store()
@@ -71,7 +72,7 @@ class FraudService(NanoService):
                 "amount": amount,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             })
-            self.__sync_store()
+            self._incr_and_maybe_sync()
 
     def __check_wash(self, borrower: str, correlation_id: str) -> None:
         with self.__lock:
@@ -106,7 +107,7 @@ class FraudService(NanoService):
 
     # -- state persistence ---------------------------------------------------
 
-    def __sync_store(self) -> None:
+    def _do_sync_store(self) -> None:
         """Persist the in-memory records to the shared store."""
         with self.__lock:
             serializable: dict[str, list[dict[str, Any]]] = {

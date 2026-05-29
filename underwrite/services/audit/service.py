@@ -16,17 +16,19 @@ from typing import Any
 
 from underwrite.__events__ import Event
 from underwrite.__pii import redact_payload
-from underwrite.services import NanoService
+from underwrite.services import BatchPersistenceMixin, NanoService
 
 logger = logging.getLogger(__name__)
 
 
-class AuditService(NanoService):
+class AuditService(BatchPersistenceMixin, NanoService):
     """Subscribes to all domain events and persists them to an append-only ledger.
 
     PII fields (aadhaar, pan, ssn, phone, email, etc.) are automatically
     redacted from the payload before recording.  In-memory ledger is
     capped at *max_ledger* entries; oldest entries are evicted first.
+    Persistence is batched — the store is only written every *sync_interval*
+    ``handle()`` calls to avoid O(n) serialisation overhead on every event.
     """
 
     def __init__(self, max_ledger: int = 100000, export_url: str = "", **kwargs: Any) -> None:
@@ -37,7 +39,8 @@ class AuditService(NanoService):
                 are evicted when the ledger exceeds this limit.
             **kwargs: Forwarded to NanoService.__init__.
         """
-        super().__init__(**kwargs)
+        BatchPersistenceMixin.__init__(self, sync_interval=10)
+        NanoService.__init__(self, **kwargs)
         self.__max_ledger: int = max_ledger
         self.__lock: threading.RLock = threading.RLock()
         self.__ledger: deque = deque(maxlen=max_ledger)
@@ -61,7 +64,7 @@ class AuditService(NanoService):
                 "recorded_at": datetime.now(timezone.utc).isoformat(),
             }
             self.__ledger.append(record)
-            self.__sync_store()
+            self._incr_and_maybe_sync()
 
     @property
     def ledger(self) -> list[dict[str, Any]]:
@@ -180,7 +183,7 @@ class AuditService(NanoService):
 
     # -- state persistence ---------------------------------------------------
 
-    def __sync_store(self) -> None:
+    def _do_sync_store(self) -> None:
         """Persist the in-memory ledger to the shared store."""
         with self.__lock:
             self.store.set(f"{self.service_id}:ledger",

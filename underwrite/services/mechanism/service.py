@@ -33,13 +33,9 @@ class MechanismService(NanoService):
     """
 
     def __init__(self, **kwargs: Any) -> None:
-        """Initialise the mechanism service and restore persisted state.
-
-        Args:
-            **kwargs: Forwarded to NanoService.__init__.
-        """
         super().__init__(**kwargs)
-        self.__lock: threading.RLock = threading.RLock()
+        self.__state_lock: threading.RLock = threading.RLock()
+        self.__io_lock: threading.Lock = threading.Lock()
         self.__seeds: set[str] = set()
         self.__parent: dict[str, str] = {}
         self.__children: dict[str, list[str]] = {}
@@ -54,20 +50,17 @@ class MechanismService(NanoService):
 
     @property
     def seeds(self) -> set[str]:
-        """Return a snapshot of all seed users."""
-        with self.__lock:
+        with self.__state_lock:
             return set(self.__seeds)
 
     @property
     def earned(self) -> dict[str, float]:
-        """Return a snapshot of earned (repayable) amounts per user."""
-        with self.__lock:
+        with self.__state_lock:
             return dict(self.__earned)
 
     @property
     def principal(self) -> dict[str, float]:
-        """Return a snapshot of outstanding principal per user."""
-        with self.__lock:
+        with self.__state_lock:
             return dict(self.__principal)
 
     # -- NanoService interface -----------------------------------------------
@@ -106,34 +99,22 @@ class MechanismService(NanoService):
             raise
 
     def handle(self, event: Event) -> None:
-        """Dispatch a command event to the appropriate handler.
-
-        Delegates to one of add_seed, add_user, repay, originate,
-        default, revoke, or quote based on the payload ``command`` field.
-
-        Args:
-            event: The incoming command event.
-
-        Raises:
-            ProtocolError: Propagated to emit a ``mechanism.rejected`` event.
-        """
         command = event.payload.get("command", "")
         try:
-            with self.__lock:
-                if command == "add_seed":
-                    self.__add_seed(event)
-                elif command == "add_user":
-                    self.__add_user(event)
-                elif command == "repay":
-                    self.__repay(event)
-                elif command == "originate":
-                    self.__originate(event)
-                elif command == "default":
-                    self.__default(event)
-                elif command == "revoke":
-                    self.__revoke(event)
-                elif command == "quote":
-                    self.__quote(event)
+            if command == "add_seed":
+                self.__add_seed(event)
+            elif command == "add_user":
+                self.__add_user(event)
+            elif command == "repay":
+                self.__repay(event)
+            elif command == "originate":
+                self.__originate(event)
+            elif command == "default":
+                self.__default(event)
+            elif command == "revoke":
+                self.__revoke(event)
+            elif command == "quote":
+                self.__quote(event)
         except ProtocolError as exc:
             self.emit("mechanism.rejected", {
                 "command": command,
@@ -149,8 +130,7 @@ class MechanismService(NanoService):
             raise ProtocolError(f"unknown user: {user}")
 
     def credit_limit(self, user: str) -> float:
-        """Return the available credit limit for *user*."""
-        with self.__lock:
+        with self.__state_lock:
             budget = self.__base_budget.get(user, 0.0) + self.__earned.get(
                 user, 0.0)
             if user in self.__parent:
@@ -196,15 +176,16 @@ class MechanismService(NanoService):
         p = event.payload
         user: str = get_non_empty(p, "user")
         budget: float = get_positive(p, "base_budget")
-        if user in self.__earned:
-            raise ProtocolError(f"user already exists: {user}")
-        snap = self.__snapshot()
-        self.__seeds.add(user)
-        self.__base_budget[user] = budget
-        self.__earned[user] = 0.0
-        self.__principal[user] = 0.0
-        self.__children[user] = []
-        self.__persist_or_rollback(snap)
+        with self.__state_lock:
+            if user in self.__earned:
+                raise ProtocolError(f"user already exists: {user}")
+            snap = self.__snapshot()
+            self.__seeds.add(user)
+            self.__base_budget[user] = budget
+            self.__earned[user] = 0.0
+            self.__principal[user] = 0.0
+            self.__children[user] = []
+            self.__persist_or_rollback(snap)
         self.emit(EventType.SEED_ADDED, p, correlation_id=event.correlation_id)
 
     def __add_user(self, event: Event) -> None:
@@ -217,14 +198,15 @@ class MechanismService(NanoService):
             raise ProtocolError(f"user already exists: {user}")
         if self.credit_limit(sponsor) < amount:
             raise InfeasibleOperationError("insufficient sponsor credit limit")
-        snap = self.__snapshot()
-        self.__parent[user] = sponsor
-        self.__children[user] = []
-        self.__children[sponsor].append(user)
-        self.__delegation[(sponsor, user)] = amount
-        self.__earned[user] = 0.0
-        self.__principal[user] = 0.0
-        self.__persist_or_rollback(snap)
+        with self.__state_lock:
+            snap = self.__snapshot()
+            self.__parent[user] = sponsor
+            self.__children[user] = []
+            self.__children[sponsor].append(user)
+            self.__delegation[(sponsor, user)] = amount
+            self.__earned[user] = 0.0
+            self.__principal[user] = 0.0
+            self.__persist_or_rollback(snap)
         self.emit(EventType.USER_ADDED, p, correlation_id=event.correlation_id)
 
     def __repay(self, event: Event) -> None:
@@ -232,9 +214,10 @@ class MechanismService(NanoService):
         user: str = get_non_empty(p, "user")
         delta: float = get_non_negative(p, "delta_earned")
         self.__require_user(user)
-        snap = self.__snapshot()
-        self.__earned[user] += delta
-        self.__persist_or_rollback(snap)
+        with self.__state_lock:
+            snap = self.__snapshot()
+            self.__earned[user] += delta
+            self.__persist_or_rollback(snap)
         self.emit(EventType.REPAID, p, correlation_id=event.correlation_id)
 
     def __originate(self, event: Event) -> None:
@@ -258,20 +241,21 @@ class MechanismService(NanoService):
 
         protocol_premium: float = pr * principal * term
         p["protocol_premium"] = protocol_premium
-        snap = self.__snapshot()
-        self.__principal[borrower] = self.__principal.get(borrower,
-                                                          0.0) + principal
-        loan: dict[str, Any] = {
-            "borrower": borrower,
-            "principal": principal,
-            "term": term,
-            "default_probability": dp,
-            "protocol_rate": pr,
-            "max_delegation_rate": mdr,
-            "protocol_premium": protocol_premium,
-        }
-        self.__loans.setdefault(borrower, []).append(loan)
-        self.__persist_or_rollback(snap)
+        with self.__state_lock:
+            snap = self.__snapshot()
+            self.__principal[borrower] = self.__principal.get(borrower,
+                                                              0.0) + principal
+            loan: dict[str, Any] = {
+                "borrower": borrower,
+                "principal": principal,
+                "term": term,
+                "default_probability": dp,
+                "protocol_rate": pr,
+                "max_delegation_rate": mdr,
+                "protocol_premium": protocol_premium,
+            }
+            self.__loans.setdefault(borrower, []).append(loan)
+            self.__persist_or_rollback(snap)
         self.emit(EventType.LOAN_ORIGINATED,
                   p,
                   correlation_id=event.correlation_id)
@@ -284,39 +268,40 @@ class MechanismService(NanoService):
         if borrower_principal <= 0:
             raise InfeasibleOperationError("no outstanding principal")
 
-        snap = self.__snapshot()
-        absorb: float = min(self.__earned.get(borrower, 0.0),
-                            borrower_principal)
-        self.__earned[borrower] = self.__earned.get(borrower, 0.0) - absorb
-        loss: float = borrower_principal - absorb
+        with self.__state_lock:
+            snap = self.__snapshot()
+            absorb: float = min(self.__earned.get(borrower, 0.0),
+                                borrower_principal)
+            self.__earned[borrower] = self.__earned.get(borrower, 0.0) - absorb
+            loss: float = borrower_principal - absorb
 
-        current: str = borrower
-        while loss > 0 and current not in self.__seeds:
-            sponsor: str = self.__parent[current]
-            edge: tuple[str, str] = (sponsor, current)
-            sponsor_absorb: float = min(self.__earned.get(sponsor, 0.0), loss)
-            self.__earned[sponsor] = self.__earned.get(sponsor,
-                                                       0.0) - sponsor_absorb
-            loss -= sponsor_absorb
+            current: str = borrower
+            while loss > 0 and current not in self.__seeds:
+                sponsor: str = self.__parent[current]
+                edge: tuple[str, str] = (sponsor, current)
+                sponsor_absorb: float = min(self.__earned.get(sponsor, 0.0), loss)
+                self.__earned[sponsor] = self.__earned.get(sponsor,
+                                                           0.0) - sponsor_absorb
+                loss -= sponsor_absorb
+                if loss > 0:
+                    current_edge_amount: float = self.__delegation.get(edge, 0.0)
+                    if current_edge_amount < loss:
+                        raise ProtocolError(
+                            "insufficient delegation for default propagation")
+                    self.__delegation[edge] = current_edge_amount - loss
+                current = sponsor
+
             if loss > 0:
-                current_edge_amount: float = self.__delegation.get(edge, 0.0)
-                if current_edge_amount < loss:
-                    raise ProtocolError(
-                        "insufficient delegation for default propagation")
-                self.__delegation[edge] = current_edge_amount - loss
-            current = sponsor
+                if current not in self.__seeds:
+                    raise ProtocolError("residual loss did not reach seed")
+                seed_budget: float = self.__base_budget.get(current, 0.0)
+                if seed_budget < loss:
+                    raise ProtocolError("seed base budget overdraft")
+                self.__base_budget[current] = seed_budget - loss
 
-        if loss > 0:
-            if current not in self.__seeds:
-                raise ProtocolError("residual loss did not reach seed")
-            seed_budget: float = self.__base_budget.get(current, 0.0)
-            if seed_budget < loss:
-                raise ProtocolError("seed base budget overdraft")
-            self.__base_budget[current] = seed_budget - loss
-
-        self.__principal[borrower] = 0.0
-        self.__loans.pop(borrower, None)
-        self.__persist_or_rollback(snap)
+            self.__principal[borrower] = 0.0
+            self.__loans.pop(borrower, None)
+            self.__persist_or_rollback(snap)
         self.emit(EventType.DEFAULT_OCCURRED,
                   p,
                   correlation_id=event.correlation_id)
@@ -328,24 +313,25 @@ class MechanismService(NanoService):
         new_amount: float = get_non_negative(p, "new_delegation")
         self.__require_user(sponsor)
         self.__require_user(child)
-        edge: tuple[str, str] = (sponsor, child)
-        if edge not in self.__delegation:
-            raise ProtocolError("unknown delegation edge")
         if self.__parent.get(child) != sponsor:
             raise ProtocolError("not the parent-child edge")
         needed: float = self.__required_delegation(child)
         if new_amount < needed:
             raise InfeasibleOperationError(
                 "revocation would make subtree insolvent")
-        old_amount: float = self.__delegation[edge]
-        if new_amount > old_amount:
-            delta: float = new_amount - old_amount
-            if self.credit_limit(sponsor) < delta:
-                raise InfeasibleOperationError(
-                    "insufficient credit limit to increase delegation")
-        snap = self.__snapshot()
-        self.__delegation[edge] = new_amount
-        self.__persist_or_rollback(snap)
+        with self.__state_lock:
+            edge: tuple[str, str] = (sponsor, child)
+            if edge not in self.__delegation:
+                raise ProtocolError("unknown delegation edge")
+            old_amount: float = self.__delegation[edge]
+            if new_amount > old_amount:
+                delta: float = new_amount - old_amount
+                if self.credit_limit(sponsor) < delta:
+                    raise InfeasibleOperationError(
+                        "insufficient credit limit to increase delegation")
+            snap = self.__snapshot()
+            self.__delegation[edge] = new_amount
+            self.__persist_or_rollback(snap)
         self.emit(EventType.REVOKED, p, correlation_id=event.correlation_id)
 
     def __quote(self, event: Event) -> None:
@@ -378,7 +364,7 @@ class MechanismService(NanoService):
     # -- state persistence ---------------------------------------------------
 
     def __load_store(self) -> None:
-        with self.__lock:
+        with self.__state_lock:
             raw = self.store.get("protocol:state")
             if raw is None:
                 return
@@ -402,7 +388,7 @@ class MechanismService(NanoService):
                 self.__loans.setdefault(b, []).append(loan)
 
     def __sync_store(self) -> None:
-        with self.__lock:
+        with self.__state_lock:
             state: dict[str, Any] = {
                 "seeds":
                     sorted(self.__seeds),

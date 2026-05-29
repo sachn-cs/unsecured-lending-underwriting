@@ -72,17 +72,42 @@ class TestEnvSecretsBackend:
         assert dict(os.environ) == env_before
 
 
+def _make_hvac_mock() -> Mock:
+    """Create a mock hvac module with proper package structure for sub-imports."""
+    mock_hvac = Mock()
+    mock_hvac.__path__ = []  # Make it look like a package
+    return mock_hvac
+
+
+def _make_hvac_module() -> dict[str, Mock]:
+    """Create a full hvac module mock hierarchy including hvac.exceptions."""
+    mock_hvac = Mock()
+    mock_hvac.__path__ = []
+    mock_hvac.Client = Mock()
+
+    # Create hvac.exceptions sub-module
+    class MockVaultError(Exception):
+        pass
+
+    mock_hvac_exceptions = Mock()
+    mock_hvac_exceptions.VaultError = MockVaultError
+    mock_hvac.exceptions = mock_hvac_exceptions
+
+    return {"hvac": mock_hvac, "hvac.exceptions": mock_hvac_exceptions}
+
+
 class TestVaultSecretsBackend:
     """Tests for VaultSecretsBackend — HashiCorp Vault KV v2."""
 
     def test_get_calls_hvac_and_returns_value(self) -> None:
-        mock_hvac = Mock()
+        modules = _make_hvac_module()
+        mock_hvac = modules["hvac"]
         mock_client = Mock()
         mock_hvac.Client.return_value = mock_client
         mock_client.secrets.kv.v2.read_secret_version.return_value = {
             "data": {"data": {"value": "my-secret-value"}}
         }
-        with patch.dict("sys.modules", {"hvac": mock_hvac}):
+        with patch.dict("sys.modules", modules):
             backend = VaultSecretsBackend(
                 url="http://vault:8200", token="test-token")
             result = backend.get("my-key")
@@ -92,51 +117,55 @@ class TestVaultSecretsBackend:
         mock_client.secrets.kv.v2.read_secret_version.assert_called_once_with(
             path="my-key", mount_point="secret")
 
-    def test_get_returns_none_on_hvac_error(self) -> None:
-        mock_hvac = Mock()
+    def test_get_raises_on_hvac_error(self) -> None:
+        modules = _make_hvac_module()
+        mock_hvac = modules["hvac"]
         mock_client = Mock()
-        mock_hvac.Client.return_value = mock_client
-        mock_client.secrets.kv.v2.read_secret_version.side_effect = RuntimeError(
-            "hvac connection failed")
-        with patch.dict("sys.modules", {"hvac": mock_hvac}):
+        vault_error = modules["hvac"].exceptions.VaultError("hvac connection failed")
+        mock_client.secrets.kv.v2.read_secret_version.side_effect = vault_error
+        with patch.dict("sys.modules", modules):
             backend = VaultSecretsBackend()
-            result = backend.get("my-key")
-        assert result is None
+            mock_hvac.Client.return_value = mock_client
+            with pytest.raises(type(vault_error)):
+                backend.get("my-key")
 
     def test_get_uses_default_mount_point(self) -> None:
-        mock_hvac = Mock()
+        modules = _make_hvac_module()
+        mock_hvac = modules["hvac"]
         mock_client = Mock()
         mock_hvac.Client.return_value = mock_client
         mock_client.secrets.kv.v2.read_secret_version.return_value = {
             "data": {"data": {"value": "val"}}
         }
-        with patch.dict("sys.modules", {"hvac": mock_hvac}):
+        with patch.dict("sys.modules", modules):
             backend = VaultSecretsBackend()
             backend.get("k")
         mock_client.secrets.kv.v2.read_secret_version.assert_called_once_with(
             path="k", mount_point="secret")
 
     def test_get_uses_custom_mount_point(self) -> None:
-        mock_hvac = Mock()
+        modules = _make_hvac_module()
+        mock_hvac = modules["hvac"]
         mock_client = Mock()
         mock_hvac.Client.return_value = mock_client
         mock_client.secrets.kv.v2.read_secret_version.return_value = {
             "data": {"data": {"value": "val"}}
         }
-        with patch.dict("sys.modules", {"hvac": mock_hvac}):
+        with patch.dict("sys.modules", modules):
             backend = VaultSecretsBackend(mount_point="team-secrets")
             backend.get("k")
         mock_client.secrets.kv.v2.read_secret_version.assert_called_once_with(
             path="k", mount_point="team-secrets")
 
     def test_get_falls_back_to_vault_token_env(self) -> None:
-        mock_hvac = Mock()
+        modules = _make_hvac_module()
+        mock_hvac = modules["hvac"]
         mock_client = Mock()
         mock_hvac.Client.return_value = mock_client
         mock_client.secrets.kv.v2.read_secret_version.return_value = {
             "data": {"data": {"value": "val"}}
         }
-        with patch.dict("sys.modules", {"hvac": mock_hvac}):
+        with patch.dict("sys.modules", modules):
             with patch.dict(os.environ, {"VAULT_TOKEN": "env-token"},
                             clear=False):
                 backend = VaultSecretsBackend()
@@ -145,10 +174,11 @@ class TestVaultSecretsBackend:
             url="http://localhost:8200", token="env-token")
 
     def test_set_calls_hvac(self) -> None:
-        mock_hvac = Mock()
+        modules = _make_hvac_module()
+        mock_hvac = modules["hvac"]
         mock_client = Mock()
         mock_hvac.Client.return_value = mock_client
-        with patch.dict("sys.modules", {"hvac": mock_hvac}):
+        with patch.dict("sys.modules", modules):
             backend = VaultSecretsBackend(token="tok")
             backend.set("my-key", "my-value")
         mock_client.secrets.kv.v2.create_or_update_secret.assert_called_once_with(
@@ -157,12 +187,12 @@ class TestVaultSecretsBackend:
             mount_point="secret")
 
     def test_raises_on_missing_hvac_package(self) -> None:
-        with patch.dict("sys.modules", {"hvac": None, "underwrite.__secrets__": None}):
+        backend = VaultSecretsBackend()
+        with patch.dict("sys.modules", {"hvac": None, "hvac.exceptions": None}):
             with patch("builtins.__import__") as mock_import:
                 mock_import.side_effect = ImportError("no hvac")
-                backend = VaultSecretsBackend()
                 with pytest.raises(ImportError,
-                                   match="VaultSecretsBackend requires hvac"):
+                                    match="VaultSecretsBackend requires hvac"):
                     backend.get("k")
 
 
@@ -197,20 +227,24 @@ class TestAwsSecretsBackend:
             result = backend.get("missing-key")
         assert result is None
 
-    def test_get_returns_none_on_other_exception(self) -> None:
+    def test_raises_on_non_boto3_exception(self) -> None:
         mock_boto3 = Mock()
         mock_client = Mock()
 
         class FakeResourceNotFound(Exception):
             pass
 
+        class FakeClientError(Exception):
+            pass
+
         mock_client.exceptions.ResourceNotFoundException = FakeResourceNotFound
+        mock_client.exceptions.ClientError = FakeClientError
         mock_client.get_secret_value.side_effect = RuntimeError("connection error")
         mock_boto3.client.return_value = mock_client
         with patch.dict("sys.modules", {"boto3": mock_boto3}):
             backend = AwsSecretsBackend()
-            result = backend.get("my-key")
-        assert result is None
+            with pytest.raises(RuntimeError, match="connection error"):
+                backend.get("my-key")
 
     def test_set_calls_put_secret_value(self) -> None:
         mock_boto3 = Mock()

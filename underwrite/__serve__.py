@@ -10,6 +10,7 @@ __all__ = [
     "create_app",
 ]
 
+import importlib.metadata
 import logging
 import os
 from typing import Any
@@ -61,6 +62,7 @@ def create_app(
     Raises:
         ValueError: If *require_auth* is ``True`` and no token is available.
     """
+    import asyncio as _asyncio
     import time as _time
 
     token: str = api_token or os.environ.get("UNDERWRITE_API_TOKEN", "")
@@ -69,7 +71,8 @@ def create_app(
             "UNDERWRITE_API_TOKEN must be set when --require-auth is used"
         )
 
-    app = FastAPI(title="underwrite", version="0.1.0")
+    app = FastAPI(title="underwrite",
+                      version=importlib.metadata.version("underwrite"))
 
     _try_instrument_fastapi(app)
     _try_register_prometheus(app, runtime)
@@ -77,6 +80,7 @@ def create_app(
     _svc_list: list[str] = [s.strip() for s in services.split(",") if s.strip()]
     _bucket_tokens: float = float(rate_limit)
     _bucket_last: float = _time.monotonic()
+    _rate_lock: _asyncio.Lock = _asyncio.Lock()
 
     @app.middleware("http")
     async def _auth_rate_limit_middleware(
@@ -91,17 +95,18 @@ def create_app(
                     content={"error": "unauthorized"},
                 )
 
-        nonlocal _bucket_tokens, _bucket_last
-        now = _time.monotonic()
-        elapsed = now - _bucket_last
-        _bucket_last = now
-        _bucket_tokens = min(float(rate_limit), _bucket_tokens + elapsed * rate_limit)
-        if _bucket_tokens < 1.0:
-            return JSONResponse(
-                status_code=429,
-                content={"error": "rate limit exceeded"},
-            )
-        _bucket_tokens -= 1.0
+        nonlocal _bucket_tokens, _bucket_last, _rate_lock
+        async with _rate_lock:
+            now = _time.monotonic()
+            elapsed = now - _bucket_last
+            _bucket_last = now
+            _bucket_tokens = min(float(rate_limit), _bucket_tokens + elapsed * rate_limit)
+            if _bucket_tokens < 1.0:
+                return JSONResponse(
+                    status_code=429,
+                    content={"error": "rate limit exceeded"},
+                )
+            _bucket_tokens -= 1.0
         return await call_next(request)
 
     @app.on_event("startup")
@@ -112,11 +117,24 @@ def create_app(
     async def shutdown() -> None:
         runtime.stop()
 
-    @app.get("/health")
+    @app.get(
+        "/health",
+        summary="System health",
+        description="Returns the health status of all registered subsystems "
+        "(bus, store, services, etc.).  Useful for load balancer probes.",
+        response_description="A dict mapping subsystem name to its health status.",
+    )
     async def health_endpoint() -> dict:
         return runtime.health.status()
 
-    @app.get("/metrics")
+    @app.get(
+        "/metrics",
+        summary="Prometheus metrics",
+        description="Exposes runtime and service metrics in Prometheus "
+        "text-format (``text/plain; version=0.0.4``).  Requires the "
+        "``underwrite[serve]`` extra.",
+        response_description="Prometheus-format metrics text.",
+    )
     async def metrics_endpoint() -> JSONResponse | PlainTextResponse:
         try:
             from underwrite.prometheus_export import metrics_as_text
@@ -130,7 +148,14 @@ def create_app(
                 content={"error": "prometheus export not available; install underwrite[serve]"},
             )
 
-    @app.post("/publish")
+    @app.post(
+        "/publish",
+        summary="Publish domain event",
+        description="Publishes a domain event to the runtime's event bus. "
+        "The event is dispatched to all subscribed services.  Returns 202 "
+        "on acceptance (fire-and-forget).",
+        response_description="Confirmation that the event was accepted.",
+    )
     async def publish_event(request: Request) -> JSONResponse:
         body = await request.json()
         event_type = body.get("event_type", "")

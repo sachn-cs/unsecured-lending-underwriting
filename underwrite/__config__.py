@@ -37,127 +37,134 @@ __all__ = [
 import json
 import logging
 import os
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
+
+from pydantic import BaseModel, Field, field_validator
 
 from underwrite.__exceptions__ import ConfigurationError
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class ServiceConfig:
-    """Configuration for a single nano service."""
+class _ForbidExtra(BaseModel):
+    model_config = {"extra": "forbid"}
 
+
+class ServiceConfig(_ForbidExtra):
     enabled: bool = False
     priority: int = 0
 
 
-@dataclass
-class BusConfig:
-    """Event bus configuration."""
-
-    backend: str = "local"  # local | sqs | modal
-    rate_limit: float = 0.0  # 0 = unlimited
-    max_workers: int = 0  # 0 = synchronous, >0 = thread pool size
-    max_futures: int = 10000  # max pending futures before backpressure
+_BACKENDS = Annotated[str, Field(validate_default=True)]
 
 
-@dataclass
-class StoreConfig:
-    """State store configuration."""
+class BusConfig(_ForbidExtra):
+    backend: str = "local"
+    rate_limit: float = Field(default=0.0, ge=0)
+    max_workers: int = Field(default=0, ge=0)
+    max_futures: int = Field(default=10000, ge=1)
 
-    backend: str = "memory"  # memory | filesystem | postgres
-    dsn: str = ""  # connection string for postgres
-    pool_size: int = 5
-    read_backend: str = ""  # separate read store for CQRS
+    @field_validator("backend")
+    @classmethod
+    def _check_backend(cls, v: str) -> str:
+        allowed = {"local", "sqs", "modal"}
+        if v not in allowed:
+            raise ValueError(f"bus.backend must be one of {allowed}, got {v!r}")
+        return v
+
+
+class StoreConfig(_ForbidExtra):
+    backend: str = "memory"
+    dsn: str = ""
+    pool_size: int = Field(default=5, ge=1)
+    read_backend: str = ""
     read_dsn: str = ""
 
+    @field_validator("backend")
+    @classmethod
+    def _check_backend(cls, v: str) -> str:
+        allowed = {"memory", "filesystem", "postgres"}
+        if v not in allowed:
+            raise ValueError(f"store.backend must be one of {allowed}, got {v!r}")
+        return v
 
-@dataclass
-class LoggingConfig:
-    """Logging configuration."""
 
+class LoggingConfig(_ForbidExtra):
     level: str = "INFO"
-    output: str = "stdout"  # stdout | file | s3
-    log_format: str = "text"  # text | json
+    output: str = "stdout"
+    log_format: str = "text"
+
+    @field_validator("level")
+    @classmethod
+    def _check_level(cls, v: str) -> str:
+        allowed = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+        if v not in allowed:
+            raise ValueError(f"logging.level must be one of {allowed}, got {v!r}")
+        return v
+
+    @field_validator("log_format")
+    @classmethod
+    def _check_format(cls, v: str) -> str:
+        allowed = {"text", "json"}
+        if v not in allowed:
+            raise ValueError(f"logging.log_format must be one of {allowed}, got {v!r}")
+        return v
 
 
-@dataclass
-class IdentityConfig:
-    """Service identity configuration."""
-
+class IdentityConfig(_ForbidExtra):
     private_key: str = ""
     public_key: str = ""
-    key_ttl: float = 86400.0
-    key_grace: float = 3600.0
+    key_ttl: float = Field(default=86400.0, ge=0)
+    key_grace: float = Field(default=3600.0, ge=0)
 
 
-@dataclass
-class AuthzConfig:
-    """Access-control configuration."""
-
+class AuthzConfig(_ForbidExtra):
     enabled: bool = False
-    policy_file: str = ""  # path to JSON policy file
+    policy_file: str = ""
 
 
-@dataclass
-class MetricsConfig:
-    """Metrics configuration."""
-
+class MetricsConfig(_ForbidExtra):
     enabled: bool = True
-    export_interval: int = 60  # seconds between snapshot exports
+    export_interval: int = Field(default=60, ge=0)
 
 
-@dataclass
-class MigrationConfig:
-    """Schema migration configuration."""
-
-    auto_migrate: bool = True  # apply pending migrations on startup
+class MigrationConfig(_ForbidExtra):
+    auto_migrate: bool = True
 
 
-@dataclass
-class TracingConfig:
-    """Distributed tracing configuration."""
-
+class TracingConfig(_ForbidExtra):
     enabled: bool = False
-    exporter: str = "console"  # console | otlp | noop
+    exporter: str = "console"
+
+    @field_validator("exporter")
+    @classmethod
+    def _check_exporter(cls, v: str) -> str:
+        allowed = {"console", "otlp", "noop"}
+        if v not in allowed:
+            raise ValueError(f"tracing.exporter must be one of {allowed}, got {v!r}")
+        return v
 
 
-@dataclass
-class SagaConfig:
-    """Saga orchestration configuration."""
-
+class SagaConfig(_ForbidExtra):
     enabled: bool = True
 
 
-@dataclass
-class SecretsConfig:
-    """Secrets backend configuration for private-key management."""
-    backend: str = "env"  # env | vault | aws
-    url: str = ""  # Vault URL
-    token: str = ""  # Vault token (prefer VAULT_TOKEN env var)
-    region: str = ""  # AWS region for Secrets Manager
+class SecretsConfig(_ForbidExtra):
+    backend: str = "env"
+    url: str = ""
+    token: str = ""
+    region: str = ""
 
 
-@dataclass
-class RecoveryConfig:
-    """Auto-recovery configuration for crashed services."""
+class RecoveryConfig(_ForbidExtra):
     auto_restart: bool = True
-    max_restarts: int = 3
-    backoff_seconds: float = 1.0
+    max_restarts: int = Field(default=3, ge=0)
+    backoff_seconds: float = Field(default=1.0, ge=0)
 
 
-@dataclass
-class FeeConfig:
-    """Fee schedule configuration.
-
-    Each key is a fee type name; each value is the flat amount (for
-    flat-rate fees) or the rate (for percentage-based fees like
-    origination).
-    """
-    schedules: dict[str, float] = field(default_factory=lambda: {
+class FeeConfig(_ForbidExtra):
+    schedules: dict[str, float] = Field(default_factory=lambda: {
         "late_payment": 25.0,
         "origination": 0.01,
         "prepayment": 0.005,
@@ -165,17 +172,15 @@ class FeeConfig:
     })
 
 
-@dataclass
-class GovernanceConfig:
-    """Governance parameter ranges and defaults configuration."""
-    param_ranges: dict[str, list[float]] = field(default_factory=lambda: {
+class GovernanceConfig(_ForbidExtra):
+    param_ranges: dict[str, list[float]] = Field(default_factory=lambda: {
         "protocol_rate": [0.0, 1.0],
         "max_delegation_rate": [0.0, 1.0],
         "dlg_cap_ratio": [0.0, 1.0],
         "ltv_ratio": [0.0, 1.0],
         "min_base_budget": [0.0, 1e18],
     })
-    param_defaults: dict[str, float] = field(default_factory=lambda: {
+    param_defaults: dict[str, float] = Field(default_factory=lambda: {
         "protocol_rate": 0.10,
         "max_delegation_rate": 0.05,
         "dlg_cap_ratio": 0.05,
@@ -184,319 +189,41 @@ class GovernanceConfig:
     })
 
 
-@dataclass
-class AuditConfig:
-    """Audit service configuration."""
-    max_ledger: int = 100000
+class AuditConfig(_ForbidExtra):
+    max_ledger: int = Field(default=100000, ge=1)
     export_url: str = ""
 
 
-@dataclass
-class Configuration:
-    """Root configuration object."""
-
-    bus: BusConfig = field(default_factory=BusConfig)
-    store: StoreConfig = field(default_factory=StoreConfig)
-    logging: LoggingConfig = field(default_factory=LoggingConfig)
-    identity: IdentityConfig = field(default_factory=IdentityConfig)
-    authz: AuthzConfig = field(default_factory=AuthzConfig)
-    metrics: MetricsConfig = field(default_factory=MetricsConfig)
-    migration: MigrationConfig = field(default_factory=MigrationConfig)
-    tracing: TracingConfig = field(default_factory=TracingConfig)
-    saga: SagaConfig = field(default_factory=SagaConfig)
-    services: dict[str, ServiceConfig] = field(default_factory=dict)
+class Configuration(_ForbidExtra):
+    bus: BusConfig = Field(default_factory=BusConfig)
+    store: StoreConfig = Field(default_factory=StoreConfig)
+    logging: LoggingConfig = Field(default_factory=LoggingConfig)
+    identity: IdentityConfig = Field(default_factory=IdentityConfig)
+    authz: AuthzConfig = Field(default_factory=AuthzConfig)
+    metrics: MetricsConfig = Field(default_factory=MetricsConfig)
+    migration: MigrationConfig = Field(default_factory=MigrationConfig)
+    tracing: TracingConfig = Field(default_factory=TracingConfig)
+    saga: SagaConfig = Field(default_factory=SagaConfig)
+    services: dict[str, ServiceConfig] = Field(default_factory=dict)
     data_dir: str = "./data"
-    secrets: SecretsConfig = field(default_factory=SecretsConfig)
-    recovery: RecoveryConfig = field(default_factory=RecoveryConfig)
-    fee: FeeConfig = field(default_factory=FeeConfig)
-    governance: GovernanceConfig = field(default_factory=GovernanceConfig)
-    audit: AuditConfig = field(default_factory=AuditConfig)
+    secrets: SecretsConfig = Field(default_factory=SecretsConfig)
+    recovery: RecoveryConfig = Field(default_factory=RecoveryConfig)
+    fee: FeeConfig = Field(default_factory=FeeConfig)
+    governance: GovernanceConfig = Field(default_factory=GovernanceConfig)
+    audit: AuditConfig = Field(default_factory=AuditConfig)
 
     @classmethod
     def default(cls) -> Configuration:
-        """Returns a default configuration with all services listed but disabled."""
         config = Configuration()
         config.store.backend = "filesystem"
         for service_name in SERVICE_NAMES:
             config.services[service_name] = ServiceConfig(enabled=False)
         return config
 
-    _SCHEMA_CACHE: dict[str, Any] | None = None
-
-    @classmethod
-    def _schema(cls) -> dict[str, Any]:
-        """Return a JSON Schema dict for validating loaded configuration.
-
-        The schema is built once and cached as a class-level attribute.
-        """
-        if cls._SCHEMA_CACHE is not None:
-            return cls._SCHEMA_CACHE
-        cls._SCHEMA_CACHE = {
-            "type": "object",
-            "properties": {
-                "bus": {
-                    "type": "object",
-                    "properties": {
-                        "backend": {"type": "string", "enum": ["local", "sqs", "modal"]},
-                        "rate_limit": {"type": "number", "minimum": 0},
-                        "max_workers": {"type": "integer", "minimum": 0},
-                        "max_futures": {"type": "integer", "minimum": 1},
-                    },
-                    "additionalProperties": False,
-                },
-                "store": {
-                    "type": "object",
-                    "properties": {
-                        "backend": {"type": "string", "enum": ["memory", "filesystem", "postgres"]},
-                        "dsn": {"type": "string"},
-                        "pool_size": {"type": "integer", "minimum": 1},
-                        "read_backend": {"type": "string"},
-                        "read_dsn": {"type": "string"},
-                    },
-                    "additionalProperties": False,
-                },
-                "logging": {
-                    "type": "object",
-                    "properties": {
-                        "level": {"type": "string", "enum": ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]},
-                        "output": {"type": "string"},
-                        "format": {"type": "string", "enum": ["text", "json"]},
-                    },
-                    "additionalProperties": False,
-                },
-                "identity": {
-                    "type": "object",
-                    "properties": {
-                        "public_key": {"type": "string"},
-                        "key_ttl": {"type": "number", "minimum": 0},
-                        "key_grace": {"type": "number", "minimum": 0},
-                    },
-                    "additionalProperties": False,
-                },
-                "authz": {
-                    "type": "object",
-                    "properties": {
-                        "enabled": {"type": "boolean"},
-                        "policy_file": {"type": "string"},
-                    },
-                    "additionalProperties": False,
-                },
-                "metrics": {
-                    "type": "object",
-                    "properties": {
-                        "enabled": {"type": "boolean"},
-                        "export_interval": {"type": "integer", "minimum": 0},
-                    },
-                    "additionalProperties": False,
-                },
-                "migration": {
-                    "type": "object",
-                    "properties": {
-                        "auto_migrate": {"type": "boolean"},
-                    },
-                    "additionalProperties": False,
-                },
-                "tracing": {
-                    "type": "object",
-                    "properties": {
-                        "enabled": {"type": "boolean"},
-                        "exporter": {"type": "string", "enum": ["console", "otlp", "noop"]},
-                    },
-                    "additionalProperties": False,
-                },
-                "saga": {
-                    "type": "object",
-                    "properties": {
-                        "enabled": {"type": "boolean"},
-                    },
-                    "additionalProperties": False,
-                },
-                "services": {
-                    "type": "object",
-                    "patternProperties": {
-                        "^[a-z_]+$": {
-                            "type": "object",
-                            "properties": {
-                                "enabled": {"type": "boolean"},
-                                "priority": {"type": "integer"},
-                            },
-                            "additionalProperties": False,
-                        },
-                    },
-                    "additionalProperties": False,
-                },
-                "secrets": {
-                    "type": "object",
-                    "properties": {
-                        "backend": {"type": "string"},
-                        "url": {"type": "string"},
-                        "token": {"type": "string"},
-                        "region": {"type": "string"},
-                    },
-                    "additionalProperties": False,
-                },
-                "recovery": {
-                    "type": "object",
-                    "properties": {
-                        "auto_restart": {"type": "boolean"},
-                        "max_restarts": {"type": "integer", "minimum": 0},
-                        "backoff_seconds": {"type": "number", "minimum": 0},
-                    },
-                    "additionalProperties": False,
-                },
-                "fee": {
-                    "type": "object",
-                    "properties": {
-                        "schedules": {
-                            "type": "object",
-                            "patternProperties": {
-                                "^[a-z_]+$": {"type": "number"},
-                            },
-                            "additionalProperties": False,
-                        },
-                    },
-                    "additionalProperties": False,
-                },
-                "governance": {
-                    "type": "object",
-                    "properties": {
-                        "param_ranges": {
-                            "type": "object",
-                            "patternProperties": {
-                                "^[a-z_]+$": {
-                                    "type": "array",
-                                    "items": {"type": "number"},
-                                    "minItems": 2,
-                                    "maxItems": 2,
-                                },
-                            },
-                            "additionalProperties": False,
-                        },
-                        "param_defaults": {
-                            "type": "object",
-                            "patternProperties": {
-                                "^[a-z_]+$": {"type": "number"},
-                            },
-                            "additionalProperties": False,
-                        },
-                    },
-                    "additionalProperties": False,
-                },
-                "audit": {
-                    "type": "object",
-                    "properties": {
-                        "max_ledger": {"type": "integer", "minimum": 1},
-                        "export_url": {"type": "string"},
-                    },
-                    "additionalProperties": False,
-                },
-                "data_dir": {"type": "string"},
-            },
-            "additionalProperties": False,
-        }
-        return cls._SCHEMA_CACHE
-
-    @classmethod
-    def _validate(cls, data: dict[str, Any]) -> None:
-        """Validate a parsed config dict against the JSON Schema.
-
-        Args:
-            data: Parsed JSON config data.
-
-        Raises:
-            ConfigurationError: If validation fails with details about
-                which field is invalid and what was expected.
-        """
-        schema = cls._schema()
-        errors: list[str] = []
-
-        def _validate_value(value: Any, schema_node: dict[str, Any],
-                            path: str) -> None:
-            if "enum" in schema_node:
-                if value not in schema_node["enum"]:
-                    errors.append(
-                        f"{path}: expected one of {schema_node['enum']!r}, got {value!r}"
-                    )
-            if schema_node.get("type") == "string":
-                if not isinstance(value, str):
-                    errors.append(
-                        f"{path}: expected string, got {type(value).__name__}")
-            elif schema_node.get("type") == "number":
-                if not isinstance(value, (int, float)):
-                    errors.append(
-                        f"{path}: expected number, got {type(value).__name__}")
-                elif isinstance(value, (int, float)):
-                    if "minimum" in schema_node and value < schema_node["minimum"]:
-                        errors.append(
-                            f"{path}: value {value} is below minimum {schema_node['minimum']}"
-                        )
-            elif schema_node.get("type") == "integer":
-                if not isinstance(value, int):
-                    errors.append(
-                        f"{path}: expected integer, got {type(value).__name__}")
-                elif "minimum" in schema_node and value < schema_node["minimum"]:
-                    errors.append(
-                        f"{path}: value {value} is below minimum {schema_node['minimum']}"
-                    )
-            elif schema_node.get("type") == "boolean":
-                if not isinstance(value, bool):
-                    errors.append(
-                        f"{path}: expected boolean, got {type(value).__name__}")
-
-        def _walk(data_node: Any, schema_node: dict[str, Any],
-                  path: str) -> None:
-            if "properties" in schema_node:
-                if not isinstance(data_node, dict):
-                    errors.append(
-                        f"{path}: expected object, got {type(data_node).__name__}")
-                    return
-                if schema_node.get("additionalProperties") is False:
-                    extra = set(data_node.keys()) - set(
-                        schema_node.get("properties", {}).keys())
-                    for k in sorted(extra):
-                        errors.append(
-                            f"{path}.{k}: unknown field (not in schema)")
-                for key, prop_schema in schema_node.get("properties",
-                                                         {}).items():
-                    if key in data_node:
-                        _walk(data_node[key], prop_schema,
-                              f"{path}.{key}" if path else key)
-            elif "patternProperties" in schema_node:
-                if not isinstance(data_node, dict):
-                    errors.append(
-                        f"{path}: expected object, got {type(data_node).__name__}")
-                    return
-                if schema_node.get("additionalProperties") is False:
-                    for k in data_node:
-                        matched = any(k.startswith(p.rstrip("$")) for p in
-                                      schema_node.get("patternProperties", {}))
-                        if not matched and not any(
-                                True for p in schema_node.get(
-                                    "patternProperties", {})
-                                if __import__("re").match(p, k)):
-                            errors.append(
-                                f"{path}.{k}: unknown service name")
-                for key, value in data_node.items():
-                    for pattern, prop_schema in schema_node.get(
-                            "patternProperties", {}).items():
-                        if __import__("re").match(pattern, key):
-                            _walk(value, prop_schema,
-                                  f"{path}.{key}" if path else key)
-                            break
-            elif "type" in schema_node:
-                _validate_value(data_node, schema_node, path)
-
-        _walk(data, schema, "")
-        if errors:
-            raise ConfigurationError(
-                "Configuration validation failed:\n" + "\n".join(errors))
-
     @classmethod
     def load(cls, path: str | None = None) -> Configuration:
-        """Loads configuration from a JSON file, env vars, or returns defaults."""
         config = cls.default()
         env = os.environ.get("UNDERWRITE_ENV", "")
-        # Try env-specific config files first
         for candidate in ([path] if path else []):
             if candidate and Path(candidate).exists():
                 try:
@@ -507,11 +234,9 @@ class Configuration:
                     continue
                 if not isinstance(data, dict):
                     raise ConfigurationError("config root must be a JSON object")
-                cls._validate(data)
                 config = cls.__merge(config, data)
                 break
         else:
-            # Try UNDERWRITE_ENV-specific file
             if env:
                 env_path = f"config.{env}.json"
                 if Path(env_path).exists():
@@ -524,101 +249,34 @@ class Configuration:
                     else:
                         if not isinstance(data, dict):
                             raise ConfigurationError("config root must be a JSON object")
-                        cls._validate(data)
                         config = cls.__merge(config, data)
         config = cls.__apply_env_overrides(config)
         return config
 
+
     def save(self, path: str) -> None:
-        """Persists configuration to a JSON file after schema validation."""
-        data = self.to_dict()
-        self._validate(data)
+        data = self.model_dump(exclude_none=True)
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w") as fh:
             json.dump(data, fh, indent=2)
 
     def to_dict(self) -> dict[str, Any]:
-        """Serialises configuration to a dictionary."""
-        return {
-            "bus": {
-                "backend": self.bus.backend,
-                "rate_limit": self.bus.rate_limit,
-                "max_workers": self.bus.max_workers,
-                "max_futures": self.bus.max_futures,
-            },
-            "store": {
-                "backend": self.store.backend,
-                "dsn": self.store.dsn,
-                "pool_size": self.store.pool_size,
-                "read_backend": self.store.read_backend,
-                "read_dsn": self.store.read_dsn
-            },
-            "logging": {
-                "level": self.logging.level,
-                "output": self.logging.output,
-                "format": self.logging.log_format,
-            },
-            "identity": {
-                "public_key": self.identity.public_key,
-                "key_ttl": self.identity.key_ttl,
-                "key_grace": self.identity.key_grace,
-            },
-            "authz": {
-                "enabled": self.authz.enabled,
-                "policy_file": self.authz.policy_file
-            },
-            "metrics": {
-                "enabled": self.metrics.enabled,
-                "export_interval": self.metrics.export_interval
-            },
-            "migration": {
-                "auto_migrate": self.migration.auto_migrate
-            },
-            "tracing": {
-                "enabled": self.tracing.enabled,
-                "exporter": self.tracing.exporter
-            },
-            "saga": {
-                "enabled": self.saga.enabled
-            },
-            "secrets": {
-                "backend": self.secrets.backend,
-                "url": self.secrets.url,
-                "region": self.secrets.region,
-            },
-            "recovery": {
-                "auto_restart": self.recovery.auto_restart,
-                "max_restarts": self.recovery.max_restarts,
-                "backoff_seconds": self.recovery.backoff_seconds,
-            },
-            "services": {
-                name: {
-                    "enabled": svc.enabled,
-                    "priority": svc.priority
-                } for name, svc in self.services.items()
-            },
-            "fee": {
-                "schedules": dict(self.fee.schedules),
-            },
-            "governance": {
-                "param_ranges": {k: list(v) for k, v in self.governance.param_ranges.items()},
-                "param_defaults": dict(self.governance.param_defaults),
-            },
-            "audit": {
-                "max_ledger": self.audit.max_ledger,
-                "export_url": self.audit.export_url,
-            },
-            "data_dir": self.data_dir,
-        }
+        d = self.model_dump(exclude_none=True)
+        if "secrets" in d:
+            d["secrets"].pop("token", None)
+            if not d["secrets"]:
+                d.pop("secrets")
+        if "identity" in d:
+            d["identity"].pop("private_key", None)
+        return d
 
     def enabled_services(self) -> list[str]:
-        """Returns the list of enabled service names."""
         return [name for name, svc in self.services.items() if svc.enabled]
 
     @classmethod
-    def __merge(cls, config: Configuration, data: dict[str,
-                                                        Any]) -> Configuration:
+    def __merge(cls, config: Configuration, data: dict[str, Any]) -> Configuration:
         import copy
+
         config = copy.deepcopy(config)
         known_keys = {
             "bus", "store", "logging", "identity", "data_dir", "services",
@@ -629,70 +287,50 @@ class Configuration:
         if unknown:
             raise ConfigurationError(
                 f"unknown config keys: {', '.join(sorted(unknown))}")
+        def _merge_sub(model_cls, section, cfg, data_map):
+            unknown = set(data_map) - set(model_cls.model_fields)
+            if unknown:
+                raise ConfigurationError(
+                    f"{section}: unknown field(s): {', '.join(sorted(unknown))}"
+                )
+            from pydantic import ValidationError
+            merged = cfg.model_copy(update={
+                k: v for k, v in data_map.items() if k in model_cls.model_fields
+            })
+            try:
+                return model_cls(**merged.model_dump())
+            except ValidationError as exc:
+                msg = "; ".join(
+                    f"{section}.{'.'.join(str(loc) for loc in e['loc'])}: {e['msg']}"
+                    for e in exc.errors()
+                )
+                raise ConfigurationError(msg) from exc
+
         if "bus" in data:
-            config.bus.backend = data["bus"].get("backend", config.bus.backend)
-            config.bus.rate_limit = data["bus"].get("rate_limit",
-                                                    config.bus.rate_limit)
-            config.bus.max_workers = data["bus"].get("max_workers",
-                                                     config.bus.max_workers)
-            config.bus.max_futures = data["bus"].get("max_futures",
-                                                     config.bus.max_futures)
+            config.bus = _merge_sub(BusConfig, "bus", config.bus, data["bus"])
         if "store" in data:
-            config.store.backend = data["store"].get("backend",
-                                                     config.store.backend)
-            config.store.dsn = data["store"].get("dsn", config.store.dsn)
-            config.store.pool_size = data["store"].get("pool_size",
-                                                       config.store.pool_size)
-            config.store.read_backend = data["store"].get(
-                "read_backend", config.store.read_backend)
-            config.store.read_dsn = data["store"].get("read_dsn",
-                                                      config.store.read_dsn)
+            config.store = _merge_sub(StoreConfig, "store", config.store, data["store"])
         if "logging" in data:
-            config.logging.level = data["logging"].get("level",
-                                                       config.logging.level)
-            config.logging.output = data["logging"].get("output",
-                                                         config.logging.output)
-            config.logging.log_format = data["logging"].get(
-                "format", config.logging.log_format)
+            overrides = dict(data["logging"])
+            if "format" in overrides and "log_format" not in overrides:
+                overrides["log_format"] = overrides.pop("format")
+            config.logging = _merge_sub(LoggingConfig, "logging", config.logging, overrides)
         if "identity" in data:
-            # private_key must NOT be loaded from JSON config; only
-            # from env vars or a secrets backend.
-            config.identity.public_key = data["identity"].get(
-                "public_key", config.identity.public_key)
-            config.identity.key_ttl = data["identity"].get(
-                "key_ttl", config.identity.key_ttl)
-            config.identity.key_grace = data["identity"].get(
-                "key_grace", config.identity.key_grace)
+            config.identity = _merge_sub(IdentityConfig, "identity", config.identity, data["identity"])
         if "authz" in data:
-            config.authz.enabled = data["authz"].get("enabled",
-                                                     config.authz.enabled)
-            config.authz.policy_file = data["authz"].get(
-                "policy_file", config.authz.policy_file)
+            config.authz = _merge_sub(AuthzConfig, "authz", config.authz, data["authz"])
         if "metrics" in data:
-            config.metrics.enabled = data["metrics"].get(
-                "enabled", config.metrics.enabled)
-            config.metrics.export_interval = data["metrics"].get(
-                "export_interval", config.metrics.export_interval)
+            config.metrics = _merge_sub(MetricsConfig, "metrics", config.metrics, data["metrics"])
         if "migration" in data:
-            config.migration.auto_migrate = data["migration"].get(
-                "auto_migrate", config.migration.auto_migrate)
+            config.migration = _merge_sub(MigrationConfig, "migration", config.migration, data["migration"])
         if "tracing" in data:
-            config.tracing.enabled = data["tracing"].get(
-                "enabled", config.tracing.enabled)
-            config.tracing.exporter = data["tracing"].get(
-                "exporter", config.tracing.exporter)
+            config.tracing = _merge_sub(TracingConfig, "tracing", config.tracing, data["tracing"])
         if "saga" in data:
-            config.saga.enabled = data["saga"].get("enabled",
-                                                    config.saga.enabled)
+            config.saga = _merge_sub(SagaConfig, "saga", config.saga, data["saga"])
         if "secrets" in data:
-            config.secrets.backend = data["secrets"].get("backend", config.secrets.backend)
-            config.secrets.url = data["secrets"].get("url", config.secrets.url)
-            # token must NOT be loaded from JSON; only from env vars
-            config.secrets.region = data["secrets"].get("region", config.secrets.region)
+            config.secrets = _merge_sub(SecretsConfig, "secrets", config.secrets, data["secrets"])
         if "recovery" in data:
-            config.recovery.auto_restart = data["recovery"].get("auto_restart", config.recovery.auto_restart)
-            config.recovery.max_restarts = data["recovery"].get("max_restarts", config.recovery.max_restarts)
-            config.recovery.backoff_seconds = data["recovery"].get("backoff_seconds", config.recovery.backoff_seconds)
+            config.recovery = _merge_sub(RecoveryConfig, "recovery", config.recovery, data["recovery"])
         if "fee" in data:
             schedules = data["fee"].get("schedules")
             if schedules is not None and isinstance(schedules, dict):
@@ -707,15 +345,13 @@ class Configuration:
             if defaults is not None and isinstance(defaults, dict):
                 config.governance.param_defaults.update(defaults)
         if "audit" in data:
-            audit_data = data["audit"]
-            if isinstance(audit_data, dict):
-                if "max_ledger" in audit_data:
-                    config.audit.max_ledger = int(audit_data["max_ledger"])
-                if "export_url" in audit_data:
-                    config.audit.export_url = str(audit_data["export_url"])
+            config.audit = config.audit.model_copy(update=dict(
+                (k, data["audit"][k]) for k in data["audit"] if k in AuditConfig.model_fields
+            ))
         if "data_dir" in data:
             config.data_dir = data["data_dir"]
         if "services" in data:
+            config.services.clear()
             for name, svc_data in data["services"].items():
                 config.services[name] = ServiceConfig(
                     enabled=svc_data.get("enabled", False),

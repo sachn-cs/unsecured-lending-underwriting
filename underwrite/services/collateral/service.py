@@ -55,7 +55,11 @@ class CollateralService(NanoService):
                     try:
                         self.__sync_store()
                     except Exception:
-                        logger.exception("failed to persist collateral removal for %s, restoring in-memory state", borrower)
+                        logger.exception(
+                            "failed to persist collateral removal for %s, "
+                            "restoring in-memory state",
+                            borrower,
+                        )
                         self.__collateral[borrower] = col
                         raise
             if col:

@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from underwrite.__events__ import Event, EventType
-from underwrite.services.base import NanoService
+from underwrite.services import BatchPersistenceMixin, NanoService
 from underwrite.validate import get_finite
 
 logger = logging.getLogger(__name__)
@@ -26,12 +26,13 @@ DEFAULT_FEE_SCHEDULES: dict[str, float] = {
 }
 
 
-class FeeService(NanoService):
+class FeeService(BatchPersistenceMixin, NanoService):
     """Manages fee assessment, tracking, and lifecycle."""
 
     def __init__(self, **kwargs: Any) -> None:
         self.__schedules: dict[str, float] = kwargs.pop("fee_schedules", dict(DEFAULT_FEE_SCHEDULES))
-        super().__init__(**kwargs)
+        BatchPersistenceMixin.__init__(self, sync_interval=10)
+        NanoService.__init__(self, **kwargs)
         self.__lock: threading.RLock = threading.RLock()
         self.__fees: dict[str, dict[str, Any]] = {}
         self.__load_store()
@@ -65,7 +66,7 @@ class FeeService(NanoService):
             }
             self.store.set(f"fee:{fee_id}", fee_record)
             self.__fees[f"fee:{fee_id}"] = fee_record
-            self.__sync_store()
+            self._incr_and_maybe_sync()
             self.emit(EventType.FEE_ASSESSED, {
                 "fee_id": fee_id,
                 "loan_id": loan_id,
@@ -100,7 +101,7 @@ class FeeService(NanoService):
                     record["paid_at"] = datetime.now(timezone.utc).isoformat()
                     self.store.set(f"fee:{fee_id}", record)
                     self.__fees[f"fee:{fee_id}"] = dict(record)
-                    self.__sync_store()
+                    self._incr_and_maybe_sync()
 
             elif event.event_type == EventType.PAYMENT_OVERDUE:
                 loan_id = event.payload.get("loan_id", "")
@@ -122,7 +123,7 @@ class FeeService(NanoService):
             if raw is not None and isinstance(raw, dict):
                 self.__fees = dict(raw)
 
-    def __sync_store(self) -> None:
+    def _do_sync_store(self) -> None:
         """Persist the current fee records to the store."""
         with self.__lock:
             self.store.set(f"{self.service_id}:fees", dict(self.__fees))

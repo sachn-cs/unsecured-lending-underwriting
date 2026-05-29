@@ -1,0 +1,16 @@
+services:
+  underwrite:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - UNDERWRITE_STORE_BACKEND=filesystem
+      - UNDERWRITE_DATA_DIR=/data
+      - UNDERWRITE_API_TOKEN=${UNDERWRITE_API_TOKEN:-}
+      - VAULT_TOKEN=${VAULT_TOKEN:-}
+    volumes:
+      - underwrite_data:/data
+    command: ["serve", "--services", "mechanism,audit,risk,fraud", "--rate-limit", "100"]
+
+volumes:
+  underwrite_data:

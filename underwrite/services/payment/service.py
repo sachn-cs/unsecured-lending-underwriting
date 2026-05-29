@@ -77,18 +77,22 @@ class PaymentService(NanoService):
                     return
                 cutoff: datetime = datetime.now(timezone.utc) - timedelta(days=30)
                 for key in self.store.keys(f"schedule:{loan_id}:"):
-                    schedule = self.store.get(key)
-                    if schedule and schedule.get("status") == "pending":
-                        due = datetime.fromisoformat(schedule["due_date"])
+                    raw = self.store.get(key)
+                    if raw is None:
+                        continue
+                    sched: dict[str, object] = raw
+                    if sched.get("status") == "pending":
+                        due_str = sched.get("due_date", "")
+                        due = datetime.fromisoformat(str(due_str))
                         if due < cutoff:
-                            schedule["status"] = "overdue"
-                            self.store.set(key, schedule)
-                            self.__payments[key] = dict(schedule)
+                            sched["status"] = "overdue"
+                            self.store.set(key, sched)
+                            self.__payments[key] = dict(sched)
                             self.__sync_store()
                             self.emit(EventType.PAYMENT_OVERDUE, {
                                 "loan_id": loan_id,
-                                "due_date": schedule["due_date"],
-                                "amount": schedule["amount"],
+                                "due_date": sched["due_date"],
+                                "amount": sched["amount"],
                             },
                                       correlation_id=event.correlation_id)
 

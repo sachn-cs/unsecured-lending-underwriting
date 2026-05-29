@@ -43,6 +43,20 @@ logger = logging.getLogger(__name__)
 class Runtime:
     """Manages lifecycle of all nano services with health, metrics, authz, migration, tracing, and saga."""
 
+    __store: Store
+    __read_store: Store | None
+    __services: dict[str, NanoService]
+    __bus: EventBus
+    __health: HealthRegistry
+    __tracer: Tracer | None
+    __secrets: SecretsManager | None
+    __saga: SagaOrchestrator | None
+    __metrics: MetricsCollector | None
+    __authz: AccessControl | None
+    __supervisor: ServiceSupervisor | None
+    __metrics_thread: threading.Thread | None
+    __metrics_stop: threading.Event | None
+
     def __init__(self, config: Configuration | None = None,
                  readonly: bool = False) -> None:
         """Initialises the Runtime.
@@ -55,11 +69,10 @@ class Runtime:
                 read state.
         """
         self.__config: Configuration = config or Configuration.load()
-        Configuration._validate(self.__config.to_dict())
         self.__configure_logging()
-        self.__store: Store = self.__build_store()
-        self.__read_store: Store | None = self.__build_read_store()
-        self.__services: dict[str, NanoService] = {}
+        self.__store = self.__build_store()
+        self.__read_store = self.__build_read_store()
+        self.__services = {}
         if readonly:
             self.__bus = LocalBus(store=self.__store)
             self.__health = HealthRegistry()
@@ -74,19 +87,20 @@ class Runtime:
             self.__register_subsystem_health()
             return
         self.__tracer: Tracer | None = self.__build_tracer()
-        self.__bus: EventBus = self.__build_bus()
-        self.__secrets: SecretsManager | None = self.__build_secrets()
-        self.__saga: SagaOrchestrator | None = (
+        self.__bus = self.__build_bus()
+        self.__secrets = self.__build_secrets()
+        self.__saga = (
             SagaOrchestrator(store=self.__store)
             if self.__config.saga.enabled else None
         )
-        self.__health: HealthRegistry = HealthRegistry()
-        self.__metrics: MetricsCollector | None = MetricsCollector(
-        ) if self.__config.metrics.enabled else None
-        self.__authz: AccessControl | None = self.__build_authz()
-        self.__supervisor: ServiceSupervisor | None = self.__build_supervisor()
-        self.__metrics_thread: threading.Thread | None = None
-        self.__metrics_stop: threading.Event | None = None
+        self.__health = HealthRegistry()
+        self.__metrics = (
+            MetricsCollector() if self.__config.metrics.enabled else None
+        )
+        self.__authz = self.__build_authz()
+        self.__supervisor = self.__build_supervisor()
+        self.__metrics_thread = None
+        self.__metrics_stop = None
 
         self.__register_subsystem_health()
         self.__run_migrations()

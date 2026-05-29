@@ -42,6 +42,49 @@ def get_log_correlation_id() -> str:
     return getattr(_log_context, "correlation_id", "")
 
 
+class BatchPersistenceMixin:
+    """Mixin for services that want to batch persistence to reduce O(n) serialization.
+
+    Instead of writing to the store on every event, accumulates a counter
+    and only triggers the actual sync every *sync_interval* calls.
+    Subclasses must implement ``_do_sync_store()`` to perform the actual write.
+    """
+
+    def __init__(self, sync_interval: int = 10) -> None:
+        self.__batch_lock: threading.Lock = threading.Lock()
+        self.__sync_interval: int = max(sync_interval, 1)
+        self.__sync_counter: int = 0
+
+    def _incr_and_maybe_sync(self) -> bool:
+        """Increments the counter and triggers sync if threshold reached.
+
+        Returns:
+            True if a sync was triggered, False otherwise.
+        """
+        with self.__batch_lock:
+            self.__sync_counter += 1
+            if self.__sync_counter >= self.__sync_interval:
+                self.__sync_counter = 0
+            else:
+                return False
+        self._do_sync_store()
+        return True
+
+    def _force_sync(self) -> None:
+        """Immediately triggers a sync regardless of the counter."""
+        with self.__batch_lock:
+            self.__sync_counter = 0
+        self._do_sync_store()
+
+    def _reset_counter(self) -> None:
+        with self.__batch_lock:
+            self.__sync_counter = 0
+
+    @abstractmethod
+    def _do_sync_store(self) -> None:
+        """Subclasses must implement this to perform the actual store write."""
+
+
 class NanoService(ABC):
     """Base class that all nano services extend.
 

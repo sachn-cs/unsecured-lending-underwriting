@@ -34,6 +34,7 @@ from underwrite.__identity__ import Identity
 from underwrite.__runtime__ import Runtime
 from underwrite.__store__ import FileStore, MemoryStore, Store
 from underwrite.services import NanoService
+from underwrite.version import __version__, __version_tuple__  # noqa: F401
 
 __all__: list[str] = [
     "Runtime",

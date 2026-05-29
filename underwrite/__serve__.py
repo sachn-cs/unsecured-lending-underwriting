@@ -26,7 +26,9 @@ def _try_instrument_fastapi(app: FastAPI) -> None:
         from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
         FastAPIInstrumentor().instrument(app=app)
     except ImportError:
-        logger.warning("opentelemetry-instrumentation-fastapi not installed; skipping OTel instrumentation")
+        logger.warning(
+            "opentelemetry-instrumentation-fastapi not installed; skipping OTel instrumentation"
+        )
 
 
 def _try_register_prometheus(app: FastAPI, runtime: Any) -> None:
@@ -34,7 +36,9 @@ def _try_register_prometheus(app: FastAPI, runtime: Any) -> None:
         from underwrite.prometheus_export import PrometheusMiddleware
         app.add_middleware(PrometheusMiddleware, runtime=runtime)
     except ImportError:
-        logger.warning("prometheus_export module not found; Prometheus metrics disabled (install underwrite[serve])")
+        logger.warning(
+            "prometheus_export module not found; Prometheus metrics disabled (install underwrite[serve])"
+        )
 
 
 def create_app(
@@ -68,11 +72,10 @@ def create_app(
     token: str = api_token or os.environ.get("UNDERWRITE_API_TOKEN", "")
     if require_auth and not token:
         raise ValueError(
-            "UNDERWRITE_API_TOKEN must be set when --require-auth is used"
-        )
+            "UNDERWRITE_API_TOKEN must be set when --require-auth is used")
 
     app = FastAPI(title="underwrite",
-                      version=importlib.metadata.version("underwrite"))
+                  version=importlib.metadata.version("underwrite"))
 
     _try_instrument_fastapi(app)
     _try_register_prometheus(app, runtime)
@@ -89,7 +92,8 @@ def create_app(
     ) -> JSONResponse:
         if token:
             auth = request.headers.get("Authorization", "")
-            if not auth.startswith("Bearer ") or auth.removeprefix("Bearer ") != token:
+            if not auth.startswith("Bearer ") or auth.removeprefix(
+                    "Bearer ") != token:
                 return JSONResponse(
                     status_code=401,
                     content={"error": "unauthorized"},
@@ -100,7 +104,8 @@ def create_app(
             now = _time.monotonic()
             elapsed = now - _bucket_last
             _bucket_last = now
-            _bucket_tokens = min(float(rate_limit), _bucket_tokens + elapsed * rate_limit)
+            _bucket_tokens = min(float(rate_limit),
+                                 _bucket_tokens + elapsed * rate_limit)
             if _bucket_tokens < 1.0:
                 return JSONResponse(
                     status_code=429,
@@ -122,7 +127,8 @@ def create_app(
         summary="System health",
         description="Returns the health status of all registered subsystems "
         "(bus, store, services, etc.).  Useful for load balancer probes.",
-        response_description="A dict mapping subsystem name to its health status.",
+        response_description=
+        "A dict mapping subsystem name to its health status.",
     )
     async def health_endpoint() -> dict:
         return runtime.health.status()
@@ -145,7 +151,10 @@ def create_app(
         except ImportError:
             return JSONResponse(
                 status_code=501,
-                content={"error": "prometheus export not available; install underwrite[serve]"},
+                content={
+                    "error":
+                        "prometheus export not available; install underwrite[serve]"
+                },
             )
 
     @app.post(
@@ -160,7 +169,8 @@ def create_app(
         body = await request.json()
         event_type = body.get("event_type", "")
         if not event_type:
-            return JSONResponse(status_code=400, content={"error": "event_type is required"})
+            return JSONResponse(status_code=400,
+                                content={"error": "event_type is required"})
         rt = runtime
         try:
             if hasattr(rt, "async_publish"):

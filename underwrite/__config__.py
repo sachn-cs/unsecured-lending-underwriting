@@ -86,7 +86,8 @@ class StoreConfig(_ForbidExtra):
     def _check_backend(cls, v: str) -> str:
         allowed = {"memory", "filesystem", "postgres"}
         if v not in allowed:
-            raise ValueError(f"store.backend must be one of {allowed}, got {v!r}")
+            raise ValueError(
+                f"store.backend must be one of {allowed}, got {v!r}")
         return v
 
 
@@ -100,7 +101,8 @@ class LoggingConfig(_ForbidExtra):
     def _check_level(cls, v: str) -> str:
         allowed = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
         if v not in allowed:
-            raise ValueError(f"logging.level must be one of {allowed}, got {v!r}")
+            raise ValueError(
+                f"logging.level must be one of {allowed}, got {v!r}")
         return v
 
     @field_validator("log_format")
@@ -108,7 +110,8 @@ class LoggingConfig(_ForbidExtra):
     def _check_format(cls, v: str) -> str:
         allowed = {"text", "json"}
         if v not in allowed:
-            raise ValueError(f"logging.log_format must be one of {allowed}, got {v!r}")
+            raise ValueError(
+                f"logging.log_format must be one of {allowed}, got {v!r}")
         return v
 
 
@@ -142,7 +145,8 @@ class TracingConfig(_ForbidExtra):
     def _check_exporter(cls, v: str) -> str:
         allowed = {"console", "otlp", "noop"}
         if v not in allowed:
-            raise ValueError(f"tracing.exporter must be one of {allowed}, got {v!r}")
+            raise ValueError(
+                f"tracing.exporter must be one of {allowed}, got {v!r}")
         return v
 
 
@@ -164,29 +168,32 @@ class RecoveryConfig(_ForbidExtra):
 
 
 class FeeConfig(_ForbidExtra):
-    schedules: dict[str, float] = Field(default_factory=lambda: {
-        "late_payment": 25.0,
-        "origination": 0.01,
-        "prepayment": 0.005,
-        "service": 5.0,
-    })
+    schedules: dict[str, float] = Field(
+        default_factory=lambda: {
+            "late_payment": 25.0,
+            "origination": 0.01,
+            "prepayment": 0.005,
+            "service": 5.0,
+        })
 
 
 class GovernanceConfig(_ForbidExtra):
-    param_ranges: dict[str, list[float]] = Field(default_factory=lambda: {
-        "protocol_rate": [0.0, 1.0],
-        "max_delegation_rate": [0.0, 1.0],
-        "dlg_cap_ratio": [0.0, 1.0],
-        "ltv_ratio": [0.0, 1.0],
-        "min_base_budget": [0.0, 1e18],
-    })
-    param_defaults: dict[str, float] = Field(default_factory=lambda: {
-        "protocol_rate": 0.10,
-        "max_delegation_rate": 0.05,
-        "dlg_cap_ratio": 0.05,
-        "ltv_ratio": 0.75,
-        "min_base_budget": 1000.0,
-    })
+    param_ranges: dict[str, list[float]] = Field(
+        default_factory=lambda: {
+            "protocol_rate": [0.0, 1.0],
+            "max_delegation_rate": [0.0, 1.0],
+            "dlg_cap_ratio": [0.0, 1.0],
+            "ltv_ratio": [0.0, 1.0],
+            "min_base_budget": [0.0, 1e18],
+        })
+    param_defaults: dict[str, float] = Field(
+        default_factory=lambda: {
+            "protocol_rate": 0.10,
+            "max_delegation_rate": 0.05,
+            "dlg_cap_ratio": 0.05,
+            "ltv_ratio": 0.75,
+            "min_base_budget": 1000.0,
+        })
 
 
 class AuditConfig(_ForbidExtra):
@@ -230,10 +237,12 @@ class Configuration(_ForbidExtra):
                     with open(candidate) as fh:
                         data = json.load(fh)
                 except (FileNotFoundError, json.JSONDecodeError) as exc:
-                    logger.warning("failed to load config %s: %s", candidate, exc)
+                    logger.warning("failed to load config %s: %s", candidate,
+                                   exc)
                     continue
                 if not isinstance(data, dict):
-                    raise ConfigurationError("config root must be a JSON object")
+                    raise ConfigurationError(
+                        "config root must be a JSON object")
                 config = cls.__merge(config, data)
                 break
         else:
@@ -248,11 +257,11 @@ class Configuration(_ForbidExtra):
                                        env_path, exc)
                     else:
                         if not isinstance(data, dict):
-                            raise ConfigurationError("config root must be a JSON object")
+                            raise ConfigurationError(
+                                "config root must be a JSON object")
                         config = cls.__merge(config, data)
         config = cls.__apply_env_overrides(config)
         return config
-
 
     def save(self, path: str) -> None:
         data = self.model_dump(exclude_none=True)
@@ -274,19 +283,34 @@ class Configuration(_ForbidExtra):
         return [name for name, svc in self.services.items() if svc.enabled]
 
     @classmethod
-    def __merge(cls, config: Configuration, data: dict[str, Any]) -> Configuration:
+    def __merge(cls, config: Configuration, data: dict[str,
+                                                       Any]) -> Configuration:
         import copy
 
         config = copy.deepcopy(config)
         known_keys = {
-            "bus", "store", "logging", "identity", "data_dir", "services",
-            "authz", "metrics", "migration", "tracing", "saga", "secrets",
-            "recovery", "fee", "governance", "audit",
+            "bus",
+            "store",
+            "logging",
+            "identity",
+            "data_dir",
+            "services",
+            "authz",
+            "metrics",
+            "migration",
+            "tracing",
+            "saga",
+            "secrets",
+            "recovery",
+            "fee",
+            "governance",
+            "audit",
         }
         unknown = set(data.keys()) - known_keys
         if unknown:
             raise ConfigurationError(
                 f"unknown config keys: {', '.join(sorted(unknown))}")
+
         def _merge_sub(model_cls, section, cfg, data_map):
             unknown = set(data_map) - set(model_cls.model_fields)
             if unknown:
@@ -302,35 +326,44 @@ class Configuration(_ForbidExtra):
             except ValidationError as exc:
                 msg = "; ".join(
                     f"{section}.{'.'.join(str(loc) for loc in e['loc'])}: {e['msg']}"
-                    for e in exc.errors()
-                )
+                    for e in exc.errors())
                 raise ConfigurationError(msg) from exc
 
         if "bus" in data:
             config.bus = _merge_sub(BusConfig, "bus", config.bus, data["bus"])
         if "store" in data:
-            config.store = _merge_sub(StoreConfig, "store", config.store, data["store"])
+            config.store = _merge_sub(StoreConfig, "store", config.store,
+                                      data["store"])
         if "logging" in data:
             overrides = dict(data["logging"])
             if "format" in overrides and "log_format" not in overrides:
                 overrides["log_format"] = overrides.pop("format")
-            config.logging = _merge_sub(LoggingConfig, "logging", config.logging, overrides)
+            config.logging = _merge_sub(LoggingConfig, "logging",
+                                        config.logging, overrides)
         if "identity" in data:
-            config.identity = _merge_sub(IdentityConfig, "identity", config.identity, data["identity"])
+            config.identity = _merge_sub(IdentityConfig, "identity",
+                                         config.identity, data["identity"])
         if "authz" in data:
-            config.authz = _merge_sub(AuthzConfig, "authz", config.authz, data["authz"])
+            config.authz = _merge_sub(AuthzConfig, "authz", config.authz,
+                                      data["authz"])
         if "metrics" in data:
-            config.metrics = _merge_sub(MetricsConfig, "metrics", config.metrics, data["metrics"])
+            config.metrics = _merge_sub(MetricsConfig, "metrics",
+                                        config.metrics, data["metrics"])
         if "migration" in data:
-            config.migration = _merge_sub(MigrationConfig, "migration", config.migration, data["migration"])
+            config.migration = _merge_sub(MigrationConfig, "migration",
+                                          config.migration, data["migration"])
         if "tracing" in data:
-            config.tracing = _merge_sub(TracingConfig, "tracing", config.tracing, data["tracing"])
+            config.tracing = _merge_sub(TracingConfig, "tracing",
+                                        config.tracing, data["tracing"])
         if "saga" in data:
-            config.saga = _merge_sub(SagaConfig, "saga", config.saga, data["saga"])
+            config.saga = _merge_sub(SagaConfig, "saga", config.saga,
+                                     data["saga"])
         if "secrets" in data:
-            config.secrets = _merge_sub(SecretsConfig, "secrets", config.secrets, data["secrets"])
+            config.secrets = _merge_sub(SecretsConfig, "secrets",
+                                        config.secrets, data["secrets"])
         if "recovery" in data:
-            config.recovery = _merge_sub(RecoveryConfig, "recovery", config.recovery, data["recovery"])
+            config.recovery = _merge_sub(RecoveryConfig, "recovery",
+                                         config.recovery, data["recovery"])
         if "fee" in data:
             schedules = data["fee"].get("schedules")
             if schedules is not None and isinstance(schedules, dict):
@@ -340,14 +373,17 @@ class Configuration(_ForbidExtra):
             if ranges is not None and isinstance(ranges, dict):
                 for k, v in ranges.items():
                     if isinstance(v, (list, tuple)) and len(v) == 2:
-                        config.governance.param_ranges[k] = [float(v[0]), float(v[1])]
+                        config.governance.param_ranges[k] = [
+                            float(v[0]), float(v[1])
+                        ]
             defaults = data["governance"].get("param_defaults")
             if defaults is not None and isinstance(defaults, dict):
                 config.governance.param_defaults.update(defaults)
         if "audit" in data:
             config.audit = config.audit.model_copy(update=dict(
-                (k, data["audit"][k]) for k in data["audit"] if k in AuditConfig.model_fields
-            ))
+                (k, data["audit"][k])
+                for k in data["audit"]
+                if k in AuditConfig.model_fields))
         if "data_dir" in data:
             config.data_dir = data["data_dir"]
         if "services" in data:
@@ -378,7 +414,8 @@ class Configuration(_ForbidExtra):
             "UNDERWRITE_AUTHZ_ENABLED": ("authz", "enabled", bool),
             "UNDERWRITE_AUTHZ_POLICY_FILE": ("authz", "policy_file", str),
             "UNDERWRITE_METRICS_ENABLED": ("metrics", "enabled", bool),
-            "UNDERWRITE_METRICS_EXPORT_INTERVAL": ("metrics", "export_interval", int),
+            "UNDERWRITE_METRICS_EXPORT_INTERVAL":
+                ("metrics", "export_interval", int),
             "UNDERWRITE_TRACING_ENABLED": ("tracing", "enabled", bool),
             "UNDERWRITE_TRACING_EXPORTER": ("tracing", "exporter", str),
             "UNDERWRITE_SAGA_ENABLED": ("saga", "enabled", bool),
@@ -388,9 +425,12 @@ class Configuration(_ForbidExtra):
             "UNDERWRITE_SECRETS_VAULT_URL": ("secrets", "url", str),
             "UNDERWRITE_SECRETS_VAULT_TOKEN": ("secrets", "token", str),
             "UNDERWRITE_SECRETS_AWS_REGION": ("secrets", "region", str),
-            "UNDERWRITE_RECOVERY_AUTO_RESTART": ("recovery", "auto_restart", bool),
-            "UNDERWRITE_RECOVERY_MAX_RESTARTS": ("recovery", "max_restarts", int),
-            "UNDERWRITE_RECOVERY_BACKOFF": ("recovery", "backoff_seconds", float),
+            "UNDERWRITE_RECOVERY_AUTO_RESTART":
+                ("recovery", "auto_restart", bool),
+            "UNDERWRITE_RECOVERY_MAX_RESTARTS":
+                ("recovery", "max_restarts", int),
+            "UNDERWRITE_RECOVERY_BACKOFF":
+                ("recovery", "backoff_seconds", float),
             "UNDERWRITE_AUDIT_MAX_LEDGER": ("audit", "max_ledger", int),
             "UNDERWRITE_AUDIT_EXPORT_URL": ("audit", "export_url", str),
         }
@@ -404,7 +444,8 @@ class Configuration(_ForbidExtra):
                 else:
                     coerced = typ(val)
             except (ValueError, TypeError):
-                logger.warning("failed to coerce %s=%r to %s, skipping", env_var, val, typ.__name__)
+                logger.warning("failed to coerce %s=%r to %s, skipping",
+                               env_var, val, typ.__name__)
                 continue
             if field_attr is None:
                 setattr(config, section_attr, coerced)

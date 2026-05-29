@@ -97,8 +97,9 @@ class CircuitBreaker:
                 if time.monotonic(
                 ) - self.__last_failure_time >= self.__recovery_timeout:
                     self.__state = CircuitState.HALF_OPEN
-                    logger.info("circuit %s half-open (recovery timeout elapsed)",
-                                self.__name)
+                    logger.info(
+                        "circuit %s half-open (recovery timeout elapsed)",
+                        self.__name)
             return self.__state
 
     def __on_success(self) -> None:
@@ -107,7 +108,8 @@ class CircuitBreaker:
             self.__failure_count = 0
             self.__state = CircuitState.CLOSED
         if prev != CircuitState.CLOSED:
-            logger.info("circuit %s recovered (%s -> closed)", self.__name, prev.value)
+            logger.info("circuit %s recovered (%s -> closed)", self.__name,
+                        prev.value)
 
     def __on_failure(self) -> None:
         tripped = False
@@ -130,12 +132,13 @@ class RetryPolicy:
     All others are re-raised immediately.
     """
 
-    def __init__(self,
-                 max_retries: int = 3,
-                 base_delay: float = 0.1,
-                 max_delay: float = 5.0,
-                 retryable_exceptions: tuple[type[Exception],
-                                             ...] | None = None) -> None:
+    def __init__(
+        self,
+        max_retries: int = 3,
+        base_delay: float = 0.1,
+        max_delay: float = 5.0,
+        retryable_exceptions: tuple[type[Exception], ...] | None = None
+    ) -> None:
         """Initialises a retry policy with exponential backoff.
 
         Args:

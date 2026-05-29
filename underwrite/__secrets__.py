@@ -39,7 +39,8 @@ class EnvSecretsBackend(SecretsBackend):
 class VaultSecretsBackend(SecretsBackend):
     """HashiCorp Vault KV v2 backend."""
 
-    def __init__(self, url: str = "http://localhost:8200",
+    def __init__(self,
+                 url: str = "http://localhost:8200",
                  token: str | None = None,
                  mount_point: str = "secret",
                  metrics_collector: Any | None = None) -> None:
@@ -52,7 +53,8 @@ class VaultSecretsBackend(SecretsBackend):
         try:
             import hvac
         except ImportError:
-            raise ImportError("VaultSecretsBackend requires hvac; pip install hvac") from None
+            raise ImportError(
+                "VaultSecretsBackend requires hvac; pip install hvac") from None
         from hvac.exceptions import VaultError
         client = hvac.Client(url=self.__url, token=self.__token)
         try:
@@ -63,14 +65,18 @@ class VaultSecretsBackend(SecretsBackend):
         except VaultError:
             logger.exception("vault read failed for %s", key)
             if self.__metrics:
-                self.__metrics.increment("secrets.failures", {"backend": "vault", "key": key})
+                self.__metrics.increment("secrets.failures", {
+                    "backend": "vault",
+                    "key": key
+                })
             raise
 
     def set(self, key: str, value: str) -> None:
         try:
             import hvac
         except ImportError:
-            raise ImportError("VaultSecretsBackend requires hvac; pip install hvac") from None
+            raise ImportError(
+                "VaultSecretsBackend requires hvac; pip install hvac") from None
         client = hvac.Client(url=self.__url, token=self.__token)
         client.secrets.kv.v2.create_or_update_secret(
             path=key, secret={"value": value}, mount_point=self.__mount_point)
@@ -79,7 +85,8 @@ class VaultSecretsBackend(SecretsBackend):
 class AwsSecretsBackend(SecretsBackend):
     """AWS Secrets Manager backend."""
 
-    def __init__(self, region: str = "us-east-1",
+    def __init__(self,
+                 region: str = "us-east-1",
                  metrics_collector: Any | None = None) -> None:
         self.__region = region
         self.__metrics: Any | None = metrics_collector
@@ -88,7 +95,8 @@ class AwsSecretsBackend(SecretsBackend):
         try:
             import boto3
         except ImportError:
-            raise ImportError("AwsSecretsBackend requires boto3; pip install boto3") from None
+            raise ImportError(
+                "AwsSecretsBackend requires boto3; pip install boto3") from None
         return boto3.client("secretsmanager", region_name=self.__region)
 
     def get(self, key: str) -> str | None:
@@ -101,7 +109,10 @@ class AwsSecretsBackend(SecretsBackend):
         except client.exceptions.ClientError:
             logger.exception("aws secrets read failed for %s", key)
             if self.__metrics:
-                self.__metrics.increment("secrets.failures", {"backend": "aws", "key": key})
+                self.__metrics.increment("secrets.failures", {
+                    "backend": "aws",
+                    "key": key
+                })
             raise
 
     def set(self, key: str, value: str) -> None:
@@ -130,7 +141,8 @@ class SecretsManager:
                 token=getattr(config, "token", None),
             )
         if config.backend == "aws":
-            return AwsSecretsBackend(region=getattr(config, "region", "us-east-1"))
+            return AwsSecretsBackend(
+                region=getattr(config, "region", "us-east-1"))
         return EnvSecretsBackend()
 
     def load_private_key(self, service_id: str) -> str | None:

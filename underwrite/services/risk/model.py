@@ -27,8 +27,8 @@ __all__ = [
     "get_strategy",
 ]
 
-
 # -- Strategy pattern ---------------------------------------------------------
+
 
 class RiskScoringStrategy(ABC):
     """Abstract strategy for risk scoring models.
@@ -46,7 +46,8 @@ _strategies: dict[str, type[RiskScoringStrategy]] = {}
 _strategies_lock: threading.Lock = threading.Lock()
 
 
-def register_strategy(name: str, strategy_cls: type[RiskScoringStrategy]) -> None:
+def register_strategy(name: str,
+                      strategy_cls: type[RiskScoringStrategy]) -> None:
     """Register a risk-scoring strategy class by name for plugin-like discovery.
 
     Args:
@@ -64,6 +65,7 @@ def get_strategy(name: str) -> type[RiskScoringStrategy] | None:
 
 
 # -- Concrete strategies ------------------------------------------------------
+
 
 class HeuristicStrategy(RiskScoringStrategy):
     """Heuristic fallback based on principal-to-term ratio."""
@@ -84,7 +86,8 @@ class JsonModelStrategy(RiskScoringStrategy):
         self.__intercept: float = params.get("intercept_", 0.0)
 
     def predict(self, principal: float, term: float) -> float:
-        score = principal * self.__coef[0] + term * self.__coef[1] + self.__intercept
+        score = principal * self.__coef[0] + term * self.__coef[
+            1] + self.__intercept
         return min(max(score, 0.0), 1.0)
 
 
@@ -100,6 +103,7 @@ class JoblibModelStrategy(RiskScoringStrategy):
 
 
 # -- Backward-compatible facade -----------------------------------------------
+
 
 class RiskModel:
     """Wraps a trained model or uses a heuristic fallback.
@@ -156,8 +160,11 @@ class RiskModel:
         """Returns a default-probability score in [0.0, 1.0]."""
         import math as _math
         if not _math.isfinite(principal) or not _math.isfinite(term):
-            logger.warning("non-finite inputs to risk model: principal=%r, term=%r", principal, term)
-            principal = max(principal, 0.0) if _math.isfinite(principal) else 0.0
+            logger.warning(
+                "non-finite inputs to risk model: principal=%r, term=%r",
+                principal, term)
+            principal = max(principal,
+                            0.0) if _math.isfinite(principal) else 0.0
             term = max(term, 1.0) if _math.isfinite(term) else 1.0
         try:
             return self.__strategy.predict(principal, term)

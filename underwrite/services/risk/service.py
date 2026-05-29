@@ -70,10 +70,11 @@ class RiskService(NanoService):
                     logger.exception("risk scoring failed for %s: %s", borrower,
                                      exc)
                     if self.metrics_collector:
-                        self.metrics_collector.increment("risk.scoring.failures", {
-                            "service": self.service_id,
-                            "borrower": borrower,
-                        })
+                        self.metrics_collector.increment(
+                            "risk.scoring.failures", {
+                                "service": self.service_id,
+                                "borrower": borrower,
+                            })
                     score = -1.0
                 self.emit(EventType.RISK_SCORED, {
                     "borrower": borrower,

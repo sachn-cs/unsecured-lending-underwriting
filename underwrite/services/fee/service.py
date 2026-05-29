@@ -30,14 +30,20 @@ class FeeService(BatchPersistenceMixin, NanoService):
     """Manages fee assessment, tracking, and lifecycle."""
 
     def __init__(self, **kwargs: Any) -> None:
-        self.__schedules: dict[str, float] = kwargs.pop("fee_schedules", dict(DEFAULT_FEE_SCHEDULES))
+        self.__schedules: dict[str,
+                               float] = kwargs.pop("fee_schedules",
+                                                   dict(DEFAULT_FEE_SCHEDULES))
         BatchPersistenceMixin.__init__(self, sync_interval=10)
         NanoService.__init__(self, **kwargs)
         self.__lock: threading.RLock = threading.RLock()
         self.__fees: dict[str, dict[str, Any]] = {}
         self.__load_store()
 
-    def __assess(self, loan_id: str, fee_type: str, principal: float = 0.0, correlation_id: str = "") -> None:
+    def __assess(self,
+                 loan_id: str,
+                 fee_type: str,
+                 principal: float = 0.0,
+                 correlation_id: str = "") -> None:
         """Assess a fee and persist it.  Called directly (not via bus)."""
         with self.__lock:
             schedules = self.__schedules
@@ -45,7 +51,9 @@ class FeeService(BatchPersistenceMixin, NanoService):
                 if not loan_id:
                     logger.warning("fee.assess missing loan_id, ignored")
                 else:
-                    logger.warning("fee.assess with unknown fee_type %r, ignored", fee_type)
+                    logger.warning(
+                        "fee.assess with unknown fee_type %r, ignored",
+                        fee_type)
                 return
             if fee_type == "origination":
                 amount = principal * schedules["origination"]
@@ -54,7 +62,8 @@ class FeeService(BatchPersistenceMixin, NanoService):
 
             import math as _math
             if not _math.isfinite(amount):
-                logger.error("non-finite fee amount %s for loan %s, skipping", amount, loan_id)
+                logger.error("non-finite fee amount %s for loan %s, skipping",
+                             amount, loan_id)
                 return
             fee_id: str = f"fee_{loan_id}_{fee_type}_{int(datetime.now(timezone.utc).timestamp())}"
             fee_record = {
@@ -131,7 +140,8 @@ class FeeService(BatchPersistenceMixin, NanoService):
     def health_check(self) -> dict[str, Any]:
         """Fee-specific health: reports total fee count and pending fees."""
         with self.__lock:
-            pending = sum(1 for r in self.__fees.values() if not r.get("paid", False))
+            pending = sum(
+                1 for r in self.__fees.values() if not r.get("paid", False))
             return {
                 **super().health_check(),
                 "fee_count": len(self.__fees),

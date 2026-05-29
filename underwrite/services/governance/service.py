@@ -52,7 +52,8 @@ class GovernanceService(NanoService):
         } if raw_ranges else dict(DEFAULT_PARAM_RANGES)
         super().__init__(**kwargs)
         self.__lock: threading.RLock = threading.RLock()
-        self.__params: dict[str, float] = dict(raw_defaults) if raw_defaults else dict(DEFAULT_PARAM_DEFAULTS)
+        self.__params: dict[str, float] = dict(
+            raw_defaults) if raw_defaults else dict(DEFAULT_PARAM_DEFAULTS)
         self.__load_store()
 
     def handle(self, event: Event) -> None:
@@ -69,7 +70,9 @@ class GovernanceService(NanoService):
                 param: str = get_non_empty(p, "param")
                 value: float = get_finite(p, "value")
                 if param not in self.__params:
-                    logger.warning("governance proposal for unknown param %r ignored", param)
+                    logger.warning(
+                        "governance proposal for unknown param %r ignored",
+                        param)
                     return
                 lo, hi = self.__ranges[param]
                 if not (lo <= value <= hi):

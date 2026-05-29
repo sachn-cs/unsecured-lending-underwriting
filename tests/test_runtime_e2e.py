@@ -33,10 +33,15 @@ class TestPublishFlow:
         bus.publish(
             Event(event_type=EventType.LOAN_ORIGINATED,
                   source="test",
-                  payload={"aadhaar": "1234-5678-9012", "principal": 50000}))
+                  payload={
+                      "aadhaar": "1234-5678-9012",
+                      "principal": 50000
+                  }))
         audit = rt.get("audit")
-        records = [e for e in audit.ledger
-                   if e["event_type"] == EventType.LOAN_ORIGINATED]
+        records = [
+            e for e in audit.ledger
+            if e["event_type"] == EventType.LOAN_ORIGINATED
+        ]
         assert len(records) == 1
         assert records[0]["payload"]["aadhaar"] == "***REDACTED***"
         rt.stop()
@@ -73,8 +78,9 @@ class TestPublishFlow:
                       "base_budget": 200000
                   }))
         audit = rt.get("audit")
-        seed_events = [e for e in audit.ledger
-                       if e["event_type"] == EventType.SEED_ADDED]
+        seed_events = [
+            e for e in audit.ledger if e["event_type"] == EventType.SEED_ADDED
+        ]
         assert len(seed_events) >= 1
         state = rt.store.get("protocol:state")
         assert state is not None

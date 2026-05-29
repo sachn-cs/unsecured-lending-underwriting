@@ -257,12 +257,29 @@ class TestConfiguration:
     def test_valid_config_passes_schema(self) -> None:
         import tempfile
         valid = {
-            "bus": {"backend": "local", "rate_limit": 100, "max_workers": 4},
-            "store": {"backend": "filesystem"},
-            "logging": {"level": "INFO", "format": "text"},
-            "metrics": {"enabled": True, "export_interval": 60},
-            "tracing": {"enabled": False, "exporter": "console"},
-            "saga": {"enabled": True},
+            "bus": {
+                "backend": "local",
+                "rate_limit": 100,
+                "max_workers": 4
+            },
+            "store": {
+                "backend": "filesystem"
+            },
+            "logging": {
+                "level": "INFO",
+                "format": "text"
+            },
+            "metrics": {
+                "enabled": True,
+                "export_interval": 60
+            },
+            "tracing": {
+                "enabled": False,
+                "exporter": "console"
+            },
+            "saga": {
+                "enabled": True
+            },
             "data_dir": "./data",
         }
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json",

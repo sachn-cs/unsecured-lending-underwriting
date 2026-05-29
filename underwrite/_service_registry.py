@@ -79,19 +79,25 @@ SERVICE_CLASSES: dict[str, str] = {
 
 WIRING: dict[str, list[str]] = {
     EventType.SEED_ADDED.value: ["audit", "origination"],
-    EventType.USER_ADDED.value: ["audit", "fraud", "compliance", "risk", "origination"],
+    EventType.USER_ADDED.value: [
+        "audit", "fraud", "compliance", "risk", "origination"
+    ],
     EventType.LOAN_ORIGINATED.value: [
         "audit", "fraud", "risk", "npa", "collateral", "collection",
         "servicing", "payment", "fee"
     ],
-    EventType.REPAID.value: ["audit", "fraud", "collection", "payment", "servicing"],
+    EventType.REPAID.value: [
+        "audit", "fraud", "collection", "payment", "servicing"
+    ],
     EventType.DEFAULT_OCCURRED.value: [
         "audit", "npa", "collateral", "recovery", "settlement", "workflow"
     ],
     EventType.REVOKED.value: ["audit", "graph"],
     EventType.QUOTE_CALCULATED.value: ["audit", "pricing"],
     EventType.KYC_VERIFIED.value: ["audit", "compliance", "workflow"],
-    EventType.KYC_REJECTED.value: ["audit", "compliance", "notification", "workflow"],
+    EventType.KYC_REJECTED.value: [
+        "audit", "compliance", "notification", "workflow"
+    ],
     EventType.AML_CLEARED.value: ["audit", "compliance"],
     EventType.AML_FROZEN.value: ["audit", "compliance", "notification"],
     EventType.FRAUD_ALERT.value: ["audit", "notification", "decision"],
@@ -111,18 +117,28 @@ WIRING: dict[str, list[str]] = {
     EventType.IDENTITY_ROTATED.value: ["audit", "identity"],
     EventType.NOTIFICATION_SENT.value: ["audit", "communication"],
     EventType.REPORT_GENERATED.value: ["audit", "reporting"],
-    EventType.UNDERWRITER_APPROVED.value: ["audit", "document", "disbursement", "workflow"],
+    EventType.UNDERWRITER_APPROVED.value: [
+        "audit", "document", "disbursement", "workflow"
+    ],
     EventType.UNDERWRITER_REJECTED.value: ["audit", "notification", "workflow"],
     EventType.PRICING_COMPUTED.value: ["audit", "quote", "document"],
-    EventType.DOCUMENT_GENERATED.value: ["audit", "disbursement", "communication"],
+    EventType.DOCUMENT_GENERATED.value: [
+        "audit", "disbursement", "communication"
+    ],
     EventType.DISBURSEMENT_PROCESSED.value: ["audit", "servicing"],
     EventType.COLLECTION_UPDATED.value: ["audit", "statement", "fee"],
     EventType.SETTLEMENT_COMPLETED.value: ["audit", "servicing", "reporting"],
     EventType.ORIGINATION_CREATED.value: ["audit", "underwriter", "workflow"],
-    EventType.ORIGINATION_SUBMITTED.value: ["audit", "risk", "fraud", "compliance"],
-    EventType.PAYMENT_RECEIVED.value: ["audit", "collection", "servicing", "statement"],
+    EventType.ORIGINATION_SUBMITTED.value: [
+        "audit", "risk", "fraud", "compliance"
+    ],
+    EventType.PAYMENT_RECEIVED.value: [
+        "audit", "collection", "servicing", "statement"
+    ],
     EventType.PAYMENT_DUE.value: ["audit", "notification", "communication"],
-    EventType.PAYMENT_OVERDUE.value: ["audit", "collection", "fee", "notification"],
+    EventType.PAYMENT_OVERDUE.value: [
+        "audit", "collection", "fee", "notification"
+    ],
     EventType.FEE_ASSESSED.value: ["audit", "statement"],
     EventType.STATEMENT_GENERATED.value: ["audit", "communication"],
     EventType.WORKFLOW_STARTED.value: ["audit"],

@@ -147,7 +147,9 @@ class TestSagaOrchestrator:
 
         class FailingEmitter:
 
-            def emit(self, et: str, payload: dict,
+            def emit(self,
+                     et: str,
+                     payload: dict,
                      correlation_id: str = "") -> None:
                 if et == "event.fail":
                     raise RuntimeError("step failure detail")
@@ -224,7 +226,11 @@ class TestSagaPersistence:
         emitted: list = []
 
         class FakeEmitter:
-            def emit(self, et: str, payload: dict, correlation_id: str = "") -> None:
+
+            def emit(self,
+                     et: str,
+                     payload: dict,
+                     correlation_id: str = "") -> None:
                 emitted.append((et, payload))
 
         so.register_emitter("test", FakeEmitter())
@@ -242,7 +248,11 @@ class TestSagaPersistence:
         so = SagaOrchestrator(store=store)
 
         class FailingEmitter:
-            def emit(self, et: str, payload: dict, correlation_id: str = "") -> None:
+
+            def emit(self,
+                     et: str,
+                     payload: dict,
+                     correlation_id: str = "") -> None:
                 if et == "event.b":
                     raise RuntimeError("step b failed")
 
@@ -317,16 +327,21 @@ class TestSagaValidation:
 
     def test_corrupted_saga_rejected_on_load(self) -> None:
         store = MemoryStore()
-        store.set("saga:bad", {
-            "saga_id": "bad",
-            "name": "test",
-            "steps": [{"name": "a", "forward_event_type": "ev.a",
-                       "forward_payload": {}, "compensate_event_type": "comp.a",
-                       "compensate_payload": {}}],
-            "completed_steps": [99],
-            "status": "started",
-            "error": "",
-            "started_at": "2024-01-01T00:00:00",
-        })
+        store.set(
+            "saga:bad", {
+                "saga_id": "bad",
+                "name": "test",
+                "steps": [{
+                    "name": "a",
+                    "forward_event_type": "ev.a",
+                    "forward_payload": {},
+                    "compensate_event_type": "comp.a",
+                    "compensate_payload": {}
+                }],
+                "completed_steps": [99],
+                "status": "started",
+                "error": "",
+                "started_at": "2024-01-01T00:00:00",
+            })
         so = SagaOrchestrator(store=store)
         assert so.get_saga("bad") is None

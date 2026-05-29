@@ -101,8 +101,7 @@ class DecisionService(NanoService):
     def __sync_store(self) -> None:
         """Persist the in-memory signals to the shared store."""
         with self.__lock:
-            self.store.set(f"{self.service_id}:signals",
-                           dict(self.__signals))
+            self.store.set(f"{self.service_id}:signals", dict(self.__signals))
 
     def __load_store(self) -> None:
         """Restore the signals from the shared store on startup."""

@@ -78,9 +78,7 @@ class TestBusConcurrency:
             except Exception as exc:
                 errors.append(exc)
 
-        threads = [
-            threading.Thread(target=dlq_ops) for _ in range(NUM_THREADS)
-        ]
+        threads = [threading.Thread(target=dlq_ops) for _ in range(NUM_THREADS)]
         for t in threads:
             t.start()
         for t in threads:
@@ -99,16 +97,17 @@ class TestStoreConcurrency:
             try:
                 for i in range(OPS_PER_THREAD):
                     key = f"k_{threading.get_ident()}_{i}"
-                    store.set(key, {"value": i, "thread": threading.get_ident()})
+                    store.set(key, {
+                        "value": i,
+                        "thread": threading.get_ident()
+                    })
                     val = store.get(key)
                     assert val is not None, f"missing key {key}"
                     assert val["value"] == i
             except Exception as exc:
                 errors.append(exc)
 
-        threads = [
-            threading.Thread(target=set_get) for _ in range(NUM_THREADS)
-        ]
+        threads = [threading.Thread(target=set_get) for _ in range(NUM_THREADS)]
         for t in threads:
             t.start()
         for t in threads:
@@ -129,9 +128,7 @@ class TestStoreConcurrency:
             except Exception as exc:
                 errors.append(exc)
 
-        threads = [
-            threading.Thread(target=set_get) for _ in range(NUM_THREADS)
-        ]
+        threads = [threading.Thread(target=set_get) for _ in range(NUM_THREADS)]
         for t in threads:
             t.start()
         for t in threads:
@@ -149,7 +146,8 @@ class TestCircuitBreakerConcurrency:
             try:
                 for _ in range(OPS_PER_THREAD):
                     try:
-                        cb.call(lambda: (_ for _ in ()).throw(ValueError("bad")))
+                        cb.call(lambda:
+                                (_ for _ in ()).throw(ValueError("bad")))
                     except (ValueError, Exception):
                         pass
                     try:
@@ -159,9 +157,7 @@ class TestCircuitBreakerConcurrency:
             except Exception as exc:
                 errors.append(exc)
 
-        threads = [
-            threading.Thread(target=hammer) for _ in range(NUM_THREADS)
-        ]
+        threads = [threading.Thread(target=hammer) for _ in range(NUM_THREADS)]
         for t in threads:
             t.start()
         for t in threads:
@@ -210,7 +206,10 @@ class TestTracerConcurrency:
                 for i in range(OPS_PER_THREAD):
                     span = tracer.start_span(
                         "op",
-                        tags={"i": str(i), "t": str(threading.get_ident())},
+                        tags={
+                            "i": str(i),
+                            "t": str(threading.get_ident())
+                        },
                     )
                     tracer.end_span(span)
             except Exception as exc:
@@ -237,11 +236,15 @@ class TestSagaConcurrency:
 
         class DummyEmitter:
 
-            def emit(self, event_type: str, payload: dict[str, Any],
+            def emit(self,
+                     event_type: str,
+                     payload: dict[str, Any],
                      correlation_id: str = "") -> Event:
                 with emit_lock:
                     emitted.append(event_type)
-                return Event(event_type=event_type, source="dummy", payload=payload)
+                return Event(event_type=event_type,
+                             source="dummy",
+                             payload=payload)
 
         orchestrator.register_emitter("test_saga", DummyEmitter())
 

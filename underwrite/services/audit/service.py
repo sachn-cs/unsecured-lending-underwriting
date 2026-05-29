@@ -31,7 +31,10 @@ class AuditService(BatchPersistenceMixin, NanoService):
     ``handle()`` calls to avoid O(n) serialisation overhead on every event.
     """
 
-    def __init__(self, max_ledger: int = 100000, export_url: str = "", **kwargs: Any) -> None:
+    def __init__(self,
+                 max_ledger: int = 100000,
+                 export_url: str = "",
+                 **kwargs: Any) -> None:
         """Initialise the audit service with a bounded in-memory ledger.
 
         Args:
@@ -108,7 +111,9 @@ class AuditService(BatchPersistenceMixin, NanoService):
         try:
             import boto3
         except ImportError:
-            logger.warning("boto3 not available; install with: pip install underwrite[aws]")
+            logger.warning(
+                "boto3 not available; install with: pip install underwrite[aws]"
+            )
             return
         path = self.__export_url.removeprefix("s3://")
         bucket, _, key = path.partition("/")
@@ -125,7 +130,8 @@ class AuditService(BatchPersistenceMixin, NanoService):
             from google.cloud import storage
         except ImportError:
             logger.warning(
-                "google-cloud-storage not available; install with: pip install google-cloud-storage")
+                "google-cloud-storage not available; install with: pip install google-cloud-storage"
+            )
             return
         path = self.__export_url.removeprefix("gs://")
         bucket, _, key = path.partition("/")
@@ -186,8 +192,7 @@ class AuditService(BatchPersistenceMixin, NanoService):
     def _do_sync_store(self) -> None:
         """Persist the in-memory ledger to the shared store."""
         with self.__lock:
-            self.store.set(f"{self.service_id}:ledger",
-                           list(self.__ledger))
+            self.store.set(f"{self.service_id}:ledger", list(self.__ledger))
 
     def __load_store(self) -> None:
         """Restore the ledger from the shared store on startup."""

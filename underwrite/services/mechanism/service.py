@@ -70,12 +70,16 @@ class MechanismService(NanoService):
         return {
             "seeds": set(self.__seeds),
             "parent": dict(self.__parent),
-            "children": {k: list(v) for k, v in self.__children.items()},
+            "children": {
+                k: list(v) for k, v in self.__children.items()
+            },
             "delegation": dict(self.__delegation),
             "base_budget": dict(self.__base_budget),
             "earned": dict(self.__earned),
             "principal": dict(self.__principal),
-            "loans": {k: list(v) for k, v in self.__loans.items()},
+            "loans": {
+                k: list(v) for k, v in self.__loans.items()
+            },
         }
 
     def __restore(self, snap: dict[str, Any]) -> None:
@@ -94,7 +98,9 @@ class MechanismService(NanoService):
         try:
             self.__sync_store()
         except Exception:
-            logger.exception("failed to persist mechanism state, rolling back in-memory state")
+            logger.exception(
+                "failed to persist mechanism state, rolling back in-memory state"
+            )
             self.__restore(snap)
             raise
 
@@ -279,12 +285,14 @@ class MechanismService(NanoService):
             while loss > 0 and current not in self.__seeds:
                 sponsor: str = self.__parent[current]
                 edge: tuple[str, str] = (sponsor, current)
-                sponsor_absorb: float = min(self.__earned.get(sponsor, 0.0), loss)
+                sponsor_absorb: float = min(self.__earned.get(sponsor, 0.0),
+                                            loss)
                 self.__earned[sponsor] = self.__earned.get(sponsor,
                                                            0.0) - sponsor_absorb
                 loss -= sponsor_absorb
                 if loss > 0:
-                    current_edge_amount: float = self.__delegation.get(edge, 0.0)
+                    current_edge_amount: float = self.__delegation.get(
+                        edge, 0.0)
                     if current_edge_amount < loss:
                         raise ProtocolError(
                             "insufficient delegation for default propagation")
@@ -347,8 +355,7 @@ class MechanismService(NanoService):
         clamped_dp: float = max(min(dp, 1.0 - EPSILON), EPSILON)
         clamped_term: float = max(term, EPSILON)
         one_minus_dp: float = 1.0 - clamped_dp
-        break_even: float = min(
-            clamped_dp / (one_minus_dp * clamped_term), 1e6)
+        break_even: float = min(clamped_dp / (one_minus_dp * clamped_term), 1e6)
         protocol_premium: float = pr * principal * term
         self.emit(EventType.QUOTE_CALCULATED, {
             "borrower": borrower,

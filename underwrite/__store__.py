@@ -67,7 +67,10 @@ class Store(ABC):
         """Returns ``True`` if *key* is present."""
 
     @abstractmethod
-    def keys(self, pattern: str | None = None, limit: int = 0, offset: int = 0) -> list[str]:
+    def keys(self,
+             pattern: str | None = None,
+             limit: int = 0,
+             offset: int = 0) -> list[str]:
         """Returns all keys, optionally filtered by a simple substring pattern.
 
         Args:
@@ -100,7 +103,10 @@ class ReadStore(ABC):
         """Returns ``True`` if *key* is present."""
 
     @abstractmethod
-    def keys(self, pattern: str | None = None, limit: int = 0, offset: int = 0) -> list[str]:
+    def keys(self,
+             pattern: str | None = None,
+             limit: int = 0,
+             offset: int = 0) -> list[str]:
         """Returns all keys, optionally filtered by a substring pattern."""
 
     def shutdown(self) -> None:  # noqa: B027
@@ -138,10 +144,16 @@ class MemoryStore(Store):
         with self.__lock:
             return key in self.__data
 
-    def keys(self, pattern: str | None = None, limit: int = 0, offset: int = 0) -> list[str]:
+    def keys(self,
+             pattern: str | None = None,
+             limit: int = 0,
+             offset: int = 0) -> list[str]:
         """Returns all keys, optionally filtered by a substring pattern."""
         with self.__lock:
-            all_keys = [k for k in self.__data if pattern is None or pattern.rstrip("*") in k]
+            all_keys = [
+                k for k in self.__data
+                if pattern is None or pattern.rstrip("*") in k
+            ]
             if offset > 0:
                 all_keys = all_keys[offset:]
             if limit > 0:
@@ -172,12 +184,12 @@ class FileStore(Store):
         self.__logger = logging.getLogger(__name__)
         self.__operation_timeout: float = operation_timeout
         self.__executor: concurrent.futures.ThreadPoolExecutor | None = (
-            concurrent.futures.ThreadPoolExecutor(max_workers=1)
-            if operation_timeout > 0 else None)
-        self.__circuit: CircuitBreaker | None = (
-            CircuitBreaker(failure_threshold=failure_threshold,
-                           recovery_timeout=30.0,
-                           name="filestore") if use_circuit_breaker else None)
+            concurrent.futures.ThreadPoolExecutor(
+                max_workers=1) if operation_timeout > 0 else None)
+        self.__circuit: CircuitBreaker | None = (CircuitBreaker(
+            failure_threshold=failure_threshold,
+            recovery_timeout=30.0,
+            name="filestore") if use_circuit_breaker else None)
         self.__fsync: bool = fsync
         self.__metrics: Any | None = metrics_collector
 
@@ -199,7 +211,8 @@ class FileStore(Store):
             return fut.result(timeout=self.__operation_timeout)
         except concurrent.futures.TimeoutError:
             raise TimeoutError(
-                _FILE_TIMEOUT_MSG % (self.__operation_timeout, fn.__name__)) from None
+                _FILE_TIMEOUT_MSG %
+                (self.__operation_timeout, fn.__name__)) from None
 
     def __circuit_call(self, fn: Any, *args: Any, **kwargs: Any) -> Any:
         if self.__circuit is None:
@@ -212,6 +225,7 @@ class FileStore(Store):
         Raises:
             StoreError: If the file exists but is corrupted or unreadable.
         """
+
         def _read() -> Any | None:
             path = self.__path(key)
             if not path.exists():
@@ -222,18 +236,22 @@ class FileStore(Store):
             except json.JSONDecodeError:
                 self.__logger.exception("corrupted store file %s", path)
                 if self.__metrics:
-                    self.__metrics.increment("store.corruption", {"path": path.name})
-                raise StoreError(f"corrupted store file for key {key}") from None
+                    self.__metrics.increment("store.corruption",
+                                             {"path": path.name})
+                raise StoreError(
+                    f"corrupted store file for key {key}") from None
             except OSError:
                 self.__logger.exception("I/O error reading store file %s", path)
                 if self.__metrics:
-                    self.__metrics.increment("store.io_error", {"path": path.name})
+                    self.__metrics.increment("store.io_error",
+                                             {"path": path.name})
                 raise StoreError(f"I/O error reading store key {key}") from None
 
         return self.__circuit_call(_read)
 
     def set(self, key: str, value: Any) -> None:
         """Persists *value* under *key* as a JSON file (atomic write)."""
+
         def _write() -> None:
             path = self.__path(key)
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -250,6 +268,7 @@ class FileStore(Store):
 
     def delete(self, key: str) -> bool:
         """Removes the file for *key*.  Returns ``True`` if it existed."""
+
         def _delete() -> bool:
             path = self.__path(key)
             if not path.exists():
@@ -262,12 +281,16 @@ class FileStore(Store):
 
     def exists(self, key: str) -> bool:
         """Returns ``True`` if the file for *key* exists."""
+
         def _exists() -> bool:
             return self.__path(key).exists()
 
         return self.__circuit_call(_exists)
 
-    def keys(self, pattern: str | None = None, limit: int = 0, offset: int = 0) -> list[str]:
+    def keys(self,
+             pattern: str | None = None,
+             limit: int = 0,
+             offset: int = 0) -> list[str]:
         """Returns all keys, optionally filtered by a substring pattern.
 
         Args:
@@ -275,6 +298,7 @@ class FileStore(Store):
             limit: Max results (0 = unlimited).
             offset: Number of results to skip before returning.
         """
+
         def _keys() -> list[str]:
             result: list[str] = []
             count: int = 0
@@ -301,7 +325,8 @@ class FileStore(Store):
         try:
             full.relative_to(data_dir)
         except ValueError:
-            raise StoreError(f"key {key} resolves outside data directory") from None
+            raise StoreError(
+                f"key {key} resolves outside data directory") from None
         return full
 
 
@@ -360,8 +385,9 @@ class PostgresStore(Store):
             else:
                 conn.close()
 
-    def __execute(self, query: str,
-                  params: tuple[Any, ...] = ()) -> list[tuple[Any, ...]] | None:
+    def __execute(
+        self, query: str,
+        params: tuple[Any, ...] = ()) -> list[tuple[Any, ...]] | None:
 
         def run() -> Any:
             conn = self.__acquire()
@@ -396,8 +422,7 @@ class PostgresStore(Store):
     def delete(self, key: str) -> bool:
         """Removes *key*.  Returns ``True`` if it existed."""
         rows = self.__execute(
-            f"DELETE FROM {self.__table} WHERE key = %s RETURNING *",
-            (key,))
+            f"DELETE FROM {self.__table} WHERE key = %s RETURNING *", (key,))
         return rows is not None and len(rows) > 0
 
     def exists(self, key: str) -> bool:
@@ -406,7 +431,10 @@ class PostgresStore(Store):
                               (key,))
         return bool(rows)
 
-    def keys(self, pattern: str | None = None, limit: int = 0, offset: int = 0) -> list[str]:
+    def keys(self,
+             pattern: str | None = None,
+             limit: int = 0,
+             offset: int = 0) -> list[str]:
         """Returns all keys, optionally filtered by a LIKE pattern."""
         if pattern:
             like = f"%{pattern.rstrip('*')}%"
@@ -498,7 +526,10 @@ class CQRSStore(Store):
         """Checks the read store for *key*."""
         return self.__read.exists(key)
 
-    def keys(self, pattern: str | None = None, limit: int = 0, offset: int = 0) -> list[str]:
+    def keys(self,
+             pattern: str | None = None,
+             limit: int = 0,
+             offset: int = 0) -> list[str]:
         """Returns keys from the read store, optionally filtered."""
         return self.__read.keys(pattern, limit=limit, offset=offset)
 
@@ -509,7 +540,8 @@ class CQRSStore(Store):
             write_health = self.__write.health()
         except Exception as exc:
             write_health = {"ok": False, "detail": str(exc)}
-        combined_ok = read_health.get("ok", False) and write_health.get("ok", False)
+        combined_ok = read_health.get("ok", False) and write_health.get(
+            "ok", False)
         return {
             "ok": combined_ok,
             "read_store": read_health,

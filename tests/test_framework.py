@@ -16,8 +16,7 @@ from underwrite.__bus__ import LocalBus
 from underwrite.__config__ import SERVICE_NAMES, Configuration
 from underwrite.__events__ import Event
 from underwrite.__exceptions__ import (
-    ServiceNotFoundError,
-)
+    ServiceNotFoundError,)
 from underwrite.__identity__ import Identity
 from underwrite.__runtime__ import Runtime
 from underwrite.__store__ import FileStore, MemoryStore

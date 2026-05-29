@@ -116,10 +116,12 @@ class TestKeyRotationManagerConcurrency:
         identity = krm.get_or_create("svc2")
         payload = "test-payload"
         sig = identity.sign(payload)
-        assert krm.verify_with_rotation(payload, sig, "svc2", identity.public_key)
+        assert krm.verify_with_rotation(payload, sig, "svc2",
+                                        identity.public_key)
         # After rotation, old key should still verify during grace
         krm.rotate("svc2")
-        assert krm.verify_with_rotation(payload, sig, "svc2", identity.public_key)
+        assert krm.verify_with_rotation(payload, sig, "svc2",
+                                        identity.public_key)
 
 
 class TestMechanismServiceConcurrency:
@@ -155,7 +157,9 @@ class TestMechanismServiceConcurrency:
             except Exception as e:
                 errors.append(e)
 
-        threads = [threading.Thread(target=add_seed, args=(i,)) for i in range(20)]
+        threads = [
+            threading.Thread(target=add_seed, args=(i,)) for i in range(20)
+        ]
         for t in threads:
             t.start()
         for t in threads:
@@ -170,7 +174,11 @@ class TestMechanismServiceConcurrency:
         seed_ev = Event(
             event_type="mechanism",
             source="test",
-            payload={"command": "add_seed", "user": "bank", "base_budget": 1_000_000.0},
+            payload={
+                "command": "add_seed",
+                "user": "bank",
+                "base_budget": 1_000_000.0
+            },
         )
         mech.handle(seed_ev)
 
@@ -192,7 +200,9 @@ class TestMechanismServiceConcurrency:
             except Exception as e:
                 errors.append(e)
 
-        threads = [threading.Thread(target=add_user, args=(i,)) for i in range(20)]
+        threads = [
+            threading.Thread(target=add_user, args=(i,)) for i in range(20)
+        ]
         for t in threads:
             t.start()
         for t in threads:
@@ -207,9 +217,12 @@ class TestMechanismServiceConcurrency:
             Event(
                 event_type="mechanism",
                 source="test",
-                payload={"command": "add_seed", "user": "bank", "base_budget": 1_000_000.0},
-            )
-        )
+                payload={
+                    "command": "add_seed",
+                    "user": "bank",
+                    "base_budget": 1_000_000.0
+                },
+            ))
         mech.handle(
             Event(
                 event_type="mechanism",
@@ -220,8 +233,7 @@ class TestMechanismServiceConcurrency:
                     "user": "alice",
                     "delegation_amount": 50000.0,
                 },
-            )
-        )
+            ))
 
         results: list[float] = []
 
@@ -254,10 +266,8 @@ class TestMemoryStoreConcurrency:
             for i in range(100):
                 store.get(f"key_{i}")
 
-        threads = (
-            [threading.Thread(target=writer) for _ in range(5)]
-            + [threading.Thread(target=reader) for _ in range(5)]
-        )
+        threads = ([threading.Thread(target=writer) for _ in range(5)] +
+                   [threading.Thread(target=reader) for _ in range(5)])
         for t in threads:
             t.start()
         for t in threads:

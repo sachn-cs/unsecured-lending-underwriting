@@ -73,4 +73,5 @@ class DocumentService(NanoService):
     def __sync_store(self) -> None:
         """Persist the current document records to the store."""
         with self.__lock:
-            self.store.set(f"{self.service_id}:documents", dict(self.__documents))
+            self.store.set(f"{self.service_id}:documents",
+                           dict(self.__documents))

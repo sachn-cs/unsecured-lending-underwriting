@@ -44,16 +44,16 @@ class NPAService(NanoService):
             elif event.event_type == EventType.DEFAULT_OCCURRED:
                 borrower = event.payload.get("borrower", "")
                 if not borrower:
-                    logger.warning("dropping DEFAULT_OCCURRED with missing borrower")
+                    logger.warning(
+                        "dropping DEFAULT_OCCURRED with missing borrower")
                     return
                 record = self.__accounts.get(borrower, {})
                 days: int = record.get("days_overdue", self.__trigger_days)
                 bucket: str = self.classify_overdue_days(days)
                 should_trigger_dlg: bool = (
-                    borrower in self.__accounts
-                    and days >= self.__trigger_days
-                    and not record.get("dlg_invoked", False)
-                )
+                    borrower in self.__accounts and
+                    days >= self.__trigger_days and
+                    not record.get("dlg_invoked", False))
                 if should_trigger_dlg:
                     self.__accounts[borrower]["dlg_invoked"] = True
                 self.emit(EventType.NPA_BUCKET_CHANGED, {
@@ -64,8 +64,10 @@ class NPAService(NanoService):
                 if should_trigger_dlg:
                     self.__sync_store()
                     self.emit(EventType.DLG_TRIGGERED, {
-                        "loan_id": borrower,
-                        "recovery_amount": get_finite(event.payload, "principal", 0.0),
+                        "loan_id":
+                            borrower,
+                        "recovery_amount":
+                            get_finite(event.payload, "principal", 0.0),
                     },
                               correlation_id=event.correlation_id)
 

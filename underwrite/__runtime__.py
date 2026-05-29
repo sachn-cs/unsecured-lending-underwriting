@@ -57,7 +57,8 @@ class Runtime:
     __metrics_thread: threading.Thread | None
     __metrics_stop: threading.Event | None
 
-    def __init__(self, config: Configuration | None = None,
+    def __init__(self,
+                 config: Configuration | None = None,
                  readonly: bool = False) -> None:
         """Initialises the Runtime.
 
@@ -89,14 +90,11 @@ class Runtime:
         self.__tracer: Tracer | None = self.__build_tracer()
         self.__bus = self.__build_bus()
         self.__secrets = self.__build_secrets()
-        self.__saga = (
-            SagaOrchestrator(store=self.__store)
-            if self.__config.saga.enabled else None
-        )
+        self.__saga = (SagaOrchestrator(
+            store=self.__store) if self.__config.saga.enabled else None)
         self.__health = HealthRegistry()
-        self.__metrics = (
-            MetricsCollector() if self.__config.metrics.enabled else None
-        )
+        self.__metrics = (MetricsCollector()
+                          if self.__config.metrics.enabled else None)
         self.__authz = self.__build_authz()
         self.__supervisor = self.__build_supervisor()
         self.__metrics_thread = None
@@ -143,7 +141,8 @@ class Runtime:
         else:
             handler.setFormatter(
                 _logging.Formatter(
-                    "%(asctime)s [%(levelname)s] %(correlation_id)s %(name)s: %(message)s"))
+                    "%(asctime)s [%(levelname)s] %(correlation_id)s %(name)s: %(message)s"
+                ))
 
         root = _logging.getLogger("underwrite")
 
@@ -152,7 +151,8 @@ class Runtime:
             def filter(self, record: _logging.LogRecord) -> bool:
                 if not hasattr(record, "correlation_id"):
                     from underwrite.services.base import get_log_correlation_id
-                    record.correlation_id = get_log_correlation_id()  # type: ignore[attr-defined]
+                    record.correlation_id = get_log_correlation_id(
+                    )  # type: ignore[attr-defined]
                 return True
 
         root.addFilter(_CorrelationFilter())
@@ -238,7 +238,8 @@ class Runtime:
                     with open(p) as fh:
                         rules = json_mod.load(fh)
                 except (json_mod.JSONDecodeError, OSError) as exc:
-                    logger.error("failed to load authz policy file %s: %s", policy_file, exc)
+                    logger.error("failed to load authz policy file %s: %s",
+                                 policy_file, exc)
                     return None
                 for rule in rules.get("allow", []):
                     acl.allow(rule.get("subject", "*"),
@@ -265,9 +266,11 @@ class Runtime:
                     break
                 try:
                     snap = metrics.snapshot()
-                    if not any([snap.get("counters"),
-                                snap.get("timers"),
-                                snap.get("gauges")]):
+                    if not any([
+                            snap.get("counters"),
+                            snap.get("timers"),
+                            snap.get("gauges")
+                    ]):
                         continue
                     _logger = logging.getLogger("underwrite.metrics")
                     _logger.debug("exporting %d counters, %d timers, %d gauges",
@@ -277,8 +280,9 @@ class Runtime:
                 except Exception:
                     logger.exception("metrics export failed")
 
-        self.__metrics_thread = threading.Thread(
-            target=_export_loop, daemon=True, name="metrics-export")
+        self.__metrics_thread = threading.Thread(target=_export_loop,
+                                                 daemon=True,
+                                                 name="metrics-export")
         self.__metrics_thread.start()
 
     def __register_subsystem_health(self) -> None:
@@ -286,8 +290,7 @@ class Runtime:
         self.__health.register("store", lambda: self.__store.health())
         read_store = self.__read_store
         if read_store is not None:
-            self.__health.register("read_store",
-                                   lambda: read_store.health())
+            self.__health.register("read_store", lambda: read_store.health())
         self.__health.register(
             "services", lambda: {
                 "ok":
@@ -395,9 +398,11 @@ class Runtime:
             extra["fee_schedules"] = dict(self.__config.fee.schedules)
         elif service_name == "governance":
             extra["param_ranges"] = {
-                k: list(v) for k, v in self.__config.governance.param_ranges.items()
+                k: list(v)
+                for k, v in self.__config.governance.param_ranges.items()
             }
-            extra["param_defaults"] = dict(self.__config.governance.param_defaults)
+            extra["param_defaults"] = dict(
+                self.__config.governance.param_defaults)
         elif service_name == "audit":
             extra["max_ledger"] = self.__config.audit.max_ledger
             extra["export_url"] = self.__config.audit.export_url
@@ -472,7 +477,8 @@ class Runtime:
                 old = self.__services.pop(service_id)
                 old.stop()
             except Exception:
-                logger.exception("error stopping service %s during restart", service_id)
+                logger.exception("error stopping service %s during restart",
+                                 service_id)
             try:
                 svc = self.register(service_id)
                 self.wire(service_id)
@@ -525,8 +531,8 @@ class Runtime:
         blocking the async event loop.
         """
         import asyncio
-        return await asyncio.to_thread(
-            self.publish, event_type, payload, correlation_id)
+        return await asyncio.to_thread(self.publish, event_type, payload,
+                                       correlation_id)
 
     def replay_saga(self, saga_id: str) -> bool:
         """Replays an incomplete saga for crash recovery.

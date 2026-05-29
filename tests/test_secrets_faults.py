@@ -25,7 +25,8 @@ class TestEnvSecretsBackend:
     def test_get_returns_env_var_value(self) -> None:
         key = "DATABASE_URL"
         expected = "postgres://localhost:5432/db"
-        with patch.dict(os.environ, {"UNDERWRITE_SECRET_DATABASE_URL": expected},
+        with patch.dict(os.environ,
+                        {"UNDERWRITE_SECRET_DATABASE_URL": expected},
                         clear=False):
             backend = EnvSecretsBackend()
             result = backend.get(key)
@@ -105,15 +106,19 @@ class TestVaultSecretsBackend:
         mock_client = Mock()
         mock_hvac.Client.return_value = mock_client
         mock_client.secrets.kv.v2.read_secret_version.return_value = {
-            "data": {"data": {"value": "my-secret-value"}}
+            "data": {
+                "data": {
+                    "value": "my-secret-value"
+                }
+            }
         }
         with patch.dict("sys.modules", modules):
-            backend = VaultSecretsBackend(
-                url="http://vault:8200", token="test-token")
+            backend = VaultSecretsBackend(url="http://vault:8200",
+                                          token="test-token")
             result = backend.get("my-key")
         assert result == "my-secret-value"
-        mock_hvac.Client.assert_called_once_with(
-            url="http://vault:8200", token="test-token")
+        mock_hvac.Client.assert_called_once_with(url="http://vault:8200",
+                                                 token="test-token")
         mock_client.secrets.kv.v2.read_secret_version.assert_called_once_with(
             path="my-key", mount_point="secret")
 
@@ -121,7 +126,8 @@ class TestVaultSecretsBackend:
         modules = _make_hvac_module()
         mock_hvac = modules["hvac"]
         mock_client = Mock()
-        vault_error = modules["hvac"].exceptions.VaultError("hvac connection failed")
+        vault_error = modules["hvac"].exceptions.VaultError(
+            "hvac connection failed")
         mock_client.secrets.kv.v2.read_secret_version.side_effect = vault_error
         with patch.dict("sys.modules", modules):
             backend = VaultSecretsBackend()
@@ -135,7 +141,11 @@ class TestVaultSecretsBackend:
         mock_client = Mock()
         mock_hvac.Client.return_value = mock_client
         mock_client.secrets.kv.v2.read_secret_version.return_value = {
-            "data": {"data": {"value": "val"}}
+            "data": {
+                "data": {
+                    "value": "val"
+                }
+            }
         }
         with patch.dict("sys.modules", modules):
             backend = VaultSecretsBackend()
@@ -149,7 +159,11 @@ class TestVaultSecretsBackend:
         mock_client = Mock()
         mock_hvac.Client.return_value = mock_client
         mock_client.secrets.kv.v2.read_secret_version.return_value = {
-            "data": {"data": {"value": "val"}}
+            "data": {
+                "data": {
+                    "value": "val"
+                }
+            }
         }
         with patch.dict("sys.modules", modules):
             backend = VaultSecretsBackend(mount_point="team-secrets")
@@ -163,15 +177,19 @@ class TestVaultSecretsBackend:
         mock_client = Mock()
         mock_hvac.Client.return_value = mock_client
         mock_client.secrets.kv.v2.read_secret_version.return_value = {
-            "data": {"data": {"value": "val"}}
+            "data": {
+                "data": {
+                    "value": "val"
+                }
+            }
         }
         with patch.dict("sys.modules", modules):
             with patch.dict(os.environ, {"VAULT_TOKEN": "env-token"},
                             clear=False):
                 backend = VaultSecretsBackend()
                 backend.get("k")
-        mock_hvac.Client.assert_called_once_with(
-            url="http://localhost:8200", token="env-token")
+        mock_hvac.Client.assert_called_once_with(url="http://localhost:8200",
+                                                 token="env-token")
 
     def test_set_calls_hvac(self) -> None:
         modules = _make_hvac_module()
@@ -182,9 +200,7 @@ class TestVaultSecretsBackend:
             backend = VaultSecretsBackend(token="tok")
             backend.set("my-key", "my-value")
         mock_client.secrets.kv.v2.create_or_update_secret.assert_called_once_with(
-            path="my-key",
-            secret={"value": "my-value"},
-            mount_point="secret")
+            path="my-key", secret={"value": "my-value"}, mount_point="secret")
 
     def test_raises_on_missing_hvac_package(self) -> None:
         backend = VaultSecretsBackend()
@@ -192,7 +208,7 @@ class TestVaultSecretsBackend:
             with patch("builtins.__import__") as mock_import:
                 mock_import.side_effect = ImportError("no hvac")
                 with pytest.raises(ImportError,
-                                    match="VaultSecretsBackend requires hvac"):
+                                   match="VaultSecretsBackend requires hvac"):
                     backend.get("k")
 
 
@@ -208,8 +224,8 @@ class TestAwsSecretsBackend:
             backend = AwsSecretsBackend(region="us-west-2")
             result = backend.get("my-key")
         assert result == "my-val"
-        mock_boto3.client.assert_called_once_with(
-            "secretsmanager", region_name="us-west-2")
+        mock_boto3.client.assert_called_once_with("secretsmanager",
+                                                  region_name="us-west-2")
         mock_client.get_secret_value.assert_called_once_with(SecretId="my-key")
 
     def test_get_returns_none_for_resource_not_found(self) -> None:
@@ -220,7 +236,8 @@ class TestAwsSecretsBackend:
             pass
 
         mock_client.exceptions.ResourceNotFoundException = FakeResourceNotFound
-        mock_client.get_secret_value.side_effect = FakeResourceNotFound("missing")
+        mock_client.get_secret_value.side_effect = FakeResourceNotFound(
+            "missing")
         mock_boto3.client.return_value = mock_client
         with patch.dict("sys.modules", {"boto3": mock_boto3}):
             backend = AwsSecretsBackend()
@@ -239,7 +256,8 @@ class TestAwsSecretsBackend:
 
         mock_client.exceptions.ResourceNotFoundException = FakeResourceNotFound
         mock_client.exceptions.ClientError = FakeClientError
-        mock_client.get_secret_value.side_effect = RuntimeError("connection error")
+        mock_client.get_secret_value.side_effect = RuntimeError(
+            "connection error")
         mock_boto3.client.return_value = mock_client
         with patch.dict("sys.modules", {"boto3": mock_boto3}):
             backend = AwsSecretsBackend()
@@ -264,7 +282,8 @@ class TestAwsSecretsBackend:
             pass
 
         mock_client.exceptions.ResourceNotFoundException = FakeResourceNotFound
-        mock_client.put_secret_value.side_effect = FakeResourceNotFound("missing")
+        mock_client.put_secret_value.side_effect = FakeResourceNotFound(
+            "missing")
         mock_boto3.client.return_value = mock_client
         with patch.dict("sys.modules", {"boto3": mock_boto3}):
             backend = AwsSecretsBackend()
@@ -281,8 +300,8 @@ class TestAwsSecretsBackend:
         with patch.dict("sys.modules", {"boto3": mock_boto3}):
             backend = AwsSecretsBackend()
             backend.get("k")
-        mock_boto3.client.assert_called_once_with(
-            "secretsmanager", region_name="us-east-1")
+        mock_boto3.client.assert_called_once_with("secretsmanager",
+                                                  region_name="us-east-1")
 
     def test_get_propagates_client_import_error(self) -> None:
         backend = AwsSecretsBackend()
@@ -305,14 +324,17 @@ class TestAwsSecretsBackend:
         mock_client.exceptions.ClientError = FakeClientError
         mock_client.exceptions.ResourceNotFoundException = FakeResourceNotFound
         mock_client.get_secret_value.side_effect = FakeClientError(
-            {"Error": {"Code": "AccessDeniedException"}}, "get_secret_value")
+            {"Error": {
+                "Code": "AccessDeniedException"
+            }}, "get_secret_value")
         mock_boto3.client.return_value = mock_client
         with patch.dict("sys.modules", {"boto3": mock_boto3}):
             backend = AwsSecretsBackend(metrics_collector=metrics)
             with pytest.raises(FakeClientError):
                 backend.get("my-key")
         snapshot = metrics.snapshot()
-        assert any(k.startswith("secrets.failures") for k in snapshot["counters"])
+        assert any(
+            k.startswith("secrets.failures") for k in snapshot["counters"])
 
 
 class TestSecretsManager:
@@ -339,7 +361,8 @@ class TestSecretsManager:
         assert isinstance(mgr._SecretsManager__backend, EnvSecretsBackend)
 
     def test_build_backend_vault_config(self) -> None:
-        cfg = SimpleNamespace(backend="vault", url="http://vault:8200",
+        cfg = SimpleNamespace(backend="vault",
+                              url="http://vault:8200",
                               token="tok")
         mgr = SecretsManager(config=cfg)
         backend = mgr._SecretsManager__backend
@@ -359,6 +382,6 @@ class TestSecretsManager:
 
     def test_backend_provided_directly_is_used(self) -> None:
         mock_backend = Mock(spec=SecretsBackend)
-        mgr = SecretsManager(backend=mock_backend, config=SimpleNamespace(
-            backend="vault"))
+        mgr = SecretsManager(backend=mock_backend,
+                             config=SimpleNamespace(backend="vault"))
         assert mgr._SecretsManager__backend is mock_backend

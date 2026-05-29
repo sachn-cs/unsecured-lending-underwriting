@@ -49,7 +49,9 @@ class Identity:
     created_at: float = 0.0
 
     @classmethod
-    def create(cls, service_id: str, private_key_pem: str = "",
+    def create(cls,
+               service_id: str,
+               private_key_pem: str = "",
                secrets_manager: Any | None = None) -> Identity:
         """Creates or derives an identity.
 
@@ -103,9 +105,8 @@ class Identity:
                 public_key=base64.b64encode(dummy).decode(),
                 created_at=now,
             )
-            object.__setattr__(
-                identity, '_Identity__private_key',
-                base64.b64encode(dummy).decode())
+            object.__setattr__(identity, '_Identity__private_key',
+                               base64.b64encode(dummy).decode())
             return identity
         private = ed25519.Ed25519PrivateKey.generate()
         public = private.public_key()
@@ -219,7 +220,7 @@ class KeyRotationManager:
         return new_identity
 
     def verify_with_rotation(self, payload: str, signature: str,
-                              service_id: str, public_key: str) -> bool:
+                             service_id: str, public_key: str) -> bool:
         """Verifies a signature against current or previous (grace) keys.
 
         Args:

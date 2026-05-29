@@ -120,14 +120,12 @@ class Saga:
                 )
             if idx in seen:
                 raise ProtocolError(
-                    f"saga {self.saga_id} duplicate completed_step {idx}"
-                )
+                    f"saga {self.saga_id} duplicate completed_step {idx}")
             seen.add(idx)
             if i > 0 and idx <= self.completed_steps[i - 1]:
                 raise ProtocolError(
                     f"saga {self.saga_id} completed_steps not strictly increasing "
-                    f"({self.completed_steps[i - 1]} >= {idx})"
-                )
+                    f"({self.completed_steps[i - 1]} >= {idx})")
 
 
 class SagaOrchestrator:
@@ -162,7 +160,8 @@ class SagaOrchestrator:
     def __persist_saga(self, saga: Saga) -> None:
         """Write saga state to the store."""
         try:
-            self.__store.set(self.__saga_store_key(saga.saga_id), saga.to_dict())
+            self.__store.set(self.__saga_store_key(saga.saga_id),
+                             saga.to_dict())
         except Exception:
             logger.exception("failed to persist saga %s", saga.saga_id)
 
@@ -218,8 +217,9 @@ class SagaOrchestrator:
         """
         idem_key = self.__step_idempotency_key(saga_id, step_index)
         if self.__store.get(idem_key) is not None:
-            logger.debug("saga %s step %d already completed (idempotency), skipping",
-                         saga_id, step_index)
+            logger.debug(
+                "saga %s step %d already completed (idempotency), skipping",
+                saga_id, step_index)
             return True
         with self.__lock:
             saga = self.__sagas.get(saga_id)
@@ -228,8 +228,9 @@ class SagaOrchestrator:
                                saga_id, saga.status if saga else "N/A")
                 return False
             if step_index >= len(saga.steps):
-                logger.warning("saga %s step_index %d out of range (total steps %d)",
-                               saga_id, step_index, len(saga.steps))
+                logger.warning(
+                    "saga %s step_index %d out of range (total steps %d)",
+                    saga_id, step_index, len(saga.steps))
                 return False
             step = saga.steps[step_index]
             emitter = self.__emitters.get(saga.name)
@@ -247,8 +248,8 @@ class SagaOrchestrator:
                 return True
             except Exception as exc:
                 tb = traceback.format_exc()
-                logger.exception("saga %s step %d (%s) failed",
-                                 saga_id, step_index, step.name)
+                logger.exception("saga %s step %d (%s) failed", saga_id,
+                                 step_index, step.name)
                 self.__rollback(saga_id, step_index, f"{exc}\n{tb}")
                 return False
 
@@ -288,8 +289,8 @@ class SagaOrchestrator:
             steps_to_rollback = list(saga.completed_steps)
         emitter = self.__emitters.get(saga.name)
         if not emitter:
-            logger.warning("rollback: no emitter for saga %s type %r",
-                           saga_id, saga.name)
+            logger.warning("rollback: no emitter for saga %s type %r", saga_id,
+                           saga.name)
             return
         compensation_errors: list[str] = []
         for idx in reversed(steps_to_rollback):
@@ -343,8 +344,9 @@ class SagaOrchestrator:
             if saga.status == "completed":
                 return True
             if saga.status == "rolled_back":
-                logger.warning("replay_saga: saga %s is rolled back, cannot replay",
-                               saga_id)
+                logger.warning(
+                    "replay_saga: saga %s is rolled back, cannot replay",
+                    saga_id)
                 return False
             # Determine the next step after the last completed one
             completed = set(saga.completed_steps)

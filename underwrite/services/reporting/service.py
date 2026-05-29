@@ -26,8 +26,7 @@ class ReportingService(NanoService):
         if event.event_type == EventType.LOAN_ORIGINATED:
             with self.__lock:
                 self.__originations += 1
-                self.__total_principal += get_finite(event.payload,
-                                                     "principal")
+                self.__total_principal += get_finite(event.payload, "principal")
                 self.__sync_store()
         elif event.event_type == EventType.DEFAULT_OCCURRED:
             with self.__lock:
@@ -60,11 +59,12 @@ class ReportingService(NanoService):
     def __sync_store(self) -> None:
         """Persist the in-memory counters to the shared store."""
         with self.__lock:
-            self.store.set(f"{self.service_id}:counters", {
-                "originations": self.__originations,
-                "defaults": self.__defaults,
-                "total_principal": self.__total_principal,
-            })
+            self.store.set(
+                f"{self.service_id}:counters", {
+                    "originations": self.__originations,
+                    "defaults": self.__defaults,
+                    "total_principal": self.__total_principal,
+                })
 
     def __load_store(self) -> None:
         """Restore the counters from the shared store on startup."""

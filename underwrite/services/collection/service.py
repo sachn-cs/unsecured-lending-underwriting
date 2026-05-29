@@ -85,8 +85,7 @@ class CollectionService(NanoService):
     def __sync_store(self) -> None:
         """Persist the in-memory loans to the shared store."""
         with self.__lock:
-            self.store.set(f"{self.service_id}:loans",
-                           dict(self.__loans))
+            self.store.set(f"{self.service_id}:loans", dict(self.__loans))
 
     def __load_store(self) -> None:
         """Restore the loans from the shared store on startup."""

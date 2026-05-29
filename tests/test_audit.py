@@ -145,8 +145,7 @@ class TestAuditService:
         mock_boto3_mod.client = MagicMock(return_value=mock_s3)
 
         with patch.dict("sys.modules", {"boto3": mock_boto3_mod}):
-            if "underwrite.services.audit.service" in __import__(
-                    "sys").modules:
+            if "underwrite.services.audit.service" in __import__("sys").modules:
                 __import__("sys").modules.pop(
                     "underwrite.services.audit.service", None)
             from underwrite.services.audit.service import AuditService as AuditSvc2
@@ -157,6 +156,7 @@ class TestAuditService:
         assert put_called[0]
 
     def test_export_gcs_noop_without_library(self) -> None:
-        svc = AuditService(service_id="audit", export_url="gs://bucket/path.jsonl")
+        svc = AuditService(service_id="audit",
+                           export_url="gs://bucket/path.jsonl")
         svc.handle(Event(event_type="ev", source="s"))
         svc.export()  # should log warning, not raise

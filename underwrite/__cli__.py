@@ -71,9 +71,7 @@ _SERVICE_ARG = typer.Argument(
 
 
 @app.command()
-def run(
-    services: list[str] = _SERVICE_ARG,
-) -> None:
+def run(services: list[str] = _SERVICE_ARG,) -> None:
     """Starts one or more nano services."""
     for name in services:
         if name not in SERVICE_NAMES:
@@ -166,8 +164,12 @@ def health() -> None:
 
 @app.command()
 def dlq(
-    replay: bool = typer.Option(False, "--replay", help="Re-publish all dead-letter events"),
-    max_count: int = typer.Option(0, "--max", help="Max events to replay (0 = all)"),
+    replay: bool = typer.Option(False,
+                                "--replay",
+                                help="Re-publish all dead-letter events"),
+    max_count: int = typer.Option(0,
+                                  "--max",
+                                  help="Max events to replay (0 = all)"),
 ) -> None:
     """Shows dead-letter queue info, or replays dead-letter events."""
     config = _load_config()
@@ -227,7 +229,8 @@ def serve(
     except ImportError:
         typer.secho(
             "serve requires uvicorn; install with: pip install underwrite[serve]",
-            err=True, fg=typer.colors.RED)
+            err=True,
+            fg=typer.colors.RED)
         raise typer.Exit(code=1) from None
 
     config = _load_config()

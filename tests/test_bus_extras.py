@@ -173,8 +173,12 @@ class TestDistributedRateLimiter:
 
     def test_store_backed_shares_state(self) -> None:
         store = MemoryStore()
-        rl1 = DistributedRateLimiter(max_rate=1000, store=store, prefix="shared")
-        rl2 = DistributedRateLimiter(max_rate=1000, store=store, prefix="shared")
+        rl1 = DistributedRateLimiter(max_rate=1000,
+                                     store=store,
+                                     prefix="shared")
+        rl2 = DistributedRateLimiter(max_rate=1000,
+                                     store=store,
+                                     prefix="shared")
         rl1.check("k")
         # rl2 sees the same rate-limit state from the store
         allowed = [rl2.check("k") for _ in range(10)]

@@ -173,8 +173,8 @@ class NanoService(ABC):
         try:
             return self.__store.get(key)
         except Exception:
-            logger.exception("store get failed for %s in service %s",
-                             key, self.__service_id)
+            logger.exception("store get failed for %s in service %s", key,
+                             self.__service_id)
             return default
 
     def safe_store_set(self, key: str, value: Any) -> bool:
@@ -191,8 +191,8 @@ class NanoService(ABC):
             self.__store.set(key, value)
             return True
         except Exception:
-            logger.exception("store set failed for %s in service %s",
-                             key, self.__service_id)
+            logger.exception("store set failed for %s in service %s", key,
+                             self.__service_id)
             return False
 
     def subscribe(self, event_type: str) -> None:
@@ -262,14 +262,14 @@ class NanoService(ABC):
             try:
                 self.__authz.assert_verified(event)
             except AuthzError:
-                logger.warning(
-                    "signature verification failed for %s from %s",
-                    event.event_id, event.source)
+                logger.warning("signature verification failed for %s from %s",
+                               event.event_id, event.source)
                 if self.__metrics:
-                    self.__metrics.increment("authz.failures", {
-                        "service": self.__service_id,
-                        "event_type": event.event_type,
-                    })
+                    self.__metrics.increment(
+                        "authz.failures", {
+                            "service": self.__service_id,
+                            "event_type": event.event_type,
+                        })
                 return
         if self.__bus.idempotency.is_duplicate(self.__service_id,
                                                event.event_id):

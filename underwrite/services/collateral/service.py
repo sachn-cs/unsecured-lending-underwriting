@@ -47,7 +47,8 @@ class CollateralService(NanoService):
         elif event.event_type == EventType.DEFAULT_OCCURRED:
             borrower = event.payload.get("borrower", "")
             if not borrower:
-                logger.warning("dropping DEFAULT_OCCURRED with missing borrower")
+                logger.warning(
+                    "dropping DEFAULT_OCCURRED with missing borrower")
                 return
             with self.__lock:
                 col = self.__collateral.pop(borrower, None)

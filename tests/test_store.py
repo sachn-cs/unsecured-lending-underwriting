@@ -49,7 +49,8 @@ class TestFileStoreCorruption:
             with pytest.raises(StoreError):
                 store.get("key1")
         snapshot = metrics.snapshot()
-        assert any(k.startswith("store.corruption") for k in snapshot["counters"])
+        assert any(
+            k.startswith("store.corruption") for k in snapshot["counters"])
 
     def test_io_error_increments_metric(self) -> None:
         metrics = MetricsCollector()
@@ -186,14 +187,30 @@ class TestCQRSStore:
         assert result["write_store"]["ok"] is True
 
     def test_health_detects_write_failure(self) -> None:
+
         class BrokenWriteStore(Store):
-            def get(self, key: str) -> None: return None
-            def set(self, key: str, value: Any) -> None: pass
-            def delete(self, key: str) -> bool: return False
-            def exists(self, key: str) -> bool: return False
-            def keys(self, pattern: str | None = None, limit: int = 0, offset: int = 0) -> list[str]: return []
+
+            def get(self, key: str) -> None:
+                return None
+
+            def set(self, key: str, value: Any) -> None:
+                pass
+
+            def delete(self, key: str) -> bool:
+                return False
+
+            def exists(self, key: str) -> bool:
+                return False
+
+            def keys(self,
+                     pattern: str | None = None,
+                     limit: int = 0,
+                     offset: int = 0) -> list[str]:
+                return []
+
             def health(self) -> dict[str, Any]:
                 raise RuntimeError("write store down")
+
         write = BrokenWriteStore()
         read = MockReadStore()
         cqrs = CQRSStore(write, read)

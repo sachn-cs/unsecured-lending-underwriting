@@ -43,11 +43,12 @@ class StatementService(NanoService):
                 if payment:
                     transactions.append(payment)
             total_paid: float = sum(
-                require_finite(t.get("amount", 0), "amount") for t in transactions)
+                require_finite(t.get("amount", 0), "amount")
+                for t in transactions)
 
             loan = self.store.get(f"loan:{loan_id}")
-            outstanding: float = require_finite(
-                loan.get("outstanding", 0), "outstanding") if loan else 0.0
+            outstanding: float = require_finite(loan.get("outstanding", 0),
+                                                "outstanding") if loan else 0.0
 
             statement: dict[str, Any] = {
                 "statement_id":
@@ -110,4 +111,5 @@ class StatementService(NanoService):
     def __sync_store(self) -> None:
         """Persist the current statement records to the store."""
         with self.__lock:
-            self.store.set(f"{self.service_id}:statements", dict(self.__statements))
+            self.store.set(f"{self.service_id}:statements",
+                           dict(self.__statements))

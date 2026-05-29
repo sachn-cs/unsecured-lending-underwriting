@@ -37,13 +37,13 @@ class AsyncLocalBus(AsyncEventBus):
     ) -> None:
         self._queue: asyncio.Queue[Event] = asyncio.Queue(maxsize=maxsize)
         self._subscribers: dict[str, list[Callable[[Event], Any]]] = {}
-        self._subscription_ids: dict[str, tuple[str, Callable[[Event], Any]]] = {}
+        self._subscription_ids: dict[str, tuple[str, Callable[[Event],
+                                                              Any]]] = {}
         self._subscription_lock: asyncio.Lock = asyncio.Lock()
         self._task: asyncio.Task[None] | None = None
         self._running: bool = False
         self._semaphore: asyncio.Semaphore | None = (
-            asyncio.Semaphore(max_workers) if max_workers > 0 else None
-        )
+            asyncio.Semaphore(max_workers) if max_workers > 0 else None)
         self._dlq: DeadLetterQueue = DeadLetterQueue()
         self._idempotency: IdempotencyGuard = IdempotencyGuard()
 
@@ -77,9 +77,8 @@ class AsyncLocalBus(AsyncEventBus):
         await self._queue.put(event)
         return event.event_id
 
-    async def subscribe(
-        self, event_type: str, handler: Callable[[Event], Any]
-    ) -> str:
+    async def subscribe(self, event_type: str, handler: Callable[[Event],
+                                                                 Any]) -> str:
         sid = str(uuid.uuid4())
         async with self._subscription_lock:
             self._subscribers.setdefault(event_type, []).append(handler)
@@ -98,8 +97,7 @@ class AsyncLocalBus(AsyncEventBus):
     async def _dispatch_loop(self) -> None:
         while self._running:
             try:
-                event = await asyncio.wait_for(
-                    self._queue.get(), timeout=1.0)
+                event = await asyncio.wait_for(self._queue.get(), timeout=1.0)
             except asyncio.TimeoutError:
                 continue
             await self._dispatch(event)
@@ -110,16 +108,17 @@ class AsyncLocalBus(AsyncEventBus):
             return
         coros = [self._safe_dispatch(h, event) for h in handlers]
         if self._semaphore is not None:
+
             async def _bounded(h, e):
                 async with self._semaphore:
                     await self._safe_dispatch(h, e)
+
             coros = [_bounded(h, event) for h in handlers]
         await asyncio.gather(*coros, return_exceptions=True)
 
     @staticmethod
-    async def _safe_dispatch(
-        handler: Callable[[Event], Any], event: Event
-    ) -> None:
+    async def _safe_dispatch(handler: Callable[[Event], Any],
+                             event: Event) -> None:
         try:
             result = handler(event)
             if result is not None and hasattr(result, "__await__"):

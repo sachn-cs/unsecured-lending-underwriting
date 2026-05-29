@@ -34,7 +34,9 @@ class OriginationService(NanoService):
                 borrower: str = event.payload.get("borrower", "")
                 principal: float = get_finite(event.payload, "principal", 0.0)
                 if not borrower or principal <= 0:
-                    logger.warning("dropping ORIGINATION_CREATE with missing borrower or principal")
+                    logger.warning(
+                        "dropping ORIGINATION_CREATE with missing borrower or principal"
+                    )
                     return
                 application_id: str = f"app_{borrower}_{int(datetime.now(timezone.utc).timestamp())}"
                 app_record = {
@@ -44,7 +46,8 @@ class OriginationService(NanoService):
                     "created_at": datetime.now(timezone.utc).isoformat(),
                 }
                 self.store.set(f"origination:{application_id}", app_record)
-                self.__applications[f"origination:{application_id}"] = app_record
+                self.__applications[
+                    f"origination:{application_id}"] = app_record
                 self.__sync_store()
                 self.emit(EventType.ORIGINATION_CREATED, {
                     "application_id": application_id,
@@ -58,9 +61,11 @@ class OriginationService(NanoService):
                 record = self.store.get(f"origination:{application_id}")
                 if record and record.get("status") == "created":
                     record["status"] = "submitted"
-                    record["submitted_at"] = datetime.now(timezone.utc).isoformat()
+                    record["submitted_at"] = datetime.now(
+                        timezone.utc).isoformat()
                     self.store.set(f"origination:{application_id}", record)
-                    self.__applications[f"origination:{application_id}"] = dict(record)
+                    self.__applications[f"origination:{application_id}"] = dict(
+                        record)
                     self.__sync_store()
                     self.emit(EventType.ORIGINATION_SUBMITTED, {
                         "application_id": application_id,
@@ -81,4 +86,5 @@ class OriginationService(NanoService):
     def __sync_store(self) -> None:
         """Persist the current application records to the store."""
         with self.__lock:
-            self.store.set(f"{self.service_id}:applications", dict(self.__applications))
+            self.store.set(f"{self.service_id}:applications",
+                           dict(self.__applications))

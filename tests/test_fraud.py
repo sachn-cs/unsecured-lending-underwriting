@@ -257,7 +257,10 @@ class TestEdgeCases:
             svc.handle(
                 Event(event_type=EventType.LOAN_ORIGINATED,
                       source="test",
-                      payload={"borrower": borrower, "principal": 100}))
+                      payload={
+                          "borrower": borrower,
+                          "principal": 100
+                      }))
         recs = records.get(borrower)
         assert recs is not None
         assert isinstance(recs, deque)

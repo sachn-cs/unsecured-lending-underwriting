@@ -71,10 +71,10 @@ class Tracer:
             return list(self.__spans)
 
     def start_span(self,
-                    operation: str,
-                    trace_id: str = "",
-                    parent_span_id: str = "",
-                    tags: dict[str, str] | None = None) -> Span:
+                   operation: str,
+                   trace_id: str = "",
+                   parent_span_id: str = "",
+                   tags: dict[str, str] | None = None) -> Span:
         """Creates and returns a new span without ending it.
 
         Args:
@@ -117,10 +117,10 @@ class Tracer:
             self.__exporter.export(overflow)
 
     def trace(self,
-               operation: str,
-               trace_id: str = "",
-               parent_span_id: str = "",
-               tags: dict[str, str] | None = None) -> SpanContext:
+              operation: str,
+              trace_id: str = "",
+              parent_span_id: str = "",
+              tags: dict[str, str] | None = None) -> SpanContext:
         """Returns a context manager that starts/ends a span automatically.
 
         Args:
@@ -202,13 +202,14 @@ class OtlpSpanExporter(SpanExporter):
         try:
             from opentelemetry import trace
             from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
-                OTLPSpanExporter as _OTLPSpanExporter,
-            )
+                OTLPSpanExporter as _OTLPSpanExporter,)
             from opentelemetry.sdk.resources import Resource
             from opentelemetry.sdk.trace import TracerProvider as SdkTracerProvider
             from opentelemetry.sdk.trace.export import BatchSpanProcessor
         except ImportError:
-            logger.warning("OTLP exporter not available; install with: pip install underwrite[otlp]")
+            logger.warning(
+                "OTLP exporter not available; install with: pip install underwrite[otlp]"
+            )
             return
 
         resource = Resource.create({"service.name": self.__service_name})
@@ -229,7 +230,8 @@ class OtlpSpanExporter(SpanExporter):
                 },
             )
             if span.error:
-                sdk_span.set_status(trace.Status(trace.StatusCode.ERROR, span.error))
+                sdk_span.set_status(
+                    trace.Status(trace.StatusCode.ERROR, span.error))
             sdk_span.end()
 
         processor.shutdown()

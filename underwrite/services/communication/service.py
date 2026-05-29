@@ -39,7 +39,8 @@ class CommunicationService(NanoService):
                 subject: str = event.payload.get("subject", "")
                 channel: str = event.payload.get("channel", "email")
                 if not recipient:
-                    logger.warning("dropping COMMUNICATION_SEND with missing recipient")
+                    logger.warning(
+                        "dropping COMMUNICATION_SEND with missing recipient")
                     return
                 message_id: str = f"msg_{recipient}_{int(datetime.now(timezone.utc).timestamp())}"
                 msg = {
@@ -63,7 +64,9 @@ class CommunicationService(NanoService):
                 loan_id: str = event.payload.get("loan_id", "")
                 doc_type: str = event.payload.get("type", "")
                 if not loan_id or not doc_type:
-                    logger.warning("dropping DOCUMENT_GENERATED with missing loan_id or type")
+                    logger.warning(
+                        "dropping DOCUMENT_GENERATED with missing loan_id or type"
+                    )
                     return
                 doc_notification = {
                     "loan_id": loan_id,
@@ -71,8 +74,10 @@ class CommunicationService(NanoService):
                     "notified": True,
                     "notified_at": datetime.now(timezone.utc).isoformat(),
                 }
-                self.store.set(f"comm_doc:{loan_id}:{doc_type}", doc_notification)
-                self.__messages[f"comm_doc:{loan_id}:{doc_type}"] = doc_notification
+                self.store.set(f"comm_doc:{loan_id}:{doc_type}",
+                               doc_notification)
+                self.__messages[
+                    f"comm_doc:{loan_id}:{doc_type}"] = doc_notification
                 self.__sync_store()
 
             elif event.event_type == EventType.STATEMENT_GENERATED:

@@ -70,10 +70,12 @@ class PrometheusMiddleware:
         self.runtime = runtime
 
     async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
-        if scope["type"] == "http" and scope.get("path") == "/metrics-prometheus":
+        if scope["type"] == "http" and scope.get(
+                "path") == "/metrics-prometheus":
             from fastapi.responses import PlainTextResponse
             text = metrics_as_text(self.runtime)
-            response = PlainTextResponse(text, media_type="text/plain; version=0.0.4")
+            response = PlainTextResponse(text,
+                                         media_type="text/plain; version=0.0.4")
             await response(scope, receive, send)
             return
         await self.app(scope, receive, send)

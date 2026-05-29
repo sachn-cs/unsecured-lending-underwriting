@@ -75,7 +75,8 @@ class PaymentService(NanoService):
                 loan_id = event.payload.get("loan_id", "")
                 if not loan_id:
                     return
-                cutoff: datetime = datetime.now(timezone.utc) - timedelta(days=30)
+                cutoff: datetime = datetime.now(
+                    timezone.utc) - timedelta(days=30)
                 for key in self.store.keys(f"schedule:{loan_id}:"):
                     raw = self.store.get(key)
                     if raw is None:

@@ -173,7 +173,8 @@ class AccessControl:
             public_key = ed25519.Ed25519PublicKey.from_public_bytes(
                 public_bytes)
             payload_str = json.dumps(event.payload, sort_keys=True, default=str)
-            to_verify = f"{event.event_id}:{event.timestamp}:{event.event_type}:{payload_str}".encode()
+            to_verify = f"{event.event_id}:{event.timestamp}:{event.event_type}:{payload_str}".encode(
+            )
             signature = base64.b64decode(event.signature)
             public_key.verify(signature, to_verify)
             return True

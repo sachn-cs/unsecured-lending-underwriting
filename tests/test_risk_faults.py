@@ -86,7 +86,8 @@ class TestAuditServiceFaults:
     def test_load_nonexistent_file_clears_ledger(self, tmp_path: Any) -> None:
         from underwrite.services.audit.service import AuditService
         svc = AuditService(service_id="audit")
-        svc.handle(Event(event_type="test", source="test", payload={"dummy": True}))
+        svc.handle(
+            Event(event_type="test", source="test", payload={"dummy": True}))
         assert len(svc.ledger) == 1
         svc.load_jsonl(str(tmp_path / "nonexistent.jsonl"))
         assert len(svc.ledger) == 0

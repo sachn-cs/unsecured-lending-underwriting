@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING
 from loguru import logger
 
 from underwrite.__correlation__ import get_log_correlation_id
+from underwrite.__pii import PII_REDACTED
 
 if TYPE_CHECKING:
     from loguru import Record
@@ -69,7 +70,8 @@ def redact(data: object) -> object:
         data: The value to redact — typically a log message or payload.
 
     Returns:
-        A new structure with sensitive values replaced by ``***REDACTED***``.
+        A new structure with sensitive values replaced by
+        :data:`~underwrite.__pii.PII_REDACTED`.
     """
     if isinstance(data, str):
         parsed = parse_serialised_message(data)
@@ -82,7 +84,7 @@ def redact(data: object) -> object:
             if isinstance(key, str) and (
                 field_tokens(key) & SENSITIVE_LOG_FIELDS or key.lower() in SENSITIVE_LOG_FIELDS
             ):
-                out[key] = "***REDACTED***"
+                out[key] = PII_REDACTED
             else:
                 out[key] = redact(value)
         return out
@@ -121,7 +123,7 @@ def parse_serialised_message(message: str) -> object | None:
 
 
 def correlation_id() -> str:
-    """Returns the current thread's correlation id, or an empty string."""
+    """Returns the current execution context's correlation id, or an empty string."""
     return get_log_correlation_id()
 
 
@@ -129,7 +131,9 @@ def exception_text(record: Record) -> str:
     """Formats a record's exception, or an empty string when absent."""
     exception = record.get("exception")
     if exception:
-        return "\n" + "".join(traceback.format_exception(exception.type, exception.value, exception.traceback))
+        return "\n" + "".join(
+            traceback.format_exception(exception.type, exception.value, exception.traceback)
+        )
     return ""
 
 

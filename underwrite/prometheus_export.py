@@ -137,14 +137,14 @@ class PrometheusMiddleware:
         self.runtime = runtime
         import os
 
-        self._api_token: str = api_token or os.environ.get("UNDERWRITE_API_TOKEN", "") or ""
+        self.__api_token: str = api_token or os.environ.get("UNDERWRITE_API_TOKEN", "") or ""
 
     async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
         if scope["type"] == "http" and scope.get("path") == "/metrics-prometheus":
             from fastapi.responses import JSONResponse, PlainTextResponse, Response
 
             response: Response
-            if self._api_token:
+            if self.__api_token:
                 import hmac
 
                 headers = scope.get("headers") or []
@@ -159,7 +159,7 @@ class PrometheusMiddleware:
                         except Exception:
                             auth = ""
                         break
-                expected = f"Bearer {self._api_token}"
+                expected = f"Bearer {self.__api_token}"
                 if not hmac.compare_digest(auth, expected):
                     response = JSONResponse(
                         {"error": "unauthorized"},

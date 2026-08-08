@@ -134,6 +134,14 @@ class LoggingConfig(ForbidExtra):
             raise ValueError(f"logging.log_format must be one of {allowed}, got {v!r}")
         return v
 
+    @field_validator("output")
+    @classmethod
+    def check_output(cls, v: str) -> str:
+        allowed = {"stdout", "stderr"}
+        if v not in allowed:
+            raise ValueError(f"logging.output must be one of {allowed}, got {v!r}")
+        return v
+
 
 class IdentityConfig(ForbidExtra):
     """Cryptographic identity settings — keys, passphrase, and TTL."""

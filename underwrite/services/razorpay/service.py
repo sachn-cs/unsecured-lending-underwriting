@@ -29,7 +29,6 @@ from underwrite.services.razorpay.client import (
 )
 from underwrite.validate import get_finite
 
-
 class RazorpayService(StatefulService):
     """Manages Razorpay order/subscription/payment lifecycle.
 
@@ -117,8 +116,6 @@ class RazorpayService(StatefulService):
         if handler is not None:
             handler(event)
 
-    # -- Order management ----------------------------------------------------
-
     def __on_order_create(self, event: Event) -> None:
         """Handle a RAZORPAY_ORDER_CREATE event.
 
@@ -172,8 +169,6 @@ class RazorpayService(StatefulService):
             },
             correlation_id=event.correlation_id,
         )
-
-    # -- Subscription (UPI Autopay / e-NACH) ---------------------------------
 
     def __on_subscription_create(self, event: Event) -> None:
         """Handle a RAZORPAY_SUBSCRIBE event.
@@ -230,8 +225,6 @@ class RazorpayService(StatefulService):
             correlation_id=event.correlation_id,
         )
 
-    # -- Webhook processing --------------------------------------------------
-
     def __on_webhook_received(self, event: Event) -> None:
         """Process an incoming Razorpay webhook event.
 
@@ -269,18 +262,15 @@ class RazorpayService(StatefulService):
         payment_data = data.get("payload", {}).get("payment", {}).get("entity", {})
         subscription_data = data.get("payload", {}).get("subscription", {}).get("entity", {})
 
-        # Extract identifiers from whichever entity is available
         payment_id: str = payment_data.get("id", "")
         order_id: str = payment_data.get("order_id", "")
         subscription_id: str = subscription_data.get("id", "")
         amount_paise: int = payment_data.get("amount", 0)
 
-        # Loan_id may be in payment notes or subscription notes
         loan_id: str = (payment_data.get("notes", {}) or {}).get("loan_id", "")
         if not loan_id:
             loan_id = (subscription_data.get("notes", {}) or {}).get("loan_id", "")
 
-        # Payment events must have a payment entity
         is_payment_event = event_type.startswith("payment.") or event_type.startswith("refund.")
         if is_payment_event and not payment_data:
             logger.warning("webhook missing payment entity")
@@ -290,7 +280,6 @@ class RazorpayService(StatefulService):
             logger.debug("webhook payment without loan_id, ignoring")
             return
 
-        # Subscription events must have a subscription entity
         is_sub_event = event_type.startswith("subscription.")
         if is_sub_event and not subscription_data:
             logger.warning("webhook missing subscription entity")
@@ -525,8 +514,6 @@ class RazorpayService(StatefulService):
             },
             correlation_id=correlation_id,
         )
-
-    # -- Persistence helpers -------------------------------------------------
 
     def save_record(self, key: str, record: dict[str, Any]) -> None:
         """Persist a Razorpay record to the store.

@@ -21,7 +21,6 @@ EPSILON: float = 1e-12
 
 CommandHandler = Callable[[Event], None]
 
-
 class MechanismService(NanoService):
     """Maintains the delegation graph and processes all state transitions.
 
@@ -179,10 +178,6 @@ class MechanismService(NanoService):
         dp: float = v.finite(p, "default_probability", 0.0)
         pr: float = v.finite(p, "protocol_rate", 0.0)
         mdr: float = v.finite(p, "max_delegation_rate", 0.0)
-        # ``annual_rate`` is the per-borrower interest rate the
-        # downstream servicing / fee / schedule services need to
-        # accrue interest. If the caller did not provide one we
-        # fall back to the protocol rate as a conservative default.
         annual_rate: float = v.finite(p, "annual_rate", pr)
 
         if pr < 0:

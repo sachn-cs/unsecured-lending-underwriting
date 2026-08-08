@@ -34,7 +34,6 @@ if TYPE_CHECKING:
 
 FILE_TIMEOUT_MSG: str = "store operation timed out after %.1fs on %s"
 
-
 class Connection(Protocol):
     """Minimal protocol for a DB-API 2.0 connection."""
 
@@ -44,7 +43,6 @@ class Connection(Protocol):
     def closed(self) -> bool: ...
 
     def close(self) -> None: ...
-
 
 class Store(ABC):
     """Abstract key-value store.  Thread-safe."""
@@ -87,7 +85,6 @@ class Store(ABC):
         """Applies pending schema migrations.  No-op in base class."""
         return None
 
-
 class ReadStore(ABC):
     """Read-only store for CQRS query side."""
 
@@ -114,7 +111,6 @@ class ReadStore(ABC):
     def health(self) -> dict[str, Any]:
         """Returns a health-check dict.  Subclasses may override."""
         return {"ok": True}
-
 
 class MemoryStore(Store):
     """Thread-safe in-memory store.  Data is lost on process exit.
@@ -164,7 +160,6 @@ class MemoryStore(Store):
             if limit > 0:
                 all_keys = all_keys[:limit]
             return all_keys
-
 
 class FileStore(Store):
     """Filesystem-backed store.  Each key maps to a JSON file under *data_dir*.
@@ -329,7 +324,6 @@ class FileStore(Store):
             except ValueError as e:
                 raise StoreError(f"key {key} resolves to symlink outside data directory") from e
         return full
-
 
 class PostgresStore(Store):
     """PostgreSQL-backed key-value store with connection pooling and circuit breaker.
@@ -563,7 +557,6 @@ class PostgresStore(Store):
         finally:
             conn.autocommit = True
             pool.putconn(conn)
-
 
 class CQRSStore(Store):
     """CQRS wrapper — separates read and write stores.

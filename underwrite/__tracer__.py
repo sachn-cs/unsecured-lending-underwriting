@@ -23,7 +23,6 @@ from typing import Any
 
 from underwrite.__logger__ import logger
 
-
 @dataclass(slots=True)
 class Span:
     """A single trace span — duration, tags, and error state."""
@@ -38,7 +37,6 @@ class Span:
     tags: dict[str, str] = field(default_factory=dict)
     error: str = ""
 
-
 class SpanExporter:
     """Exports completed spans to a backend.  No-op by default."""
 
@@ -50,7 +48,6 @@ class SpanExporter:
         """
         if spans:
             logger.debug("exporting {} spans (no-op base exporter)", len(spans))
-
 
 class Tracer:
     """Creates and manages spans for a service."""
@@ -136,7 +133,6 @@ class Tracer:
         """
         return SpanContext(self, operation, trace_id, parent_span_id, tags or {})
 
-
 class SpanContext:
     """Context manager that starts a span on enter and ends it on exit."""
 
@@ -167,7 +163,6 @@ class SpanContext:
             error = str(args[1]) if args[1] else str(args[0])
         self.__tracer.end_span(self.__span, error=error)
 
-
 class ConsoleSpanExporter(SpanExporter):
     """Exports spans to stdout for development."""
 
@@ -187,7 +182,6 @@ class ConsoleSpanExporter(SpanExporter):
                 err,
                 tag_str,
             )
-
 
 class OtlpSpanExporter(SpanExporter):
     """Exports spans via OpenTelemetry OTLP.
@@ -209,10 +203,6 @@ class OtlpSpanExporter(SpanExporter):
     ) -> None:
         self.__endpoint = endpoint
         self.__service_name = service_name
-        # Default to insecure (plaintext) for the local-collector
-        # case. Production deployments must set insecure=False
-        # explicitly. HTTP endpoints are still allowed for local
-        # development but the operator is warned at init time.
         self.__insecure = insecure
         self.__headers = dict(headers) if headers else {}
         if endpoint.startswith("http://") and not insecure:

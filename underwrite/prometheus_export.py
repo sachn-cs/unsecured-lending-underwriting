@@ -19,7 +19,6 @@ from underwrite.__pii import PIISanitizer, redact_text
 
 _redactor = PIISanitizer()
 
-
 def _redact_tag_value(value: str) -> str:
     """Redacts PII patterns inside a Prometheus tag value.
 
@@ -29,7 +28,6 @@ def _redact_tag_value(value: str) -> str:
     ``customer_id``) must not carry PII patterns.
     """
     return redact_text(str(value))
-
 
 class MetricsExporter:
     """Formats runtime metrics into Prometheus exposition text format.
@@ -105,17 +103,10 @@ class MetricsExporter:
             parts.append(f'{safe_k}="{safe_v}"')
         return ",".join(parts)
 
-
-# ---------------------------------------------------------------------------
-# Backward-compatible standalone function wrapper
-# ---------------------------------------------------------------------------
-
 _exporter = MetricsExporter()
-
 
 def metrics_as_text(runtime: Any) -> str:
     return _exporter.to_prometheus_text(runtime)
-
 
 class PrometheusMiddleware:
     """Starlette/FastAPI middleware that exposes Prometheus metrics.

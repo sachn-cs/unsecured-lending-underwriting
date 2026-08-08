@@ -19,7 +19,6 @@ from underwrite.__logger__ import logger
 
 MAX_PAYLOAD_SIZE: int = 1_000_000
 
-
 @dataclass(frozen=True, slots=True)
 class Event:
     """Standard event envelope for all nano-service communication.
@@ -91,7 +90,6 @@ class Event:
             logger.warning("Event.from_dict dropping unknown field(s): {}", sorted(extra))
         return cls(**{k: data[k] for k in known if k in data})
 
-
 class EventType(str, enum.Enum):
     """Central registry of all event types in the underwrite system.
 
@@ -99,7 +97,6 @@ class EventType(str, enum.Enum):
     Use ``EventType.XXX.value`` to get the bare string where needed.
     """
 
-    # Core
     SEED_ADDED = "seed.added"
     USER_ADDED = "user.added"
     LOAN_ORIGINATED = "loan.originated"
@@ -107,59 +104,47 @@ class EventType(str, enum.Enum):
     DEFAULT_OCCURRED = "default.occurred"
     REVOKED = "revoked"
 
-    # Quote & pricing
     QUOTE = "quote"
     QUOTE_CALCULATED = "quote.calculated"
     PRICING_COMPUTED = "pricing.computed"
     PRICING_REQUEST = "pricing.request"
 
-    # KYC / AML
     KYC_VERIFIED = "kyc.verified"
     KYC_REJECTED = "kyc.rejected"
     AML_CLEARED = "aml.cleared"
     AML_FROZEN = "aml.frozen"
 
-    # Fraud
     FRAUD_ALERT = "fraud.alert"
     WASH_FLAG = "fraud.wash.flag"
     VELOCITY_FLAG = "fraud.velocity.flag"
 
-    # Risk
     RISK_SCORED = "risk.scored"
     RISK_EARLY_WARNING = "risk.early_warning"
 
-    # NPA
     NPA_BUCKET_CHANGED = "npa.bucket.changed"
     DLG_TRIGGERED = "npa.dlg.triggered"
     SMA_CLASSIFIED = "sma.classified"
     PROVISIONING_COMPUTED = "provisioning.computed"
     INCOME_RECOGNITION_SUSPENDED = "income_recognition.suspended"
 
-    # Collateral
     COLLATERAL_MARKED = "collateral.marked"
     COLLATERAL_LIQUIDATED = "collateral.liquidated"
 
-    # Governance
     GOVERNANCE_PROPOSAL = "governance.proposal"
     GOVERNANCE_EXECUTED = "governance.executed"
 
-    # Recovery
     RECOVERY_STARTED = "recovery.started"
     RECOVERY_COMPLETED = "recovery.completed"
 
-    # Identity
     IDENTITY_REGISTERED = "identity.registered"
     IDENTITY_ROTATED = "identity.rotated"
     IDENTITY_REGISTER = "identity.register"
     IDENTITY_ROTATE = "identity.rotate"
 
-    # Notification
     NOTIFICATION_SENT = "notification.sent"
 
-    # Reporting
     REPORT_GENERATED = "report.generated"
 
-    # Underwriting
     UNDERWRITER_APPROVED = "underwriter.approved"
     UNDERWRITER_REJECTED = "underwriter.rejected"
     UNDERWRITE_REQUEST = "underwrite.request"
@@ -168,28 +153,21 @@ class EventType(str, enum.Enum):
     UNDERWRITER_ESCALATED = "underwriter.escalated"
     UNDERWRITE_RULE_VIOLATED = "underwrite.rule.violated"
 
-    # Document
     DOCUMENT_GENERATED = "document.generated"
 
-    # Disbursement
     DISBURSEMENT_PROCESSED = "disbursement.processed"
 
-    # Collection
     COLLECTION_UPDATED = "collection.updated"
 
-    # Settlement
     SETTLEMENT_COMPLETED = "settlement.completed"
 
-    # Origination
     ORIGINATION_CREATED = "origination.created"
     ORIGINATION_SUBMITTED = "origination.submitted"
     ORIGINATION_CREATE = "origination.create"
     ORIGINATION_SUBMIT = "origination.submit"
 
-    # Servicing
     SERVICING_STARTED = "servicing.started"
 
-    # Payment
     PAYMENT_RECEIVED = "payment.received"
     PAYMENT_DUE = "payment.due"
     PAYMENT_OVERDUE = "payment.overdue"
@@ -197,22 +175,18 @@ class EventType(str, enum.Enum):
     PAYMENT_SCHEDULE = "payment.schedule"
     PAYMENT_CHECK_OVERDUE = "payment.check_overdue"
 
-    # Fee
     FEE_ASSESSED = "fee.assessed"
     FEE_ASSESS = "fee.assess"
     FEE_PAY = "fee.pay"
     PENAL_INTEREST_ASSESSED = "penal_interest.assessed"
 
-    # Prepayment / Foreclosure
     PREPAYMENT_REQUEST = "prepayment.request"
     PREPAYMENT_PROCESSED = "prepayment.processed"
     FORECLOSURE_COMPUTED = "foreclosure.computed"
 
-    # KFS (Key Fact Statement)
     KFS_GENERATE = "kfs.generate"
     KFS_GENERATED = "kfs.generated"
 
-    # Razorpay payment gateway
     RAZORPAY_ORDER_CREATE = "razorpay.order.create"
     RAZORPAY_ORDER_CREATED = "razorpay.order.created"
     RAZORPAY_SUBSCRIBE = "razorpay.subscribe"
@@ -226,7 +200,6 @@ class EventType(str, enum.Enum):
     RAZORPAY_MANDATE_INACTIVE = "razorpay.mandate.inactive"
     RAZORPAY_WEBHOOK_RECEIVED = "razorpay.webhook.received"
 
-    # DPDPA — Data Protection
     CONSENT_RECORDED = "consent.recorded"
     CONSENT_WITHDRAWN = "consent.withdrawn"
     CONSENT_EXPIRED = "consent.expired"
@@ -242,25 +215,20 @@ class EventType(str, enum.Enum):
     DATA_PURGED = "data.purged"
     DATA_ARCHIVED = "data.archived"
 
-    # Statement
     STATEMENT_GENERATED = "statement.generated"
     STATEMENT_GENERATE = "statement.generate"
 
-    # Communication
     COMMUNICATION_SENT = "communication.sent"
     COMMUNICATION_SEND = "communication.send"
 
-    # Workflow
     WORKFLOW_STARTED = "workflow.started"
     WORKFLOW_COMPLETED = "workflow.completed"
     WORKFLOW_START = "workflow.start"
     WORKFLOW_ADVANCE = "workflow.advance"
 
-    # Decision
     DECISION_MADE = "decision.made"
     DECISION_EVALUATE = "decision.evaluate"
 
-    # Graph (internal queries)
     GRAPH_PATH = "graph_path"
     GRAPH_CREDIT_LIMIT = "graph_credit_limit"
     GRAPH_USERS = "graph_users"
@@ -268,24 +236,19 @@ class EventType(str, enum.Enum):
     GRAPH_CREDIT_LIMIT_RESULT = "graph_credit_limit_result"
     GRAPH_USERS_RESULT = "graph_users_result"
 
-    # Mechanism
     MECHANISM_REJECTED = "mechanism.rejected"
 
-    # Saga / compensation
     SAGA_STARTED = "saga.started"
     SAGA_COMPLETED = "saga.completed"
     SAGA_ROLLED_BACK = "saga.rolled_back"
     SAGA_COMPENSATE = "saga.compensate"
 
-    # Credit Bureau
     CREDIT_BUREAU_CHECK = "credit_bureau.check"
     CREDIT_BUREAU_CHECKED = "credit_bureau.checked"
     CREDIT_BUREAU_CHECK_FAILED = "credit_bureau.check_failed"
 
-    # CKYC
     CKYC_VERIFY = "ckyc.verify"
     CKYC_VERIFIED = "ckyc.verified"
     CKYC_REJECTED = "ckyc.rejected"
 
-    # Idempotency
     DUPLICATE_DROPPED = "idempotency.duplicate_dropped"

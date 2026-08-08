@@ -27,9 +27,6 @@ __all__ = [
     "get_strategy",
 ]
 
-# -- Strategy registry ---------------------------------------------------------
-
-
 class StrategyRegistry:
     """Thread-safe registry for risk-scoring strategy classes.
 
@@ -69,9 +66,7 @@ class StrategyRegistry:
         with self.__lock:
             return self.__strategies.get(name)
 
-
 module_strategy_registry: StrategyRegistry = StrategyRegistry()
-
 
 def register_strategy(name: str, strategy_cls: type[RiskScoringStrategy]) -> None:
     """Register a risk-scoring strategy class by name for plugin-like discovery.
@@ -81,7 +76,6 @@ def register_strategy(name: str, strategy_cls: type[RiskScoringStrategy]) -> Non
         strategy_cls: A concrete ``RiskScoringStrategy`` subclass.
     """
     module_strategy_registry.register(name, strategy_cls)
-
 
 def get_strategy(name: str) -> type[RiskScoringStrategy] | None:
     """Return a previously registered strategy class, or ``None``.
@@ -94,10 +88,6 @@ def get_strategy(name: str) -> type[RiskScoringStrategy] | None:
     """
     return module_strategy_registry.get(name)
 
-
-# -- Strategy pattern ---------------------------------------------------------
-
-
 class RiskScoringStrategy(ABC):
     """Abstract strategy for risk scoring models.
 
@@ -107,10 +97,6 @@ class RiskScoringStrategy(ABC):
 
     @abstractmethod
     def predict(self, principal: float, term: float) -> float: ...
-
-
-# -- Concrete strategies ------------------------------------------------------
-
 
 class HeuristicStrategy(RiskScoringStrategy):
     """Heuristic fallback based on principal-to-term ratio."""
@@ -130,7 +116,6 @@ class HeuristicStrategy(RiskScoringStrategy):
             return 0.0
         raw: float = (principal / 1_000_000.0) * (1.0 / safe_term)
         return min(max(raw, 0.01), 0.5)
-
 
 class JsonModelStrategy(RiskScoringStrategy):
     """Minimal linear model reconstructed from JSON-serialized parameters."""
@@ -152,7 +137,6 @@ class JsonModelStrategy(RiskScoringStrategy):
         score = principal * self.__coef[0] + term * self.__coef[1] + self.__intercept
         return min(max(score, 0.0), 1.0)
 
-
 class JoblibModelStrategy(RiskScoringStrategy):
     """Wraps a joblib-loaded sklearn-compatible model."""
 
@@ -171,10 +155,6 @@ class JoblibModelStrategy(RiskScoringStrategy):
         """
         result = self.__model.predict([[principal, term]])
         return float(result[0])
-
-
-# -- Backward-compatible facade -----------------------------------------------
-
 
 class RiskModel:
     """Wraps a trained model or uses a heuristic fallback.

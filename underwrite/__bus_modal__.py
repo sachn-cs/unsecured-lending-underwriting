@@ -20,7 +20,6 @@ from underwrite.__events__ import Event
 from underwrite.__logger__ import logger
 from underwrite.__store__ import Store
 
-
 class ModalBus(EventBus):
     """Event bus backed by a Modal distributed queue."""
 
@@ -107,10 +106,6 @@ class ModalBus(EventBus):
                 if self.__modal_queue is None:
                     time.sleep(self.__poll_interval)
                     continue
-                # Sleep at the top of each poll iteration so the
-                # interval is honoured even when the queue is
-                # non-empty; without this the loop spins at 100%
-                # CPU draining bursts.
                 time.sleep(self.__poll_interval)
                 if not self.__running:
                     break

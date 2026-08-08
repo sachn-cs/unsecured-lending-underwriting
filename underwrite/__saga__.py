@@ -25,12 +25,10 @@ from underwrite.__exceptions__ import ProtocolError
 from underwrite.__logger__ import logger
 from underwrite.__store__ import MemoryStore, Store
 
-
 class Emitter(Protocol):
     """Protocol for saga event emitters (typically a NanoService)."""
 
     def emit(self, event_type: str, payload: dict[str, Any], correlation_id: str = "") -> Event: ...
-
 
 @dataclass(frozen=True, slots=True)
 class SagaStep:
@@ -60,7 +58,6 @@ class SagaStep:
             compensate_event_type=data["compensate_event_type"],
             compensate_payload=data["compensate_payload"],
         )
-
 
 @dataclass(slots=True)
 class Saga:
@@ -121,7 +118,6 @@ class Saga:
                     f"saga {self.saga_id} completed_steps not strictly increasing "
                     f"({self.completed_steps[i - 1]} >= {idx})"
                 )
-
 
 class SagaOrchestrator:
     """Coordinates saga execution with rollback on failure.
@@ -342,10 +338,6 @@ class SagaOrchestrator:
         if emitter is None:
             logger.warning("no emitter for {}, skipping compensation event {}", context.get("source", ""), event_type)
             return
-        # Use a single shared executor for compensation emits so
-        # we don't pay the cost of a fresh ThreadPoolExecutor per
-        # compensation step. The executor is created lazily and
-        # torn down on .close().
         if self.__compensation_executor is None:
             self.__compensation_executor = concurrent.futures.ThreadPoolExecutor(
                 max_workers=2, thread_name_prefix="saga-compensate"
@@ -412,7 +404,6 @@ class SagaOrchestrator:
             if saga.status == "rolled_back":
                 logger.warning("replay_saga: saga {} is rolled back, cannot replay", saga_id)
                 return False
-            # Determine the next step after the last completed one
             completed = set(saga.completed_steps)
             next_idx = -1
             for i in range(len(saga.steps)):

@@ -11,7 +11,6 @@ from underwrite.services.base import StatefulService
 from underwrite.services.persistence import BatchedStoreRepository
 from underwrite.validate import get_finite, get_non_empty
 
-
 class FraudService(StatefulService):
     """Detects wash lending, burst origination patterns, and configurable fraud rules."""
 

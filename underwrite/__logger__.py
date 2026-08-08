@@ -54,7 +54,6 @@ LOGGER_IDENTITY = "underwrite"
 
 __FIELD_TOKEN_RE = re.compile(r"[a-z0-9]+")
 
-
 def redact(data: object) -> object:
     """Returns a deep copy of *data* with sensitive log fields redacted.
 
@@ -92,11 +91,9 @@ def redact(data: object) -> object:
         return [redact(item) for item in data]
     return data
 
-
 def field_tokens(key: str) -> set[str]:
     """Splits a field name into lowercase alphanumeric tokens."""
     return set(__FIELD_TOKEN_RE.findall(key.lower()))
-
 
 def parse_serialised_message(message: str) -> object | None:
     """Recovers a structure from a serialised message string.
@@ -121,11 +118,9 @@ def parse_serialised_message(message: str) -> object | None:
     except (ValueError, SyntaxError):
         return None
 
-
 def correlation_id() -> str:
     """Returns the current execution context's correlation id, or an empty string."""
     return get_log_correlation_id()
-
 
 def exception_text(record: Record) -> str:
     """Formats a record's exception, or an empty string when absent."""
@@ -135,7 +130,6 @@ def exception_text(record: Record) -> str:
             traceback.format_exception(exception.type, exception.value, exception.traceback)
         )
     return ""
-
 
 def loguru_sink_format(
     formatter: JsonFormatter | TextFormatter,
@@ -152,7 +146,6 @@ def loguru_sink_format(
         return formatter.format(record).replace("{", "{{").replace("}", "}}")
 
     return build_template
-
 
 class JsonFormatter:
     """Serialises a loguru record to a redacted single-line JSON record.
@@ -189,7 +182,6 @@ class JsonFormatter:
         if exception_line:
             data["exception"] = exception_line
         return json.dumps(data)
-
 
 class TextFormatter:
     """Formats a loguru record as human-readable text with correlation id.

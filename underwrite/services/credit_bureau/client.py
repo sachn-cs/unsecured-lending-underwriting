@@ -17,28 +17,17 @@ try:
 except ImportError:  # pragma: no cover
     HAS_HTTPX = False
 
-
-# -- Errors --------------------------------------------------------------------
-
-
 class CreditBureauError(Exception):
     """Raised when a bureau API returns an error."""
-
 
 class CreditBureauAuthError(CreditBureauError):
     """Raised on authentication/authorization failures."""
 
-
 class CreditBureauNotFoundError(CreditBureauError):
     """Raised when a record is not found."""
 
-
 class CreditBureauValidationError(CreditBureauError):
     """Raised on request validation errors."""
-
-
-# -- Data models ---------------------------------------------------------------
-
 
 @dataclass(frozen=True, slots=True)
 class BureauAccount:
@@ -57,7 +46,6 @@ class BureauAccount:
     written_off: bool = False
     settled: bool = False
 
-
 @dataclass(frozen=True, slots=True)
 class BureauEnquiry:
     """A credit enquiry from a lender."""
@@ -66,7 +54,6 @@ class BureauEnquiry:
     date: str
     amount: float
     purpose: str
-
 
 @dataclass(slots=True)
 class CreditReport:
@@ -92,7 +79,6 @@ class CreditReport:
     defaults: list[str] = field(default_factory=list)
     report_date: str = field(default_factory=lambda: datetime.now(timezone.utc).date().isoformat())
 
-
 @dataclass(frozen=True, slots=True)
 class CkycResponse:
     """CKYC verification response."""
@@ -106,10 +92,6 @@ class CkycResponse:
     address: str
     status: str
     verified_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-
-
-# -- Client Interface ----------------------------------------------------------
-
 
 class CreditBureauClient(ABC):
     """Abstract credit bureau client.
@@ -148,10 +130,6 @@ class CreditBureauClient(ABC):
         Returns:
             A CkycResponse with verification status.
         """
-
-
-# -- HTTP Implementation -------------------------------------------------------
-
 
 class HttpCreditBureauClient(CreditBureauClient):
     """Production bureau client using httpx.
@@ -388,10 +366,6 @@ class HttpCreditBureauClient(CreditBureauClient):
             status=body.get("status", "verified"),
             verified_at=body.get("verified_at", ""),
         )
-
-
-# -- Mock Implementation -------------------------------------------------------
-
 
 class MockCreditBureauClient(CreditBureauClient):
     """In-memory mock bureau client for testing.

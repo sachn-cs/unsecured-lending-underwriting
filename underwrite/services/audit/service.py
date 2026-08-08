@@ -20,7 +20,6 @@ from underwrite.services.persistence import BatchedStoreRepository
 
 _sanitizer = PIISanitizer()
 
-
 class AuditService(StatefulService):
     """Subscribes to all domain events and persists them to an append-only ledger.
 

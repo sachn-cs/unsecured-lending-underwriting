@@ -15,7 +15,6 @@ from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
 from underwrite.services.base import NanoService
 
-
 class CommunicationService(NanoService):
     """Dispatches outbound messages through configured channels.
 
@@ -72,13 +71,6 @@ class CommunicationService(NanoService):
             "channel": channel,
             "sent_at": datetime.now(timezone.utc).isoformat(),
         }
-        # Dispatch through the configured channel. The base class
-        # does not actually deliver mail/SMS; this service records
-        # intent and emits a SENT event only after a successful
-        # delivery attempt via __dispatch_channel. Without a
-        # delivery adapter the service is essentially a log of
-        # outbound communications; mark the message as
-        # queued rather than sent.
         delivery_status = self.__dispatch_channel(channel, recipient, subject)
         self.store.set(f"message:{message_id}", {**msg, "delivery_status": delivery_status})
         if delivery_status == "sent":

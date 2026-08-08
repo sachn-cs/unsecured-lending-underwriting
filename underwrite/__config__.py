@@ -56,12 +56,10 @@ from underwrite.services.kyc_providers.factory import KycProviderConfig
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
-
 class ForbidExtra(BaseModel):
     """Base model that rejects unknown fields on instantiation."""
 
     model_config = {"extra": "forbid"}
-
 
 class ServiceConfig(ForbidExtra):
     """Per-service enable/disable and priority assignment."""
@@ -69,9 +67,7 @@ class ServiceConfig(ForbidExtra):
     enabled: bool = False
     priority: int = 0
 
-
 BACKENDS = Annotated[str, Field(validate_default=True)]
-
 
 class BusConfig(ForbidExtra):
     """Configuration for the event bus backend (local, sqs, or modal)."""
@@ -92,7 +88,6 @@ class BusConfig(ForbidExtra):
             raise ValueError(f"bus.backend must be one of {allowed}, got {v!r}")
         return v
 
-
 class StoreConfig(ForbidExtra):
     """Configuration for the persistence store (memory, filesystem, or postgres)."""
 
@@ -110,7 +105,6 @@ class StoreConfig(ForbidExtra):
         if v not in allowed:
             raise ValueError(f"store.backend must be one of {allowed}, got {v!r}")
         return v
-
 
 class LoggingConfig(ForbidExtra):
     """Configuration for logging level, output destination, and format."""
@@ -143,7 +137,6 @@ class LoggingConfig(ForbidExtra):
             raise ValueError(f"logging.output must be one of {allowed}, got {v!r}")
         return v
 
-
 class IdentityConfig(ForbidExtra):
     """Cryptographic identity settings — keys, passphrase, and TTL."""
 
@@ -153,13 +146,11 @@ class IdentityConfig(ForbidExtra):
     key_ttl: float = Field(default=float(SECONDS_PER_DAY), ge=0)
     key_grace: float = Field(default=float(SECONDS_PER_HOUR), ge=0)
 
-
 class AuthzConfig(ForbidExtra):
     """Authorization policy settings."""
 
     enabled: bool = True
     policy_file: str = ""
-
 
 class MetricsConfig(ForbidExtra):
     """Prometheus-style metrics export configuration."""
@@ -167,12 +158,10 @@ class MetricsConfig(ForbidExtra):
     enabled: bool = True
     export_interval: int = Field(default=60, ge=0)
 
-
 class MigrationConfig(ForbidExtra):
     """Schema migration behaviour."""
 
     auto_migrate: bool = True
-
 
 class TracingConfig(ForbidExtra):
     """Distributed tracing configuration (console, otlp, or noop)."""
@@ -188,12 +177,10 @@ class TracingConfig(ForbidExtra):
             raise ValueError(f"tracing.exporter must be one of {allowed}, got {v!r}")
         return v
 
-
 class SagaConfig(ForbidExtra):
     """Saga orchestration settings."""
 
     enabled: bool = True
-
 
 class SecretsConfig(ForbidExtra):
     """Secrets backend configuration (env, vault, or aws)."""
@@ -203,14 +190,12 @@ class SecretsConfig(ForbidExtra):
     token: str = ""
     region: str = ""
 
-
 class RecoveryConfig(ForbidExtra):
     """Service auto-recovery and restart back-off settings."""
 
     auto_restart: bool = True
     max_restarts: int = Field(default=3, ge=0)
     backoff_seconds: float = Field(default=1.0, ge=0)
-
 
 class FeeConfig(ForbidExtra):
     """Fee schedules for late payment, origination, prepayment, and service fees."""
@@ -227,7 +212,6 @@ class FeeConfig(ForbidExtra):
     late_payment_percent: float = Field(default=0.0, ge=0.0, le=100.0)
     max_penal_interest_per_loan: float = Field(default=0.0, ge=0.0)
 
-
 class KfsConfig(ForbidExtra):
     """KFS (Key Fact Statement) configuration per RBI guidelines."""
 
@@ -236,7 +220,6 @@ class KfsConfig(ForbidExtra):
     annual_interest_rate_disclosure: str = "annual_reducing"
     include_foreclosure_terms: bool = Field(default=True)
     include_late_fee_disclosure: bool = Field(default=True)
-
 
 class NpaConfig(ForbidExtra):
     """NPA asset classification and provisioning configuration per RBI norms.
@@ -256,7 +239,6 @@ class NpaConfig(ForbidExtra):
     npa_days: int = Field(default=90, ge=1)
     dlg_trigger_days: int = Field(default=120, ge=1)
 
-
 class ConsentConfig(ForbidExtra):
     """Consent management configuration per DPDPA 2023."""
 
@@ -272,7 +254,6 @@ class ConsentConfig(ForbidExtra):
     consent_validity_days: int = Field(default=365, ge=1)
     withdrawal_cooldown_days: int = Field(default=0, ge=0)
 
-
 class DsrConfig(ForbidExtra):
     """Data Subject Rights configuration per DPDPA 2023."""
 
@@ -280,7 +261,6 @@ class DsrConfig(ForbidExtra):
     grievance_response_days: int = Field(default=15, ge=1)
     dpo_email: str = ""
     dpo_phone: str = ""
-
 
 class DpdpaConfig(ForbidExtra):
     """Top-level DPDPA 2023 (India) data protection configuration."""
@@ -292,7 +272,6 @@ class DpdpaConfig(ForbidExtra):
     breach_notification_hours: int = Field(default=72, ge=1)
     enable_breach_detection: bool = Field(default=True)
     enable_auto_purge: bool = Field(default=False)
-
 
 class RazorpayConfig(ForbidExtra):
     """Razorpay payment gateway configuration.
@@ -315,7 +294,6 @@ class RazorpayConfig(ForbidExtra):
     payment_timeout_minutes: int = Field(default=30, ge=1)
     capture_enabled: bool = Field(default=True)
 
-
 class UnderwritingConfig(ForbidExtra):
     """Underwriting engine configuration — rules, thresholds, and policies."""
 
@@ -328,7 +306,6 @@ class UnderwritingConfig(ForbidExtra):
     max_tenor_months: int = Field(default=360, ge=1)
     policy_file: str = ""
     enable_auto_decision: bool = True
-
 
 class CreditBureauConfig(ForbidExtra):
     """Credit bureau and CKYC configuration.
@@ -350,7 +327,6 @@ class CreditBureauConfig(ForbidExtra):
     ckyc_api_key: str = ""
     ckyc_api_base: str = "https://api.ckycindia.in/v1"
     timeout_seconds: int = Field(default=30, ge=1)
-
 
 class GovernanceConfig(ForbidExtra):
     """Protocol governance parameter ranges and defaults."""
@@ -374,13 +350,11 @@ class GovernanceConfig(ForbidExtra):
         }
     )
 
-
 class AuditConfig(ForbidExtra):
     """Audit ledger capacity and remote export URL."""
 
     max_ledger: int = Field(default=100000, ge=1)
     export_url: str = ""
-
 
 class Configuration(ForbidExtra):
     """Top-level configuration for the underwrite platform.
@@ -409,9 +383,6 @@ class Configuration(ForbidExtra):
         from pathlib import Path
 
         path = Path(v)
-        # Reject obvious foot-guns: /etc, /, /proc, /sys. The path
-        # is still used to read/write files so the operator must
-        # explicitly opt in to such locations.
         parts = path.parts
         if parts and parts[0] == "/":
             dangerous = {"/", "/etc", "/proc", "/sys", "/var", "/usr"}
@@ -482,13 +453,6 @@ class Configuration(ForbidExtra):
 
     def to_dict(self) -> dict[str, Any]:
         d = self.model_dump(exclude_none=True)
-        # Redact every secret-shaped field so config.save() never
-        # writes payment provider keys, webhook secrets, credit-
-        # bureau API keys, or the runtime identity private key to
-        # disk. The original ``secrets.token`` removal and the
-        # identity-private-key stripping remain for backwards
-        # compatibility; the explicit field list below covers
-        # every documented secret.
         secret_fields: tuple[str, ...] = (
             "key_secret",
             "webhook_secret",
@@ -604,8 +568,6 @@ class Configuration(ForbidExtra):
         for section_name, (model_cls, attr) in section_overlays.items():
             if section_name in data:
                 new_section = dict(data[section_name])
-                # Backwards-compat alias: ``logging.format`` in JSON
-                # vs the field name ``log_format``.
                 if attr == "logging" and "format" in new_section and "log_format" not in new_section:
                     new_section["log_format"] = new_section.pop("format")
                 setattr(
@@ -619,8 +581,6 @@ class Configuration(ForbidExtra):
             schedules = fee_data.pop("schedules", None)
             if schedules is not None and isinstance(schedules, dict):
                 config.fee.schedules.update(schedules)
-            # Apply remaining fee fields via the standard overlay
-            # path so a future fee.* field is supported automatically.
             config.fee = overlay_section(FeeConfig, "fee", config.fee, fee_data)
 
         if "governance" in data:
@@ -635,9 +595,6 @@ class Configuration(ForbidExtra):
                 config.governance.param_defaults.update(defaults)
             config.governance = overlay_section(GovernanceConfig, "governance", config.governance, gov_data)
 
-        # kfs, npa, dpdpa, razorpay, credit_bureau, underwriting,
-        # kyc_providers all have a one-to-one Pydantic mapping;
-        # overlay each via the standard path.
         overlay_map: dict[str, tuple[type[BaseModel], str]] = {
             "kfs": (KfsConfig, "kfs"),
             "npa": (NpaConfig, "npa"),
@@ -728,7 +685,6 @@ class Configuration(ForbidExtra):
                 setattr(section, field_attr, coerced)
         return config
 
-
 def _build_service_names() -> list[str]:
     """Build the canonical service name list from the registry.
 
@@ -739,6 +695,5 @@ def _build_service_names() -> list[str]:
     from underwrite.__service_registry__ import SERVICE_CLASSES
 
     return list(SERVICE_CLASSES.keys())
-
 
 SERVICE_NAMES: list[str] = _build_service_names()

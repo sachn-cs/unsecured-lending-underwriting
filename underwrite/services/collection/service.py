@@ -20,7 +20,6 @@ from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
 from underwrite.validate import get_finite, get_non_empty
 
-
 class CollectionService(StatefulService):
     """Tracks repayment schedules and flags overdue accounts.
 
@@ -100,9 +99,6 @@ class CollectionService(StatefulService):
     def on_repaid(self, event: Event) -> None:
         """Apply a repayment to the borrower's loan."""
         p = event.payload
-        # The store is keyed by ``borrower`` (see on_loan_originated),
-        # so look up by the same key. The legacy ``user`` alias is
-        # accepted for backwards compatibility.
         borrower: str = p.get("borrower", "") or p.get("user", "")
         if not borrower:
             logger.debug("repaid event missing borrower/user, ignored")

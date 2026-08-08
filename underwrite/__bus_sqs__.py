@@ -20,7 +20,6 @@ from underwrite.__events__ import Event
 from underwrite.__logger__ import logger
 from underwrite.__store__ import Store
 
-
 class SqsBus(EventBus):
     """Event bus backed by an SQS queue."""
 
@@ -162,10 +161,6 @@ class SqsBus(EventBus):
                 logger.exception("failed to delete unparseable SQS message")
             return
 
-        # Run the dispatch through the same guard / circuit-breaker
-        # / DLQ path as the local bus, so the two backends behave
-        # consistently. The IdempotencyGuard makes at-least-once
-        # SQS delivery safe.
         with self.__lock:
             wildcards: list[tuple[str, Callable[[Event], None]]] = self.__handlers.get("*", [])
             specific: list[tuple[str, Callable[[Event], None]]] = self.__handlers.get(event.event_type, [])
@@ -187,10 +182,6 @@ class SqsBus(EventBus):
                 self.__dlq.put(event, f"{type(exc).__name__}: {exc}", sid)
                 self.__circuit_breaker.record_failure(sid)
 
-        # Only delete on full success. If any handler failed the
-        # message stays in flight; SQS will redeliver it after the
-        # visibility timeout and the idempotency guard prevents
-        # duplicate side effects.
         if any_failure:
             return
         try:

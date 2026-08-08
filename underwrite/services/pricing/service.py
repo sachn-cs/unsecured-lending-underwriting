@@ -37,7 +37,6 @@ APPR_TOLERANCE: float = 1e-10
 RATE_QUANTUM: Decimal = Decimal("0.01")
 MAX_NEWTON_ITERATIONS: int = 100
 
-
 def compute_rate_cap(principal: float, loan_type: str = "personal") -> float:
     """Compute the maximum permissible interest rate for a loan.
 
@@ -57,7 +56,6 @@ def compute_rate_cap(principal: float, loan_type: str = "personal") -> float:
         "micro": MICRO_LOAN_CAP,
     }
     return caps.get(loan_type, DEFAULT_LOAN_CAP)
-
 
 class PricingService(NanoService):
     """Computes loan pricing with RBI-mandated rate caps and fee disclosure."""
@@ -329,7 +327,6 @@ class PricingService(NanoService):
         monthly_rate = interest_rate / 12.0
         emi = principal * monthly_rate * (1 + monthly_rate) ** term_months / ((1 + monthly_rate) ** term_months - 1)
 
-        # Newton-Raphson for APR
         apr_guess = interest_rate
         for _ in range(MAX_NEWTON_ITERATIONS):
             monthly_apr = apr_guess / 12.0

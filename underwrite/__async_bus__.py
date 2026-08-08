@@ -43,6 +43,7 @@ class AsyncLocalBus(AsyncEventBus):
         maxsize: int = 0,
         max_workers: int = 0,
         store: Store | None = None,
+        handler_timeout: float = HANDLER_TIMEOUT,
     ) -> None:
         self.__queue: asyncio.Queue[Event] = asyncio.Queue(maxsize=maxsize)
         self.__subscribers: dict[str, list[Callable[[Event], Any]]] = {}
@@ -54,6 +55,7 @@ class AsyncLocalBus(AsyncEventBus):
         self.__semaphore: asyncio.Semaphore | None = asyncio.Semaphore(max_workers) if max_workers > 0 else None
         self.__dlq: DeadLetterQueue = DeadLetterQueue(store=store)
         self.__idempotency: IdempotencyGuard = IdempotencyGuard()
+        self.__handler_timeout: float = handler_timeout
 
     @property
     def dlq(self) -> DeadLetterQueue:
@@ -157,12 +159,12 @@ class AsyncLocalBus(AsyncEventBus):
         try:
             results = await asyncio.wait_for(
                 asyncio.gather(*coros, return_exceptions=True),
-                timeout=HANDLER_TIMEOUT * 2,
+                timeout=self.__handler_timeout * 2,
             )
         except asyncio.TimeoutError:
             logger.warning(
                 "aggregate dispatch timeout after {:.1f}s for event {}; cancelling pending handlers",
-                HANDLER_TIMEOUT * 2,
+                self.__handler_timeout * 2,
                 event.event_id,
             )
             return
@@ -174,9 +176,9 @@ class AsyncLocalBus(AsyncEventBus):
         try:
             result = handler(event)
             if inspect.isawaitable(result):
-                await asyncio.wait_for(result, timeout=HANDLER_TIMEOUT)
+                await asyncio.wait_for(result, timeout=self.__handler_timeout)
         except asyncio.TimeoutError:
-            msg = f"handler timed out after {HANDLER_TIMEOUT}s"
+            msg = f"handler timed out after {self.__handler_timeout}s"
             logger.warning("async handler timed out for {}: {}", event.event_id, handler.__name__)
             self.__dlq.put(event, msg, handler.__name__)
         except Exception as exc:

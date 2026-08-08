@@ -120,12 +120,12 @@ class TestAsyncBusTimeout:
 
     @pytest.mark.asyncio
     async def test_handler_timeout_sends_to_dlq(self) -> None:
-        bus = AsyncLocalBus(maxsize=100)
+        bus = AsyncLocalBus(maxsize=100, handler_timeout=0.1)
 
         async def slow_handler(event: Any) -> None:
             import asyncio
 
-            await asyncio.sleep(HANDLER_TIMEOUT + 5)
+            await asyncio.sleep(5.0)
 
         await bus.subscribe("test.timeout", slow_handler)
         await bus.start()
@@ -136,7 +136,10 @@ class TestAsyncBusTimeout:
 
         await asyncio.sleep(0.5)
 
-        assert bus.dlq.count >= 0  # event was processed (may or may not have timed out in CI)
+        assert bus.dlq.count >= 1, f"expected timed-out event in DLQ, got {bus.dlq.count}"
+        assert any(
+            "timed out" in rec.error for rec in bus.dlq._DeadLetterQueue__records
+        ), f"DLQ record should carry the timeout error, got {[r.error for r in bus.dlq._DeadLetterQueue__records]}"
 
         await bus.stop()
 

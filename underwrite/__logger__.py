@@ -49,6 +49,8 @@ SENSITIVE_LOG_FIELDS: frozenset[str] = frozenset(
     }
 )
 
+LOGGER_IDENTITY = "underwrite"
+
 __FIELD_TOKEN_RE = re.compile(r"[a-z0-9]+")
 
 
@@ -151,6 +153,11 @@ def loguru_sink_format(
 class JsonFormatter:
     """Serialises a loguru record to a redacted single-line JSON record.
 
+    The ``logger`` field carries the fixed platform identity
+    (:data:`LOGGER_IDENTITY`); the emitting module is reported separately
+    in ``module``. A bound ``trace_id`` (via
+    ``logger.bind(trace_id=...)``) is included when present.
+
     Args:
         record: The loguru record dictionary passed by the sink.
 
@@ -163,7 +170,7 @@ class JsonFormatter:
         data: dict[str, object] = {
             "timestamp": record["time"].strftime("%Y-%m-%dT%H:%M:%S%z"),
             "level": record["level"].name,
-            "logger": "underwrite",
+            "logger": LOGGER_IDENTITY,
             "message": message,
             "module": record["module"],
             "line": record["line"],
@@ -171,6 +178,9 @@ class JsonFormatter:
         corr = correlation_id()
         if corr:
             data["correlation_id"] = corr
+        trace_id = record["extra"].get("trace_id")
+        if trace_id:
+            data["trace_id"] = str(trace_id)
         exception_line = exception_text(record)
         if exception_line:
             data["exception"] = exception_line
@@ -179,6 +189,11 @@ class JsonFormatter:
 
 class TextFormatter:
     """Formats a loguru record as human-readable text with correlation id.
+
+    The name slot carries the fixed platform identity
+    (:data:`LOGGER_IDENTITY`), matching the ``logger`` field of the JSON
+    formatter; source-module detail is available from the JSON formatter's
+    ``module`` field instead.
 
     Args:
         record: The loguru record dictionary passed by the sink.
@@ -196,6 +211,6 @@ class TextFormatter:
         corr_prefix = f" {corr}" if corr else ""
         return (
             f"{record['time']:%Y-%m-%d %H:%M:%S}"
-            f" [{record['level'].name}]{corr_prefix} {record['name']}: "
+            f" [{record['level'].name}]{corr_prefix} {LOGGER_IDENTITY}: "
             f"{message}{exception_text(record)}"
         )

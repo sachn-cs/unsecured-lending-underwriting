@@ -201,13 +201,40 @@ class TestTextFormatter:
     def test_emits_readable_line(self) -> None:
         record = make_record("hello world")
         line = TextFormatter().format(record)
-        assert "2026-01-02 03:04:05 [INFO] underwrite.test: hello world" in line
+        assert "2026-01-02 03:04:05 [INFO] underwrite: hello world" in line
 
     def test_includes_exception_text_when_present(self) -> None:
         record = make_exception_record("boom", level_name="CRITICAL")
         line = TextFormatter().format(record)
         assert "[CRITICAL]" in line
         assert "ValueError: boom" in line
+
+
+class TestJsonTraceId:
+    def test_trace_id_included_when_bound(self) -> None:
+        lines: list[str] = []
+        handler_id = logger.add(lines.append, level="DEBUG", format=loguru_sink_format(JsonFormatter()))
+        try:
+            logger.bind(trace_id="trace-1").info("hello")
+        finally:
+            logger.remove(handler_id)
+        assert len(lines) == 1
+        assert json.loads(lines[0])["trace_id"] == "trace-1"
+
+    def test_trace_id_absent_when_not_bound(self) -> None:
+        lines = capture(("info", ("hello",)), formatter=JsonFormatter())
+        assert len(lines) == 1
+        assert "trace_id" not in json.loads(lines[0])
+
+    def test_non_string_trace_id_is_coerced(self) -> None:
+        lines: list[str] = []
+        handler_id = logger.add(lines.append, level="DEBUG", format=loguru_sink_format(JsonFormatter()))
+        try:
+            logger.bind(trace_id=12345).info("hello")
+        finally:
+            logger.remove(handler_id)
+        assert len(lines) == 1
+        assert json.loads(lines[0])["trace_id"] == "12345"
 
 
 class TestLoguruIntegration:

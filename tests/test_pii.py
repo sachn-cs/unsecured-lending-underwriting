@@ -2,39 +2,31 @@
 
 from __future__ import annotations
 
+import pytest
+
 from underwrite.__pii import contains_pii_value, is_pii_field, redact_payload
 
 
 class TestPiiFieldDetection:
-    def test_detects_aadhaar_field(self) -> None:
-        assert is_pii_field("aadhaar") is True
+    @pytest.mark.parametrize(
+        "field_name",
+        ["aadhaar", "pan_number", "ssn", "phone_number", "email", "user_pin_code", "aadhaar_token", "mobile_number"],
+    )
+    def test_detects_pii_field(self, field_name: str) -> None:
+        assert is_pii_field(field_name) is True
 
-    def test_detects_pan_field(self) -> None:
-        assert is_pii_field("pan_number") is True
-
-    def test_detects_ssn_field(self) -> None:
-        assert is_pii_field("ssn") is True
-
-    def test_detects_phone_field(self) -> None:
-        assert is_pii_field("phone_number") is True
-
-    def test_detects_email_field(self) -> None:
-        assert is_pii_field("email") is True
-
-    def test_non_pii_field(self) -> None:
-        assert is_pii_field("name") is False
-        assert is_pii_field("amount") is False
+    @pytest.mark.parametrize("field_name", ["name", "amount", "company", "panel_id", "panchayat", "expandable", "author", "pinterest"])
+    def test_non_pii_field(self, field_name: str) -> None:
+        assert is_pii_field(field_name) is False
 
 
 class TestPiiValueDetection:
-    def test_detects_aadhaar_value(self) -> None:
-        assert contains_pii_value("1234 5678 9012") is True
-
-    def test_detects_pan_value(self) -> None:
-        assert contains_pii_value("ABCDE1234F") is True
-
-    def test_detects_ssn_value(self) -> None:
-        assert contains_pii_value("123-45-6789") is True
+    @pytest.mark.parametrize(
+        "value",
+        ["1234 5678 9012", "ABCDE1234F", "123-45-6789"],
+    )
+    def test_detects_pii_value(self, value: str) -> None:
+        assert contains_pii_value(value) is True
 
     def test_non_pii_value(self) -> None:
         assert contains_pii_value("hello world") is False
@@ -72,22 +64,6 @@ class TestRedactPayload:
     def test_none_value_preserved(self) -> None:
         result = redact_payload({"key": None})
         assert result["key"] is None
-
-    def test_no_substring_false_positive(self) -> None:
-        """Field names that incidentally contain PII letters as substrings
-        must not be redacted (the previous behaviour redacted ``company``
-        for ``pan``)."""
-        assert is_pii_field("company") is False
-        assert is_pii_field("panel_id") is False
-        assert is_pii_field("panchayat") is False
-        assert is_pii_field("expandable") is False
-        assert is_pii_field("author") is False
-        assert is_pii_field("pinterest") is False
-
-    def test_token_match_for_known_pii(self) -> None:
-        assert is_pii_field("user_pin_code") is True
-        assert is_pii_field("aadhaar_token") is True
-        assert is_pii_field("mobile_number") is True
 
     def test_unrelated_field_preserved(self) -> None:
         result = redact_payload({"company": "Acme", "amount": 100, "order_id": "L100"})

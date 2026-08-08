@@ -13,7 +13,7 @@ Typical usage:
 from __future__ import annotations
 
 import threading
-from typing import Any, Generic, TypeVar, cast
+from typing import Any, Generic, TypeVar
 
 from underwrite.__logger__ import logger
 from underwrite.__store__ import Store
@@ -72,7 +72,7 @@ class StoreRepository(Generic[T]):
 
     def deserialize(self, raw: Any) -> T:
         """Override in subclasses for custom deserialization."""
-        return cast(T, raw)
+        return raw
 
     def serialize(self, data: T) -> Any:
         """Override in subclasses for custom serialization."""
@@ -90,7 +90,7 @@ class TypedStoreRepository(StoreRepository[T]):
         self,
         store: Store,
         key: str,
-        expected_type: type | tuple[type, ...],
+        expected_type: type[T] | tuple[type[T], ...],
     ) -> None:
         """Initialize the typed repository.
 
@@ -115,7 +115,7 @@ class TypedStoreRepository(StoreRepository[T]):
                 type(raw).__name__,
             )
             return default
-        return cast(T, raw)
+        return raw
 
 
 class BatchedStoreRepository(TypedStoreRepository[T]):

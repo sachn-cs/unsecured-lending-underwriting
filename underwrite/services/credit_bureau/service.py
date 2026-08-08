@@ -44,7 +44,7 @@ class CreditBureauHandler(StatefulService):
         self._kyc_providers: dict[str, Any] = client_kwargs.get("kyc_providers", {})
         legacy_kwargs = {k: v for k, v in client_kwargs.items() if k != "kyc_providers"}
         super().__init__(**parent_kwargs)
-        self._client: CreditBureauClient = self.build_client(**legacy_kwargs)
+        self.__client: CreditBureauClient = self.build_client(**legacy_kwargs)
         self.reports: dict[str, CreditReport] = {}
         self.ckyc_records: dict[str, dict[str, Any]] = {}
         self.repo: TypedStoreRepository[dict[str, Any]] = self.store_repo("credit_bureau", dict)
@@ -52,6 +52,15 @@ class CreditBureauHandler(StatefulService):
         if loaded:
             self.reports = {k: CreditBureauHandler.dict_to_report(v) for k, v in loaded.get("reports", {}).items()}
             self.ckyc_records = loaded.get("ckyc", {})
+
+    @property
+    def client(self) -> CreditBureauClient:
+        """Read-only access to the bureau client for test wiring."""
+        return self.__client
+
+    @client.setter
+    def client(self, value: CreditBureauClient) -> None:
+        self.__client = value
 
     @staticmethod
     def dict_to_report(d: dict[str, Any]) -> CreditReport:
@@ -220,7 +229,7 @@ class CreditBureauHandler(StatefulService):
             )
             return
         try:
-            report = self._client.fetch_credit_report(pan, bureau)
+            report = self.__client.fetch_credit_report(pan, bureau)
         except Exception as exc:
             logger.error("credit_bureau.check failed for {}: {}", pan, exc)
             self.emit(
@@ -264,7 +273,7 @@ class CreditBureauHandler(StatefulService):
             logger.warning("ckyc.verify missing ckyc_number or aadhaar")
             return
         try:
-            response = self._client.verify_ckyc(ckyc_number, aadhaar)
+            response = self.__client.verify_ckyc(ckyc_number, aadhaar)
         except Exception as exc:
             logger.error("ckyc.verify failed for {}: {}", ckyc_number, exc)
             self.emit(

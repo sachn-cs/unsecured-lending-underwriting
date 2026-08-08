@@ -58,8 +58,8 @@ class TestCreditBureauCheck:
         received: list = []
         bus.subscribe(EventType.CREDIT_BUREAU_CHECKED, lambda e: received.append(e))
         s = svc(bus=bus)
-        s._client = MockCreditBureauClient()
-        s._client.add_report(
+        s.client = MockCreditBureauClient()
+        s.client.add_report(
             "ABCDE1234F", CreditReport(bureau="cibil", pan="ABCDE1234F", name="A", dob="1990-01-01", score=750)
         )
         bus.start()
@@ -90,7 +90,7 @@ class TestCreditBureauCheck:
         bus.subscribe(EventType.CREDIT_BUREAU_CHECK_FAILED, lambda e: received.append(e))
         s = svc(bus=bus)
         mock = MockCreditBureauClient()
-        s._client = mock
+        s.client = mock
         bus.start()
         s.handle(
             Event(
@@ -102,8 +102,8 @@ class TestCreditBureauCheck:
 
     def test_get_report_after_check(self) -> None:
         s = svc()
-        s._client = MockCreditBureauClient()
-        s._client.add_report(
+        s.client = MockCreditBureauClient()
+        s.client.add_report(
             "ABCDE1234F", CreditReport(bureau="cibil", pan="ABCDE1234F", name="Test", dob="1990-06-15", score=720)
         )
         s.handle(
@@ -124,9 +124,9 @@ class TestCreditBureauCheck:
 
     def test_multiple_bureau_checks(self) -> None:
         s = svc()
-        s._client = MockCreditBureauClient()
-        s._client.add_report("PAN1", CreditReport(bureau="cibil", pan="PAN1", name="A", dob="1990-01-01", score=750))
-        s._client.add_report("PAN2", CreditReport(bureau="experian", pan="PAN2", name="B", dob="1991-02-02", score=680))
+        s.client = MockCreditBureauClient()
+        s.client.add_report("PAN1", CreditReport(bureau="cibil", pan="PAN1", name="A", dob="1990-01-01", score=750))
+        s.client.add_report("PAN2", CreditReport(bureau="experian", pan="PAN2", name="B", dob="1991-02-02", score=680))
         s.handle(
             Event(event_type=EventType.CREDIT_BUREAU_CHECK, source="test", payload={"pan": "PAN1", "bureau": "cibil"})
         )
@@ -149,7 +149,7 @@ class TestCkycVerification:
         bus.subscribe(EventType.CKYC_VERIFIED, lambda e: received.append(e))
         s = svc(bus=bus)
         mock = MockCreditBureauClient()
-        s._client = mock
+        s.client = mock
         mock.add_ckyc(
             "CKYC1234567890",
             CkycResponse(
@@ -189,7 +189,7 @@ class TestCkycVerification:
         received: list = []
         bus.subscribe(EventType.CKYC_REJECTED, lambda e: received.append(e))
         s = svc(bus=bus)
-        s._client = MockCreditBureauClient()
+        s.client = MockCreditBureauClient()
         bus.start()
         s.handle(
             Event(
@@ -202,7 +202,7 @@ class TestCkycVerification:
     def test_get_ckyc_after_verify(self) -> None:
         s = svc()
         mock = MockCreditBureauClient()
-        s._client = mock
+        s.client = mock
         mock.add_ckyc(
             "CKYC9999999999",
             CkycResponse(
@@ -345,8 +345,8 @@ class TestCibilProviderIntegration:
 class TestHealthCheck:
     def test_health_returns_counts(self) -> None:
         s = svc()
-        s._client = MockCreditBureauClient()
-        s._client.add_report("PAN1", CreditReport(bureau="cibil", pan="PAN1", name="A", dob="1990-01-01", score=750))
+        s.client = MockCreditBureauClient()
+        s.client.add_report("PAN1", CreditReport(bureau="cibil", pan="PAN1", name="A", dob="1990-01-01", score=750))
         s.handle(
             Event(event_type=EventType.CREDIT_BUREAU_CHECK, source="test", payload={"pan": "PAN1", "bureau": "cibil"})
         )
@@ -363,8 +363,8 @@ class TestClientSelection:
 
     def test_no_api_key_with_allow_mock_returns_mock(self) -> None:
         s = svc(allow_mock=True)
-        assert isinstance(s._client, MockCreditBureauClient)
+        assert isinstance(s.client, MockCreditBureauClient)
 
     def test_api_key_returns_http_client(self) -> None:
         s = svc(cibil_api_key="real-key", allow_mock=False)
-        assert isinstance(s._client, HttpCreditBureauClient)
+        assert isinstance(s.client, HttpCreditBureauClient)

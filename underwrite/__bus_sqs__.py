@@ -58,7 +58,7 @@ class SqsBus(EventBus):
             self.__boto3 = None
 
     @property
-    def _client(self) -> Any:
+    def client(self) -> Any:
         if self.__client is None:
             if self.__boto3 is None:
                 raise RuntimeError("boto3 is not installed; install underwrite[aws]")
@@ -72,7 +72,7 @@ class SqsBus(EventBus):
         if self.__boto3 is None:
             raise RuntimeError("boto3 is not installed; install underwrite[aws]")
         body: str = json.dumps(event.to_dict())
-        self._client.send_message(
+        self.__client.send_message(
             QueueUrl=self.__queue_url,
             MessageBody=body,
             MessageDeduplicationId=event.event_id,
@@ -120,7 +120,7 @@ class SqsBus(EventBus):
     def __poll_loop(self) -> None:
         while self.__running:
             try:
-                resp: Any = self._client.receive_message(
+                resp: Any = self.__client.receive_message(
                     QueueUrl=self.__queue_url,
                     MaxNumberOfMessages=self.__max_messages,
                     WaitTimeSeconds=self.__wait_time,
@@ -146,7 +146,7 @@ class SqsBus(EventBus):
         if not receipt or not body:
             logger.warning("SQS message missing receipt or body, deleting")
             try:
-                self._client.delete_message(QueueUrl=self.__queue_url, ReceiptHandle=receipt)
+                self.__client.delete_message(QueueUrl=self.__queue_url, ReceiptHandle=receipt)
             except Exception:
                 logger.exception("failed to delete malformed SQS message")
             return
@@ -156,7 +156,7 @@ class SqsBus(EventBus):
         except Exception:
             logger.exception("SQS message body failed to parse, deleting")
             try:
-                self._client.delete_message(QueueUrl=self.__queue_url, ReceiptHandle=receipt)
+                self.__client.delete_message(QueueUrl=self.__queue_url, ReceiptHandle=receipt)
             except Exception:
                 logger.exception("failed to delete unparseable SQS message")
             return
@@ -185,7 +185,7 @@ class SqsBus(EventBus):
         if any_failure:
             return
         try:
-            self._client.delete_message(QueueUrl=self.__queue_url, ReceiptHandle=receipt)
+            self.__client.delete_message(QueueUrl=self.__queue_url, ReceiptHandle=receipt)
         except Exception:
             logger.exception(
                 "failed to delete SQS message after successful dispatch — "

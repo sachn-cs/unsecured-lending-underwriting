@@ -127,11 +127,7 @@ class TestPaymentService:
     def test_multiple_payments_same_loan(self) -> None:
         svc = PaymentService(service_id="payment")
         svc.handle(Event(event_type="payment.receive", source="test", payload={"loan_id": "L1", "amount": 100}))
-        import time as time_mod
-
-        time_mod.sleep(1.1)
         svc.handle(Event(event_type="payment.receive", source="test", payload={"loan_id": "L1", "amount": 200}))
-        time_mod.sleep(1.1)
         svc.handle(Event(event_type="payment.receive", source="test", payload={"loan_id": "L1", "amount": 300}))
         keys = svc.store.keys("payment:pay_L1_")
         assert len(keys) == 3

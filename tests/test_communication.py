@@ -93,9 +93,6 @@ class TestCommunicationService:
                 payload={"recipient": "same@test.com", "subject": "Msg 1", "body": "B"},
             )
         )
-        import time as time_mod
-
-        time_mod.sleep(1.1)
         svc.handle(
             Event(
                 event_type="communication.send",
@@ -103,7 +100,6 @@ class TestCommunicationService:
                 payload={"recipient": "same@test.com", "subject": "Msg 2", "body": "B"},
             )
         )
-        time_mod.sleep(1.1)
         svc.handle(
             Event(
                 event_type="communication.send",

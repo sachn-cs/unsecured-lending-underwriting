@@ -7,7 +7,6 @@ when a statement is produced.
 
 from __future__ import annotations
 
-import threading
 from datetime import datetime, timezone
 from typing import Any
 
@@ -22,7 +21,6 @@ class StatementService(NanoService):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self.__lock: threading.RLock = threading.RLock()
         self.handlers: dict[str, Any] = {
             EventType.STATEMENT_GENERATE: self.__on_statement_generate,
             EventType.COLLECTION_UPDATED: self.__on_collection_updated,
@@ -47,7 +45,7 @@ class StatementService(NanoService):
             logger.warning("dropping STATEMENT_GENERATE with missing loan_id or period_start")
             return
 
-        with self.__lock:
+        with self.state_lock:
             statement_id: str = f"stmt_{loan_id}_{period_start}"
             if self.store.exists(f"statement:{statement_id}"):
                 return

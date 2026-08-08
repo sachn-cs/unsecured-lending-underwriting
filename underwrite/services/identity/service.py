@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import threading
 from typing import Any
 
 from underwrite.__events__ import Event, EventType
@@ -14,11 +13,6 @@ from underwrite.validate import get_non_empty
 
 class IdentityService(NanoService):
     """Manages nano-service identities: registration and key rotation."""
-
-    def __init__(self, **kwargs: Any) -> None:
-        """Initialize the identity service with a reentrant lock."""
-        super().__init__(**kwargs)
-        self.__lock: threading.RLock = threading.RLock()
 
     def handle(self, event: Event) -> None:
         """Process identity registration and rotation events.
@@ -62,7 +56,7 @@ class IdentityService(NanoService):
             event: The identity rotation event.
         """
         service_id = get_non_empty(event.payload, "service_id")
-        with self.__lock:
+        with self.state_lock:
             existing = self.store.get(f"identity:{service_id}")
             if not existing:
                 logger.warning("identity rotation requested for unknown service {!r}", service_id)

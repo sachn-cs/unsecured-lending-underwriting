@@ -8,7 +8,6 @@ order and mandate references against loan records.
 
 from __future__ import annotations
 
-import threading
 from datetime import datetime, timezone
 from typing import Any
 
@@ -36,7 +35,6 @@ class ServicingService(NanoService):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self.__lock: threading.RLock = threading.RLock()
         self.handlers: dict[str, Any] = {
             EventType.LOAN_ORIGINATED: self.__on_loan_originated,
             EventType.REPAID: self.__on_repaid,
@@ -94,7 +92,7 @@ class ServicingService(NanoService):
         if self.bus.idempotency.is_duplicate(self.service_id, event.event_id):
             logger.debug("duplicate REPAID event {} dropped", event.event_id)
             return
-        with self.__lock:
+        with self.state_lock:
             record = self.store.get(f"loan:{loan_id}")
             if record:
                 accrued = self.__accrue_interest(record)
@@ -124,7 +122,7 @@ class ServicingService(NanoService):
         if not loan_id:
             logger.warning("dropping DEFAULT_OCCURRED with missing loan_id")
             return
-        with self.__lock:
+        with self.state_lock:
             record = self.store.get(f"loan:{loan_id}")
             if record:
                 record["status"] = "defaulted"
@@ -143,7 +141,7 @@ class ServicingService(NanoService):
         if not loan_id or not order_id:
             logger.warning("dropping RAZORPAY_ORDER_CREATED with missing loan_id or order_id")
             return
-        with self.__lock:
+        with self.state_lock:
             record = self.store.get(f"loan:{loan_id}")
             if record:
                 record["razorpay_order_id"] = order_id
@@ -160,7 +158,7 @@ class ServicingService(NanoService):
         if not loan_id:
             logger.warning("dropping RAZORPAY_MANDATE_ACTIVE with missing loan_id")
             return
-        with self.__lock:
+        with self.state_lock:
             record = self.store.get(f"loan:{loan_id}")
             if record:
                 record["razorpay_subscription_id"] = subscription_id
@@ -177,7 +175,7 @@ class ServicingService(NanoService):
         if not loan_id:
             logger.warning("dropping RAZORPAY_MANDATE_INACTIVE with missing loan_id")
             return
-        with self.__lock:
+        with self.state_lock:
             record = self.store.get(f"loan:{loan_id}")
             if record:
                 record["razorpay_mandate_status"] = "inactive"
@@ -192,7 +190,7 @@ class ServicingService(NanoService):
         Returns:
             Accrued interest amount added since last accrual.
         """
-        with self.__lock:
+        with self.state_lock:
             record = self.store.get(f"loan:{loan_id}")
             if record:
                 return self.__accrue_interest(record)

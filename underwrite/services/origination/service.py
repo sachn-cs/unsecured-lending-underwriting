@@ -7,7 +7,6 @@ Emits ``origination.created`` when a new application is started and
 
 from __future__ import annotations
 
-import threading
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -22,8 +21,7 @@ class OriginationService(NanoService):
     """Manages loan application lifecycle: creation, validation, submission."""
 
     def __init__(self, **kwargs: Any) -> None:
-        """Initialize the origination service with a reentrant lock."""
-        self.__lock: threading.RLock = threading.RLock()
+        """Initialize the origination service."""
         super().__init__(**kwargs)
         self.handlers: dict[str, Any] = {
             EventType.ORIGINATION_CREATE: self.__on_create,
@@ -76,7 +74,7 @@ class OriginationService(NanoService):
             event: The ORIGINATION_SUBMIT event.
         """
         application_id = event.payload.get("application_id", "")
-        with self.__lock:
+        with self.state_lock:
             record = self.store.get(f"origination:{application_id}")
             if not record or record.get("status") != "created":
                 return

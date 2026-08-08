@@ -32,7 +32,7 @@ DEFAULT_PARAM_DEFAULTS: dict[str, float] = {
 }
 
 
-class GovernanceService(StatefulService):
+class GovernanceHandler(StatefulService):
     """Manages protocol parameters and handles governance proposals."""
 
     def __init__(self, **kwargs: Any) -> None:

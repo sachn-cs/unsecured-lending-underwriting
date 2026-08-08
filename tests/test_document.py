@@ -1,14 +1,14 @@
-"""Tests for DocumentService — loan document generation."""
+"""Tests for DocumentHandler — loan document generation."""
 
 from __future__ import annotations
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
-from underwrite.services.document.service import DocumentService
+from underwrite.services.document.service import DocumentHandler
 
 
-def svc(bus=None) -> DocumentService:
-    return DocumentService(service_id="document", bus=bus)
+def svc(bus=None) -> DocumentHandler:
+    return DocumentHandler(service_id="document", bus=bus)
 
 
 class TestDocumentService:

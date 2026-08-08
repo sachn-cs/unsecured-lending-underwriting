@@ -1,4 +1,4 @@
-"""Tests for AuditService — append-only event ledger.
+"""Tests for AuditHandler — append-only event ledger.
 
 Tests verify behavior through public interfaces only:
   - ledger property (returns copy of records)
@@ -11,15 +11,15 @@ from __future__ import annotations
 from typing import Any
 
 from underwrite.__events__ import Event
-from underwrite.services.audit.service import AuditService
+from underwrite.services.audit.service import AuditHandler
 
 
-def audit() -> AuditService:
-    return AuditService(service_id="audit")
+def audit() -> AuditHandler:
+    return AuditHandler(service_id="audit")
 
 
-def audit_capped() -> AuditService:
-    return AuditService(service_id="audit", max_ledger=5)
+def audit_capped() -> AuditHandler:
+    return AuditHandler(service_id="audit", max_ledger=5)
 
 
 class TestAuditService:
@@ -118,7 +118,7 @@ class TestAuditService:
         assert svc.ledger[-1]["payload"] == {"i": 9}
 
     def test_export_noop_without_url(self) -> None:
-        svc = AuditService(service_id="audit")
+        svc = AuditHandler(service_id="audit")
         svc.handle(Event(event_type="ev", source="s"))
         svc.export()  # should not raise
 
@@ -136,7 +136,7 @@ class TestAuditService:
         with patch.dict("sys.modules", {"boto3": mock_boto3_mod}):
             if "underwrite.services.audit.service" in __import__("sys").modules:
                 __import__("sys").modules.pop("underwrite.services.audit.service", None)
-            from underwrite.services.audit.service import AuditService as AuditSvc2
+            from underwrite.services.audit.service import AuditHandler as AuditSvc2
 
             svc2 = AuditSvc2(service_id="audit", export_url="s3://bucket/path.jsonl")
             svc2.handle(Event(event_type="ev", source="s"))
@@ -144,6 +144,6 @@ class TestAuditService:
         assert put_called[0]
 
     def test_export_gcs_noop_without_library(self) -> None:
-        svc = AuditService(service_id="audit", export_url="gs://bucket/path.jsonl")
+        svc = AuditHandler(service_id="audit", export_url="gs://bucket/path.jsonl")
         svc.handle(Event(event_type="ev", source="s"))
         svc.export()  # should log warning, not raise

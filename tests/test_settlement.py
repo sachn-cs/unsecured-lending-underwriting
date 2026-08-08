@@ -1,4 +1,4 @@
-"""Tests for SettlementService — loss recognition and final accounting."""
+"""Tests for SettlementHandler — loss recognition and final accounting."""
 
 from __future__ import annotations
 
@@ -6,11 +6,11 @@ import pytest
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
-from underwrite.services.settlement.service import SettlementService
+from underwrite.services.settlement.service import SettlementHandler
 
 
-def svc(bus=None) -> SettlementService:
-    return SettlementService(service_id="settlement", bus=bus)
+def svc(bus=None) -> SettlementHandler:
+    return SettlementHandler(service_id="settlement", bus=bus)
 
 
 class TestSettlementService:

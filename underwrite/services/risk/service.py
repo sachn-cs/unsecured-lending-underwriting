@@ -16,7 +16,7 @@ from underwrite.services.risk.model import RiskModel
 from underwrite.validate import get_finite, get_non_empty
 
 
-class RiskService(NanoService):
+class RiskHandler(NanoService):
     """Computes default-probability scores and triggers early-warning alerts."""
 
     def __init__(self, **kwargs: Any) -> None:

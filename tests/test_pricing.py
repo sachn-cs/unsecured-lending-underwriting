@@ -1,4 +1,4 @@
-"""Tests for PricingService — RBI-compliant rate and fee computation."""
+"""Tests for PricingHandler — RBI-compliant rate and fee computation."""
 
 from __future__ import annotations
 
@@ -10,13 +10,13 @@ from underwrite.services.pricing.service import (
     HOME_LOAN_CAP,
     MICRO_LOAN_CAP,
     PERSONAL_LOAN_CAP,
-    PricingService,
+    PricingHandler,
     compute_rate_cap,
 )
 
 
-def svc(**kwargs) -> PricingService:
-    return PricingService(service_id="pricing", **kwargs)
+def svc(**kwargs) -> PricingHandler:
+    return PricingHandler(service_id="pricing", **kwargs)
 
 
 def request(svc, bus, **kw) -> None:

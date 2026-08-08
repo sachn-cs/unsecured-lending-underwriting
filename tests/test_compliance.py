@@ -1,4 +1,4 @@
-"""Tests for ComplianceService — RBI KYC/AML checks.
+"""Tests for ComplianceHandler — RBI KYC/AML checks.
 
 Tests verify behavior through emitted events:
   - KYC_VERIFIED for valid PAN + Aadhaar (with Verhoeff check)
@@ -19,14 +19,14 @@ from unittest.mock import patch
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
 from underwrite.services.compliance.service import (
-    ComplianceService,
+    ComplianceHandler,
     pan_category,
     verify_aadhaar_checksum,
 )
 
 
-def compliance(bus=None) -> ComplianceService:
-    svc = ComplianceService(service_id="compliance", bus=bus)
+def compliance(bus=None) -> ComplianceHandler:
+    svc = ComplianceHandler(service_id="compliance", bus=bus)
     svc.repo.save({})
     return svc
 
@@ -232,7 +232,7 @@ class TestComplianceService:
                 bus = LocalBus()
                 frozen: list[Event] = []
                 bus.subscribe(EventType.AML_FROZEN, lambda e: frozen.append(e))
-                svc = ComplianceService(service_id="compliance", bus=bus, aml_blocklist_path=bl_path)
+                svc = ComplianceHandler(service_id="compliance", bus=bus, aml_blocklist_path=bl_path)
                 bus.start()
                 svc.handle(
                     Event(

@@ -1,5 +1,5 @@
 """Identity service — Ed25519 key registration and rotation."""
 
-from underwrite.services.identity.service import IdentityService
+from underwrite.services.identity.service import IdentityHandler
 
-__all__ = ["IdentityService"]
+__all__ = ["IdentityHandler"]

@@ -14,7 +14,7 @@ from underwrite.services.persistence import TypedStoreRepository
 from underwrite.validate import get_finite, get_non_empty
 
 
-class SettlementService(StatefulService):
+class SettlementHandler(StatefulService):
     """Handles final settlement and loss recognition."""
 
     def __init__(self, **kwargs: Any) -> None:

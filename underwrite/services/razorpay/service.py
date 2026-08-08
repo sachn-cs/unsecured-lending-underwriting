@@ -29,7 +29,7 @@ from underwrite.services.razorpay.client import (
 )
 from underwrite.validate import get_finite
 
-class RazorpayService(StatefulService):
+class RazorpayHandler(StatefulService):
     """Manages Razorpay order/subscription/payment lifecycle.
 
     Handles creation of payment orders (one-time), payment links,

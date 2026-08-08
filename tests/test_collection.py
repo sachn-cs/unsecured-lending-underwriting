@@ -1,14 +1,14 @@
-"""Tests for CollectionService — repayment schedule tracking."""
+"""Tests for CollectionHandler — repayment schedule tracking."""
 
 from __future__ import annotations
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
-from underwrite.services.collection.service import CollectionService
+from underwrite.services.collection.service import CollectionHandler
 
 
-def svc(bus=None) -> CollectionService:
-    return CollectionService(service_id="collection", bus=bus)
+def svc(bus=None) -> CollectionHandler:
+    return CollectionHandler(service_id="collection", bus=bus)
 
 
 class TestCollectionService:

@@ -20,7 +20,7 @@ from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
 from underwrite.validate import get_finite, get_non_empty
 
-class CollectionService(StatefulService):
+class CollectionHandler(StatefulService):
     """Tracks repayment schedules and flags overdue accounts.
 
     Uses the full EMI amortization schedule from

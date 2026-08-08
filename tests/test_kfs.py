@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
-from underwrite.services.kfs.service import KfsService
+from underwrite.services.kfs.service import KfsHandler
 
 
-def svc(bus=None) -> KfsService:
-    return KfsService(service_id="kfs", bus=bus)
+def svc(bus=None) -> KfsHandler:
+    return KfsHandler(service_id="kfs", bus=bus)
 
 
 class TestKfsService:

@@ -140,7 +140,7 @@ def pan_category(pan: str) -> str:
     code = pan[3]
     return PAN_CATEGORIES.get(code, "Unknown")
 
-class ComplianceService(StatefulService):
+class ComplianceHandler(StatefulService):
     """RBI-compliant KYC/AML verification with risk scoring."""
 
     def __init__(self, **kwargs: Any) -> None:

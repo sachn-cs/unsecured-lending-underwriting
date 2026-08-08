@@ -138,7 +138,7 @@ DEFAULT_POLICIES: list[Policy] = [
 ]
 
 
-class UnderwriterService(StatefulService):
+class UnderwriterHandler(StatefulService):
     """Evaluates loan applications using a configurable rule engine.
 
     Accumulates facts from multiple signal events (risk, fraud, credit bureau,

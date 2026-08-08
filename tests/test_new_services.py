@@ -3,21 +3,21 @@
 from __future__ import annotations
 
 from underwrite.__events__ import Event, EventType
-from underwrite.services.collection.service import CollectionService
-from underwrite.services.disbursement.service import DisbursementService
-from underwrite.services.document.service import DocumentService
-from underwrite.services.pricing.service import PricingService
-from underwrite.services.settlement.service import SettlementService
-from underwrite.services.underwriter.service import UnderwriterService
+from underwrite.services.collection.service import CollectionHandler
+from underwrite.services.disbursement.service import DisbursementHandler
+from underwrite.services.document.service import DocumentHandler
+from underwrite.services.pricing.service import PricingHandler
+from underwrite.services.settlement.service import SettlementHandler
+from underwrite.services.underwriter.service import UnderwriterHandler
 
 
 class TestUnderwriterService:
     def test_ignores_unrelated_event(self) -> None:
-        svc = UnderwriterService(service_id="underwriter")
+        svc = UnderwriterHandler(service_id="underwriter")
         svc.handle(Event(event_type="other", source="test", payload={}))
 
     def test_rejects_high_default_probability(self) -> None:
-        svc = UnderwriterService(service_id="underwriter")
+        svc = UnderwriterHandler(service_id="underwriter")
         svc.handle(
             Event(
                 event_type=EventType.UNDERWRITE_REQUEST,
@@ -31,7 +31,7 @@ class TestUnderwriterService:
         )
 
     def test_approves_low_risk_loan(self) -> None:
-        svc = UnderwriterService(service_id="underwriter")
+        svc = UnderwriterHandler(service_id="underwriter")
         svc.handle(
             Event(
                 event_type=EventType.UNDERWRITE_REQUEST,
@@ -47,11 +47,11 @@ class TestUnderwriterService:
 
 class TestPricingService:
     def test_ignores_unrelated_event(self) -> None:
-        svc = PricingService(service_id="pricing")
+        svc = PricingHandler(service_id="pricing")
         svc.handle(Event(event_type="other", source="test", payload={}))
 
     def test_computes_pricing(self) -> None:
-        svc = PricingService(service_id="pricing")
+        svc = PricingHandler(service_id="pricing")
         svc.handle(
             Event(
                 event_type=EventType.PRICING_REQUEST,
@@ -67,11 +67,11 @@ class TestPricingService:
 
 class TestDocumentService:
     def test_ignores_unrelated_event(self) -> None:
-        svc = DocumentService(service_id="document")
+        svc = DocumentHandler(service_id="document")
         svc.handle(Event(event_type="other", source="test", payload={}))
 
     def test_generates_document_on_approval(self) -> None:
-        svc = DocumentService(service_id="document")
+        svc = DocumentHandler(service_id="document")
         svc.handle(
             Event(
                 event_type=EventType.UNDERWRITER_APPROVED,
@@ -85,7 +85,7 @@ class TestDocumentService:
         assert docs[0]["status"] == "generated"
 
     def test_multiple_documents(self) -> None:
-        svc = DocumentService(service_id="document")
+        svc = DocumentHandler(service_id="document")
         for _ in range(3):
             svc.handle(
                 Event(
@@ -99,11 +99,11 @@ class TestDocumentService:
 
 class TestDisbursementService:
     def test_ignores_unrelated_event(self) -> None:
-        svc = DisbursementService(service_id="disbursement")
+        svc = DisbursementHandler(service_id="disbursement")
         svc.handle(Event(event_type="other", source="test", payload={}))
 
     def test_records_disbursement(self) -> None:
-        svc = DisbursementService(service_id="disbursement")
+        svc = DisbursementHandler(service_id="disbursement")
         svc.handle(
             Event(
                 event_type=EventType.DOCUMENT_GENERATED,
@@ -119,11 +119,11 @@ class TestDisbursementService:
 
 class TestCollectionService:
     def test_ignores_unrelated_event(self) -> None:
-        svc = CollectionService(service_id="collection")
+        svc = CollectionHandler(service_id="collection")
         svc.handle(Event(event_type="other", source="test", payload={}))
 
     def test_records_originated_loan(self) -> None:
-        svc = CollectionService(service_id="collection")
+        svc = CollectionHandler(service_id="collection")
         svc.handle(
             Event(
                 event_type=EventType.LOAN_ORIGINATED,
@@ -142,7 +142,7 @@ class TestCollectionService:
         assert loan["status"] == "active"
 
     def test_marks_loan_closed_on_full_repayment(self) -> None:
-        svc = CollectionService(service_id="collection")
+        svc = CollectionHandler(service_id="collection")
         svc.handle(
             Event(
                 event_type=EventType.LOAN_ORIGINATED,
@@ -168,11 +168,11 @@ class TestCollectionService:
 
 class TestSettlementService:
     def test_ignores_unrelated_event(self) -> None:
-        svc = SettlementService(service_id="settlement")
+        svc = SettlementHandler(service_id="settlement")
         svc.handle(Event(event_type="other", source="test", payload={}))
 
     def test_records_settlement_on_default(self) -> None:
-        svc = SettlementService(service_id="settlement")
+        svc = SettlementHandler(service_id="settlement")
         svc.handle(
             Event(
                 event_type=EventType.DEFAULT_OCCURRED,
@@ -186,7 +186,7 @@ class TestSettlementService:
         assert svc.settlements[0]["status"] == "settled"
 
     def test_tracks_multiple_settlements(self) -> None:
-        svc = SettlementService(service_id="settlement")
+        svc = SettlementHandler(service_id="settlement")
         for borrower in ["alice", "bob"]:
             svc.handle(
                 Event(

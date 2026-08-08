@@ -1,5 +1,5 @@
 """Governance service — policy-based parameter enforcement."""
 
-from underwrite.services.governance.service import GovernanceService
+from underwrite.services.governance.service import GovernanceHandler
 
-__all__ = ["GovernanceService"]
+__all__ = ["GovernanceHandler"]

@@ -9,7 +9,7 @@ from underwrite.__logger__ import logger
 from underwrite.services.base import NanoService
 
 
-class GraphService(NanoService):
+class GraphHandler(NanoService):
     """Provides read-only queries against the delegation graph.
 
     Reads state from the shared store to answer path, credit-limit,

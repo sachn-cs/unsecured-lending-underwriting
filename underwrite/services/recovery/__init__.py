@@ -1,5 +1,5 @@
 """Recovery service — default resolution and payment plans."""
 
-from underwrite.services.recovery.service import RecoveryService
+from underwrite.services.recovery.service import RecoveryHandler
 
-__all__ = ["RecoveryService"]
+__all__ = ["RecoveryHandler"]

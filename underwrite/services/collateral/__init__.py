@@ -1,5 +1,5 @@
 """Collateral management service — LTV tracking and liquidation."""
 
-from underwrite.services.collateral.service import CollateralService
+from underwrite.services.collateral.service import CollateralHandler
 
-__all__ = ["CollateralService"]
+__all__ = ["CollateralHandler"]

@@ -16,7 +16,7 @@ from underwrite.services.persistence import TypedStoreRepository
 from underwrite.validate import get_finite
 
 
-class DecisionService(StatefulService):
+class DecisionHandler(StatefulService):
     """Consolidates multi-signal inputs into a single decision recommendation.
 
     Collects fraud alerts, risk scores, and compliance outcomes to

@@ -22,7 +22,7 @@ from underwrite.services.base import NanoService
 from underwrite.validate import get_finite
 
 
-class PrepaymentService(NanoService):
+class PrepaymentHandler(NanoService):
     """Computes foreclosure quotes and processes prepayment requests."""
 
     def handlers(self) -> dict[str, Any]:

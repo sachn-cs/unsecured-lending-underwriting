@@ -1,13 +1,13 @@
-"""Tests for ConsentService — DPDPA-compliant consent lifecycle."""
+"""Tests for ConsentHandler — DPDPA-compliant consent lifecycle."""
 
 from __future__ import annotations
 
 from underwrite.__events__ import Event, EventType
-from underwrite.services.consent.service import ConsentService
+from underwrite.services.consent.service import ConsentHandler
 
 
-def svc(**kw) -> ConsentService:
-    return ConsentService(service_id="consent", **kw)
+def svc(**kw) -> ConsentHandler:
+    return ConsentHandler(service_id="consent", **kw)
 
 
 class TestConsentRecording:

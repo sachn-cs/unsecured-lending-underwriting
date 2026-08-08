@@ -1,14 +1,14 @@
-"""Tests for the RazorpayService."""
+"""Tests for the RazorpayHandler."""
 
 from __future__ import annotations
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
-from underwrite.services.razorpay.service import RazorpayService
+from underwrite.services.razorpay.service import RazorpayHandler
 
 
-def svc(bus=None) -> RazorpayService:
-    return RazorpayService(service_id="razorpay", bus=bus)
+def svc(bus=None) -> RazorpayHandler:
+    return RazorpayHandler(service_id="razorpay", bus=bus)
 
 
 def _configure_webhook_secret(svc_inst, secret: str) -> None:

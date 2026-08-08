@@ -1,5 +1,5 @@
 """Compliance service — KYC, AML, and regulatory checks."""
 
-from underwrite.services.compliance.service import ComplianceService
+from underwrite.services.compliance.service import ComplianceHandler
 
-__all__ = ["ComplianceService"]
+__all__ = ["ComplianceHandler"]

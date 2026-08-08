@@ -1,5 +1,5 @@
 """Collections management service — recovery activities."""
 
-from underwrite.services.collection.service import CollectionService
+from underwrite.services.collection.service import CollectionHandler
 
-__all__ = ["CollectionService"]
+__all__ = ["CollectionHandler"]

@@ -1,4 +1,4 @@
-"""Tests for ReportingService — regulatory report generation.
+"""Tests for ReportingHandler — regulatory report generation.
 
 Tests verify behavior through the public generate_report() method.
 """
@@ -6,11 +6,11 @@ Tests verify behavior through the public generate_report() method.
 from __future__ import annotations
 
 from underwrite.__events__ import Event, EventType
-from underwrite.services.reporting.service import ReportingService
+from underwrite.services.reporting.service import ReportingHandler
 
 
-def reporting() -> ReportingService:
-    return ReportingService(service_id="reporting")
+def reporting() -> ReportingHandler:
+    return ReportingHandler(service_id="reporting")
 
 
 class TestReportingService:

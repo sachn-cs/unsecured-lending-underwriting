@@ -16,8 +16,8 @@ from underwrite.__events__ import Event
 from underwrite.__exceptions__ import ProtocolError
 from underwrite.__runtime__ import Runtime
 from underwrite.__store__ import CQRSStore, MemoryStore, PostgresStore, ReadStore, Store
-from underwrite.services.audit.service import AuditService
-from underwrite.services.mechanism.service import MechanismService
+from underwrite.services.audit.service import AuditHandler
+from underwrite.services.mechanism.service import MechanismHandler
 from underwrite.services.risk.model import RiskModel
 
 # ---------------------------------------------------------------------------
@@ -192,7 +192,7 @@ class TestCQRSStoreHealthFallback:
 
 
 # ---------------------------------------------------------------------------
-# 10) MechanismService ProtocolError emits rejection event
+# 10) MechanismHandler ProtocolError emits rejection event
 # ---------------------------------------------------------------------------
 
 
@@ -200,7 +200,7 @@ class TestMechanismRejection:
     def test_repay_unknown_user_emits_rejected(self) -> None:
         bus: EventBus = LocalBus()
         bus.start()
-        svc = MechanismService(service_id="mechanism", bus=bus)
+        svc = MechanismHandler(service_id="mechanism", bus=bus)
         emitted: list[Event] = []
 
         def capture(e: Event) -> None:
@@ -217,7 +217,7 @@ class TestMechanismRejection:
 
 
 # ---------------------------------------------------------------------------
-# 11) AuditService.load_jsonl skips corrupted lines
+# 11) AuditHandler.load_jsonl skips corrupted lines
 # ---------------------------------------------------------------------------
 
 
@@ -225,7 +225,7 @@ class TestAuditLoadJsonl:
     def test_skips_corrupted_line(self, tmp_path: Path) -> None:
         ledger_file = tmp_path / "audit.jsonl"
         ledger_file.write_text('{"valid": true}\nnot json\n{"also_valid": 42}\n')
-        svc = AuditService(service_id="audit")
+        svc = AuditHandler(service_id="audit")
         svc.load_jsonl(str(ledger_file))
         records = svc._ledger
         assert len(records) == 2
@@ -235,13 +235,13 @@ class TestAuditLoadJsonl:
     def test_handles_empty_file(self, tmp_path: Path) -> None:
         ledger_file = tmp_path / "empty.jsonl"
         ledger_file.write_text("")
-        svc = AuditService(service_id="audit")
+        svc = AuditHandler(service_id="audit")
         svc.load_jsonl(str(ledger_file))
         records = svc._ledger
         assert len(records) == 0
 
     def test_handles_missing_file(self) -> None:
-        svc = AuditService(service_id="audit")
+        svc = AuditHandler(service_id="audit")
         svc.load_jsonl("/nonexistent/audit.jsonl")
         records = svc._ledger
         assert len(records) == 0

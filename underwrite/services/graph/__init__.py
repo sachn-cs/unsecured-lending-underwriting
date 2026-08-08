@@ -1,5 +1,5 @@
 """Relationship graph service — borrower-lender network analysis."""
 
-from underwrite.services.graph.service import GraphService
+from underwrite.services.graph.service import GraphHandler
 
-__all__ = ["GraphService"]
+__all__ = ["GraphHandler"]

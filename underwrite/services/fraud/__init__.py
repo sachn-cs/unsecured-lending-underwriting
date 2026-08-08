@@ -1,5 +1,5 @@
 """Fraud detection service — wash lending, velocity, rule-based alerts."""
 
-from underwrite.services.fraud.service import FraudService
+from underwrite.services.fraud.service import FraudHandler
 
-__all__ = ["FraudService"]
+__all__ = ["FraudHandler"]

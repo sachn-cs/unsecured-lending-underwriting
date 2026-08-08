@@ -80,7 +80,7 @@ def compute_apr(principal: float, emi: Decimal, tenure_months: int, total_fees: 
     return rate * Decimal("1200")
 
 
-class KfsService(NanoService):
+class KfsHandler(NanoService):
     """Generates Key Fact Statements for loan products.
 
     Produces a structured KFS document as specified by RBI guidelines,

@@ -1,5 +1,5 @@
 """Prepayment and foreclosure service."""
 
-from underwrite.services.prepayment.service import PrepaymentService
+from underwrite.services.prepayment.service import PrepaymentHandler
 
-__all__ = ["PrepaymentService"]
+__all__ = ["PrepaymentHandler"]

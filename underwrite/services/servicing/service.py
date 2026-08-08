@@ -17,7 +17,7 @@ from underwrite.services.base import NanoService
 from underwrite.validate import get_finite
 
 
-class ServicingService(NanoService):
+class ServicingHandler(NanoService):
     """Tracks active loan state, status transitions, and outstanding balances.
 
     Uses actual/365 daily interest accrual for accurate outstanding

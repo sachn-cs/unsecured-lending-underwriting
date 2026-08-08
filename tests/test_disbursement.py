@@ -1,14 +1,14 @@
-"""Tests for DisbursementService — loan payout processing."""
+"""Tests for DisbursementHandler — loan payout processing."""
 
 from __future__ import annotations
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
-from underwrite.services.disbursement.service import DisbursementService
+from underwrite.services.disbursement.service import DisbursementHandler
 
 
-def svc(bus=None) -> DisbursementService:
-    return DisbursementService(service_id="disbursement", bus=bus)
+def svc(bus=None) -> DisbursementHandler:
+    return DisbursementHandler(service_id="disbursement", bus=bus)
 
 
 class TestDisbursementService:

@@ -1,14 +1,14 @@
-"""Tests for PrepaymentService — foreclosure/prepayment workflow."""
+"""Tests for PrepaymentHandler — foreclosure/prepayment workflow."""
 
 from __future__ import annotations
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
-from underwrite.services.prepayment.service import PrepaymentService
+from underwrite.services.prepayment.service import PrepaymentHandler
 
 
-def svc(bus=None) -> PrepaymentService:
-    return PrepaymentService(service_id="prepayment", bus=bus)
+def svc(bus=None) -> PrepaymentHandler:
+    return PrepaymentHandler(service_id="prepayment", bus=bus)
 
 
 class TestPrepaymentService:

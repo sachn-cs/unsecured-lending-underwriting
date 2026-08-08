@@ -1,14 +1,14 @@
-"""Tests for UnderwriterService — loan application approval/rejection."""
+"""Tests for UnderwriterHandler — loan application approval/rejection."""
 
 from __future__ import annotations
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
-from underwrite.services.underwriter.service import UnderwriterService
+from underwrite.services.underwriter.service import UnderwriterHandler
 
 
-def svc(bus=None) -> UnderwriterService:
-    return UnderwriterService(service_id="underwriter", bus=bus)
+def svc(bus=None) -> UnderwriterHandler:
+    return UnderwriterHandler(service_id="underwriter", bus=bus)
 
 
 def request(svc, bus, **kw) -> None:

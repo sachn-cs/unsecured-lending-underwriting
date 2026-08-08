@@ -1,4 +1,4 @@
-"""Tests for CollateralService — LTV tracking and liquidation.
+"""Tests for CollateralHandler — LTV tracking and liquidation.
 
 Tests verify behavior through public interfaces only:
   - get() method for querying collateral state
@@ -12,11 +12,11 @@ import pytest
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
-from underwrite.services.collateral.service import CollateralService
+from underwrite.services.collateral.service import CollateralHandler
 
 
-def collateral(bus=None) -> CollateralService:
-    return CollateralService(service_id="collateral", bus=bus)
+def collateral(bus=None) -> CollateralHandler:
+    return CollateralHandler(service_id="collateral", bus=bus)
 
 
 class TestCollateralService:

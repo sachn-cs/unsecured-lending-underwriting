@@ -1,5 +1,5 @@
 """Quote calculation service — premium and break-even rate."""
 
-from underwrite.services.quote.service import QuoteService
+from underwrite.services.quote.service import QuoteHandler
 
-__all__ = ["QuoteService"]
+__all__ = ["QuoteHandler"]

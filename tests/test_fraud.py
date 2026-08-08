@@ -1,4 +1,4 @@
-"""Tests for FraudService — wash lending, burst detection, large origination alerts.
+"""Tests for FraudHandler — wash lending, burst detection, large origination alerts.
 
 Tests verify behavior through emitted events only:
   - WASH_FLAG on 3+ origination-repayment cycles
@@ -16,14 +16,14 @@ import pytest
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
 from underwrite.__exceptions__ import ProtocolError
-from underwrite.services.fraud.service import FraudService
+from underwrite.services.fraud.service import FraudHandler
 
 
-def fraud(bus=None) -> FraudService:
-    return FraudService(service_id="fraud", bus=bus)
+def fraud(bus=None) -> FraudHandler:
+    return FraudHandler(service_id="fraud", bus=bus)
 
 
-def originate(svc: FraudService, borrower: str, principal: int = 1000) -> None:
+def originate(svc: FraudHandler, borrower: str, principal: int = 1000) -> None:
     svc.handle(
         Event(
             event_type=EventType.LOAN_ORIGINATED, source="test", payload={"borrower": borrower, "principal": principal}
@@ -31,7 +31,7 @@ def originate(svc: FraudService, borrower: str, principal: int = 1000) -> None:
     )
 
 
-def repay(svc: FraudService, user: str, amount: int = 1000) -> None:
+def repay(svc: FraudHandler, user: str, amount: int = 1000) -> None:
     svc.handle(Event(event_type=EventType.REPAID, source="test", payload={"user": user, "delta_earned": amount}))
 
 

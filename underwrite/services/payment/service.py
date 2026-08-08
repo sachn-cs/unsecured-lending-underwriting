@@ -23,7 +23,7 @@ from underwrite.services.base import StatefulService
 from underwrite.validate import get_finite
 
 
-class PaymentService(StatefulService):
+class PaymentHandler(StatefulService):
     """Manages payment scheduling, receipt tracking, and delinquency detection."""
 
     def __init__(self, **kwargs: Any) -> None:

@@ -1,5 +1,5 @@
 """Decision intelligence service."""
 
-from underwrite.services.decision.service import DecisionService
+from underwrite.services.decision.service import DecisionHandler
 
-__all__ = ["DecisionService"]
+__all__ = ["DecisionHandler"]

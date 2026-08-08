@@ -1,5 +1,5 @@
 """Workflow orchestration service."""
 
-from underwrite.services.workflow.service import WorkflowService
+from underwrite.services.workflow.service import WorkflowHandler
 
-__all__ = ["WorkflowService"]
+__all__ = ["WorkflowHandler"]

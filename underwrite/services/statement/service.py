@@ -16,7 +16,7 @@ from underwrite.services.base import NanoService
 from underwrite.validate import require_finite
 
 
-class StatementService(NanoService):
+class StatementHandler(NanoService):
     """Generates account statements showing loan activity and current status."""
 
     def __init__(self, **kwargs: Any) -> None:

@@ -1,4 +1,4 @@
-"""Exhaustive tests for MechanismService — the core state machine.
+"""Exhaustive tests for MechanismHandler — the core state machine.
 
 Covers every state transition, every edge case, and all invariants.
 """
@@ -13,14 +13,14 @@ from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
 from underwrite.__exceptions__ import ProtocolError
 from underwrite.__store__ import MemoryStore
-from underwrite.services.mechanism.service import MechanismService
+from underwrite.services.mechanism.service import MechanismHandler
 
 
-def make_svc() -> MechanismService:
-    return MechanismService(service_id="test-mech", bus=LocalBus(), store=MemoryStore())
+def make_svc() -> MechanismHandler:
+    return MechanismHandler(service_id="test-mech", bus=LocalBus(), store=MemoryStore())
 
 
-def command(svc: MechanismService, cmd: str, payload: dict[str, Any], corr: str = "") -> None:
+def command(svc: MechanismHandler, cmd: str, payload: dict[str, Any], corr: str = "") -> None:
     svc.handle(
         Event(
             event_type="mechanism",
@@ -69,7 +69,7 @@ class TestAddSeed:
         bus = LocalBus()
         received: list[Event] = []
         bus.subscribe(EventType.SEED_ADDED, lambda e: received.append(e))
-        svc = MechanismService(service_id="mech", bus=bus, store=MemoryStore())
+        svc = MechanismHandler(service_id="mech", bus=bus, store=MemoryStore())
         svc.start()
         bus.start()
         command(svc, "add_seed", {"user": "bank", "base_budget": 100_000})
@@ -421,7 +421,7 @@ class TestQuote:
         bus = LocalBus()
         received: list[Event] = []
         bus.subscribe(EventType.QUOTE_CALCULATED, lambda e: received.append(e))
-        svc = MechanismService(service_id="mech", bus=bus, store=MemoryStore())
+        svc = MechanismHandler(service_id="mech", bus=bus, store=MemoryStore())
         svc.start()
         bus.start()
         command(
@@ -558,12 +558,12 @@ class TestEdgeCases:
 class TestMechanismStoreLoad:
     def test_loads_state_from_store_on_init(self) -> None:
         store = MemoryStore()
-        svc1 = MechanismService(service_id="mech", bus=LocalBus(), store=store)
+        svc1 = MechanismHandler(service_id="mech", bus=LocalBus(), store=store)
         svc1.start()
         command(svc1, "add_seed", {"user": "bank", "base_budget": 100_000})
         command(svc1, "add_user", {"sponsor": "bank", "user": "alice", "delegation_amount": 50_000})
         # Fresh service from same store should restore state
-        svc2 = MechanismService(service_id="mech", bus=LocalBus(), store=store)
+        svc2 = MechanismHandler(service_id="mech", bus=LocalBus(), store=store)
         svc2.start()
         assert "bank" in svc2.earned
         assert "alice" in svc2.earned
@@ -571,7 +571,7 @@ class TestMechanismStoreLoad:
 
     def test_empty_store_initializes_empty_state(self) -> None:
         store = MemoryStore()
-        svc = MechanismService(service_id="mech", bus=LocalBus(), store=store)
+        svc = MechanismHandler(service_id="mech", bus=LocalBus(), store=store)
         svc.start()
         assert len(svc.earned) == 0
         assert svc.credit_limit("alice") == 0.0
@@ -579,7 +579,7 @@ class TestMechanismStoreLoad:
     def test_partial_state_restores_gracefully(self) -> None:
         store = MemoryStore()
         store.set("protocol:state", {"seeds": ["bank"], "earned": {"bank": 0.0}})
-        svc = MechanismService(service_id="mech", bus=LocalBus(), store=store)
+        svc = MechanismHandler(service_id="mech", bus=LocalBus(), store=store)
         svc.start()
         assert "bank" in svc.earned
         # Test through public API: bank is seed with no base_budget, credit_limit uses 0

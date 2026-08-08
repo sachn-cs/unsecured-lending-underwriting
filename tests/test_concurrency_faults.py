@@ -16,13 +16,13 @@ from underwrite.__metrics__ import MetricsCollector
 from underwrite.__saga__ import SagaOrchestrator, SagaStep
 from underwrite.__store__ import FileStore, MemoryStore
 from underwrite.__tracer__ import Tracer
-from underwrite.services.mechanism.service import MechanismService
+from underwrite.services.mechanism.service import MechanismHandler
 
 NUM_THREADS: int = 10
 OPS_PER_THREAD: int = 100
 
 
-def _mechanism_cmd(svc: MechanismService, cmd: str, payload: dict[str, Any]) -> None:
+def _mechanism_cmd(svc: MechanismHandler, cmd: str, payload: dict[str, Any]) -> None:
     svc.handle(
         Event(
             event_type="mechanism",
@@ -275,10 +275,10 @@ class TestHealthConcurrency:
 
 
 class TestMechanismConcurrency:
-    """Stress tests for MechanismService thread safety."""
+    """Stress tests for MechanismHandler thread safety."""
 
     def test_concurrent_add_user(self) -> None:
-        svc = MechanismService(service_id="test-mech", store=MemoryStore())
+        svc = MechanismHandler(service_id="test-mech", store=MemoryStore())
         errors: list[Exception] = []
         err_lock = threading.Lock()
 
@@ -302,7 +302,7 @@ class TestMechanismConcurrency:
         assert "bank" in svc.seeds
 
     def test_concurrent_mixed_operations(self) -> None:
-        svc = MechanismService(service_id="test-mech", store=MemoryStore())
+        svc = MechanismHandler(service_id="test-mech", store=MemoryStore())
         errors: list[Exception] = []
         err_lock = threading.Lock()
 
@@ -349,7 +349,7 @@ class TestMechanismConcurrency:
 
     def test_concurrent_quote_queries(self) -> None:
         """Quote is read-only — safe to call concurrently from many threads."""
-        svc = MechanismService(service_id="test-mech", store=MemoryStore())
+        svc = MechanismHandler(service_id="test-mech", store=MemoryStore())
         errors: list[Exception] = []
         err_lock = threading.Lock()
 

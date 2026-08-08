@@ -1,4 +1,4 @@
-"""Tests for NotificationService — dispatch alerts to configured channels.
+"""Tests for NotificationHandler — dispatch alerts to configured channels.
 
 Tests verify behavior through emitted NOTIFICATION_SENT events and
 direct dispatch of the background notification logic.
@@ -10,11 +10,11 @@ from unittest.mock import patch
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
-from underwrite.services.notification.service import NotificationService
+from underwrite.services.notification.service import NotificationHandler
 
 
-def notify(bus=None) -> NotificationService:
-    return NotificationService(service_id="notify", bus=bus)
+def notify(bus=None) -> NotificationHandler:
+    return NotificationHandler(service_id="notify", bus=bus)
 
 
 class TestNotificationService:

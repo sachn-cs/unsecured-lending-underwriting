@@ -17,7 +17,7 @@ from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
 
 
-class DataSubjectRightsService(StatefulService):
+class DataSubjectRightsHandler(StatefulService):
     """Handles DSR requests and grievance redressal per DPDPA 2023.
 
     Supports:

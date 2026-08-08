@@ -36,7 +36,7 @@ class RecoveryStage(str, Enum):
     SETTLEMENT = "settlement"
 
 
-class RecoveryService(StatefulService):
+class RecoveryHandler(StatefulService):
     """Orchestrates multi-stage recovery after a default event.
 
     State is persisted to the store so in-flight recoveries survive

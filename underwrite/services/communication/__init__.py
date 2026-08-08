@@ -1,5 +1,5 @@
 """Communication dispatch service."""
 
-from underwrite.services.communication.service import CommunicationService
+from underwrite.services.communication.service import CommunicationHandler
 
-__all__ = ["CommunicationService"]
+__all__ = ["CommunicationHandler"]

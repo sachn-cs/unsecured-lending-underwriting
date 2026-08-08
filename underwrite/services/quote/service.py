@@ -7,7 +7,7 @@ from underwrite.services import NanoService
 from underwrite.validate import get_finite, get_non_negative, get_positive
 
 
-class QuoteService(NanoService):
+class QuoteHandler(NanoService):
     """Computes loan quotes.  Pure function — no side effects on state."""
 
     def handle(self, event: Event) -> None:

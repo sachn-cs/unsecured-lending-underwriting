@@ -17,7 +17,7 @@ from underwrite.services.base import NanoService
 from underwrite.validate import get_finite
 
 
-class OriginationService(NanoService):
+class OriginationHandler(NanoService):
     """Manages loan application lifecycle: creation, validation, submission."""
 
     def __init__(self, **kwargs: Any) -> None:

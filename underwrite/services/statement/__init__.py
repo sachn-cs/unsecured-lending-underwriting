@@ -1,5 +1,5 @@
 """Statement generation service."""
 
-from underwrite.services.statement.service import StatementService
+from underwrite.services.statement.service import StatementHandler
 
-__all__ = ["StatementService"]
+__all__ = ["StatementHandler"]

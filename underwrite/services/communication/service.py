@@ -15,7 +15,7 @@ from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
 from underwrite.services.base import NanoService
 
-class CommunicationService(NanoService):
+class CommunicationHandler(NanoService):
     """Dispatches outbound messages through configured channels.
 
     In production, each channel (email / SMS / push) is backed by a

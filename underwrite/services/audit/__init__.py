@@ -1,5 +1,5 @@
 """Audit trail service — immutable event log for compliance."""
 
-from underwrite.services.audit.service import AuditService
+from underwrite.services.audit.service import AuditHandler
 
-__all__ = ["AuditService"]
+__all__ = ["AuditHandler"]

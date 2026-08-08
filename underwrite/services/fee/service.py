@@ -28,7 +28,7 @@ DEFAULT_FEE_SCHEDULES: dict[str, float] = {
 MAX_FEE_PER_LOAN: float = 1000.0
 
 
-class FeeService(StatefulService):
+class FeeHandler(StatefulService):
     """Manages fee assessment, tracking, and lifecycle.
 
     Supports Indian lending fee structures:

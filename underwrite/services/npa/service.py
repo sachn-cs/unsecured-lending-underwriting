@@ -19,7 +19,7 @@ from underwrite.services.persistence import TypedStoreRepository
 from underwrite.validate import get_finite, get_non_empty
 
 
-class NPAService(StatefulService):
+class NPAHandler(StatefulService):
     """Tracks days-past-due and transitions accounts through SMA/NPA buckets.
 
     SMA (Special Mention Account) buckets per RBI:

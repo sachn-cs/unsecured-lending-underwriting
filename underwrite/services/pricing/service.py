@@ -57,7 +57,7 @@ class LoanTypePolicy:
 
 @dataclass(frozen=True, slots=True)
 class PricingConfig:
-    """Typed configuration for PricingService.
+    """Typed configuration for PricingHandler.
 
     Replaces the previous ``kwargs.pop("rate_cap", ...)`` pattern:
     callers now pass a PricingConfig (or its fields are extracted
@@ -125,7 +125,7 @@ def compute_rate_cap(principal: float, loan_type: str = "personal") -> float:
         return MICRO_LOAN_CAP
     return _policy_for(loan_type).rate_cap
 
-class PricingService(NanoService):
+class PricingHandler(NanoService):
     """Computes loan pricing with RBI-mandated rate caps and fee disclosure."""
 
     def __init__(self, **kwargs: Any) -> None:

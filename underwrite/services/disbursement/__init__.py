@@ -1,5 +1,5 @@
 """Disbursement service — loan payout processing."""
 
-from underwrite.services.disbursement.service import DisbursementService
+from underwrite.services.disbursement.service import DisbursementHandler
 
-__all__ = ["DisbursementService"]
+__all__ = ["DisbursementHandler"]

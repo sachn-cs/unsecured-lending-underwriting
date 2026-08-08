@@ -12,7 +12,7 @@ from underwrite.services.persistence import TypedStoreRepository
 from underwrite.validate import get_finite, get_non_empty
 
 
-class CollateralService(StatefulService):
+class CollateralHandler(StatefulService):
     """Tracks posted collateral against active loans and triggers liquidation on default."""
 
     def __init__(self, **kwargs: Any) -> None:

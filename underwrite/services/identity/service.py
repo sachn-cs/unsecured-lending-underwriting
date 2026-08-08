@@ -11,7 +11,7 @@ from underwrite.services import NanoService
 from underwrite.validate import get_non_empty
 
 
-class IdentityService(NanoService):
+class IdentityHandler(NanoService):
     """Manages nano-service identities: registration and key rotation."""
 
     def handle(self, event: Event) -> None:

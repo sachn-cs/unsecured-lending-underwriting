@@ -15,7 +15,7 @@ from underwrite.services.persistence import TypedStoreRepository
 from underwrite.validate import get_finite
 
 
-class ReportingService(StatefulService):
+class ReportingHandler(StatefulService):
     """Generates regulatory reports (RBI, internal) from the audit trail.
 
     Accumulates portfolio-wide counters as well as NPA bucket-wise

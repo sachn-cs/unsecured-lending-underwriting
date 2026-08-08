@@ -1,5 +1,5 @@
 """Loan origination service."""
 
-from underwrite.services.origination.service import OriginationService
+from underwrite.services.origination.service import OriginationHandler
 
-__all__ = ["OriginationService"]
+__all__ = ["OriginationHandler"]

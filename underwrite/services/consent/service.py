@@ -15,7 +15,7 @@ from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
 
 
-class ConsentService(StatefulService):
+class ConsentHandler(StatefulService):
     """Manages the full consent lifecycle per DPDPA 2023.
 
     Each consent record captures:

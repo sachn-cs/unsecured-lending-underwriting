@@ -15,7 +15,7 @@ from underwrite.services.persistence import TypedStoreRepository
 from underwrite.validate import get_finite, get_non_empty
 
 
-class DocumentService(StatefulService):
+class DocumentHandler(StatefulService):
     """Generates loan document references after approval."""
 
     def __init__(self, **kwargs: Any) -> None:

@@ -1,5 +1,5 @@
 """NPA classification service — SMA and NPA bucket tracking."""
 
-from underwrite.services.npa.service import NPAService
+from underwrite.services.npa.service import NPAHandler
 
-__all__ = ["NPAService"]
+__all__ = ["NPAHandler"]

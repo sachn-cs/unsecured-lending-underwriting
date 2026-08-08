@@ -16,7 +16,7 @@ from underwrite.services.persistence import TypedStoreRepository
 from underwrite.validate import get_finite, get_non_empty
 
 
-class DisbursementService(StatefulService):
+class DisbursementHandler(StatefulService):
     """Processes loan disbursement to borrower accounts."""
 
     def __init__(self, **kwargs: Any) -> None:

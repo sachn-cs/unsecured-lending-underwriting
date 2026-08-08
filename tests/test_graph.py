@@ -1,4 +1,4 @@
-"""Tests for GraphService — read-only delegation graph queries.
+"""Tests for GraphHandler — read-only delegation graph queries.
 
 Tests verify behavior through emitted events only:
   - graph_path_result events
@@ -14,14 +14,14 @@ from typing import Any
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event
 from underwrite.__store__ import MemoryStore
-from underwrite.services.graph.service import GraphService
+from underwrite.services.graph.service import GraphHandler
 
 
-def graph(store_data: dict[str, Any], bus=None) -> GraphService:
+def graph(store_data: dict[str, Any], bus=None) -> GraphHandler:
     store = MemoryStore()
     if store_data:
         store.set("protocol:state", store_data)
-    return GraphService(service_id="graph", store=store, bus=bus)
+    return GraphHandler(service_id="graph", store=store, bus=bus)
 
 
 class TestPathQuery:
@@ -178,6 +178,6 @@ class TestEdgeCases:
         assert svc.is_running is False
 
     def test_handles_none_store(self) -> None:
-        svc = GraphService(service_id="graph", store=MemoryStore())
+        svc = GraphHandler(service_id="graph", store=MemoryStore())
         svc.handle(Event(event_type="graph_users", source="test", payload={}))
         assert svc.is_running is False

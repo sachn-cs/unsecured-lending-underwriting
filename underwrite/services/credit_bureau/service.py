@@ -19,7 +19,7 @@ from underwrite.services.credit_bureau.client import (
 )
 from underwrite.services.persistence import TypedStoreRepository
 
-class CreditBureauService(StatefulService):
+class CreditBureauHandler(StatefulService):
     """Pulls credit bureau reports and verifies CKYC identity.
 
     Delegates HTTP calls to the configured CreditBureauClient. Caches
@@ -50,7 +50,7 @@ class CreditBureauService(StatefulService):
         self.repo: TypedStoreRepository[dict[str, Any]] = self.store_repo("credit_bureau", dict)
         loaded = self.repo.load(default={})
         if loaded:
-            self.reports = {k: CreditBureauService.dict_to_report(v) for k, v in loaded.get("reports", {}).items()}
+            self.reports = {k: CreditBureauHandler.dict_to_report(v) for k, v in loaded.get("reports", {}).items()}
             self.ckyc_records = loaded.get("ckyc", {})
 
     @staticmethod
@@ -340,7 +340,7 @@ class CreditBureauService(StatefulService):
 
     def sync(self) -> None:
         """Persist both reports and CKYC records to the store."""
-        reports_dict = {k: CreditBureauService.report_to_dict(v) for k, v in self.reports.items()}
+        reports_dict = {k: CreditBureauHandler.report_to_dict(v) for k, v in self.reports.items()}
         self.repo.save(
             {
                 "reports": reports_dict,

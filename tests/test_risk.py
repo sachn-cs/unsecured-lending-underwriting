@@ -1,4 +1,4 @@
-"""Tests for RiskService — ML scoring and early-warning signals.
+"""Tests for RiskHandler — ML scoring and early-warning signals.
 
 Tests verify behavior through emitted events:
   - RISK_EARLY_WARNING on default_probability > 0.3
@@ -12,11 +12,11 @@ import pytest
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
 from underwrite.__exceptions__ import ProtocolError
-from underwrite.services.risk.service import RiskService
+from underwrite.services.risk.service import RiskHandler
 
 
-def risk(bus=None) -> RiskService:
-    return RiskService(service_id="risk", bus=bus)
+def risk(bus=None) -> RiskHandler:
+    return RiskHandler(service_id="risk", bus=bus)
 
 
 class TestEarlyWarning:

@@ -10,7 +10,7 @@ from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
 from underwrite.services import NanoService
 
-class NotificationService(NanoService):
+class NotificationHandler(NanoService):
     """Sends notifications for fraud alerts, NPA events, and early warnings.
 
     Dispatches via configurable channels (SES/SendGrid for email,

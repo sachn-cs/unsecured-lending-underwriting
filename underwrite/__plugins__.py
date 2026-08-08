@@ -76,14 +76,10 @@ def discover_plugins() -> dict[str, type[NanoService]]:
         warning is logged for each.
     """
     allowlist = _read_allowlist()
-    if allowlist is None:
-        mode = "all"
-    else:
-        mode = "allowlist"
 
     plugins: dict[str, type[NanoService]] = {}
     for ep in importlib.metadata.entry_points(group=PLUGIN_ENTRYPOINT_GROUP):
-        if mode == "allowlist" and ep.name not in allowlist:
+        if allowlist is not None and ep.name not in allowlist:
             logger.warning(
                 "ignoring plugin %s from %s — not in UNDERWRITE_PLUGINS allowlist",
                 ep.name,

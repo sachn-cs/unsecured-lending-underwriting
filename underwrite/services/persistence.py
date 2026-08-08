@@ -177,9 +177,9 @@ class BatchedStoreRepository(TypedStoreRepository[T]):
             self.__sync_counter += 1
             if self.__sync_counter >= self.__sync_interval:
                 self.__sync_counter = 0
-                pending = self.__pending
+                pending = data
                 self.__pending = None
-                self.save(pending)  # type: ignore[arg-type]
+                self.save(pending)
                 return True
         return False
 

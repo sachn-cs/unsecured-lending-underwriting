@@ -45,9 +45,11 @@ __all__ = [
 import json
 import os
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, TypeVar
 
 from pydantic import BaseModel, Field, field_validator
+
+ModelT = TypeVar("ModelT", bound=BaseModel)
 
 from underwrite.__exceptions__ import ConfigurationError
 from underwrite.__logger__ import logger
@@ -558,11 +560,11 @@ class Configuration(ForbidExtra):
             raise ConfigurationError(f"unknown config keys: {', '.join(sorted(unknown))}")
 
         def overlay_section(
-            model_cls: type[BaseModel],
+            model_cls: type[ModelT],
             section_name: str,
-            current: BaseModel,
+            current: ModelT,
             new_data: dict[str, Any],
-        ) -> BaseModel:
+        ) -> ModelT:
             unknown_fields = set(new_data) - set(model_cls.model_fields)
             if unknown_fields:
                 raise ConfigurationError(
@@ -631,7 +633,7 @@ class Configuration(ForbidExtra):
         # kfs, npa, dpdpa, razorpay, credit_bureau, underwriting,
         # kyc_providers all have a one-to-one Pydantic mapping;
         # overlay each via the standard path.
-        for section_name, (model_cls, attr) in {
+        overlay_map: dict[str, tuple[type[BaseModel], str]] = {
             "kfs": (KfsConfig, "kfs"),
             "npa": (NpaConfig, "npa"),
             "dpdpa": (DpdpaConfig, "dpdpa"),
@@ -639,7 +641,8 @@ class Configuration(ForbidExtra):
             "credit_bureau": (CreditBureauConfig, "credit_bureau"),
             "underwriting": (UnderwritingConfig, "underwriting"),
             "kyc_providers": (KycProviderConfig, "kyc_providers"),
-        }.items():
+        }
+        for section_name, (model_cls, attr) in overlay_map.items():
             if section_name in data:
                 setattr(
                     config,

@@ -146,8 +146,9 @@ class PrometheusMiddleware:
 
     async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
         if scope["type"] == "http" and scope.get("path") == "/metrics-prometheus":
-            from fastapi.responses import JSONResponse, PlainTextResponse
+            from fastapi.responses import JSONResponse, PlainTextResponse, Response
 
+            response: Response
             if self._api_token:
                 import hmac
 

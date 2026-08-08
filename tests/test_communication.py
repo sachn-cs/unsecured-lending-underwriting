@@ -44,6 +44,7 @@ class TestCommunicationService:
         keys = svc.store.keys("message:msg_bob@test.com_")
         assert len(keys) == 1
         rec = svc.store.get(keys[0])
+        assert rec is not None
         assert rec["delivery_status"] == "queued"
 
     def test_send_with_custom_channel(self) -> None:

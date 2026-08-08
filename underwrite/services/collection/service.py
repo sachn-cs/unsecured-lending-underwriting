@@ -15,6 +15,7 @@ from typing import Any
 
 from underwrite.__amortization__ import generate_schedule
 from underwrite.__events__ import Event, EventType
+from underwrite.__logger__ import logger
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
 from underwrite.validate import get_finite, get_non_empty

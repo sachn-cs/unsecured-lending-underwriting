@@ -76,6 +76,24 @@ class TestSagaOrchestrator:
         assert saga.error != ""
         assert len(emitter.emitted) == 2  # forward event.a + compensation comp.a
 
+    def test_rollback_skips_step_without_compensation(self) -> None:
+        so = SagaOrchestrator()
+        emitter = FakeEmitter(fail_on={"event.b"})
+        so.register_emitter("test", emitter)
+        sid = so.start_saga(
+            "test",
+            [
+                SagaStep("s1", "event.a", {"k": "a"}, compensate_event_type=None),
+                SagaStep("s2", "event.b", {"k": "b"}, compensate_event_type=None),
+            ],
+        )
+        ok = so.execute_all(sid)
+        assert ok is False
+        saga = so.get_saga(sid)
+        assert saga is not None
+        assert saga.status == "rolled_back"
+        assert [ev[0] for ev in emitter.emitted] == ["event.a"]
+
     def test_get_saga_returns_none_for_unknown(self) -> None:
         so = SagaOrchestrator()
         assert so.get_saga("nonexistent") is None
@@ -227,7 +245,6 @@ class TestSagaCorruptLoad:
     def test_corrupt_record_does_not_drop_others(self) -> None:
         """A single corrupted saga record must not drop every other
         in-flight saga on startup."""
-        from underwrite.__events__ import Event
         from underwrite.__store__ import MemoryStore
 
         store = MemoryStore()
@@ -236,13 +253,21 @@ class TestSagaCorruptLoad:
         orch1.register_emitter("a", FakeEmitter())
         sid1 = orch1.start_saga(
             "valid",
-            [SagaStep(name="s1", forward_event_type="a", forward_payload={}, compensate_event_type=None, compensate_payload={})],
+            [
+                SagaStep(
+                    name="s1",
+                    forward_event_type="a",
+                    forward_payload={},
+                    compensate_event_type=None,
+                    compensate_payload={},
+                )
+            ],
         )
         # Inject a corrupt record at a different key
         store.set("saga:corrupt", {"this": "is", "not": "a valid saga"})
         # New orchestrator should skip the corrupt record but load the valid one
         orch2 = SagaOrchestrator(store=store)
-        assert sid1 in orch2._SagaOrchestrator__sagas  # noqa: SLF001
+        assert orch2.get_saga(sid1) is not None
 
 
 class TestSagaValidation:

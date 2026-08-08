@@ -39,8 +39,8 @@ class SagaStep:
     name: str
     forward_event_type: str
     forward_payload: dict[str, Any]
-    compensate_event_type: str
-    compensate_payload: dict[str, Any]
+    compensate_event_type: str | None = None
+    compensate_payload: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -320,6 +320,9 @@ class SagaOrchestrator:
         ctx = {"source": saga.name, "correlation_id": saga_id}
         for idx in reversed(steps_to_rollback):
             step = saga.steps[idx]
+            if step.compensate_event_type is None:
+                logger.debug("saga %s step %s has no compensation, skipping", saga_id, step.name)
+                continue
             try:
                 self.__emit_with_timeout(step.compensate_event_type, step.compensate_payload, ctx)
             except Exception as exc:

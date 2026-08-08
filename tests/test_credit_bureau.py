@@ -351,6 +351,7 @@ class TestHealthCheck:
             Event(event_type=EventType.CREDIT_BUREAU_CHECK, source="test", payload={"pan": "PAN1", "bureau": "cibil"})
         )
         health = s.health_check()
+        assert health["reports_cached"] == 1
 
 
 class TestClientSelection:

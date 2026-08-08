@@ -366,14 +366,18 @@ class PostgresStore(Store):
             recovery_timeout=15.0,
             name="postgres",
         )
-        retryable: tuple[type[BaseException], ...] = (
+        retryable: tuple[type[Exception], ...] = (
             ConnectionResetError,
             TimeoutError,
         )
         try:
-            import psycopg2 as _psycopg2
+            import psycopg2 as psycopg2_module
 
-            retryable = retryable + (_psycopg2.OperationalError, _psycopg2.InterfaceError)
+            retryable = (
+                *retryable,
+                psycopg2_module.OperationalError,
+                psycopg2_module.InterfaceError,
+            )
         except ImportError:
             pass
         self.__retry: RetryPolicy = RetryPolicy(

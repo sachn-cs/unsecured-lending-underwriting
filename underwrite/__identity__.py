@@ -14,12 +14,20 @@ import base64
 import threading
 import time
 from dataclasses import dataclass
+from typing import Protocol
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
 from underwrite.__exceptions__ import IdentityError
+
+
+class PrivateKeyBackend(Protocol):
+    """Minimal contract for persisting Ed25519 private keys at rest."""
+
+    def load_private_key(self, service_id: str) -> str | None: ...
+    def store_private_key(self, service_id: str, pem: str) -> None: ...
 
 
 @dataclass(frozen=True)
@@ -46,7 +54,7 @@ class Identity:
         cls,
         service_id: str,
         private_key_pem: str = "",
-        secrets_manager: Any | None = None,
+        secrets_manager: PrivateKeyBackend | None = None,
         encryption_passphrase: str | None = None,
     ) -> Identity:
         """Creates or derives an identity.
@@ -162,7 +170,7 @@ class Identity:
             encryption_algorithm=serialization.NoEncryption(),
         ).decode("utf-8")
 
-    def persist(self, secrets_manager: Any) -> None:
+    def persist(self, secrets_manager: PrivateKeyBackend) -> None:
         """Stores this identity's private key in the secrets backend.
 
         No-op if a private key is not loaded. Use after generating a new

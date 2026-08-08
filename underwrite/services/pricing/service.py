@@ -8,6 +8,7 @@ transparent fee disclosure for Indian retail lending.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
@@ -37,6 +38,65 @@ APPR_TOLERANCE: float = 1e-10
 RATE_QUANTUM: Decimal = Decimal("0.01")
 MAX_NEWTON_ITERATIONS: int = 100
 
+
+@dataclass(frozen=True, slots=True)
+class LoanTypePolicy:
+    """Per-loan-type pricing policy.
+
+    Each loan product registers one of these to participate in
+    pricing without modifying compute_rate_cap / origination_fee_pct /
+    processing_fee / foreclosure_charge_pct. New loan types extend
+    the registry rather than edit existing dispatch code (OCP).
+    """
+
+    name: str
+    rate_cap: float
+    origination_fee_rate: float
+    foreclosure_charge_rate: float
+
+
+_LOAN_TYPE_POLICIES: dict[str, LoanTypePolicy] = {
+    "home": LoanTypePolicy(
+        name="home",
+        rate_cap=HOME_LOAN_CAP,
+        origination_fee_rate=0.005,
+        foreclosure_charge_rate=0.0,
+    ),
+    "gold": LoanTypePolicy(
+        name="gold",
+        rate_cap=GOLD_LOAN_CAP,
+        origination_fee_rate=0.008,
+        foreclosure_charge_rate=0.0,
+    ),
+    "personal": LoanTypePolicy(
+        name="personal",
+        rate_cap=PERSONAL_LOAN_CAP,
+        origination_fee_rate=0.01,
+        foreclosure_charge_rate=HIGH_RISK_ORIGINATION_FEE_RATE,
+    ),
+    "micro": LoanTypePolicy(
+        name="micro",
+        rate_cap=MICRO_LOAN_CAP,
+        origination_fee_rate=0.02,
+        foreclosure_charge_rate=HIGH_RISK_ORIGINATION_FEE_RATE,
+    ),
+}
+
+
+def register_loan_type(policy: LoanTypePolicy) -> None:
+    """Register or replace a loan-type policy at runtime."""
+    _LOAN_TYPE_POLICIES[policy.name] = policy
+
+
+def _policy_for(loan_type: str) -> LoanTypePolicy:
+    return _LOAN_TYPE_POLICIES.get(loan_type) or LoanTypePolicy(
+        name=loan_type,
+        rate_cap=DEFAULT_LOAN_CAP,
+        origination_fee_rate=LOW_RISK_ORIGINATION_FEE_RATE,
+        foreclosure_charge_rate=LOW_RISK_ORIGINATION_FEE_RATE,
+    )
+
+
 def compute_rate_cap(principal: float, loan_type: str = "personal") -> float:
     """Compute the maximum permissible interest rate for a loan.
 
@@ -49,13 +109,7 @@ def compute_rate_cap(principal: float, loan_type: str = "personal") -> float:
     """
     if principal < MIN_PRINCIPAL_FOR_CAP:
         return MICRO_LOAN_CAP
-    caps = {
-        "home": HOME_LOAN_CAP,
-        "gold": GOLD_LOAN_CAP,
-        "personal": PERSONAL_LOAN_CAP,
-        "micro": MICRO_LOAN_CAP,
-    }
-    return caps.get(loan_type, DEFAULT_LOAN_CAP)
+    return _policy_for(loan_type).rate_cap
 
 class PricingService(NanoService):
     """Computes loan pricing with RBI-mandated rate caps and fee disclosure."""
@@ -215,17 +269,10 @@ class PricingService(NanoService):
         Returns:
             Origination fee as a decimal fraction.
         """
-        if loan_type == "home":
-            return 0.005
-        elif loan_type == "gold":
-            return 0.008
-        elif loan_type == "micro":
-            return (
-                0.02
-                if principal < MICRO_LOAN_PRINCIPAL_THRESHOLD
-                else 0.015
-            )
-        return 0.01
+        policy = _policy_for(loan_type)
+        if loan_type == "micro":
+            return 0.02 if principal < MICRO_LOAN_PRINCIPAL_THRESHOLD else 0.015
+        return policy.origination_fee_rate
 
     def processing_fee(self, principal: float) -> float:
         """Compute the processing fee for a loan.
@@ -249,11 +296,7 @@ class PricingService(NanoService):
         Returns:
             Foreclosure charge as a decimal fraction.
         """
-        if loan_type == "home":
-            return 0.0
-        elif loan_type in ("personal", "micro"):
-            return HIGH_RISK_ORIGINATION_FEE_RATE
-        return LOW_RISK_ORIGINATION_FEE_RATE
+        return _policy_for(loan_type).foreclosure_charge_rate
 
     @staticmethod
     def compute_emi(principal: float, monthly_rate: float, tenure_months: int) -> Decimal:

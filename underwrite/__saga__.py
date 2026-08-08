@@ -32,7 +32,7 @@ class Emitter(Protocol):
     def emit(self, event_type: str, payload: dict[str, Any], correlation_id: str = "") -> Event: ...
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class SagaStep:
     """One step in a saga — forward action and compensating rollback."""
 
@@ -62,7 +62,7 @@ class SagaStep:
         )
 
 
-@dataclass
+@dataclass(slots=True)
 class Saga:
     """Runtime state for an in-flight saga transaction."""
 

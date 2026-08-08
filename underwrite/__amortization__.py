@@ -39,7 +39,7 @@ def _as_decimal(value: float | str | Decimal) -> Decimal:
     return Decimal(value)
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class EMIScheduleEntry:
     """A single EMI instalment in the amortization schedule."""
 
@@ -52,7 +52,7 @@ class EMIScheduleEntry:
     total_interest_paid: Decimal
 
 
-@dataclass
+@dataclass(slots=True)
 class AmortizationSchedule:
     """Complete amortization schedule for a loan."""
 
@@ -213,7 +213,7 @@ def generate_schedule(
     )
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class OutstandingBreakdown:
     """Breakdown of outstanding at a point in time."""
 
@@ -304,7 +304,7 @@ def project_outstanding(
     )
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ForeclosureQuote:
     """Quote for full prepayment (foreclosure) of a loan."""
 

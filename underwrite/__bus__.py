@@ -66,7 +66,7 @@ def _redact_event(event: Event) -> Event:
     )
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class DeadLetterRecord:
     """A single failed event and the error that caused the failure."""
 

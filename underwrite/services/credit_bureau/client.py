@@ -40,7 +40,7 @@ class CreditBureauValidationError(CreditBureauError):
 # -- Data models ---------------------------------------------------------------
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class BureauAccount:
     """A credit account reported by the bureau."""
 
@@ -58,7 +58,7 @@ class BureauAccount:
     settled: bool = False
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class BureauEnquiry:
     """A credit enquiry from a lender."""
 
@@ -68,7 +68,7 @@ class BureauEnquiry:
     purpose: str
 
 
-@dataclass
+@dataclass(slots=True)
 class CreditReport:
     """Consolidated credit bureau report (bureau-agnostic)."""
 
@@ -93,7 +93,7 @@ class CreditReport:
     report_date: str = field(default_factory=lambda: datetime.now(timezone.utc).date().isoformat())
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class CkycResponse:
     """CKYC verification response."""
 

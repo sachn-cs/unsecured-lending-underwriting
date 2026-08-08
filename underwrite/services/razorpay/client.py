@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import hmac
 import json
@@ -41,7 +42,7 @@ class RazorpayNotFoundError(RazorpayError):
     """Raised when a resource is not found."""
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class RazorpayOrder:
     """Razorpay order object."""
 
@@ -55,7 +56,7 @@ class RazorpayOrder:
     notes: dict[str, str] = field(default_factory=dict)
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class RazorpayPayment:
     """Razorpay payment object."""
 
@@ -74,7 +75,7 @@ class RazorpayPayment:
     notes: dict[str, str] = field(default_factory=dict)
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class RazorpaySubscription:
     """Razorpay subscription object (UPI Autopay / e-NACH)."""
 
@@ -90,7 +91,7 @@ class RazorpaySubscription:
     notes: dict[str, str] = field(default_factory=dict)
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class RazorpayPaymentLink:
     """Razorpay payment link object."""
 
@@ -656,9 +657,9 @@ class MockRazorpayClient(RazorpayClient):
         payment = self.payments.get(payment_id)
         if payment is None:
             raise RazorpayNotFoundError(f"payment {payment_id} not found")
-        payment.captured = True
-        payment.status = "captured"
-        return payment
+        captured = dataclasses.replace(payment, captured=True, status="captured")
+        self.payments[payment_id] = captured
+        return captured
 
     def fetch_payment(self, payment_id: str) -> RazorpayPayment:
         """Fetch a mock payment.
@@ -782,7 +783,7 @@ class MockRazorpayClient(RazorpayClient):
             "notes": notes or {},
         }
         self.refunds.append(refund)
-        payment.status = "refunded"
+        self.payments[payment_id] = dataclasses.replace(payment, status="refunded")
         return refund
 
     def verify_webhook(self, payload: bytes, signature: str, secret: str) -> bool:

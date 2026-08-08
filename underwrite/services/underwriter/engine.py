@@ -65,7 +65,7 @@ OPERATORS: dict[str, Callable[..., Any]] = {
 }
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class Rule:
     """A single underwriting rule.
 
@@ -91,7 +91,7 @@ class Rule:
     enabled: bool = True
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class RuleResult:
     """Result of evaluating a single rule.
 
@@ -118,7 +118,7 @@ class RuleResult:
     message: str
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class Policy:
     """A policy groups rules with a logical gate and maps to an action.
 
@@ -140,15 +140,8 @@ class Policy:
     priority: int = 100
     enabled: bool = True
 
-    def __post_init__(self) -> None:
-        if not isinstance(self.rule_ids, frozenset):
-            try:
-                self.rule_ids = frozenset(self.rule_ids)
-            except TypeError:
-                self.rule_ids = frozenset([self.rule_ids])
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class UnderwritingDecision:
     """Final underwriting decision for an application.
 

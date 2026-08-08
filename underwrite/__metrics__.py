@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 
-@dataclass
+@dataclass(slots=True)
 class Counter:
     """A monotonically increasing counter metric."""
 
@@ -25,7 +25,7 @@ class Counter:
     value: int = 0
 
 
-@dataclass
+@dataclass(slots=True)
 class Gauge:
     """A gauge metric that records a point-in-time value."""
 
@@ -34,7 +34,7 @@ class Gauge:
     value: float = 0.0
 
 
-@dataclass
+@dataclass(slots=True)
 class Timer:
     """A timer metric that tracks duration statistics (count, total, min, max)."""
 

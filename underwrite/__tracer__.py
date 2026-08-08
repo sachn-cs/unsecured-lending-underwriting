@@ -24,7 +24,7 @@ from typing import Any
 from underwrite.__logger__ import logger
 
 
-@dataclass
+@dataclass(slots=True)
 class Span:
     """A single trace span — duration, tags, and error state."""
 

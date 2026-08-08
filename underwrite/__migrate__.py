@@ -20,13 +20,13 @@ from typing import Any
 from underwrite.__exceptions__ import MigrationError
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class Migration:
     """A single schema migration — SQL statements or a callable."""
 
     version: int
     description: str
-    statements: list[str] = field(default_factory=list)
+    statements: tuple[str, ...] = ()
     fn: Callable[[Any], None] | None = None
 
 

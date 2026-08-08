@@ -153,6 +153,34 @@ def _validate_id(value: str) -> str:
     return value
 
 
+class IdGenerator:
+    """Domain ID generator with deterministic test override.
+
+    Production callers use the default UUID4-backed implementation.
+    Tests inject a counter-backed implementation to make IDs
+    reproducible without coupling tests to UUID randomness.
+    """
+
+    def __init__(self, prefix: str = "") -> None:
+        self._prefix = prefix
+        self._counter = 0
+
+    def next(self) -> str:
+        """Return a new unique random hex identifier (12 chars)."""
+        import uuid as _uuid
+
+        return _uuid.uuid4().hex[:12]
+
+    def deterministic_next(self) -> str:
+        """Return a deterministic counter-backed identifier.
+
+        Used exclusively by tests for reproducibility; falls back
+        to ``next()`` if the counter would overflow.
+        """
+        self._counter += 1
+        return f"{self._counter:08d}"
+
+
 UserId = NewType("UserId", str)
 LoanId = NewType("LoanId", str)
 ApplicationId = NewType("ApplicationId", str)

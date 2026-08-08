@@ -7,12 +7,12 @@ Emits ``origination.created`` when a new application is started and
 
 from __future__ import annotations
 
-import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
+from underwrite.__value_objects__ import IdGenerator
 from underwrite.services.base import NanoService
 from underwrite.validate import get_finite
 
@@ -23,6 +23,7 @@ class OriginationService(NanoService):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the origination service."""
         super().__init__(**kwargs)
+        self._id_generator: IdGenerator = IdGenerator()
         self.handlers: dict[str, Any] = {
             EventType.ORIGINATION_CREATE: self.__on_create,
             EventType.ORIGINATION_SUBMIT: self.__on_submit,
@@ -49,7 +50,7 @@ class OriginationService(NanoService):
         if not borrower or principal <= 0:
             logger.warning("dropping ORIGINATION_CREATE with missing borrower or principal")
             return
-        application_id: str = f"app_{borrower}_{uuid.uuid4().hex[:12]}"
+        application_id: str = f"app_{borrower}_{self._id_generator.next()}"
         app_record = {
             "borrower": borrower,
             "principal": principal,

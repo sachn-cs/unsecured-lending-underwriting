@@ -13,7 +13,6 @@ __all__ = [
 ]
 
 import base64
-import json
 import threading
 from datetime import datetime, timezone
 

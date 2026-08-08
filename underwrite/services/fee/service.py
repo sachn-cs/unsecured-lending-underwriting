@@ -77,11 +77,7 @@ class FeeService(StatefulService):
 
             principal = max(0.0, principal)
 
-            total_assessed = sum(
-                r.get("amount", 0.0)
-                for r in self.__fees.values()
-                if r.get("loan_id", "") == loan_id
-            )
+            total_assessed = sum(r.get("amount", 0.0) for r in self.__fees.values() if r.get("loan_id", "") == loan_id)
             if total_assessed >= MAX_FEE_PER_LOAN:
                 logger.warning(
                     "fee cap reached for loan %s (total %.2f >= %.2f), skipping fee assessment",

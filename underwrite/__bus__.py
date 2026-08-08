@@ -181,10 +181,7 @@ class DeadLetterQueue:
             # detect silent data loss but do not re-raise — the
             # in-memory record is still recoverable for the
             # current process lifetime.
-            logger.exception(
-                "failed to persist DLQ records to store — DLQ is now "
-                "memory-only until the store recovers"
-            )
+            logger.exception("failed to persist DLQ records to store — DLQ is now memory-only until the store recovers")
 
     def __should_sync(self) -> bool:
         self.__sync_counter += 1
@@ -205,9 +202,7 @@ class DeadLetterQueue:
         """
         sanitized_event = _redact_event(event)
         with self.__lock:
-            self.__records.append(
-                DeadLetterRecord(event=sanitized_event, error=error, subscriber_id=subscriber_id)
-            )
+            self.__records.append(DeadLetterRecord(event=sanitized_event, error=error, subscriber_id=subscriber_id))
             if self.__should_sync():
                 self.__sync_store()
 
@@ -486,9 +481,7 @@ class IdempotencyGuard:
                     evicted_handler = self.__handler_order.popleft()
                     self.__seen.pop(evicted_handler, None)
                     self.__order.pop(evicted_handler, None)
-                    logger.warning(
-                        "idempotency guard evicting oldest handler bucket %s", evicted_handler
-                    )
+                    logger.warning("idempotency guard evicting oldest handler bucket %s", evicted_handler)
             order = self.__order[handler_id]
             if event_id in seen:
                 return True

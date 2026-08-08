@@ -120,9 +120,7 @@ class AsyncLocalBus(AsyncEventBus):
             getter = asyncio.create_task(self.__queue.get())
             stopper = asyncio.create_task(self.__stop_event.wait())
             try:
-                done, pending = await asyncio.wait(
-                    {getter, stopper}, return_when=asyncio.FIRST_COMPLETED
-                )
+                done, pending = await asyncio.wait({getter, stopper}, return_when=asyncio.FIRST_COMPLETED)
             except asyncio.CancelledError:
                 getter.cancel()
                 stopper.cancel()

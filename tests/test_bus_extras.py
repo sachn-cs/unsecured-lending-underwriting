@@ -93,9 +93,7 @@ class TestDistributedRateLimiterTTL:
         from underwrite.__store__ import MemoryStore
 
         store = MemoryStore()
-        limiter = DistributedRateLimiter(
-            max_rate=1.0, interval=1.0, store=store
-        )
+        limiter = DistributedRateLimiter(max_rate=1.0, interval=1.0, store=store)
         # Manually inject an "expired" window entry
         store.set("ratelimit:alice:0", {"expires_at": 0.0})
         assert limiter.check("alice") is True
@@ -105,9 +103,7 @@ class TestDistributedRateLimiterTTL:
         from underwrite.__store__ import MemoryStore
 
         store = MemoryStore()
-        limiter = DistributedRateLimiter(
-            max_rate=1.0, interval=10.0, store=store
-        )
+        limiter = DistributedRateLimiter(max_rate=1.0, interval=10.0, store=store)
         assert limiter.check("alice") is True
         assert limiter.check("alice") is False
 

@@ -148,7 +148,6 @@ class TestCQRSStore:
         assert result["write_store"]["ok"] is True
 
     def test_health_detects_write_failure(self) -> None:
-
         class BrokenWriteStore(Store):
             def get(self, key: str) -> None:
                 return None

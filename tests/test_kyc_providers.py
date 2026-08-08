@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from underwrite.services.kyc_providers.aadhaar import AadhaarEKycClient
-from underwrite.services.kyc_providers.base import ProviderResult, Verdict
+from underwrite.services.kyc_providers.base import Verdict
 from underwrite.services.kyc_providers.cibil import CibilBureauClient
 from underwrite.services.kyc_providers.ckyc import CkycSearchClient
 from underwrite.services.kyc_providers.factory import KycProviderConfig
@@ -23,23 +20,17 @@ class TestPanVerificationClient:
         assert "not configured" in result.error
 
     def test_malformed_pan_returns_mismatch(self) -> None:
-        client = PanVerificationClient(
-            client_id="id", client_secret="secret"
-        )
+        client = PanVerificationClient(client_id="id", client_secret="secret")
         result = client.verify("NOT-A-PAN", consent="Y")
         assert result.verdict == Verdict.MISMATCH
 
     def test_missing_consent_returns_rejected(self) -> None:
-        client = PanVerificationClient(
-            client_id="id", client_secret="secret"
-        )
+        client = PanVerificationClient(client_id="id", client_secret="secret")
         result = client.verify("ABCDE1234F", consent="")
         assert result.verdict == Verdict.REJECTED
 
     def test_uppercases_and_signs(self) -> None:
-        client = PanVerificationClient(
-            client_id="id", client_secret="secret"
-        )
+        client = PanVerificationClient(client_id="id", client_secret="secret")
         with patch.object(
             client,
             "_PanVerificationClient__http_post",
@@ -60,9 +51,7 @@ class TestPanVerificationClient:
         assert result.details["first_name"] == "JOHN"
 
     def test_invalid_status_returns_rejected(self) -> None:
-        client = PanVerificationClient(
-            client_id="id", client_secret="secret"
-        )
+        client = PanVerificationClient(client_id="id", client_secret="secret")
         with patch.object(
             client,
             "_PanVerificationClient__http_post",
@@ -72,9 +61,7 @@ class TestPanVerificationClient:
         assert result.verdict == Verdict.REJECTED
 
     def test_transport_error_returns_error(self) -> None:
-        client = PanVerificationClient(
-            client_id="id", client_secret="secret"
-        )
+        client = PanVerificationClient(client_id="id", client_secret="secret")
         with patch.object(
             client,
             "_PanVerificationClient__http_post",

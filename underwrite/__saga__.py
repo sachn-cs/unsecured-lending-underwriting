@@ -350,9 +350,7 @@ class SagaOrchestrator:
             self.__compensation_executor = concurrent.futures.ThreadPoolExecutor(
                 max_workers=2, thread_name_prefix="saga-compensate"
             )
-        fut = self.__compensation_executor.submit(
-            emitter.emit, event_type, payload, context.get("correlation_id", "")
-        )
+        fut = self.__compensation_executor.submit(emitter.emit, event_type, payload, context.get("correlation_id", ""))
         try:
             fut.result(timeout=30.0)
         except concurrent.futures.TimeoutError:

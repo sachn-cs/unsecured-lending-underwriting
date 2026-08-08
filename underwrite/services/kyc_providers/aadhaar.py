@@ -143,9 +143,7 @@ class AadhaarEKycClient(KycProvider):
             response = self.__send_kyc_request(body)
         except Exception as exc:
             logger.exception("Aadhaar eKYC transport error")
-            return ProviderResult(
-                verdict=Verdict.ERROR, provider=self.name, error=str(exc)
-            )
+            return ProviderResult(verdict=Verdict.ERROR, provider=self.name, error=str(exc))
         return self.__parse(response)
 
     def __send_kyc_request(self, body: dict[str, Any]) -> dict[str, Any]:
@@ -161,9 +159,7 @@ class AadhaarEKycClient(KycProvider):
         try:
             import httpx
         except ImportError as exc:  # pragma: no cover - requires httpx
-            raise RuntimeError(
-                "httpx is required for Aadhaar eKYC; install underwrite[serve]"
-            ) from exc
+            raise RuntimeError("httpx is required for Aadhaar eKYC; install underwrite[serve]") from exc
         headers = {
             "Content-Type": "application/json",
             "X-KUA-ID": self.__kua_id,

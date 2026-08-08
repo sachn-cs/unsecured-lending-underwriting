@@ -17,9 +17,9 @@ from underwrite.validate import (
     require_finite,
     require_in_range,
     require_match,
-    require_pan,
     require_non_empty,
     require_non_negative,
+    require_pan,
     require_positive,
 )
 

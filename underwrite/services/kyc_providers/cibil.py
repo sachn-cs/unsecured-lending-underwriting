@@ -132,18 +132,14 @@ class CibilBureauClient(KycProvider):
             response = self.__request_score(body)
         except Exception as exc:
             logger.exception("CIBIL bureau pull transport error")
-            return ProviderResult(
-                verdict=Verdict.ERROR, provider=self.name, error=str(exc)
-            )
+            return ProviderResult(verdict=Verdict.ERROR, provider=self.name, error=str(exc))
         return self.__parse(response)
 
     def __request_score(self, body: dict[str, Any]) -> dict[str, Any]:
         try:
             import httpx
         except ImportError as exc:  # pragma: no cover - requires httpx
-            raise RuntimeError(
-                "httpx is required for CIBIL; install underwrite[serve]"
-            ) from exc
+            raise RuntimeError("httpx is required for CIBIL; install underwrite[serve]") from exc
         headers = {
             "Content-Type": "application/json",
             "X-Partner-ID": self.__partner_id,

@@ -157,9 +157,7 @@ class Identity:
             raise IdentityError("private key not loaded")
         raw = base64.b64decode(pk)
         if self.encrypted:
-            loaded = serialization.load_der_private_key(
-                raw, password=passphrase.encode() if passphrase else b""
-            )
+            loaded = serialization.load_der_private_key(raw, password=passphrase.encode() if passphrase else b"")
         else:
             loaded = ed25519.Ed25519PrivateKey.from_private_bytes(raw)
         if not isinstance(loaded, ed25519.Ed25519PrivateKey):

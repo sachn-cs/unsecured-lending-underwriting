@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import concurrent.futures
 import contextlib
-import json
 import threading
 import time
 from abc import ABC, abstractmethod

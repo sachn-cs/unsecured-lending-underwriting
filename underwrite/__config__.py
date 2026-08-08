@@ -49,11 +49,11 @@ from typing import Annotated, Any, TypeVar
 
 from pydantic import BaseModel, Field, field_validator
 
-ModelT = TypeVar("ModelT", bound=BaseModel)
-
 from underwrite.__exceptions__ import ConfigurationError
 from underwrite.__logger__ import logger
 from underwrite.services.kyc_providers.factory import KycProviderConfig
+
+ModelT = TypeVar("ModelT", bound=BaseModel)
 
 
 class ForbidExtra(BaseModel):
@@ -409,6 +409,7 @@ class Configuration(ForbidExtra):
             if str(path) in dangerous or str(path).startswith(tuple(p + "/" for p in dangerous)):
                 raise ValueError(f"data_dir {v!r} points at a sensitive system path")
         return v
+
     secrets: SecretsConfig = Field(default_factory=SecretsConfig)
     recovery: RecoveryConfig = Field(default_factory=RecoveryConfig)
     fee: FeeConfig = Field(default_factory=FeeConfig)
@@ -567,16 +568,13 @@ class Configuration(ForbidExtra):
         ) -> ModelT:
             unknown_fields = set(new_data) - set(model_cls.model_fields)
             if unknown_fields:
-                raise ConfigurationError(
-                    f"{section_name}: unknown field(s): {', '.join(sorted(unknown_fields))}"
-                )
+                raise ConfigurationError(f"{section_name}: unknown field(s): {', '.join(sorted(unknown_fields))}")
             merged: dict[str, Any] = {**current.model_dump(), **new_data}
             try:
                 return model_cls.model_validate(merged)
             except ValidationError as exc:
                 msg = "; ".join(
-                    f"{section_name}.{'.'.join(str(loc) for loc in e['loc'])}: {e['msg']}"
-                    for e in exc.errors()
+                    f"{section_name}.{'.'.join(str(loc) for loc in e['loc'])}: {e['msg']}" for e in exc.errors()
                 )
                 raise ConfigurationError(msg) from exc
 
@@ -626,9 +624,7 @@ class Configuration(ForbidExtra):
             defaults = gov_data.pop("param_defaults", None)
             if defaults is not None and isinstance(defaults, dict):
                 config.governance.param_defaults.update(defaults)
-            config.governance = overlay_section(
-                GovernanceConfig, "governance", config.governance, gov_data
-            )
+            config.governance = overlay_section(GovernanceConfig, "governance", config.governance, gov_data)
 
         # kfs, npa, dpdpa, razorpay, credit_bureau, underwriting,
         # kyc_providers all have a one-to-one Pydantic mapping;
@@ -647,9 +643,7 @@ class Configuration(ForbidExtra):
                 setattr(
                     config,
                     attr,
-                    overlay_section(
-                        model_cls, section_name, getattr(config, attr), data[section_name]
-                    ),
+                    overlay_section(model_cls, section_name, getattr(config, attr), data[section_name]),
                 )
 
         if "data_dir" in data:
@@ -704,9 +698,7 @@ class Configuration(ForbidExtra):
                 continue
             if typ is bool:
                 if val.lower() not in ("1", "true", "yes", "0", "false", "no", "on", "off"):
-                    logger.warning(
-                        "could not parse %s=%r as bool, leaving default in place", env_var, val
-                    )
+                    logger.warning("could not parse %s=%r as bool, leaving default in place", env_var, val)
                     continue
                 coerced = val.lower() in ("1", "true", "yes", "on")
             else:

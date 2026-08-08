@@ -55,7 +55,6 @@ def compute_apr(principal: float, emi: Decimal, tenure_months: int, total_fees: 
 
     one = Decimal("1")
     rate = Decimal("0.01")
-    hundred = Decimal("100")
     tolerance = Decimal("0.0001")
     last_diff = None
     for _ in range(200):
@@ -68,10 +67,7 @@ def compute_apr(principal: float, emi: Decimal, tenure_months: int, total_fees: 
             tolerance = tolerance / Decimal("10")
         last_diff = diff
         # dPV/dr = EMI * [ - (1 - 1/u) / r^2 + n / (r * (1+r) * u) ]
-        derivative = emi_dec * (
-            -((one - one / u) / (rate * rate))
-            + (n / (rate * (one + rate) * u))
-        )
+        derivative = emi_dec * (-((one - one / u) / (rate * rate)) + (n / (rate * (one + rate) * u)))
         if derivative == 0:
             break
         step = diff / derivative

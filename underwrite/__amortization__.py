@@ -109,9 +109,7 @@ def calculate_emi(principal: Decimal, annual_rate: Decimal, tenure_months: int) 
     if tenure_months <= 0:
         raise ValueError("tenure_months must be positive")
     if tenure_months > 12 * 100:
-        raise ValueError(
-            f"tenure_months {tenure_months} exceeds 100 years; refusing to compute"
-        )
+        raise ValueError(f"tenure_months {tenure_months} exceeds 100 years; refusing to compute")
     monthly_rate = annual_rate / Decimal("1200")
     if monthly_rate == 0:
         return _round_money(principal / Decimal(tenure_months))
@@ -348,9 +346,7 @@ def calculate_foreclosure(
     """
     outstanding = project_outstanding(principal, annual_rate, tenure_months, payments_made, as_of)
     if penalty_rate < Decimal("0") or penalty_rate > Decimal("100"):
-        raise ValueError(
-            f"penalty_rate must be between 0 and 100 (got {penalty_rate})"
-        )
+        raise ValueError(f"penalty_rate must be between 0 and 100 (got {penalty_rate})")
     if outstanding.total_outstanding < Decimal("0"):
         raise ValueError("computed outstanding is negative; check inputs")
     penalty = _round_money(outstanding.total_outstanding * penalty_rate / Decimal("100"))

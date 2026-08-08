@@ -15,14 +15,11 @@ __all__ = [
 ]
 
 import importlib
-import json
 import logging
 import re
 import threading
 from pathlib import Path
 from typing import Any
-
-_VALID_SOURCE_RE = re.compile(r"^[a-z][a-z0-9_.-]+$")
 
 from underwrite.__authz__ import AccessControl
 from underwrite.__bus__ import EventBus, LocalBus
@@ -41,6 +38,8 @@ from underwrite.__store__ import FileStore, MemoryStore, Store
 from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
 from underwrite.services import NanoService
+
+_VALID_SOURCE_RE = re.compile(r"^[a-z][a-z0-9_.-]+$")
 
 
 class Runtime:
@@ -358,7 +357,6 @@ class Runtime:
         self.__metrics_thread.start()
 
     def __register_subsystem_health(self) -> None:
-
         def _bus_health() -> dict:
             subs = 0
             getter = getattr(self.__bus, "subscriber_count", None)

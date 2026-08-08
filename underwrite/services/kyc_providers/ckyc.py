@@ -124,18 +124,14 @@ class CkycSearchClient(KycProvider):
             response = self.__request_search(body)
         except Exception as exc:
             logger.exception("CKYC search transport error")
-            return ProviderResult(
-                verdict=Verdict.ERROR, provider=self.name, error=str(exc)
-            )
+            return ProviderResult(verdict=Verdict.ERROR, provider=self.name, error=str(exc))
         return self.__parse(response)
 
     def __request_search(self, body: dict[str, Any]) -> dict[str, Any]:
         try:
             import httpx
         except ImportError as exc:  # pragma: no cover - requires httpx
-            raise RuntimeError(
-                "httpx is required for CKYC search; install underwrite[serve]"
-            ) from exc
+            raise RuntimeError("httpx is required for CKYC search; install underwrite[serve]") from exc
         headers = {
             "Content-Type": "application/json",
             "X-SP-ID": self.__sp_id,

@@ -101,12 +101,7 @@ class MetricsExporter:
         parts: list[str] = []
         for k, v in sorted(tags.items()):
             safe_k = MetricsExporter.__sanitize(str(k))
-            safe_v = (
-                _redact_tag_value(v)
-                .replace("\\", "\\\\")
-                .replace("\n", "\\n")
-                .replace('"', '\\"')
-            )
+            safe_v = _redact_tag_value(v).replace("\\", "\\\\").replace("\n", "\\n").replace('"', '\\"')
             parts.append(f'{safe_k}="{safe_v}"')
         return ",".join(parts)
 
@@ -137,7 +132,7 @@ class PrometheusMiddleware:
     isolation.
     """
 
-    def __init__(self, app: Any, runtime: Any, api_token: str = "") -> None:
+    def __init__(self, app: Any, runtime: Any, api_token: str | None = None) -> None:
         self.app = app
         self.runtime = runtime
         import os

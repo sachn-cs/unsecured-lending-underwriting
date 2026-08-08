@@ -64,8 +64,7 @@ class CommunicationService(NanoService):
             logger.warning("dropping COMMUNICATION_SEND with missing recipient")
             return
         message_id: str = (
-            f"msg_{recipient}_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')}_"
-            f"{uuid.uuid4().hex[:8]}"
+            f"msg_{recipient}_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')}_{uuid.uuid4().hex[:8]}"
         )
         msg = {
             "recipient": recipient,

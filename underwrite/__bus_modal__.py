@@ -58,7 +58,8 @@ class ModalBus(EventBus):
     def publish(self, event: Event) -> str:
         if self.__modal is None:
             raise RuntimeError("modal is not installed; install underwrite[modal]")
-        assert self.__modal_queue is not None
+        if self.__modal_queue is None:
+            raise RuntimeError("modal queue is not initialized")
         body: str = json.dumps(event.to_dict())
         self.__modal_queue.put(body)
         return event.event_id

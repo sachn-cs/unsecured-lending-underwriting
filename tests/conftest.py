@@ -11,7 +11,6 @@ import pytest
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
-from underwrite.__exceptions__ import StoreError
 from underwrite.__store__ import MemoryStore, Store
 
 # -- Domain event fixture ------------------------------------------------------

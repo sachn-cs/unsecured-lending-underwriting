@@ -8,7 +8,6 @@ transparent fee disclosure for Indian retail lending.
 
 from __future__ import annotations
 
-import math
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
@@ -99,8 +98,7 @@ class PricingService(NanoService):
         rate_cap = compute_rate_cap(principal, loan_type)
         if interest_rate > rate_cap:
             raise ProtocolError(
-                f"interest_rate {interest_rate * 100:.2f}% exceeds {loan_type} cap "
-                f"of {rate_cap * 100:.2f}% (RBI)"
+                f"interest_rate {interest_rate * 100:.2f}% exceeds {loan_type} cap of {rate_cap * 100:.2f}% (RBI)"
             )
 
         origination_fee_pct = self.origination_fee_pct(principal, loan_type)

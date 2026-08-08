@@ -248,9 +248,7 @@ class ComplianceService(StatefulService):
         if pan_provider is not None:
             from underwrite.services.kyc_providers.base import Verdict as _V
 
-            result = pan_provider.verify(
-                pan, name=name, consent="Y" if consent_id else ""
-            )
+            result = pan_provider.verify(pan, name=name, consent="Y" if consent_id else "")
             pan_provider_result = {
                 "pan_provider_reference": result.reference,
                 "pan_provider_status": result.verdict.value,

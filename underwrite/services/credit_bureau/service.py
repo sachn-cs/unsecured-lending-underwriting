@@ -114,13 +114,11 @@ class CreditBureauService(StatefulService):
             return HttpCreditBureauClient(cibil_api_key=api_key)
         if kwargs.get("allow_mock", False):
             logger.warning(
-                "no bureau credentials configured; using in-memory mock — "
-                "this must NEVER be set in production"
+                "no bureau credentials configured; using in-memory mock — this must NEVER be set in production"
             )
             return MockCreditBureauClient()
         raise RuntimeError(
-            "no credit bureau credentials configured; "
-            "set cibil_api_key or pass allow_mock=True for tests only"
+            "no credit bureau credentials configured; set cibil_api_key or pass allow_mock=True for tests only"
         )
 
     def handle(self, event: Event) -> None:
@@ -178,7 +176,6 @@ class CreditBureauService(StatefulService):
                     correlation_id=event.correlation_id,
                 )
                 return
-            from underwrite.services.kyc_providers.base import Verdict as _V
 
             if not result.ok:
                 self.emit(

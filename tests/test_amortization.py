@@ -280,6 +280,8 @@ class TestDataclassStructure:
             savings=Decimal("18000"),
             savings_percent=Decimal("18"),
         )
+        assert fq.total_due == Decimal("82000")
+        assert fq.savings == Decimal("18000")
 
 
 class TestAmortizationBounds:

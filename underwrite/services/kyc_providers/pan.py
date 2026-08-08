@@ -79,13 +79,13 @@ class PanVerificationClient(KycProvider):
 
     def __init__(
         self,
-        client_id: str = "",
-        client_secret: str = "",
+        client_id: str | None = None,
+        client_secret: str | None = None,
         api_base_url: str = SANDBOX_BASE_URL,
         timeout_seconds: int = 30,
     ) -> None:
-        self.__client_id: str = client_id
-        self.__client_secret: str = client_secret
+        self.__client_id: str = client_id or ""
+        self.__client_secret: str = client_secret or ""
         self.__api_base_url: str = api_base_url.rstrip("/")
         self.__timeout: int = timeout_seconds
 
@@ -155,9 +155,7 @@ class PanVerificationClient(KycProvider):
             response = self.__http_post(payload, signature)
         except Exception as exc:
             logger.exception("PAN verification transport error")
-            return ProviderResult(
-                verdict=Verdict.ERROR, provider=self.name, error=str(exc)
-            )
+            return ProviderResult(verdict=Verdict.ERROR, provider=self.name, error=str(exc))
 
         return self.__parse(pan, response)
 
@@ -173,9 +171,7 @@ class PanVerificationClient(KycProvider):
         try:
             import httpx
         except ImportError as exc:  # pragma: no cover - requires httpx
-            raise RuntimeError(
-                "httpx is required for PAN verification; install underwrite[serve]"
-            ) from exc
+            raise RuntimeError("httpx is required for PAN verification; install underwrite[serve]") from exc
         headers = {
             "Content-Type": "application/json",
             "x-client-id": self.__client_id,

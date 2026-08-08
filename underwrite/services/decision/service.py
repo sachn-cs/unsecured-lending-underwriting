@@ -27,6 +27,9 @@ class DecisionService(StatefulService):
         super().__init__(**kwargs)
         self.__signals: dict[str, list[dict[str, Any]]] = {}
         self.repo: TypedStoreRepository[dict[str, list[dict[str, Any]]]] = self.store_repo("signals", dict)
+
+    def start(self) -> None:
+        super().start()
         loaded = self.repo.load(default={})
         if loaded:
             self.__signals = loaded

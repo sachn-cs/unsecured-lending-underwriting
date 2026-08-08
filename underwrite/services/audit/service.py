@@ -50,6 +50,14 @@ class AuditService(StatefulService):
         self.repo: BatchedStoreRepository[list[dict[str, Any]]] = self.batched_repo(
             "ledger", list, sync_interval=self.SYNC_INTERVAL
         )
+
+    def start(self) -> None:
+        """Start the service and load persisted ledger state.
+
+        Heavy I/O is deferred from __init__ to start() so that
+        constructing the service does not require a reachable store.
+        """
+        super().start()
         loaded = self.repo.load(default=[])
         if loaded:
             self._ledger.extend(loaded)

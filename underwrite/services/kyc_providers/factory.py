@@ -7,11 +7,42 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 
+from underwrite.services.kyc_providers.aadhaar import (
+    PRODUCTION_BASE_URL as AADHAAR_PRODUCTION_BASE_URL,
+)
+from underwrite.services.kyc_providers.aadhaar import (
+    SANDBOX_BASE_URL as AADHAAR_SANDBOX_BASE_URL,
+)
+from underwrite.services.kyc_providers.aadhaar import (
+    AadhaarEKycClient,
+)
 from underwrite.services.kyc_providers.base import KycProvider
+from underwrite.services.kyc_providers.cibil import (
+    PRODUCTION_BASE_URL as CIBIL_PRODUCTION_BASE_URL,
+)
+from underwrite.services.kyc_providers.cibil import (
+    SANDBOX_BASE_URL as CIBIL_SANDBOX_BASE_URL,
+)
+from underwrite.services.kyc_providers.cibil import (
+    CibilBureauClient,
+)
+from underwrite.services.kyc_providers.ckyc import (
+    PRODUCTION_BASE_URL as CKYC_PRODUCTION_BASE_URL,
+)
+from underwrite.services.kyc_providers.ckyc import (
+    SANDBOX_BASE_URL as CKYC_SANDBOX_BASE_URL,
+)
+from underwrite.services.kyc_providers.ckyc import (
+    CkycSearchClient,
+)
+from underwrite.services.kyc_providers.pan import (
+    PRODUCTION_BASE_URL as PAN_PRODUCTION_BASE_URL,
+)
+from underwrite.services.kyc_providers.pan import (
+    SANDBOX_BASE_URL as PAN_SANDBOX_BASE_URL,
+)
 from underwrite.services.kyc_providers.pan import (
     PanVerificationClient,
-    SANDBOX_BASE_URL as PAN_SANDBOX,
-    PRODUCTION_BASE_URL as PAN_PROD,
 )
 
 if TYPE_CHECKING:
@@ -45,7 +76,7 @@ class KycProviderConfig(BaseModel):
 
     timeout_seconds: int = Field(default=30, ge=1)
 
-    def resolve_pan(self, secrets: "SecretsManager | None") -> PanVerificationClient:
+    def resolve_pan(self, secrets: SecretsManager | None) -> PanVerificationClient:
         client_id = self.pan_client_id
         client_secret = self.pan_client_secret
         if secrets is not None:
@@ -53,9 +84,9 @@ class KycProviderConfig(BaseModel):
                 client_id = secrets.get("underwrite/pan/client_id") or ""
             if not client_secret:
                 client_secret = secrets.get("underwrite/pan/client_secret") or ""
-        base = self.pan_api_base_url or PAN_PROD
+        base = self.pan_api_base_url or PAN_PRODUCTION_BASE_URL
         if not (self.pan_api_base_url or os.environ.get("UNDERWRITE_PAN_PRODUCTION")):
-            base = PAN_SANDBOX
+            base = PAN_SANDBOX_BASE_URL
         return PanVerificationClient(
             client_id=client_id,
             client_secret=client_secret,
@@ -63,13 +94,7 @@ class KycProviderConfig(BaseModel):
             timeout_seconds=self.timeout_seconds,
         )
 
-    def resolve_aadhaar(self, secrets: "SecretsManager | None") -> "AadhaarEKycClient":
-        from underwrite.services.kyc_providers.aadhaar import (
-            AadhaarEKycClient,
-            PRODUCTION_BASE_URL as AADHAAR_PROD,
-            SANDBOX_BASE_URL as AADHAAR_SANDBOX,
-        )
-
+    def resolve_aadhaar(self, secrets: SecretsManager | None) -> AadhaarEKycClient:
         kua_id = self.aadhaar_kua_id
         kua_license = self.aadhaar_kua_license_key
         if secrets is not None:
@@ -77,9 +102,9 @@ class KycProviderConfig(BaseModel):
                 kua_id = secrets.get("underwrite/aadhaar/kua_id") or ""
             if not kua_license:
                 kua_license = secrets.get("underwrite/aadhaar/kua_license_key") or ""
-        base = self.aadhaar_api_base_url or AADHAAR_PROD
+        base = self.aadhaar_api_base_url or AADHAAR_PRODUCTION_BASE_URL
         if not (self.aadhaar_api_base_url or os.environ.get("UNDERWRITE_AADHAAR_PRODUCTION")):
-            base = AADHAAR_SANDBOX
+            base = AADHAAR_SANDBOX_BASE_URL
         return AadhaarEKycClient(
             kua_id=kua_id,
             kua_license_key=kua_license,
@@ -87,13 +112,7 @@ class KycProviderConfig(BaseModel):
             timeout_seconds=self.timeout_seconds,
         )
 
-    def resolve_cibil(self, secrets: "SecretsManager | None") -> "CibilBureauClient":
-        from underwrite.services.kyc_providers.cibil import (
-            CibilBureauClient,
-            PRODUCTION_BASE_URL as CIBIL_PROD,
-            SANDBOX_BASE_URL as CIBIL_SANDBOX,
-        )
-
+    def resolve_cibil(self, secrets: SecretsManager | None) -> CibilBureauClient:
         partner_id = self.cibil_partner_id
         partner_key = self.cibil_partner_key
         if secrets is not None:
@@ -101,9 +120,9 @@ class KycProviderConfig(BaseModel):
                 partner_id = secrets.get("underwrite/cibil/partner_id") or ""
             if not partner_key:
                 partner_key = secrets.get("underwrite/cibil/partner_key") or ""
-        base = self.cibil_api_base_url or CIBIL_PROD
+        base = self.cibil_api_base_url or CIBIL_PRODUCTION_BASE_URL
         if not (self.cibil_api_base_url or os.environ.get("UNDERWRITE_CIBIL_PRODUCTION")):
-            base = CIBIL_SANDBOX
+            base = CIBIL_SANDBOX_BASE_URL
         return CibilBureauClient(
             partner_id=partner_id,
             partner_key=partner_key,
@@ -111,13 +130,7 @@ class KycProviderConfig(BaseModel):
             timeout_seconds=self.timeout_seconds,
         )
 
-    def resolve_ckyc(self, secrets: "SecretsManager | None") -> "CkycSearchClient":
-        from underwrite.services.kyc_providers.ckyc import (
-            CkycSearchClient,
-            PRODUCTION_BASE_URL as CKYC_PROD,
-            SANDBOX_BASE_URL as CKYC_SANDBOX,
-        )
-
+    def resolve_ckyc(self, secrets: SecretsManager | None) -> CkycSearchClient:
         sp_id = self.ckyc_search_provider_id
         sp_key = self.ckyc_search_provider_key
         if secrets is not None:
@@ -125,9 +138,9 @@ class KycProviderConfig(BaseModel):
                 sp_id = secrets.get("underwrite/ckyc/search_provider_id") or ""
             if not sp_key:
                 sp_key = secrets.get("underwrite/ckyc/search_provider_key") or ""
-        base = self.ckyc_api_base_url or CKYC_PROD
+        base = self.ckyc_api_base_url or CKYC_PRODUCTION_BASE_URL
         if not (self.ckyc_api_base_url or os.environ.get("UNDERWRITE_CKYC_PRODUCTION")):
-            base = CKYC_SANDBOX
+            base = CKYC_SANDBOX_BASE_URL
         return CkycSearchClient(
             search_provider_id=sp_id,
             search_provider_key=sp_key,
@@ -135,7 +148,7 @@ class KycProviderConfig(BaseModel):
             timeout_seconds=self.timeout_seconds,
         )
 
-    def all(self, secrets: "SecretsManager | None") -> dict[str, KycProvider]:
+    def all(self, secrets: SecretsManager | None) -> dict[str, KycProvider]:
         """Return a name → client map for all four providers."""
         return {
             "pan": self.resolve_pan(secrets),

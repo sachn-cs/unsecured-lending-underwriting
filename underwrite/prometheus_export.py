@@ -137,7 +137,7 @@ class PrometheusMiddleware:
         self.runtime = runtime
         import os
 
-        self._api_token: str = api_token or os.environ.get("UNDERWRITE_API_TOKEN", "")
+        self._api_token: str = api_token or os.environ.get("UNDERWRITE_API_TOKEN", "") or ""
 
     async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
         if scope["type"] == "http" and scope.get("path") == "/metrics-prometheus":

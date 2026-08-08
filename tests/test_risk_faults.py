@@ -96,7 +96,7 @@ class TestValidationFaults:
         with pytest.raises(ProtocolError) as exc_info:
             require_finite("not_a_number", "value")
         assert exc_info.value.__cause__ is not None
-        assert isinstance(exc_info.value.__cause__, (ValueError, TypeError))
+        assert isinstance(exc_info.value.__cause__, ValueError | TypeError)
 
     def test_require_finite_preserves_value_type_in_chain(self) -> None:
         from underwrite.__exceptions__ import ProtocolError

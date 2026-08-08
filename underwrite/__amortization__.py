@@ -176,7 +176,7 @@ def generate_schedule(
         if principal_due > outstanding:
             principal_due = outstanding
         outstanding -= principal_due
-        if outstanding < Decimal("0.01"):
+        if outstanding < Decimal("0.005"):
             outstanding = Decimal("0")
         cumulative_interest += interest_due
         entries.append(

@@ -55,6 +55,20 @@ class LoanTypePolicy:
     foreclosure_charge_rate: float
 
 
+@dataclass(frozen=True, slots=True)
+class PricingConfig:
+    """Typed configuration for PricingService.
+
+    Replaces the previous ``kwargs.pop("rate_cap", ...)`` pattern:
+    callers now pass a PricingConfig (or its fields are extracted
+    from kwargs via a constructor that does not mutate the caller's
+    mapping).
+    """
+
+    rate_cap: float = DEFAULT_LOAN_CAP
+    penal_interest_cap: float = PENAL_INTEREST_CAP
+
+
 _LOAN_TYPE_POLICIES: dict[str, LoanTypePolicy] = {
     "home": LoanTypePolicy(
         name="home",
@@ -121,9 +135,13 @@ class PricingService(NanoService):
             rate_cap: Maximum permissible interest rate.
             penal_interest_cap: Maximum penal interest rate.
         """
-        self.__rate_cap: float = kwargs.pop("rate_cap", DEFAULT_LOAN_CAP)
-        self.__penal_interest_cap: float = kwargs.pop("penal_interest_cap", PENAL_INTEREST_CAP)
+        config = PricingConfig(
+            rate_cap=kwargs.get("rate_cap", DEFAULT_LOAN_CAP),
+            penal_interest_cap=kwargs.get("penal_interest_cap", PENAL_INTEREST_CAP),
+        )
         super().__init__(**kwargs)
+        self.__rate_cap: float = config.rate_cap
+        self.__penal_interest_cap: float = config.penal_interest_cap
         self.handlers: dict[str, Any] = {
             EventType.PRICING_REQUEST: self.compute_pricing,
             "pricing.penal_interest": self.compute_penal_interest,

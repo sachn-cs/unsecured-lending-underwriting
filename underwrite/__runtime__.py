@@ -31,6 +31,7 @@ from underwrite.__health__ import HealthRegistry
 from underwrite.__identity__ import Identity
 from underwrite.__logger__ import JsonFormatter, TextFormatter, logger, loguru_sink_format
 from underwrite.__metrics__ import MetricsCollector
+from underwrite.__metrics_exporter__ import MetricsExporter
 from underwrite.__migrate__ import default_plan
 from underwrite.__saga__ import SagaOrchestrator
 from underwrite.__secrets__ import SecretsManager
@@ -58,8 +59,7 @@ class Runtime:
     __metrics: MetricsCollector | None
     __authz: AccessControl | None
     __supervisor: ServiceSupervisor | None
-    __metrics_thread: threading.Thread | None
-    __metrics_stop: threading.Event | None
+    __metrics_exporter: MetricsExporter | None
     __runtime_identity: Identity | None
     __publisher_identities: dict[str, Identity]
     __publisher_lock: threading.Lock
@@ -92,8 +92,7 @@ class Runtime:
             self.__metrics = None
             self.__authz = None
             self.__supervisor = None
-            self.__metrics_thread = None
-            self.__metrics_stop = None
+            self.__metrics_exporter = None
             self.__register_subsystem_health()
             return
         self.__runtime_identity = None
@@ -109,8 +108,7 @@ class Runtime:
         if self.__authz is not None and self.__runtime_identity is not None:
             self.__authz.trust(self.__runtime_identity.service_id, self.__runtime_identity.public_key)
         self.__supervisor = self.__build_supervisor()
-        self.__metrics_thread = None
-        self.__metrics_stop = None
+        self.__metrics_exporter = None
 
         self.__register_subsystem_health()
 
@@ -245,31 +243,22 @@ class Runtime:
             return
         if self.__config.tracing.exporter != "otlp":
             return
-        stop_event = threading.Event()
-        self.__metrics_stop = stop_event
-        metrics: MetricsCollector = self.__metrics
-        interval: int = self.__config.metrics.export_interval
+        def on_snapshot(snap: dict) -> None:
+            if not any([snap.get("counters"), snap.get("timers"), snap.get("gauges")]):
+                return
+            logger.debug(
+                "exporting {} counters, {} timers, {} gauges",
+                len(snap.get("counters", {})),
+                len(snap.get("timers", {})),
+                len(snap.get("gauges", {})),
+            )
 
-        def export_loop() -> None:
-            while not stop_event.is_set():
-                stop_event.wait(interval)
-                if stop_event.is_set():
-                    break
-                try:
-                    snap = metrics.snapshot()
-                    if not any([snap.get("counters"), snap.get("timers"), snap.get("gauges")]):
-                        continue
-                    logger.debug(
-                        "exporting {} counters, {} timers, {} gauges",
-                        len(snap.get("counters", {})),
-                        len(snap.get("timers", {})),
-                        len(snap.get("gauges", {})),
-                    )
-                except (OSError, ValueError, TypeError) as exc:
-                    logger.exception("metrics export failed: {}", exc)
-
-        self.__metrics_thread = threading.Thread(target=export_loop, daemon=True, name="metrics-export")
-        self.__metrics_thread.start()
+        self.__metrics_exporter = MetricsExporter(
+            metrics=self.__metrics,
+            interval_seconds=float(self.__config.metrics.export_interval),
+            on_snapshot=on_snapshot,
+        )
+        self.__metrics_exporter.start()
 
     def __register_subsystem_health(self) -> None:
         def _bus_health() -> dict:
@@ -539,15 +528,10 @@ class Runtime:
         """Stops all services, the metrics export loop, and the event bus."""
         errors: list[str] = []
         try:
-            if self.__metrics_stop:
-                self.__metrics_stop.set()
+            if self.__metrics_exporter is not None:
+                self.__metrics_exporter.stop()
         except Exception as exc:
-            errors.append(f"metrics_stop: {exc}")
-        try:
-            if self.__metrics_thread and self.__metrics_thread.is_alive():
-                self.__metrics_thread.join(timeout=5.0)
-        except Exception as exc:
-            errors.append(f"metrics_thread: {exc}")
+            errors.append(f"metrics_exporter: {exc}")
         for svc in self.__services.values():
             try:
                 svc.stop()

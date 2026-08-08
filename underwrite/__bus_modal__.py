@@ -121,10 +121,10 @@ class ModalBus(EventBus):
                     self.__dispatch(event)
                     raw = self.__modal_queue.get(block=False)
             except (json.JSONDecodeError, KeyError) as exc:
-                logger.warning("modal poll message parse error: %s", exc)
+                logger.warning("modal poll message parse error: {}", exc)
             except Exception as exc:
                 if self.__running:
-                    logger.warning("modal poll error: %s", exc)
+                    logger.warning("modal poll error: {}", exc)
 
     def __dispatch(self, event: Event) -> None:
         with self.__lock:
@@ -132,13 +132,13 @@ class ModalBus(EventBus):
             specific: list[tuple[str, Callable[[Event], None]]] = self.__handlers.get(event.event_type, [])
         for sid, handler in wildcards + specific:
             if not self.__circuit_breaker.allow_request(sid):
-                logger.warning("circuit open for subscriber %s, sending %s to DLQ", sid, event.event_type)
+                logger.warning("circuit open for subscriber {}, sending {} to DLQ", sid, event.event_type)
                 self.__dlq.put(event, "circuit_open", sid)
                 continue
             try:
                 handler(event)
                 self.__circuit_breaker.record_success(sid)
             except Exception as exc:
-                logger.exception("handler failed for %s", event.event_type)
+                logger.exception("handler failed for {}", event.event_type)
                 self.__dlq.put(event, f"{type(exc).__name__}: {exc}", sid)
                 self.__circuit_breaker.record_failure(sid)

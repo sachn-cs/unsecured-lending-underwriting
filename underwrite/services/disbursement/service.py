@@ -42,7 +42,7 @@ class DisbursementService(StatefulService):
 
         with self.state_lock:
             if borrower in self.__disbursements:
-                logger.warning("duplicate disbursement attempted for %s, skipping", borrower)
+                logger.warning("duplicate disbursement attempted for {}, skipping", borrower)
                 return
             record = {
                 "borrower": borrower,

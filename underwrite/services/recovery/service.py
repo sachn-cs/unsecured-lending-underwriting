@@ -64,7 +64,7 @@ class RecoveryService(StatefulService):
             active = sum(1 for r in self.__recoveries.values() if r.get("stage") != RecoveryStage.SETTLEMENT.value)
             if active > 0:
                 logger.info(
-                    "loaded %d active recovery(s) from store",
+                    "loaded {} active recovery(s) from store",
                     active,
                 )
 
@@ -92,7 +92,7 @@ class RecoveryService(StatefulService):
 
         with self.state_lock:
             if borrower in self.__recoveries:
-                logger.warning("recovery already active for %s, skipping", borrower)
+                logger.warning("recovery already active for {}, skipping", borrower)
                 return
 
             recovery: dict[str, Any] = {
@@ -108,7 +108,7 @@ class RecoveryService(StatefulService):
             self.__recoveries[borrower] = recovery
             self.__sync()
 
-        logger.info("recovery started for %s (principal=%.2f)", borrower, principal)
+        logger.info("recovery started for {} (principal={:.2f})", borrower, principal)
         self.emit(
             EventType.RECOVERY_STARTED,
             {
@@ -160,7 +160,7 @@ class RecoveryService(StatefulService):
                 recovery["stage"] = RecoveryStage.PAYMENT_PLAN.value
                 recovery["last_action"] = datetime.now(timezone.utc).isoformat()
                 self.__sync()
-                logger.info("recovery offer accepted for %s", borrower)
+                logger.info("recovery offer accepted for {}", borrower)
                 self.emit(
                     EventType.RECOVERY_STARTED,
                     {
@@ -177,7 +177,7 @@ class RecoveryService(StatefulService):
                     recovery["stage"] = RecoveryStage.ESCALATION.value
                     recovery["last_action"] = datetime.now(timezone.utc).isoformat()
                     self.__sync()
-                    logger.warning("recovery escalated for %s", borrower)
+                    logger.warning("recovery escalated for {}", borrower)
                     self.emit(
                         "recovery.escalated",
                         {
@@ -228,7 +228,7 @@ class RecoveryService(StatefulService):
                 recovery["stage"] = RecoveryStage.SETTLEMENT.value
                 self.__sync()
                 logger.info(
-                    "recovery completed for %s (recovered=%.2f)",
+                    "recovery completed for {} (recovered={:.2f})",
                     borrower,
                     recovery["recovered"],
                 )
@@ -245,7 +245,7 @@ class RecoveryService(StatefulService):
             else:
                 self.__sync()
                 logger.info(
-                    "recovery progress for %s: recovered=%.2f outstanding=%.2f",
+                    "recovery progress for {}: recovered={:.2f} outstanding={:.2f}",
                     borrower,
                     recovery["recovered"],
                     outstanding,

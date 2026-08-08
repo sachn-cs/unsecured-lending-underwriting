@@ -219,7 +219,7 @@ class PaymentService(StatefulService):
             },
         )
         logger.info(
-            "razorpay payment %s refunded for loan %s: %.2f",
+            "razorpay payment {} refunded for loan {}: {:.2f}",
             razorpay_payment_id,
             loan_id,
             amount,

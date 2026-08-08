@@ -92,7 +92,7 @@ class ServicingService(NanoService):
             return
         amount: float = get_finite(event.payload, "amount", 0.0)
         if self.bus.idempotency.is_duplicate(self.service_id, event.event_id):
-            logger.debug("duplicate REPAID event %s dropped", event.event_id)
+            logger.debug("duplicate REPAID event {} dropped", event.event_id)
             return
         with self.__lock:
             record = self.store.get(f"loan:{loan_id}")

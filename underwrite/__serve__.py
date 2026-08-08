@@ -164,7 +164,7 @@ def create_app(
                 timeout=shutdown_timeout,
             )
         except asyncio.TimeoutError:
-            logger.warning("runtime stop timed out after %ds", shutdown_timeout)
+            logger.warning("runtime stop timed out after {}s", shutdown_timeout)
 
     # -- unversioned load-balancer probes ------------------------------------
 

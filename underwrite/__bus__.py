@@ -159,14 +159,14 @@ class DeadLetterQueue:
                     else:
                         skipped += 1
                 if skipped:
-                    logger.warning("skipped %d corrupted DLQ records on load", skipped)
+                    logger.warning("skipped {} corrupted DLQ records on load", skipped)
                 # Build a new deque with the same maxlen so future appends
                 # still evict the oldest entry. Truncate to max_records in
                 # case the persisted queue grew past the cap before reload.
                 self.__records = deque(valid[-self.__max_records :], maxlen=self.__max_records)
             else:
                 logger.warning(
-                    "corrupted DLQ store data (expected list, got %s), starting with empty DLQ", type(raw).__name__
+                    "corrupted DLQ store data (expected list, got {}), starting with empty DLQ", type(raw).__name__
                 )
 
     def __sync_store(self) -> None:
@@ -254,7 +254,7 @@ class DeadLetterQueue:
                 bus.publish(record.event)
                 replayed += 1
             except Exception:
-                logger.exception("DLQ replay failed for event %s", record.event.event_id)
+                logger.exception("DLQ replay failed for event {}", record.event.event_id)
                 self.put(record.event, f"replay_failed: {record.error}", record.subscriber_id)
         return replayed
 
@@ -311,7 +311,7 @@ class PerSubscriberCircuitBreaker:
             prev = self.__state.pop(subscriber_id, None)
             self.__opened_at.pop(subscriber_id, None)
             if prev == self.HALF_OPEN:
-                logger.info("circuit breaker closed for subscriber %s", subscriber_id)
+                logger.info("circuit breaker closed for subscriber {}", subscriber_id)
 
     def state(self, subscriber_id: str) -> str:
         """Returns the current circuit state for the subscriber."""
@@ -481,7 +481,7 @@ class IdempotencyGuard:
                     evicted_handler = self.__handler_order.popleft()
                     self.__seen.pop(evicted_handler, None)
                     self.__order.pop(evicted_handler, None)
-                    logger.warning("idempotency guard evicting oldest handler bucket %s", evicted_handler)
+                    logger.warning("idempotency guard evicting oldest handler bucket {}", evicted_handler)
             order = self.__order[handler_id]
             if event_id in seen:
                 return True
@@ -490,7 +490,7 @@ class IdempotencyGuard:
             if len(seen) > self.__max_ids:
                 evicted = order.popleft()
                 seen.discard(evicted)
-                logger.warning("idempotency guard evicting oldest entry for %s", handler_id)
+                logger.warning("idempotency guard evicting oldest entry for {}", handler_id)
             return False
 
 
@@ -591,7 +591,7 @@ class LocalBus(EventBus):
         with self.__lock:
             if self.__max_buffer_size > 0 and len(self.__buffer) >= self.__max_buffer_size:
                 dropped = self.__buffer.popleft()
-                logger.warning("buffer full, dropping oldest event %s (%s)", dropped.event_id, dropped.event_type)
+                logger.warning("buffer full, dropping oldest event {} ({})", dropped.event_id, dropped.event_type)
             self.__buffer.append(event)
             if self.__running:
                 self.__flush()
@@ -665,7 +665,7 @@ class LocalBus(EventBus):
         except concurrent.futures.TimeoutError:
             return
         if exc is not None:
-            logger.warning("future %s raised: %s", f, exc)
+            logger.warning("future {} raised: {}", f, exc)
 
     def stop(self) -> None:
         """Stops the bus, clears handlers and buffer, and shuts down the executor."""
@@ -678,7 +678,7 @@ class LocalBus(EventBus):
                 self.__futures, timeout=5, return_when=concurrent.futures.ALL_COMPLETED
             )
             if not_done:
-                logger.warning("%d future(s) did not complete within stop timeout", len(not_done))
+                logger.warning("{} future(s) did not complete within stop timeout", len(not_done))
             self.__executor.shutdown(wait=True)
         self.__futures.clear()
 
@@ -689,7 +689,7 @@ class LocalBus(EventBus):
             handlers = self.__handlers.get(event.event_type, []) + self.__handlers.get("*", [])
             for sid, handler in handlers:
                 if not self.__circuit_breaker.allow_request(sid):
-                    logger.warning("circuit open for subscriber %s, sending %s to DLQ", sid, event.event_type)
+                    logger.warning("circuit open for subscriber {}, sending {} to DLQ", sid, event.event_type)
                     self.__dlq.put(event, "circuit_open", sid)
                     continue
                 if self.__rate_limiter and not self.__rate_limiter.check(f"sub:{sid}"):
@@ -713,7 +713,7 @@ class LocalBus(EventBus):
             except concurrent.futures.TimeoutError:
                 continue
             if exc is not None:
-                logger.warning("future %s raised: %s", f, exc)
+                logger.warning("future {} raised: {}", f, exc)
         self.__futures = [f for f in self.__futures if not f.done()]
 
     def __dispatch_sync(self, handler: Callable[[Event], None], event: Event, sid: str) -> None:
@@ -721,7 +721,7 @@ class LocalBus(EventBus):
             handler(event)
             self.__circuit_breaker.record_success(sid)
         except Exception as exc:
-            logger.exception("subscriber %s failed on %s (%s), sent to DLQ", sid, event.event_type, exc)
+            logger.exception("subscriber {} failed on {} ({}), sent to DLQ", sid, event.event_type, exc)
             self.__dlq.put(event, f"{type(exc).__name__}: {exc}", sid)
             self.__circuit_breaker.record_failure(sid)
 
@@ -730,7 +730,7 @@ class LocalBus(EventBus):
             handler(event)
             self.__circuit_breaker.record_success(sid)
         except Exception as exc:
-            logger.exception("subscriber %s failed on %s (%s), sent to DLQ", sid, event.event_type, exc)
+            logger.exception("subscriber {} failed on {} ({}), sent to DLQ", sid, event.event_type, exc)
             self.__dlq.put(event, f"{type(exc).__name__}: {exc}", sid)
             self.__circuit_breaker.record_failure(sid)
 

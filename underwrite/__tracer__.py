@@ -49,7 +49,7 @@ class SpanExporter:
             spans: Completed spans to export.
         """
         if spans:
-            logger.debug("exporting %d spans (no-op base exporter)", len(spans))
+            logger.debug("exporting {} spans (no-op base exporter)", len(spans))
 
 
 class Tracer:
@@ -117,7 +117,7 @@ class Tracer:
             if len(self.__spans) > self.__max_spans:
                 overflow = self.__spans[: -self.__max_spans]
                 self.__spans = self.__spans[-self.__max_spans :]
-                logger.warning("tracer span overflow: dropping %d spans", len(overflow))
+                logger.warning("tracer span overflow: dropping {} spans", len(overflow))
         self.__exporter.export([span])
 
     def trace(
@@ -178,7 +178,7 @@ class ConsoleSpanExporter(SpanExporter):
             tag_str = " ".join(f"{k}={v}" for k, v in span.tags.items())
             err = f" ERROR={span.error}" if span.error else ""
             logger.info(
-                "[trace] %s %s.%s %.1fms parent=%s%s %s",
+                "[trace] {} {}.{} {:.1f}ms parent={}{} {}",
                 span.trace_id[:8],
                 span.service_id,
                 span.operation,

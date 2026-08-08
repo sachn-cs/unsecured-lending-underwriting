@@ -136,7 +136,7 @@ class KfsService(NanoService):
                 start_date=sd,
             )
         except Exception as exc:
-            logger.error("KFS schedule generation failed for loan %s: %s", loan_id, exc)
+            logger.error("KFS schedule generation failed for loan {}: {}", loan_id, exc)
             return
 
         kfs = self.__build_kfs(loan_id, borrower, principal, annual_rate, tenure_months, sched, fees, sd)

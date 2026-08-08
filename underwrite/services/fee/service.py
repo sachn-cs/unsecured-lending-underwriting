@@ -80,7 +80,7 @@ class FeeService(StatefulService):
             total_assessed = sum(r.get("amount", 0.0) for r in self.__fees.values() if r.get("loan_id", "") == loan_id)
             if total_assessed >= MAX_FEE_PER_LOAN:
                 logger.warning(
-                    "fee cap reached for loan %s (total %.2f >= %.2f), skipping fee assessment",
+                    "fee cap reached for loan {} (total {:.2f} >= {:.2f}), skipping fee assessment",
                     loan_id,
                     total_assessed,
                     MAX_FEE_PER_LOAN,
@@ -89,11 +89,11 @@ class FeeService(StatefulService):
 
             amount = self.__compute_amount(fee_type, principal, overdue_days, overdue_amount)
             if not math.isfinite(amount):
-                logger.error("non-finite fee amount %s for loan %s, skipping", amount, loan_id)
+                logger.error("non-finite fee amount {} for loan {}, skipping", amount, loan_id)
                 return
 
             if amount <= 0:
-                logger.debug("zero/negative fee amount %s for loan %s, skipped", amount, loan_id)
+                logger.debug("zero/negative fee amount {} for loan {}, skipped", amount, loan_id)
                 return
 
             fee_id: str = f"fee_{loan_id}_{fee_type}_{uuid.uuid4().hex[:12]}"
@@ -183,7 +183,7 @@ class FeeService(StatefulService):
                 return
             existing = self.store.keys(f"fee:fee_{loan_id}_late_payment")
             if existing:
-                logger.debug("late_payment fee already assessed for loan %s, skipping", loan_id)
+                logger.debug("late_payment fee already assessed for loan {}, skipping", loan_id)
                 return
             self.__assess(
                 loan_id=loan_id,

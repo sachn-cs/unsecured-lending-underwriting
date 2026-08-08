@@ -249,7 +249,7 @@ class RiskModel:
 
         if not math_mod.isfinite(principal) or not math_mod.isfinite(term):
             logger.warning(
-                "non-finite inputs to risk model: principal=%r, term=%r",
+                "non-finite inputs to risk model: principal={!r}, term={!r}",
                 principal,
                 term,
             )
@@ -258,7 +258,7 @@ class RiskModel:
         try:
             return self.__strategy.predict(principal, term)
         except Exception as exc:
-            logger.exception("risk model predict failed: %s", exc)
+            logger.exception("risk model predict failed: {}", exc)
             return HeuristicStrategy().predict(principal, term)
 
     @staticmethod
@@ -293,7 +293,7 @@ class RiskModel:
             except ImportError:
                 logger.info("joblib not available, falling back to JSON load")
             except Exception as exc:
-                logger.exception("joblib load failed for %s: %s", model_path, exc)
+                logger.exception("joblib load failed for {}: {}", model_path, exc)
         else:
             logger.info("joblib disabled; set UNDERWRITE_ALLOW_JOBLIB=true to enable")
 

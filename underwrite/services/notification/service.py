@@ -93,11 +93,11 @@ class NotificationService(NanoService):
                 self.__send_sms(recipient, event_type, payload)
 
             if not email_enabled and not sms_enabled:
-                logger.info("notification dispatched (log-only): %s", log_data)
+                logger.info("notification dispatched (log-only): {}", log_data)
             else:
-                logger.info("notification dispatched: %s", log_data)
+                logger.info("notification dispatched: {}", log_data)
         except Exception:
-            logger.exception("failed to dispatch notification for %s", event.event_id)
+            logger.exception("failed to dispatch notification for {}", event.event_id)
 
     def __send_email(self, recipient: str, event_type: str, payload: dict[str, Any]) -> None:
         """Send an email notification via SES or log.
@@ -123,9 +123,9 @@ class NotificationService(NanoService):
                     },
                 )
             except Exception:
-                logger.exception("SES email failed for %s", recipient)
+                logger.exception("SES email failed for {}", recipient)
         else:
-            logger.info("email to %s: [%s] %s", recipient, event_type, payload)
+            logger.info("email to {}: [{}] {}", recipient, event_type, payload)
 
     def __send_sms(self, recipient: str, event_type: str, payload: dict[str, Any]) -> None:
         """Send an SMS notification via Twilio or log.
@@ -152,6 +152,6 @@ class NotificationService(NanoService):
                     to=recipient,
                 )
             except Exception:
-                logger.exception("Twilio SMS failed for %s", recipient)
+                logger.exception("Twilio SMS failed for {}", recipient)
         else:
-            logger.info("SMS to %s: [%s] %s", recipient, event_type, payload)
+            logger.info("SMS to {}: [{}] {}", recipient, event_type, payload)

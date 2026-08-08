@@ -70,7 +70,7 @@ class RiskService(NanoService):
                     term: float = get_finite(event.payload, "term", 1.0)
                     score: float = self.__model.predict(principal, term)
                 except Exception as exc:
-                    logger.exception("risk scoring failed for %s: %s", borrower, exc)
+                    logger.exception("risk scoring failed for {}: {}", borrower, exc)
                     if self.metrics_collector:
                         self.metrics_collector.increment(
                             "risk.scoring.failures",

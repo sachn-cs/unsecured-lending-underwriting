@@ -80,13 +80,13 @@ class HealthRegistry:
                 fut = self.__executor.submit(check)
                 result = fut.result(timeout=self.__timeout)
             except concurrent.futures.TimeoutError:
-                logger.warning("health check %s timed out after %.1fs", name, self.__timeout)
+                logger.warning("health check {} timed out after {:.1f}s", name, self.__timeout)
                 result = {
                     "ok": False,
                     "detail": f"timed out after {self.__timeout}s",
                 }
             except Exception as exc:
-                logger.exception("health check %s failed", name)
+                logger.exception("health check {} failed", name)
                 result = {"ok": False, "detail": f"{type(exc).__name__}: {name}"}
             if not result.get("ok", False):
                 overall = False

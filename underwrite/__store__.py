@@ -212,7 +212,7 @@ class FileStore(Store):
         except Exception:
             from underwrite.__logger__ import logger
 
-            logger.warning("FileStore.__del__: shutdown failed", exc_info=True)
+            logger.opt(exception=True).warning("FileStore.__del__: shutdown failed")
 
     def __timeout(self, fn: Any, *args: Any, **kwargs: Any) -> Any:
         """Runs *fn* with the configured timeout via the executor."""
@@ -244,12 +244,12 @@ class FileStore(Store):
                 with open(path) as fh:
                     return json.load(fh)
             except json.JSONDecodeError as e:
-                logger.exception("corrupted store file %s", path)
+                logger.exception("corrupted store file {}", path)
                 if self.__metrics:
                     self.__metrics.increment("store.corruption", {"path": path.name})
                 raise StoreError(f"corrupted store file for key {key}") from e
             except OSError as e:
-                logger.exception("I/O error reading store file %s", path)
+                logger.exception("I/O error reading store file {}", path)
                 if self.__metrics:
                     self.__metrics.increment("store.io_error", {"path": path.name})
                 raise StoreError(f"I/O error reading store key {key}") from e
@@ -446,7 +446,7 @@ class PostgresStore(Store):
                 else:
                     pool.putconn(conn)
             except Exception:
-                logger.warning("failed to return connection to pool", exc_info=True)
+                logger.opt(exception=True).warning("failed to return connection to pool")
 
     def __execute(self, query: str, params: tuple[Any, ...] = ()) -> list[tuple[Any, ...]] | None:
         def run() -> Any:
@@ -505,7 +505,7 @@ class PostgresStore(Store):
             self.__execute("SELECT 1")
             return {"ok": True, "circuit": self.__circuit.state.value}
         except Exception as e:
-            logger.warning("PostgresStore health check failed: %s", e)
+            logger.warning("PostgresStore health check failed: {}", e)
             return {"ok": False, "detail": "Postgres health check failed", "circuit": self.__circuit.state.value}
 
     @staticmethod

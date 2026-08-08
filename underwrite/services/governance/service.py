@@ -47,7 +47,7 @@ class GovernanceService(StatefulService):
             {
                 k: (float(v[0]), float(v[1]))
                 for k, v in raw_ranges.items()
-                if isinstance(v, (list, tuple)) and len(v) == 2
+                if isinstance(v, list | tuple) and len(v) == 2
             }
             if raw_ranges
             else DEFAULT_PARAM_RANGES
@@ -74,12 +74,12 @@ class GovernanceService(StatefulService):
         param: str = get_non_empty(p, "param")
         value: float = get_finite(p, "value")
         if param not in self.__params:
-            logger.warning("governance proposal for unknown param %r ignored", param)
+            logger.warning("governance proposal for unknown param {!r} ignored", param)
             return
         lo, hi = self.__ranges[param]
         if not (lo <= value <= hi):
             logger.warning(
-                "governance proposal for %r value %s outside range [%s, %s]",
+                "governance proposal for {!r} value {} outside range [{}, {}]",
                 param,
                 value,
                 lo,

@@ -177,7 +177,7 @@ class NanoService(ABC):
         try:
             return self._store.get(key)
         except Exception:
-            logger.exception("store get failed for %s in service %s", key, self.__service_id)
+            logger.exception("store get failed for {} in service {}", key, self.__service_id)
             return default
 
     def safe_store_set(self, key: str, value: Any) -> bool:
@@ -194,7 +194,7 @@ class NanoService(ABC):
             self._store.set(key, value)
             return True
         except Exception:
-            logger.exception("store set failed for %s in service %s", key, self.__service_id)
+            logger.exception("store set failed for {} in service {}", key, self.__service_id)
             return False
 
     def subscribe(self, event_type: str) -> None:
@@ -204,7 +204,7 @@ class NanoService(ABC):
             event_type: The event type string to subscribe to.
         """
         if self.__authz and not self.__authz.check_subscribe(self.__service_id, event_type):
-            logger.warning("%s not authorized to subscribe to %s", self.__service_id, event_type)
+            logger.warning("{} not authorized to subscribe to {}", self.__service_id, event_type)
             return
         sid: str = self.__bus.subscribe(event_type, self.__dispatch)
         self.__subscriptions.append(sid)
@@ -297,7 +297,7 @@ class NanoService(ABC):
                 self.__authz.assert_verified(event)
             except AuthzError:
                 logger.warning(
-                    "signature verification failed for %s from %s",
+                    "signature verification failed for {} from {}",
                     event.event_id,
                     event.source,
                 )
@@ -313,7 +313,7 @@ class NanoService(ABC):
                     self.__bus.dlq.put(event, "authz_failed", self.__service_id)
                 return
         if self.__bus.idempotency.is_duplicate(self.__service_id, event.event_id):
-            logger.debug("duplicate event %s dropped by %s", event.event_id, self.__service_id)
+            logger.debug("duplicate event {} dropped by {}", event.event_id, self.__service_id)
             if hasattr(self.__bus, "dlq") and self.__bus.dlq:
                 self.__bus.dlq.put(event, "duplicate", self.__service_id)
             return
@@ -323,7 +323,7 @@ class NanoService(ABC):
             # Allow up to 2x worker count queued before dropping
             if worker_count > 0 and queue_size > worker_count * 2:
                 logger.warning(
-                    "%s executor queue full (%d queued, %d workers), dropping event %s",
+                    "{} executor queue full ({} queued, {} workers), dropping event {}",
                     self.__service_id,
                     queue_size,
                     worker_count,
@@ -385,7 +385,7 @@ class NanoService(ABC):
                 if self.__supervisor:
                     self.__supervisor.record_failure(self.__service_id)
                 logger.exception(
-                    "handler %s failed processing %s",
+                    "handler {} failed processing {}",
                     self.__service_id,
                     event.event_type,
                 )

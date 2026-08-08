@@ -179,7 +179,7 @@ def _ensure_holidays(year: int) -> None:
         try:
             holidays.add(date(y, m, d))
         except ValueError:
-            logger.warning("invalid holiday date: %d-%d-%d", y, m, d)
+            logger.warning("invalid holiday date: {}-{}-{}", y, m, d)
     sundays_and_sats: set[date] = set()
     for month in range(1, 13):
         for day in range(1, calendar.monthrange(year, month)[1] + 1):

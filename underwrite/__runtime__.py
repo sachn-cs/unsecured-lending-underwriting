@@ -15,7 +15,6 @@ __all__ = [
 ]
 
 import importlib
-import logging
 import re
 import threading
 from pathlib import Path
@@ -113,95 +112,15 @@ class Runtime:
         self.__register_subsystem_health()
 
     def __configure_logging(self) -> None:
-        import json as json_mod
-        import logging as logging_mod
+        import sys
+
+        from underwrite.__logger__ import JsonFormatter, TextFormatter, logger, loguru_sink_format
 
         cfg = self.__config.logging
-        level = getattr(logging_mod, cfg.level.upper(), logging_mod.INFO)
-        handler: logging_mod.Handler
-        if cfg.output == "stdout":
-            handler = logging_mod.StreamHandler()
-        elif cfg.output == "stderr":
-            handler = logging_mod.StreamHandler()
-        else:
-            handler = logging_mod.StreamHandler()
-        handler.setLevel(level)
-
-        if cfg.log_format == "json":
-            sensitive_fields: frozenset[str] = frozenset(
-                {
-                    "password",
-                    "secret",
-                    "token",
-                    "auth",
-                    "authorization",
-                    "private_key",
-                    "ssn",
-                    "tax",
-                    "pin",
-                    "cvv",
-                    "pan",
-                    "account",
-                    "routing",
-                }
-            )
-
-            def _tokens(s: str) -> set[str]:
-                import re as _re
-
-                return set(_re.findall(r"[a-z0-9]+", s.lower()))
-
-            class JsonFormatter(logging_mod.Formatter):
-                def __redact(self, data: object) -> object:
-                    if isinstance(data, dict):
-                        out: dict[object, object] = {}
-                        for k, v in data.items():
-                            if isinstance(k, str) and _tokens(k) & sensitive_fields:
-                                out[k] = "***REDACTED***"
-                            else:
-                                out[k] = self.__redact(v)
-                        return out
-                    if isinstance(data, (list, tuple)):
-                        return [self.__redact(i) for i in data]
-                    return data
-
-                def format(self, record: logging_mod.LogRecord) -> str:
-                    msg = record.getMessage()
-                    data: dict[str, object] = {
-                        "timestamp": self.formatTime(record),
-                        "level": record.levelname,
-                        "logger": record.name,
-                        "message": self.__redact(msg),
-                        "module": record.module,
-                        "line": record.lineno,
-                    }
-                    corr_id = getattr(record, "correlation_id", None)
-                    if corr_id:
-                        data["correlation_id"] = corr_id
-                    trace_id = getattr(record, "trace_id", None)
-                    if trace_id:
-                        data["trace_id"] = trace_id
-                    return json_mod.dumps(data)
-
-            handler.setFormatter(JsonFormatter())
-        else:
-            handler.setFormatter(
-                logging_mod.Formatter("%(asctime)s [%(levelname)s] %(correlation_id)s %(name)s: %(message)s")
-            )
-
-        root = logging_mod.getLogger("underwrite")
-
-        class CorrelationFilter(logging_mod.Filter):
-            def filter(self, record: logging_mod.LogRecord) -> bool:
-                if not hasattr(record, "correlation_id"):
-                    from underwrite.services.base import get_log_correlation_id
-
-                    record.correlation_id = get_log_correlation_id()
-                return True
-
-        root.addFilter(CorrelationFilter())
-        root.setLevel(level)
-        root.addHandler(handler)
+        sink = sys.stdout if cfg.output == "stdout" else sys.stderr
+        formatter = JsonFormatter() if cfg.log_format == "json" else TextFormatter()
+        logger.remove()
+        logger.add(sink, level=cfg.level, format=loguru_sink_format(formatter), colorize=False)
 
     def __build_secrets(self) -> SecretsManager | None:
         cfg = self.__config.secrets
@@ -281,7 +200,7 @@ class Runtime:
             from underwrite.__store__ import PostgresStore
 
             return PostgresStore(dsn=cfg.dsn, pool_size=cfg.pool_size)
-        logger.warning("unrecognized store backend %r, falling back to FileStore", cfg.backend)
+        logger.warning("unrecognized store backend {!r}, falling back to FileStore", cfg.backend)
         return FileStore(self.__config.data_dir)
 
     def __build_read_store(self) -> Store | None:
@@ -297,7 +216,7 @@ class Runtime:
 
             return PostgresStore(dsn=cfg.read_dsn or cfg.dsn, pool_size=cfg.pool_size)
         if cfg.read_backend != "memory":
-            logger.warning("unrecognized read store backend %r, falling back to MemoryStore", cfg.read_backend)
+            logger.warning("unrecognized read store backend {!r}, falling back to MemoryStore", cfg.read_backend)
         return MemoryStore()
 
     def __build_authz(self) -> AccessControl | None:
@@ -314,7 +233,7 @@ class Runtime:
                     with open(p) as fh:
                         rules = json_mod.load(fh)
                 except (json_mod.JSONDecodeError, OSError) as exc:
-                    logger.error("failed to load authz policy file %s: %s", policy_file, exc)
+                    logger.error("failed to load authz policy file {}: {}", policy_file, exc)
                     return None
                 for rule in rules.get("allow", []):
                     acl.allow(rule.get("subject", "*"), rule.get("resource", "*"))
@@ -343,9 +262,8 @@ class Runtime:
                     snap = metrics.snapshot()
                     if not any([snap.get("counters"), snap.get("timers"), snap.get("gauges")]):
                         continue
-                    metrics_logger = logging.getLogger("underwrite.metrics")
-                    metrics_logger.debug(
-                        "exporting %d counters, %d timers, %d gauges",
+                    logger.debug(
+                        "exporting {} counters, {} timers, {} gauges",
                         len(snap.get("counters", {})),
                         len(snap.get("timers", {})),
                         len(snap.get("gauges", {})),
@@ -544,7 +462,7 @@ class Runtime:
         """Subscribes a service to all event types it cares about."""
         svc = self.__services.get(service_name)
         if not svc:
-            logger.warning("wire called for unregistered service %s", service_name)
+            logger.warning("wire called for unregistered service {}", service_name)
             return
         for event_type, subscribers in WIRING.items():
             if service_name in subscribers:
@@ -601,12 +519,12 @@ class Runtime:
                 if service_id not in self.__services:
                     self.__supervisor.reset(service_id)
                     continue
-                logger.warning("restarting failing service %s", service_id)
+                logger.warning("restarting failing service {}", service_id)
                 try:
                     old = self.__services.pop(service_id)
                     old.stop()
                 except Exception:
-                    logger.exception("error stopping service %s during restart", service_id)
+                    logger.exception("error stopping service {} during restart", service_id)
                     continue
             try:
                 svc = self.register(service_id)
@@ -615,9 +533,9 @@ class Runtime:
                 self.__supervisor.record_restart(service_id)
                 self.__supervisor.reset(service_id)
                 restarted.append(service_id)
-                logger.info("service %s restarted successfully", service_id)
+                logger.info("service {} restarted successfully", service_id)
             except Exception:
-                logger.exception("failed to restart service %s", service_id)
+                logger.exception("failed to restart service {}", service_id)
         return restarted
 
     def stop(self) -> None:
@@ -661,7 +579,7 @@ class Runtime:
         except Exception as exc:
             errors.append(f"health: {exc}")
         if errors:
-            logger.error("Runtime.stop completed with %d error(s): %s", len(errors), "; ".join(errors))
+            logger.error("Runtime.stop completed with {} error(s): {}", len(errors), "; ".join(errors))
 
     def get(self, service_name: str) -> NanoService | None:
         """Returns a registered service by name, or ``None``."""

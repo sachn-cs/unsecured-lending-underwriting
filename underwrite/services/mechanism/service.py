@@ -118,7 +118,7 @@ class MechanismService(NanoService):
         command = event.payload.get("command", "")
         handler = self.__command_handlers.get(command)
         if handler is None:
-            logger.warning("unknown mechanism command: %s", command)
+            logger.warning("unknown mechanism command: {}", command)
             return
         try:
             handler(event)

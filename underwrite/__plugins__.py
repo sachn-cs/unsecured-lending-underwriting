@@ -58,7 +58,7 @@ def _read_allowlist() -> frozenset[str] | None:
         return frozenset()
     if raw == PLUGIN_ALLOW_ALL:
         logger.warning(
-            "UNDERWRITE_PLUGINS=%s — every installed 'underwrite.services' entry "
+            "UNDERWRITE_PLUGINS={} — every installed 'underwrite.services' entry "
             "point will be loaded. This is a supply-chain risk; prefer an explicit allowlist.",
             PLUGIN_ALLOW_ALL,
         )
@@ -81,7 +81,7 @@ def discover_plugins() -> dict[str, type[NanoService]]:
     for ep in importlib.metadata.entry_points(group=PLUGIN_ENTRYPOINT_GROUP):
         if allowlist is not None and ep.name not in allowlist:
             logger.warning(
-                "ignoring plugin %s from %s — not in UNDERWRITE_PLUGINS allowlist",
+                "ignoring plugin {} from {} — not in UNDERWRITE_PLUGINS allowlist",
                 ep.name,
                 ep.value,
             )
@@ -89,7 +89,7 @@ def discover_plugins() -> dict[str, type[NanoService]]:
         try:
             cls = ep.load()
             plugins[ep.name] = cls
-            logger.info("loaded plugin service %s from %s", ep.name, ep.value)
+            logger.info("loaded plugin service {} from {}", ep.name, ep.value)
         except Exception:
-            logger.exception("failed to load plugin %s (%s)", ep.name, ep.value)
+            logger.exception("failed to load plugin {} ({})", ep.name, ep.value)
     return plugins

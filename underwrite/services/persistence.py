@@ -56,7 +56,7 @@ class StoreRepository(Generic[T]):
                 return default
             return self.deserialize(raw)
         except Exception:
-            logger.exception("failed to load %s from store", self.key)
+            logger.exception("failed to load {} from store", self.key)
             return default
 
     def save(self, data: T) -> None:
@@ -109,7 +109,7 @@ class TypedStoreRepository(StoreRepository[T]):
             return default
         if not isinstance(raw, self.expected_type):
             logger.warning(
-                "expected %s for key %s, got %s - returning default",
+                "expected {} for key {}, got {} - returning default",
                 self.expected_type,
                 self.key,
                 type(raw).__name__,

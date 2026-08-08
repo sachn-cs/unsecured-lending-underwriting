@@ -145,7 +145,7 @@ class RazorpayService(StatefulService):
                 notes=notes,
             )
         except RazorpayError as exc:
-            logger.error("failed to create Razorpay order for loan %s: %s", loan_id, exc)
+            logger.error("failed to create Razorpay order for loan {}: {}", loan_id, exc)
             return
 
         self.save_record(
@@ -203,7 +203,7 @@ class RazorpayService(StatefulService):
                 notes=notes,
             )
         except RazorpayError as exc:
-            logger.error("failed to create Razorpay subscription for loan %s: %s", loan_id, exc)
+            logger.error("failed to create Razorpay subscription for loan {}: {}", loan_id, exc)
             return
 
         self.save_record(
@@ -262,7 +262,7 @@ class RazorpayService(StatefulService):
         try:
             data = json.loads(payload_bytes_str)
         except (json.JSONDecodeError, TypeError) as exc:
-            logger.warning("invalid webhook JSON payload: %s", exc)
+            logger.warning("invalid webhook JSON payload: {}", exc)
             return
 
         event_type = data.get("event", "")

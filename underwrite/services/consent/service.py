@@ -149,7 +149,7 @@ class ConsentService(StatefulService):
                         return False
                 except (ValueError, TypeError):
                     logger.warning(
-                        "invalid expires_at format for user %s purpose %s: %s",
+                        "invalid expires_at format for user {} purpose {}: {}",
                         user_id,
                         purpose,
                         expires_str,

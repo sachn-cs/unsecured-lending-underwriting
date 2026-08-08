@@ -65,7 +65,7 @@ class VaultSecretsBackend(SecretsBackend):
             data = resp.get("data", {}).get("data", {})
             return data.get("value")
         except VaultError:
-            logger.exception("vault read failed for %s", key)
+            logger.exception("vault read failed for {}", key)
             if self.__metrics:
                 self.__metrics.increment("secrets.failures", {"backend": "vault", "key": key})
             raise
@@ -101,7 +101,7 @@ class AwsSecretsBackend(SecretsBackend):
         except client.exceptions.ResourceNotFoundException:
             return None
         except client.exceptions.ClientError:
-            logger.exception("aws secrets read failed for %s", key)
+            logger.exception("aws secrets read failed for {}", key)
             if self.__metrics:
                 self.__metrics.increment("secrets.failures", {"backend": "aws", "key": key})
             raise

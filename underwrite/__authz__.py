@@ -196,7 +196,7 @@ class AccessControl:
         except InvalidSignature:
             return False
         except (TypeError, ValueError) as exc:
-            logger.exception("unexpected error verifying signature on event %s: %s", event.event_id, exc)
+            logger.exception("unexpected error verifying signature on event {}: {}", event.event_id, exc)
             return False
 
     @staticmethod

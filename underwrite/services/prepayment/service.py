@@ -63,7 +63,7 @@ class PrepaymentService(NanoService):
             try:
                 as_of = date.fromisoformat(as_of_str)
             except (ValueError, TypeError):
-                logger.debug("invalid as_of date '%s', using None", as_of_str)
+                logger.debug("invalid as_of date '{}', using None", as_of_str)
 
         payments_raw: list[dict[str, Any]] = p.get("payments", [])
         payments: list[tuple[date, Decimal]] = []
@@ -92,7 +92,7 @@ class PrepaymentService(NanoService):
                 original_schedule=original_schedule,
             )
         except Exception as exc:
-            logger.error("foreclosure calculation failed for loan %s: %s", loan_id, exc)
+            logger.error("foreclosure calculation failed for loan {}: {}", loan_id, exc)
             return
 
         self.emit(

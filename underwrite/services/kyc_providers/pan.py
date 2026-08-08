@@ -37,12 +37,10 @@ import base64
 import hashlib
 import hmac
 import json
-import logging
 from typing import Any
 
+from underwrite.__logger__ import logger
 from underwrite.services.kyc_providers.base import KycProvider, ProviderResult, Verdict
-
-logger = logging.getLogger(__name__)
 
 PROVIDER_NAME = "pan"
 

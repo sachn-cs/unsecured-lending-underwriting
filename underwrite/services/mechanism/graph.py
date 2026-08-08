@@ -363,7 +363,7 @@ class DelegationGraph:
             b = loan.get("borrower", "")
             if not b:
                 logger.warning(
-                    "Dropping loan with empty/missing borrower: %s",
+                    "Dropping loan with empty/missing borrower: {}",
                     loan.get("loan_id", "unknown"),
                 )
                 continue

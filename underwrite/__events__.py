@@ -85,7 +85,7 @@ class Event:
         known = {f.name for f in fields(cls)}
         extra = set(data) - known
         if extra:
-            logger.warning("Event.from_dict dropping unknown field(s): %s", sorted(extra))
+            logger.warning("Event.from_dict dropping unknown field(s): {}", sorted(extra))
         return cls(**{k: data[k] for k in known if k in data})
 
 

@@ -29,6 +29,7 @@ classifiers = [
 ]
 dependencies = [
     "cryptography>=41.0",
+    "loguru>=0.7",
     "typer>=0.12",
     "pydantic>=2.0",
 ]
@@ -154,5 +155,6 @@ module = [
     "testcontainers",
     "testcontainers.*",
     "underwrite.__version__",
+    "loguru",
 ]
 ignore_missing_imports = true

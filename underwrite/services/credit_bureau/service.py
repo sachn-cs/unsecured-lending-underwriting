@@ -165,7 +165,7 @@ class CreditBureauService(StatefulService):
                     consent=event.payload.get("consent", "Y"),
                 )
             except Exception as exc:
-                logger.error("credit_bureau.check failed for %s: %s", pan, exc)
+                logger.error("credit_bureau.check failed for {}: {}", pan, exc)
                 self.emit(
                     EventType.CREDIT_BUREAU_CHECK_FAILED,
                     {
@@ -223,7 +223,7 @@ class CreditBureauService(StatefulService):
         try:
             report = self._client.fetch_credit_report(pan, bureau)
         except Exception as exc:
-            logger.error("credit_bureau.check failed for %s: %s", pan, exc)
+            logger.error("credit_bureau.check failed for {}: {}", pan, exc)
             self.emit(
                 EventType.CREDIT_BUREAU_CHECK_FAILED,
                 {
@@ -267,7 +267,7 @@ class CreditBureauService(StatefulService):
         try:
             response = self._client.verify_ckyc(ckyc_number, aadhaar)
         except Exception as exc:
-            logger.error("ckyc.verify failed for %s: %s", ckyc_number, exc)
+            logger.error("ckyc.verify failed for {}: {}", ckyc_number, exc)
             self.emit(
                 EventType.CKYC_REJECTED,
                 {

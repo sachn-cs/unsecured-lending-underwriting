@@ -93,7 +93,7 @@ class AsyncLocalBus(AsyncEventBus):
             except asyncio.CancelledError:
                 pass
             self.__task = None
-        logger.info("AsyncLocalBus stopped (drained %d events)", drained)
+        logger.info("AsyncLocalBus stopped (drained {} events)", drained)
 
     async def publish(self, event: Event) -> str:
         await self.__queue.put(event)
@@ -136,7 +136,7 @@ class AsyncLocalBus(AsyncEventBus):
             except asyncio.CancelledError:
                 break
             except Exception:
-                logger.exception("dispatch loop: unexpected error processing %s", event.event_id)
+                logger.exception("dispatch loop: unexpected error processing {}", event.event_id)
 
     async def __dispatch(self, event: Event) -> None:
         async with self.__subscription_lock:
@@ -161,14 +161,14 @@ class AsyncLocalBus(AsyncEventBus):
             )
         except asyncio.TimeoutError:
             logger.warning(
-                "aggregate dispatch timeout after %.1fs for event %s; cancelling pending handlers",
+                "aggregate dispatch timeout after {:.1f}s for event {}; cancelling pending handlers",
                 HANDLER_TIMEOUT * 2,
                 event.event_id,
             )
             return
         for handler, result in zip(handlers, results, strict=False):
             if isinstance(result, Exception):
-                logger.warning("async handler %s failed: %s", getattr(handler, "__name__", str(handler)), result)
+                logger.warning("async handler {} failed: {}", getattr(handler, "__name__", str(handler)), result)
 
     async def __safe_dispatch(self, handler: Callable[[Event], Any], event: Event) -> None:
         try:
@@ -177,8 +177,8 @@ class AsyncLocalBus(AsyncEventBus):
                 await asyncio.wait_for(result, timeout=HANDLER_TIMEOUT)
         except asyncio.TimeoutError:
             msg = f"handler timed out after {HANDLER_TIMEOUT}s"
-            logger.warning("async handler timed out for %s: %s", event.event_id, handler.__name__)
+            logger.warning("async handler timed out for {}: {}", event.event_id, handler.__name__)
             self.__dlq.put(event, msg, handler.__name__)
         except Exception as exc:
-            logger.exception("async handler failed for %s", event.event_id)
+            logger.exception("async handler failed for {}", event.event_id)
             self.__dlq.put(event, f"{type(exc).__name__}: {exc}", handler.__name__)

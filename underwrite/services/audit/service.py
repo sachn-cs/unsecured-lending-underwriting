@@ -123,7 +123,7 @@ class AuditService(StatefulService):
         elif self.__export_url.startswith("gs://"):
             self.__export_gcs(body)
         else:
-            logger.warning("unsupported export URL scheme: %s", self.__export_url.split("://")[0])
+            logger.warning("unsupported export URL scheme: {}", self.__export_url.split("://")[0])
 
     def __export_s3(self, body: str) -> None:
         """Export audit data to S3.
@@ -142,7 +142,7 @@ class AuditService(StatefulService):
         try:
             client = boto3.client("s3")
             client.put_object(Bucket=bucket, Key=key, Body=body.encode("utf-8"))
-            logger.info("audit exported to s3://%s/%s (%d bytes)", bucket, key, len(body))
+            logger.info("audit exported to s3://{}/{} ({} bytes)", bucket, key, len(body))
         except Exception:
             logger.exception("audit S3 export failed")
 
@@ -163,7 +163,7 @@ class AuditService(StatefulService):
         try:
             client = storage.Client()
             client.bucket(bucket).blob(key).upload_from_string(body)
-            logger.info("audit exported to gs://%s/%s (%d bytes)", bucket, key, len(body))
+            logger.info("audit exported to gs://{}/{} ({} bytes)", bucket, key, len(body))
         except Exception:
             logger.exception("audit GCS export failed")
 
@@ -208,11 +208,11 @@ class AuditService(StatefulService):
                         self._ledger.append(json.loads(line))
                     except json.JSONDecodeError as exc:
                         corrupted += 1
-                        logger.warning("corrupted audit line %d in %s: %s", i, path, exc)
+                        logger.warning("corrupted audit line {} in {}: {}", i, path, exc)
         self._event_index.clear()
         for r in self._ledger:
             et = r.get("event_type")
             if et:
                 self._event_index.setdefault(et, []).append(r)
         if corrupted:
-            logger.warning("audit load skipped %d corrupted line(s) from %s", corrupted, path)
+            logger.warning("audit load skipped {} corrupted line(s) from {}", corrupted, path)

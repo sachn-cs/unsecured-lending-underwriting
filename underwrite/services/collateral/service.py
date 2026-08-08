@@ -90,7 +90,7 @@ class CollateralService(StatefulService):
                     self.repo.save(self.__collateral)
                 except Exception:
                     logger.exception(
-                        "failed to persist collateral removal for %s, restoring in-memory state",
+                        "failed to persist collateral removal for {}, restoring in-memory state",
                         borrower,
                     )
                     self.__collateral[borrower] = col

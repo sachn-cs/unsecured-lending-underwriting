@@ -44,7 +44,7 @@ class GraphService(NanoService):
         user: str = event.payload.get("user", "")
         state: dict[str, Any] | None = self.safe_store_get("protocol:state")
         if state is None:
-            logger.warning("graph path query for %s: protocol state not available", user)
+            logger.warning("graph path query for {}: protocol state not available", user)
             state = {}
         parent: dict[str, str] = state.get("parent", {})
         seeds: list[str] = state.get("seeds", [])
@@ -76,7 +76,7 @@ class GraphService(NanoService):
         user: str = event.payload.get("user", "")
         state: dict[str, Any] | None = self.safe_store_get("protocol:state")
         if state is None:
-            logger.warning("graph credit-limit query for %s: protocol state not available", user)
+            logger.warning("graph credit-limit query for {}: protocol state not available", user)
             state = {}
         earned: dict[str, float] = state.get("earned", {})
         base_budget: dict[str, float] = state.get("base_budget", {})

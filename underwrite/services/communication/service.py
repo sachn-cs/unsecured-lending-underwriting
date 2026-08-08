@@ -94,7 +94,7 @@ class CommunicationService(NanoService):
             )
         else:
             logger.info(
-                "communication %s queued for %s via %s (status=%s)",
+                "communication {} queued for {} via {} (status={})",
                 message_id,
                 recipient,
                 channel,

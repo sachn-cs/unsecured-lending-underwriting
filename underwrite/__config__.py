@@ -443,7 +443,7 @@ class Configuration(ForbidExtra):
                     with open(candidate) as fh:
                         data = json.load(fh)
                 except (FileNotFoundError, json.JSONDecodeError) as exc:
-                    logger.warning("failed to load config %s: %s", candidate, exc)
+                    logger.warning("failed to load config {}: {}", candidate, exc)
                     continue
                 if not isinstance(data, dict):
                     raise ConfigurationError("config root must be a JSON object")
@@ -457,7 +457,7 @@ class Configuration(ForbidExtra):
                         with open(env_path) as fh:
                             data = json.load(fh)
                     except (FileNotFoundError, json.JSONDecodeError) as exc:
-                        logger.warning("failed to load env config %s: %s", env_path, exc)
+                        logger.warning("failed to load env config {}: {}", env_path, exc)
                     else:
                         if not isinstance(data, dict):
                             raise ConfigurationError("config root must be a JSON object")
@@ -619,7 +619,7 @@ class Configuration(ForbidExtra):
             ranges = gov_data.pop("param_ranges", None)
             if ranges is not None and isinstance(ranges, dict):
                 for k, v in ranges.items():
-                    if isinstance(v, (list, tuple)) and len(v) == 2:
+                    if isinstance(v, list | tuple) and len(v) == 2:
                         config.governance.param_ranges[k] = [float(v[0]), float(v[1])]
             defaults = gov_data.pop("param_defaults", None)
             if defaults is not None and isinstance(defaults, dict):
@@ -698,7 +698,7 @@ class Configuration(ForbidExtra):
                 continue
             if typ is bool:
                 if val.lower() not in ("1", "true", "yes", "0", "false", "no", "on", "off"):
-                    logger.warning("could not parse %s=%r as bool, leaving default in place", env_var, val)
+                    logger.warning("could not parse {}={!r} as bool, leaving default in place", env_var, val)
                     continue
                 coerced = val.lower() in ("1", "true", "yes", "on")
             else:
@@ -706,7 +706,7 @@ class Configuration(ForbidExtra):
                     coerced = typ(val)
                 except (ValueError, TypeError):
                     logger.warning(
-                        "could not parse %s=%r as %s, leaving default in place",
+                        "could not parse {}={!r} as {}, leaving default in place",
                         env_var,
                         val,
                         typ.__name__,

@@ -92,7 +92,7 @@ class CircuitBreaker:
             if self.__state == CircuitState.OPEN:
                 if time.monotonic() - self.__last_failure_time >= self.__recovery_timeout:
                     self.__state = CircuitState.HALF_OPEN
-                    logger.info("circuit %s half-open (recovery timeout elapsed)", self.__name)
+                    logger.info("circuit {} half-open (recovery timeout elapsed)", self.__name)
             return self.__state
 
     def __on_success(self) -> None:
@@ -101,7 +101,7 @@ class CircuitBreaker:
             self.__failure_count = 0
             self.__state = CircuitState.CLOSED
         if prev != CircuitState.CLOSED:
-            logger.info("circuit %s recovered (%s -> closed)", self.__name, prev.value)
+            logger.info("circuit {} recovered ({} -> closed)", self.__name, prev.value)
 
     def __on_failure(self) -> None:
         tripped = False
@@ -113,9 +113,9 @@ class CircuitBreaker:
                     tripped = True
                 self.__state = CircuitState.OPEN
         count: int = self.__failure_count
-        logger.warning("circuit %s failure %d/%d", self.__name, count, self.__failure_threshold)
+        logger.warning("circuit {} failure {}/{}", self.__name, count, self.__failure_threshold)
         if tripped:
-            logger.warning("circuit %s tripped open (%d failures)", self.__name, self.__failure_threshold)
+            logger.warning("circuit {} tripped open ({} failures)", self.__name, self.__failure_threshold)
 
 
 class RetryPolicy:

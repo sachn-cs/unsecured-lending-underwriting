@@ -173,7 +173,7 @@ class SqsBus(EventBus):
         any_failure = False
         for sid, handler in all_handlers:
             if not self.__circuit_breaker.allow_request(sid):
-                logger.warning("circuit open for subscriber %s, sending %s to DLQ", sid, event.event_type)
+                logger.warning("circuit open for subscriber {}, sending {} to DLQ", sid, event.event_type)
                 self.__dlq.put(event, "circuit_open", sid)
                 continue
             if self.__idempotency.is_duplicate(sid, event.event_id):
@@ -183,7 +183,7 @@ class SqsBus(EventBus):
                 self.__circuit_breaker.record_success(sid)
             except Exception as exc:
                 any_failure = True
-                logger.exception("handler failed for %s", event.event_type)
+                logger.exception("handler failed for {}", event.event_type)
                 self.__dlq.put(event, f"{type(exc).__name__}: {exc}", sid)
                 self.__circuit_breaker.record_failure(sid)
 
@@ -207,13 +207,13 @@ class SqsBus(EventBus):
             specific: list[tuple[str, Callable[[Event], None]]] = self.__handlers.get(event.event_type, [])
         for sid, handler in wildcards + specific:
             if not self.__circuit_breaker.allow_request(sid):
-                logger.warning("circuit open for subscriber %s, sending %s to DLQ", sid, event.event_type)
+                logger.warning("circuit open for subscriber {}, sending {} to DLQ", sid, event.event_type)
                 self.__dlq.put(event, "circuit_open", sid)
                 continue
             try:
                 handler(event)
                 self.__circuit_breaker.record_success(sid)
             except Exception as exc:
-                logger.exception("handler failed for %s", event.event_type)
+                logger.exception("handler failed for {}", event.event_type)
                 self.__dlq.put(event, f"{type(exc).__name__}: {exc}", sid)
                 self.__circuit_breaker.record_failure(sid)

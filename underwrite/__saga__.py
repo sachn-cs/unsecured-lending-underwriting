@@ -166,16 +166,16 @@ class SagaOrchestrator:
             try:
                 raw = self.__store.get(key)
             except Exception:
-                logger.exception("failed to read saga key %s, skipping", key)
+                logger.exception("failed to read saga key {}, skipping", key)
                 continue
             if raw is None or not isinstance(raw, dict):
-                logger.warning("skipping non-dict saga record at %s", key)
+                logger.warning("skipping non-dict saga record at {}", key)
                 continue
             try:
                 saga = Saga.from_dict(raw)
                 saga.validate()
             except Exception:
-                logger.exception("saga at %s failed to deserialize, skipping", key)
+                logger.exception("saga at {} failed to deserialize, skipping", key)
                 continue
             self.__sagas[saga.saga_id] = saga
 
@@ -184,7 +184,7 @@ class SagaOrchestrator:
         try:
             self.__store.set(self.__saga_store_key(saga.saga_id), saga.to_dict())
         except Exception:
-            logger.exception("failed to persist saga %s", saga.saga_id)
+            logger.exception("failed to persist saga {}", saga.saga_id)
 
     def __remove_saga(self, saga_id: str) -> None:
         """Remove saga from the store and in-memory state."""
@@ -194,7 +194,7 @@ class SagaOrchestrator:
         try:
             self.__store.delete(self.__saga_store_key(saga_id))
         except Exception:
-            logger.exception("failed to remove saga %s from store", saga_id)
+            logger.exception("failed to remove saga {} from store", saga_id)
 
     def register_emitter(self, saga_name: str, emitter: Emitter) -> None:
         """Registers an event emitter (NanoService) for a saga type."""
@@ -243,21 +243,21 @@ class SagaOrchestrator:
         saga_lock = self.__get_saga_lock(saga_id)
         with saga_lock:
             if self.__store.get(idem_key) is not None:
-                logger.debug("saga %s step %d already completed (idempotency), skipping", saga_id, step_index)
+                logger.debug("saga {} step {} already completed (idempotency), skipping", saga_id, step_index)
                 return True
             saga = self.__sagas.get(saga_id)
             if not saga or saga.status != "started":
-                logger.warning("saga %s not found or not started (status=%s)", saga_id, saga.status if saga else "N/A")
+                logger.warning("saga {} not found or not started (status={})", saga_id, saga.status if saga else "N/A")
                 return False
             if step_index >= len(saga.steps):
                 logger.warning(
-                    "saga %s step_index %d out of range (total steps %d)", saga_id, step_index, len(saga.steps)
+                    "saga {} step_index {} out of range (total steps {})", saga_id, step_index, len(saga.steps)
                 )
                 return False
             step = saga.steps[step_index]
             emitter = self.__emitters.get(saga.name)
             if not emitter:
-                logger.warning("saga %s no emitter registered for saga type %r", saga_id, saga.name)
+                logger.warning("saga {} no emitter registered for saga type {!r}", saga_id, saga.name)
                 return False
             try:
                 emitter.emit(step.forward_event_type, step.forward_payload)
@@ -269,7 +269,7 @@ class SagaOrchestrator:
                 return True
             except Exception as exc:
                 tb = traceback.format_exc()
-                logger.exception("saga %s step %d (%s) failed", saga_id, step_index, step.name)
+                logger.exception("saga {} step {} ({}) failed", saga_id, step_index, step.name)
                 self.__rollback(saga_id, step_index, f"{exc}\n{tb}")
                 return False
 
@@ -289,7 +289,7 @@ class SagaOrchestrator:
         with saga_lock:
             saga = self.__sagas.get(saga_id)
             if not saga:
-                logger.warning("execute_all: saga %s not found", saga_id)
+                logger.warning("execute_all: saga {} not found", saga_id)
                 return False
             for i in range(len(saga.steps)):
                 if not self.execute_step(saga_id, i):
@@ -303,10 +303,10 @@ class SagaOrchestrator:
         with saga_lock:
             saga = self.__sagas.get(saga_id)
             if not saga:
-                logger.warning("rollback: saga %s not found", saga_id)
+                logger.warning("rollback: saga {} not found", saga_id)
                 return
             if saga.status in ("compensating", "rolled_back"):
-                logger.warning("saga %s already %s, skipping rollback", saga_id, saga.status)
+                logger.warning("saga {} already {}, skipping rollback", saga_id, saga.status)
                 return
             saga.status = "compensating"
             saga.error = error
@@ -314,20 +314,20 @@ class SagaOrchestrator:
             steps_to_rollback = list(saga.completed_steps)
         emitter = self.__emitters.get(saga.name)
         if not emitter:
-            logger.warning("rollback: no emitter for saga %s type %r", saga_id, saga.name)
+            logger.warning("rollback: no emitter for saga {} type {!r}", saga_id, saga.name)
             return
         compensation_errors: list[str] = []
         ctx = {"source": saga.name, "correlation_id": saga_id}
         for idx in reversed(steps_to_rollback):
             step = saga.steps[idx]
             if step.compensate_event_type is None:
-                logger.debug("saga %s step %s has no compensation, skipping", saga_id, step.name)
+                logger.debug("saga {} step {} has no compensation, skipping", saga_id, step.name)
                 continue
             try:
                 self.__emit_with_timeout(step.compensate_event_type, step.compensate_payload, ctx)
             except Exception as exc:
                 compensation_errors.append(f"compensation step {step.name} failed: {exc}")
-                logger.exception("saga %s compensation step %s failed: %s", saga_id, step.name, exc)
+                logger.exception("saga {} compensation step {} failed: {}", saga_id, step.name, exc)
         with saga_lock:
             if saga_id in self.__sagas:
                 s = self.__sagas[saga_id]
@@ -340,7 +340,7 @@ class SagaOrchestrator:
     def __emit_with_timeout(self, event_type: str, payload: dict[str, Any], context: dict[str, Any]) -> None:
         emitter = self.__emitters.get(context.get("source", ""))
         if emitter is None:
-            logger.warning("no emitter for %s, skipping compensation event %s", context.get("source", ""), event_type)
+            logger.warning("no emitter for {}, skipping compensation event {}", context.get("source", ""), event_type)
             return
         # Use a single shared executor for compensation emits so
         # we don't pay the cost of a fresh ThreadPoolExecutor per
@@ -355,7 +355,7 @@ class SagaOrchestrator:
             fut.result(timeout=30.0)
         except concurrent.futures.TimeoutError:
             logger.error(
-                "compensation %s for %s timed out after 30s; cancelling",
+                "compensation {} for {} timed out after 30s; cancelling",
                 event_type,
                 context.get("source", ""),
             )
@@ -363,7 +363,7 @@ class SagaOrchestrator:
             raise
         except Exception:
             logger.exception(
-                "compensation %s for %s failed",
+                "compensation {} for {} failed",
                 event_type,
                 context.get("source", ""),
             )
@@ -405,12 +405,12 @@ class SagaOrchestrator:
         with saga_lock:
             saga = self.__sagas.get(saga_id)
             if not saga:
-                logger.warning("replay_saga: saga %s not found", saga_id)
+                logger.warning("replay_saga: saga {} not found", saga_id)
                 return False
             if saga.status == "completed":
                 return True
             if saga.status == "rolled_back":
-                logger.warning("replay_saga: saga %s is rolled back, cannot replay", saga_id)
+                logger.warning("replay_saga: saga {} is rolled back, cannot replay", saga_id)
                 return False
             # Determine the next step after the last completed one
             completed = set(saga.completed_steps)

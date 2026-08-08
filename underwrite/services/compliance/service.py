@@ -103,9 +103,9 @@ def load_blocklist(path: str) -> set[str]:
             data = json.load(fh)
         if isinstance(data, list):
             return {entry.strip().lower() for entry in data if entry}
-        logger.warning("aml_blocklist must be a JSON list, got %s", type(data))
+        logger.warning("aml_blocklist must be a JSON list, got {}", type(data))
     except (json.JSONDecodeError, OSError) as exc:
-        logger.warning("failed to load AML blocklist %s: %s", path, exc)
+        logger.warning("failed to load AML blocklist {}: {}", path, exc)
     return set()
 
 

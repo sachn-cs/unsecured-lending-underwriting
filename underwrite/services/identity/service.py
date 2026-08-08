@@ -65,7 +65,7 @@ class IdentityService(NanoService):
         with self.__lock:
             existing = self.store.get(f"identity:{service_id}")
             if not existing:
-                logger.warning("identity rotation requested for unknown service %r", service_id)
+                logger.warning("identity rotation requested for unknown service {!r}", service_id)
                 return
             identity = Identity.create(service_id)
             self.store.set(

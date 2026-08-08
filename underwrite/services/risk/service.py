@@ -12,14 +12,8 @@ from typing import Any
 from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
 from underwrite.services import NanoService
+from underwrite.services.risk.model import RiskModel
 from underwrite.validate import get_finite, get_non_empty
-
-try:
-    from underwrite.services.risk.model import RiskModel
-
-    HAS_RISK_MODEL: bool = True
-except ImportError:
-    HAS_RISK_MODEL = False
 
 
 class RiskService(NanoService):
@@ -32,10 +26,9 @@ class RiskService(NanoService):
             **kwargs: Forwarded to NanoService.__init__.
         """
         super().__init__(**kwargs)
-        self.__model: Any | None = None
-        if HAS_RISK_MODEL:
-            model_path: str = os.environ.get("RISK_MODEL_PATH", "")
-            self.__model = RiskModel(model_path) if model_path else RiskModel()
+        self.__model: RiskModel | None = None
+        model_path: str = os.environ.get("RISK_MODEL_PATH", "")
+        self.__model = RiskModel(model_path) if model_path else RiskModel()
 
     def set_model(self, model: Any) -> None:
         """Inject a model instance for testing or runtime override.

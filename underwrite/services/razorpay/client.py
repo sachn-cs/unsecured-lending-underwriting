@@ -11,12 +11,18 @@ from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import urljoin
 
+from underwrite.__logger__ import logger
+
 try:
     import httpx
 
     HAS_HTTPX = True
 except ImportError:
     HAS_HTTPX = False
+    logger.warning(
+        "httpx not installed; HttpRazorpayClient will raise RuntimeError on use. "
+        "Install the 'serve' or 'razorpay' extra to enable production Razorpay calls."
+    )
 
 
 class RazorpayError(Exception):

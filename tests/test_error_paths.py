@@ -60,13 +60,13 @@ class TestSafeStoreSet:
 class TestRiskModelPredictFallback:
     def test_falls_back_on_strategy_exception(self) -> None:
         model = RiskModel()
-        object.__setattr__(model, "_RiskModel__strategy", RaisingStrategy())
+        model.strategy = RaisingStrategy()
         score = model.predict(10000.0, 12.0)
         assert 0.0 <= score <= 1.0
 
     def test_falls_back_for_extreme_input(self) -> None:
         model = RiskModel()
-        object.__setattr__(model, "_RiskModel__strategy", RaisingStrategy())
+        model.strategy = RaisingStrategy()
         score = model.predict(float("nan"), 12.0)
         assert isinstance(score, float)
         assert 0.0 <= score <= 1.0

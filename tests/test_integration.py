@@ -98,8 +98,8 @@ class TestRuntimeIntegration:
         )
         audit = cast(Any, rt.get("audit"))
         assert audit is not None
-        assert len(audit._ledger) >= 1
-        assert audit._ledger[0]["event_type"] == EventType.LOAN_ORIGINATED
+        assert len(audit.ledger) >= 1
+        assert audit.ledger[0]["event_type"] == EventType.LOAN_ORIGINATED
 
     def test_mechanism_rejects_with_bus(self) -> None:
         cfg = Configuration.default()
@@ -173,7 +173,7 @@ class TestRuntimeIntegration:
 
         audit = rt.get("audit")
         assert audit is not None
-        assert len(audit._ledger) >= 3  # type: ignore[attr-defined]
+        assert len(audit.ledger) >= 3  # type: ignore[attr-defined]
         rt.stop()
 
 

@@ -43,7 +43,7 @@ class TestPublishFlow:
         assert audit is not None
         records = [
             e
-            for e in audit._ledger  # type: ignore[attr-defined]
+            for e in audit.ledger
             if e["event_type"] == EventType.LOAN_ORIGINATED
         ]
         assert len(records) == 1
@@ -82,7 +82,7 @@ class TestPublishFlow:
         )
         audit = cast(Any, rt.get("audit"))
         assert audit is not None
-        seed_events = [e for e in audit._ledger if e["event_type"] == EventType.SEED_ADDED]
+        seed_events = [e for e in audit.ledger if e["event_type"] == EventType.SEED_ADDED]
         assert len(seed_events) >= 1
         state = rt.store.get("protocol:state")
         assert state is not None
@@ -270,7 +270,7 @@ class TestMultipleServiceCoordination:
         )
         audit = rt.get("audit")
         assert audit is not None
-        assert len(audit._ledger) >= 1  # type: ignore[attr-defined]
+        assert len(audit.ledger) >= 1  # type: ignore[attr-defined]
         rt.stop()
         mech_svc = rt.get("mechanism")
         assert mech_svc is not None

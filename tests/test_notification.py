@@ -94,7 +94,7 @@ class TestNotificationService:
         svc = notify()
         event = Event(event_type=EventType.FRAUD_ALERT, source="test", payload={"borrower": "alice"})
         with patch.object(
-            svc._executor,
+            svc.executor,
             "submit",
         ) as mock_submit:
             svc.handle(event)
@@ -104,7 +104,7 @@ class TestNotificationService:
         svc = notify()
         event = Event(event_type=EventType.FRAUD_ALERT, source="test", payload={"user": "bob"})
         with patch.object(
-            svc._executor,
+            svc.executor,
             "submit",
         ) as mock_submit:
             svc.handle(event)
@@ -114,7 +114,7 @@ class TestNotificationService:
         svc = notify()
         event = Event(event_type=EventType.WASH_FLAG, source="test", payload={"borrower": "carol", "cycles": 5})
         with patch.object(
-            svc._executor,
+            svc.executor,
             "submit",
         ) as mock_submit:
             svc.handle(event)
@@ -127,15 +127,15 @@ class TestNotificationService:
         svc = notify(bus=bus)
         bus.start()
         dispatched: list[bool] = []
-        assert svc._executor is not None
-        original_submit = svc._executor.submit
+        assert svc.executor is not None
+        original_submit = svc.executor.submit
 
         def delayed_submit(fn, *args, **kwargs):
             result = original_submit(fn, *args, **kwargs)
             dispatched.append(True)
             return result
 
-        svc._executor.submit = delayed_submit  # type: ignore[assignment]
+        svc.executor.submit = delayed_submit  # type: ignore[assignment]
         svc.handle(Event(event_type=EventType.DLG_TRIGGERED, source="test", payload={"loan_id": "L1", "amount": 5000}))
         assert len(received) == 1
         import time
@@ -145,10 +145,10 @@ class TestNotificationService:
 
     def test_stop_shuts_down_executor(self) -> None:
         svc = notify()
-        executor = svc._executor
+        executor = svc.executor
         assert executor is not None
         svc.stop()
-        assert svc._executor is None
+        assert svc.executor is None
 
     def test_handle_passes_payload_to_notification_sent(self) -> None:
         bus = LocalBus()

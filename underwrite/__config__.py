@@ -49,6 +49,7 @@ from typing import Annotated, Any, TypeVar
 
 from pydantic import BaseModel, Field, field_validator
 
+from underwrite.__constants__ import SECONDS_PER_DAY, SECONDS_PER_HOUR
 from underwrite.__exceptions__ import ConfigurationError
 from underwrite.__logger__ import logger
 from underwrite.services.kyc_providers.factory import KycProviderConfig
@@ -149,8 +150,8 @@ class IdentityConfig(ForbidExtra):
     private_key: str = ""
     public_key: str = ""
     encryption_passphrase: str = ""
-    key_ttl: float = Field(default=86400.0, ge=0)
-    key_grace: float = Field(default=3600.0, ge=0)
+    key_ttl: float = Field(default=float(SECONDS_PER_DAY), ge=0)
+    key_grace: float = Field(default=float(SECONDS_PER_HOUR), ge=0)
 
 
 class AuthzConfig(ForbidExtra):

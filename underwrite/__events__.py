@@ -14,9 +14,10 @@ from dataclasses import dataclass, field, fields
 from datetime import datetime, timezone
 from typing import Any
 
+from underwrite.__constants__ import MAX_PAYLOAD_KEYS
 from underwrite.__logger__ import logger
 
-MAX_PAYLOAD_SIZE: int = 1_000_000  # 1 MB max event payload
+MAX_PAYLOAD_SIZE: int = 1_000_000
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,10 +45,12 @@ class Event:
 
     def __post_init__(self) -> None:
         payload_size: int = 0
-        if len(self.payload) > 1000:
+        if len(self.payload) > MAX_PAYLOAD_KEYS:
             from underwrite.__exceptions__ import ProtocolError
 
-            raise ProtocolError(f"event payload has too many keys ({len(self.payload)} > 1000)")
+            raise ProtocolError(
+                f"event payload has too many keys ({len(self.payload)} > {MAX_PAYLOAD_KEYS})"
+            )
         try:
             import json as json_mod
 

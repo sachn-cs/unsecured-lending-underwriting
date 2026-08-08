@@ -11,6 +11,7 @@ from __future__ import annotations
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
+from underwrite.__constants__ import DAYS_PER_YEAR
 from underwrite.__events__ import Event, EventType
 from underwrite.__exceptions__ import ProtocolError
 from underwrite.services import NanoService
@@ -25,6 +26,16 @@ MICRO_LOAN_CAP: float = 0.30
 DEFAULT_LOAN_CAP: float = 0.30
 PENAL_INTEREST_CAP: float = 0.24
 MIN_PRINCIPAL_FOR_CAP: float = 50000.0
+DEFAULT_PROBABILITY_FALLBACK: float = 0.02
+GST_RATE: float = 0.18
+MICRO_LOAN_PRINCIPAL_THRESHOLD: float = 10_000.0
+MICRO_LOAN_PROCESSING_FEE_CAP: float = 5_000.0
+MICRO_LOAN_PROCESSING_FEE_RATE: float = 0.0025
+HIGH_RISK_ORIGINATION_FEE_RATE: float = 0.05
+LOW_RISK_ORIGINATION_FEE_RATE: float = 0.04
+APPR_TOLERANCE: float = 1e-10
+RATE_QUANTUM: Decimal = Decimal("0.01")
+MAX_NEWTON_ITERATIONS: int = 100
 
 
 def compute_rate_cap(principal: float, loan_type: str = "personal") -> float:
@@ -86,7 +97,7 @@ class PricingService(NanoService):
         p = event.payload
         borrower: str = get_non_empty(p, "borrower", "")
         principal: float = get_finite(p, "principal", 0.0)
-        dp: float = get_finite(p, "default_probability", 0.02)
+        dp: float = get_finite(p, "default_probability", DEFAULT_PROBABILITY_FALLBACK)
         tenure_months: int = int(get_finite(p, "tenure_months", 12))
         loan_type: str = p.get("loan_type", "personal")
         credit_score: int = int(get_finite(p, "credit_score", 0))
@@ -104,7 +115,7 @@ class PricingService(NanoService):
         origination_fee_pct = self.origination_fee_pct(principal, loan_type)
         origination_fee: float = principal * origination_fee_pct
         processing_fee: float = self.processing_fee(principal)
-        gst_on_fees: float = round((origination_fee + processing_fee) * 0.18, 2)
+        gst_on_fees: float = round((origination_fee + processing_fee) * GST_RATE, 2)
         total_upfront_fees: float = origination_fee + processing_fee + gst_on_fees
 
         monthly_rate = interest_rate / 12.0
@@ -154,7 +165,7 @@ class PricingService(NanoService):
         overdue_amount: float = get_finite(p, "overdue_amount", 0.0)
         overdue_days: int = int(get_finite(p, "overdue_days", 0))
 
-        daily_penal_rate = self.__penal_interest_cap / 365.0
+        daily_penal_rate = self.__penal_interest_cap / float(DAYS_PER_YEAR)
         penal_amount = overdue_amount * daily_penal_rate * overdue_days
 
         self.emit(
@@ -211,7 +222,11 @@ class PricingService(NanoService):
         elif loan_type == "gold":
             return 0.008
         elif loan_type == "micro":
-            return 0.02 if principal < 10000 else 0.015
+            return (
+                0.02
+                if principal < MICRO_LOAN_PRINCIPAL_THRESHOLD
+                else 0.015
+            )
         return 0.01
 
     def processing_fee(self, principal: float) -> float:
@@ -223,9 +238,9 @@ class PricingService(NanoService):
         Returns:
             Processing fee amount.
         """
-        if principal <= 10000:
+        if principal <= MICRO_LOAN_PRINCIPAL_THRESHOLD:
             return 0.0
-        return min(principal * 0.0025, 5000.0)
+        return min(principal * MICRO_LOAN_PROCESSING_FEE_RATE, MICRO_LOAN_PROCESSING_FEE_CAP)
 
     def foreclosure_charge_pct(self, loan_type: str) -> float:
         """Return the foreclosure charge percentage based on loan type.
@@ -239,8 +254,8 @@ class PricingService(NanoService):
         if loan_type == "home":
             return 0.0
         elif loan_type in ("personal", "micro"):
-            return 0.05
-        return 0.04
+            return HIGH_RISK_ORIGINATION_FEE_RATE
+        return LOW_RISK_ORIGINATION_FEE_RATE
 
     @staticmethod
     def compute_emi(principal: float, monthly_rate: float, tenure_months: int) -> Decimal:
@@ -261,7 +276,7 @@ class PricingService(NanoService):
         if r <= 0 or n <= 0:
             return p / max(n, Decimal("1"))
         factor = (Decimal("1") + r) ** n
-        return (p * r * factor / (factor - Decimal("1"))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        return (p * r * factor / (factor - Decimal("1"))).quantize(RATE_QUANTUM, rounding=ROUND_HALF_UP)
 
     @staticmethod
     def validate_interest_rate(rate: float, loan_type: str = "personal") -> float:
@@ -316,7 +331,7 @@ class PricingService(NanoService):
 
         # Newton-Raphson for APR
         apr_guess = interest_rate
-        for _ in range(100):
+        for _ in range(MAX_NEWTON_ITERATIONS):
             monthly_apr = apr_guess / 12.0
             pv = 0.0
             dpv = 0.0
@@ -325,7 +340,7 @@ class PricingService(NanoService):
                 pv += emi / factor
                 dpv -= t * emi / (factor * (1 + monthly_apr))
             diff = pv - net_disbursed
-            if abs(diff) < 1e-10:
+            if abs(diff) < APPR_TOLERANCE:
                 break
             apr_guess -= diff / dpv
         return max(0.0, apr_guess)

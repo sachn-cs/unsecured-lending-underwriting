@@ -26,6 +26,8 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
+from underwrite.__correlation__ import get_log_correlation_id
+
 if TYPE_CHECKING:
     from loguru import Record
 
@@ -118,8 +120,6 @@ def parse_serialised_message(message: str) -> object | None:
 
 def correlation_id() -> str:
     """Returns the current thread's correlation id, or an empty string."""
-    from underwrite.services.base import get_log_correlation_id
-
     return get_log_correlation_id()
 
 

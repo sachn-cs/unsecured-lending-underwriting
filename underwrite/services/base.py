@@ -29,6 +29,12 @@ if TYPE_CHECKING:
 
 from underwrite.__authz__ import AccessControl, AuthzError
 from underwrite.__bus__ import EventBus, LocalBus
+from underwrite.__correlation__ import (
+    correlation_context,
+)
+from underwrite.__correlation__ import (
+    get_log_correlation_id as get_log_correlation_id,
+)
 from underwrite.__events__ import Event
 from underwrite.__health__ import HealthRegistry
 from underwrite.__identity__ import Identity
@@ -39,18 +45,6 @@ from underwrite.__store__ import MemoryStore, Store
 from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
 from underwrite.validate import PayloadValidator
-
-log_context = threading.local()
-
-
-def get_log_correlation_id() -> str:
-    """Return the correlation_id for the current thread, or empty string.
-
-    Returns:
-        The correlation ID string from thread-local storage, or '' if
-        not set.
-    """
-    return getattr(log_context, "correlation_id", "")
 
 
 class NanoService(ABC):
@@ -351,12 +345,12 @@ class NanoService(ABC):
         )
         with context:
             try:
-                old_cid = getattr(log_context, "correlation_id", None)
-                log_context.correlation_id = event.correlation_id or ""
+                old_cid = correlation_context.get()
+                correlation_context.set(event.correlation_id or "")
                 try:
                     self.handle(event)
                 finally:
-                    log_context.correlation_id = old_cid
+                    correlation_context.set(old_cid)
                 with self.__counter_lock:
                     self.__events_handled += 1
                     self.__last_event_time = start

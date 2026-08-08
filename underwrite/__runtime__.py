@@ -39,6 +39,7 @@ from underwrite.__store__ import FileStore, MemoryStore, Store
 from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
 from underwrite.services import NanoService
+from underwrite.services.kyc_providers.base import KycProvider
 
 _VALID_SOURCE_RE = re.compile(r"^[a-z][a-z0-9_.-]+$")
 
@@ -98,7 +99,7 @@ class Runtime:
         self.__runtime_identity = None
         self.__secrets = self.__build_secrets()
         self.__runtime_identity = Identity.create("runtime", secrets_manager=self.__secrets)
-        self.__kyc_providers: dict[str, Any] = self.__build_kyc_providers()
+        self.__kyc_providers: dict[str, KycProvider] = self.__build_kyc_providers()
         self.__tracer: Tracer | None = self.__build_tracer()
         self.__bus = self.__build_bus()
         self.__saga = SagaOrchestrator(store=self.__store) if self.__config.saga.enabled else None
@@ -135,7 +136,7 @@ class Runtime:
             backoff_seconds=cfg.backoff_seconds,
         )
 
-    def __build_kyc_providers(self) -> dict[str, Any]:
+    def __build_kyc_providers(self) -> dict[str, KycProvider]:
         """Resolve the configured KYC provider clients.
 
         Returns a dict mapping the provider name (``pan`` /
@@ -153,14 +154,12 @@ class Runtime:
     def __build_tracer(self) -> Tracer | None:
         if not self.__config.tracing.enabled:
             return None
-        exporter: Any = None
-        if self.__config.tracing.exporter == "console":
-            from underwrite.__tracer__ import ConsoleSpanExporter
+        from underwrite.__tracer__ import ConsoleSpanExporter, OtlpSpanExporter, SpanExporter
 
+        exporter: SpanExporter | None = None
+        if self.__config.tracing.exporter == "console":
             exporter = ConsoleSpanExporter()
         elif self.__config.tracing.exporter == "otlp":
-            from underwrite.__tracer__ import OtlpSpanExporter
-
             exporter = OtlpSpanExporter(service_name="underwrite")
         return Tracer(service_id="runtime", exporter=exporter)
 

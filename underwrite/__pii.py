@@ -67,12 +67,12 @@ PII_VALUE_PATTERNS: list[str] = [
 
 PII_REDACTED: str = "***REDACTED***"
 
-_FIELD_TOKEN_RE = re.compile(r"[a-z0-9]+")
+PII_FIELD_TOKEN_RE = re.compile(r"[a-z0-9]+")
 
 
-def _field_tokens(key: str) -> set[str]:
+def field_tokens(key: str) -> set[str]:
     """Splits a field name into lowercase alphanumeric tokens."""
-    return set(_FIELD_TOKEN_RE.findall(key.lower()))
+    return set(PII_FIELD_TOKEN_RE.findall(key.lower()))
 
 
 class PIISanitizer:
@@ -93,7 +93,7 @@ class PIISanitizer:
         that over-matched innocent field names like ``company`` for
         the ``pan`` pattern.
         """
-        tokens = _field_tokens(key)
+        tokens = field_tokens(key)
         if not tokens:
             return False
         for pattern in PII_FIELD_PATTERNS:

@@ -15,7 +15,7 @@ from datetime import date, timedelta
 from underwrite.__logger__ import logger
 
 
-def _fixed_holidays(start_year: int = 2025, end_year: int = 2027) -> set[tuple[int, int, int]]:
+def fixed_holidays(start_year: int = 2025, end_year: int = 2027) -> set[tuple[int, int, int]]:
     """Return set of (year, month, day) tuples for fixed-date holidays."""
     holidays: set[tuple[int, int, int]] = set()
     fixed = [
@@ -32,7 +32,7 @@ def _fixed_holidays(start_year: int = 2025, end_year: int = 2027) -> set[tuple[i
     return holidays
 
 
-def _moveable_holidays(start_year: int = 2025, end_year: int = 2030) -> set[tuple[int, int, int]]:
+def moveable_holidays(start_year: int = 2025, end_year: int = 2030) -> set[tuple[int, int, int]]:
     """Return set of (year, month, day) for moveable holidays.
 
     These are approximate dates and should be updated annually based
@@ -165,16 +165,16 @@ def _moveable_holidays(start_year: int = 2025, end_year: int = 2030) -> set[tupl
     return holidays
 
 
-_holiday_cache: dict[int, set[date]] = {}
-_holiday_generated: set[int] = set()
+HOLIDAY_CACHE: dict[int, set[date]] = {}
+HOLIDAY_GENERATED: set[int] = set()
 
 
-def _ensure_holidays(year: int) -> None:
-    if year in _holiday_generated:
+def __ensure_holidays(year: int) -> None:
+    if year in HOLIDAY_GENERATED:
         return
     holidays: set[date] = set()
-    fixed = _fixed_holidays(year, year)
-    moveable = _moveable_holidays(year, year)
+    fixed = fixed_holidays(year, year)
+    moveable = moveable_holidays(year, year)
     for y, m, d in fixed | moveable:
         try:
             holidays.add(date(y, m, d))
@@ -188,8 +188,8 @@ def _ensure_holidays(year: int) -> None:
                 sundays_and_sats.add(dt)
             if dt.weekday() == 5 and (is_second_saturday(dt) or is_fourth_saturday(dt)):
                 sundays_and_sats.add(dt)
-    _holiday_cache[year] = holidays | sundays_and_sats
-    _holiday_generated.add(year)
+    HOLIDAY_CACHE[year] = holidays | sundays_and_sats
+    HOLIDAY_GENERATED.add(year)
 
 
 def is_holiday(dt: date) -> bool:
@@ -201,8 +201,8 @@ def is_holiday(dt: date) -> bool:
     Returns:
         True if the date is a holiday.
     """
-    _ensure_holidays(dt.year)
-    return dt in _holiday_cache.get(dt.year, set())
+    __ensure_holidays(dt.year)
+    return dt in HOLIDAY_CACHE.get(dt.year, set())
 
 
 def is_business_day(dt: date) -> bool:

@@ -265,8 +265,8 @@ class Runtime:
                         len(snap.get("timers", {})),
                         len(snap.get("gauges", {})),
                     )
-                except Exception:
-                    logger.exception("metrics export failed")
+                except (OSError, ValueError, TypeError) as exc:
+                    logger.exception("metrics export failed: {}", exc)
 
         self.__metrics_thread = threading.Thread(target=export_loop, daemon=True, name="metrics-export")
         self.__metrics_thread.start()
@@ -520,7 +520,7 @@ class Runtime:
                 try:
                     old = self.__services.pop(service_id)
                     old.stop()
-                except Exception:
+                except (OSError, RuntimeError, ValueError):
                     logger.exception("error stopping service {} during restart", service_id)
                     continue
             try:
@@ -531,7 +531,7 @@ class Runtime:
                 self.__supervisor.reset(service_id)
                 restarted.append(service_id)
                 logger.info("service {} restarted successfully", service_id)
-            except Exception:
+            except (OSError, RuntimeError, ValueError, KeyError):
                 logger.exception("failed to restart service {}", service_id)
         return restarted
 

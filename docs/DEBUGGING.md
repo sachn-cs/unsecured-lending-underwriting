@@ -10,9 +10,9 @@ export UNDERWRITE_LOG_FORMAT=json      # structured JSON (default: text)
 export UNDERWRITE_LOG_OUTPUT=stdout    # or stderr
 ```
 
-When `log_format` is `"json"`, each log line is a JSON object with `timestamp`, `level`, `logger`, `message`, `module`, `line`, and optional `correlation_id` / `trace_id`. Sensitive fields (`password`, `secret`, `token`, `ssn`, `pan`, etc.) are automatically redacted to `***REDACTED***`.
+When `log_format` is `"json"`, each log line is a JSON object with `timestamp`, `level`, `logger`, `message`, `module`, `line`, and optional `correlation_id`, `trace_id`, and `exception` fields. Sensitive fields (`password`, `secret`, `token`, `ssn`, `pan`, etc.) are automatically redacted to `***REDACTED***`.
 
-The logging system uses a `CorrelationFilter` that attaches the current thread's correlation ID to every log record. Set log level to `DEBUG` for detailed event dispatch tracing.
+Logging runs through loguru; all code imports `logger` from `underwrite.__logger__`, and the formatters read the current thread's correlation ID from the shared context in `underwrite/__correlation__.py`. Set log level to `DEBUG` for detailed event dispatch tracing.
 
 ---
 

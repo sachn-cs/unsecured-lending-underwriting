@@ -78,7 +78,7 @@ EventBus.publish(event)
   │       │    └─ YES → log + return
   │       └─ __handle_event(event)
   │             ├─ Tracer: start span "handle.{event_type}"
-  │             ├─ log_context.correlation_id = event.correlation_id
+  │             ├─ correlation_context: set correlation_id
   │             ├─ handle(event)         ← domain logic (subclass)
   │             ├─ Supervisor: record_success(service_id)
   │             ├─ Metrics: timer + increment
@@ -403,7 +403,7 @@ sequenceDiagram
         Sub->>Tracer: span context manager
         Tracer->>Tracer: start_span(trace_id, parent_span_id)
 
-        Sub->>Sub: set log_context.correlation_id
+        Sub->>Sub: set correlation_context.correlation_id
         Sub->>Handler: handle(event)
         Handler->>Handler: domain logic
         alt success

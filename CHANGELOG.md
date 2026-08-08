@@ -51,6 +51,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - 50+ regression tests covering each of the above.
 
 ### Changed
+- **Logging** — migrated from stdlib `logging` to loguru. All call sites
+  now use `{}`-style formatting; JSON and text formatting live in
+  `underwrite/__logger__.py`. The text formatter reports a fixed platform
+  identity, and the JSON formatter emits a `trace_id` when one is bound
+  via `logger.bind(trace_id=...)`.
 - **Compliance service** — from basic PAN/Aadhaar regex to PAN category detection, Aadhaar Verhoeff checksum, weighted keyword AML risk scoring (low/flagged/frozen), CKYC event emission, video KYC lifecycle hooks, consent pre-check
 - **Pricing service** — from generic rate computation to RBI-compliant: per-product rate caps (home 12%, gold 18%, personal 28%, micro 30%), all-in-cost APR, penal interest cap (24%), foreclosure charge computation, EMI amortization, DTI calculation, GST disclosure
 - **Recovery service** — from in-memory-only (state lost on restart) to store-backed persistence via TypedStoreRepository with duplicate default detection
@@ -441,6 +446,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Circuit breaker open/half-open/close state transitions
 
 ### Removed
+- stdlib `logging` integration — the `CorrelationFilter` and
+  `log_context` thread-local moved to `underwrite/__correlation__.py`
+  (a shared, stdlib-only module) with a `contextvars.ContextVar`
+  backing, breaking the import cycle between logging and the service
+  layer.
 - `underwrite/version.py` (manual) — replaced by setuptools-scm auto-generated `__version__.py`
 - `docs/api-reference.md`, `docs/getting-started.md`, `docs/index.md` — consolidated into docs/
 - `TODO.md` — replaced by `docs/ROADMAP.md` and GitHub Issues

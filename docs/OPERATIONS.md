@@ -342,7 +342,7 @@ export UNDERWRITE_LOG_LEVEL=DEBUG
 export UNDERWRITE_LOG_FORMAT=json
 ```
 
-JSON format includes `timestamp`, `level`, `logger`, `message`, `module`, `line`, `correlation_id`, `trace_id`. Sensitive fields (SSN, PAN, tokens, passwords) are automatically redacted.
+JSON format includes `timestamp`, `level`, `logger`, `message`, `module`, `line`, and optional `correlation_id`, `trace_id`, and `exception`. Sensitive fields (SSN, PAN, tokens, passwords) are automatically redacted.
 
 ### Tracing
 

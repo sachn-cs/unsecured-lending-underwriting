@@ -10,8 +10,8 @@ health checks.  Every nano service inherits observability from
 
 **Module:** `underwrite/__logger__.py`
 
-A single module-level `logger = logging.getLogger("underwrite")` is used
-throughout.  Configuration is managed by `Runtime.__configure_logging()`
+A single module-level `logger` imported from `underwrite.__logger__` is
+used throughout.  Configuration is managed by `Runtime.__configure_logging()`
 in `underwrite/__runtime__.py`.
 
 ### Levels
@@ -25,9 +25,13 @@ var (default: `INFO`).
   ```json
   {"timestamp": "...", "level": "INFO", "logger": "underwrite",
    "message": "...", "module": "foo", "line": 42,
-   "correlation_id": "uuid", "trace_id": "uuid"}
+   "correlation_id": "uuid", "trace_id": "uuid",
+   "exception": "Traceback ..."}
   ```
-  The `JsonFormatter` recursively redacts sensitive keys
+  `correlation_id` is present when a correlation id is set on the
+  current thread; `trace_id` is present when bound via
+  `logger.bind(trace_id=...)`; `exception` is present when the record
+  carries a traceback.  The `JsonFormatter` recursively redacts sensitive keys
   (`password`, `secret`, `token`, `ssn`, `pan`, `account`, `pin`,
   `cvv`, etc.) using **token-based** matching: each key is split on
   non-alphanumeric boundaries and each token is tested for set
@@ -42,11 +46,11 @@ var (default: `INFO`).
 
 ### Correlation ID
 
-Attached per-thread via `log_context` in `underwrite/services/base.py`.
-A `CorrelationFilter` automatically injects `correlation_id` into every
-log record.  `NanoService.__handle_event()` sets
-`log_context.correlation_id = event.correlation_id` before calling
-`handle()`.
+Attached per-thread via `correlation_context` in
+`underwrite/__correlation__.py`.  The formatters read it through
+`correlation_id()` in `underwrite/__logger__.py`.  `NanoService.__handle_event()`
+sets the correlation id from `event.correlation_id` before calling
+`handle()` and restores the previous value afterwards.
 
 ### Configuration
 
@@ -246,8 +250,7 @@ flowchart LR
     end
 
     subgraph Logging
-        LC[log_context]
-        CF[CorrelationFilter]
+        LC[correlation_context]
         JF[JsonFormatter<br/>PII redaction]
     end
 
@@ -278,7 +281,7 @@ flowchart LR
     E --> MC
     E --> TR
 
-    LC --> CF --> JF --> stdout
+    LC --> JF --> stdout
     TR --> CS --> Logging
     TR --> OT --> OTLP
 

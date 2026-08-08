@@ -14,6 +14,7 @@ __all__ = [
     "Runtime",
 ]
 
+import dataclasses
 import importlib
 import re
 import sys
@@ -634,7 +635,7 @@ class Runtime:
             correlation_id=correlation_id or "",
         )
         signed = identity.sign(event.canonical_sign_bytes().decode("utf-8"))
-        object.__setattr__(event, "signature", signed)
+        event = dataclasses.replace(event, signature=signed)
         if self.__authz is not None:
             self.__authz.trust(identity.service_id, identity.public_key)
         return self.__bus.publish(event)
@@ -666,7 +667,7 @@ class Runtime:
             correlation_id=correlation_id or "",
         )
         signed = identity.sign(event.canonical_sign_bytes().decode("utf-8"))
-        object.__setattr__(event, "signature", signed)
+        event = dataclasses.replace(event, signature=signed)
         if self.__authz is not None:
             self.__authz.trust(identity.service_id, identity.public_key)
         return event

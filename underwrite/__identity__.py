@@ -44,10 +44,10 @@ class Identity:
 
     service_id: str
     public_key: str
-    __private_key: str = ""
+    private_key: str = ""
     encrypted: bool = False
     created_at: float = 0.0
-    __sign_lock: threading.Lock = threading.Lock()
+    sign_lock: threading.Lock = threading.Lock()
 
     @classmethod
     def create(
@@ -84,64 +84,35 @@ class Identity:
             )
             if not isinstance(private, ed25519.Ed25519PrivateKey):
                 raise IdentityError("key must be Ed25519")
-            public = private.public_key()
-            identity = cls(
-                service_id=service_id,
-                public_key=base64.b64encode(
-                    public.public_bytes(
-                        encoding=serialization.Encoding.Raw,
-                        format=serialization.PublicFormat.Raw,
-                    )
-                ).decode(),
-                encrypted=encryption_passphrase is not None,
-                created_at=now,
-            )
-            pass_bytes = encryption_passphrase.encode() if encryption_passphrase else None
-            alg = serialization.BestAvailableEncryption(pass_bytes) if pass_bytes else serialization.NoEncryption()
-            enc = serialization.Encoding.DER if pass_bytes else serialization.Encoding.Raw
-            fmt = serialization.PrivateFormat.PKCS8 if pass_bytes else serialization.PrivateFormat.Raw
-            object.__setattr__(identity, "_Identity__sign_lock", threading.Lock())
-            object.__setattr__(
-                identity,
-                "_Identity__private_key",
-                base64.b64encode(
-                    private.private_bytes(
-                        encoding=enc,
-                        format=fmt,
-                        encryption_algorithm=alg,
-                    )
-                ).decode(),
-            )
-            return identity
-        private = ed25519.Ed25519PrivateKey.generate()
+        else:
+            private = ed25519.Ed25519PrivateKey.generate()
         public = private.public_key()
-        identity = cls(
-            service_id=service_id,
-            public_key=base64.b64encode(
-                public.public_bytes(
-                    encoding=serialization.Encoding.Raw,
-                    format=serialization.PublicFormat.Raw,
-                )
-            ).decode(),
-            encrypted=encryption_passphrase is not None,
-            created_at=now,
-        )
         pass_bytes = encryption_passphrase.encode() if encryption_passphrase else None
         alg = serialization.BestAvailableEncryption(pass_bytes) if pass_bytes else serialization.NoEncryption()
         enc = serialization.Encoding.DER if pass_bytes else serialization.Encoding.Raw
         fmt = serialization.PrivateFormat.PKCS8 if pass_bytes else serialization.PrivateFormat.Raw
-        object.__setattr__(
-            identity,
-            "_Identity__private_key",
-            base64.b64encode(
-                private.private_bytes(
-                    encoding=enc,
-                    format=fmt,
-                    encryption_algorithm=alg,
-                )
-            ).decode(),
+        encoded_private: str = base64.b64encode(
+            private.private_bytes(
+                encoding=enc,
+                format=fmt,
+                encryption_algorithm=alg,
+            )
+        ).decode()
+        encoded_public: str = base64.b64encode(
+            public.public_bytes(
+                encoding=serialization.Encoding.Raw,
+                format=serialization.PublicFormat.Raw,
+            )
+        ).decode()
+        identity = cls(
+            service_id=service_id,
+            public_key=encoded_public,
+            private_key=encoded_private,
+            encrypted=encryption_passphrase is not None,
+            created_at=now,
+            sign_lock=threading.Lock(),
         )
-        if secrets_manager is not None:
+        if secrets_manager is not None and not private_key_pem:
             identity.persist(secrets_manager)
         return identity
 
@@ -151,9 +122,9 @@ class Identity:
         The result is suitable for storage in a secrets backend and for
         re-loading via ``Identity.create(private_key_pem=...)``.
         """
-        with self.__sign_lock:
-            pk = self.__private_key
-        if pk is None:
+        with self.sign_lock:
+            pk = self.private_key
+        if not pk:
             raise IdentityError("private key not loaded")
         raw = base64.b64decode(pk)
         if self.encrypted:
@@ -176,9 +147,9 @@ class Identity:
         """
         if secrets_manager is None:
             return
-        with self.__sign_lock:
-            pk = self.__private_key
-        if pk is None:
+        with self.sign_lock:
+            pk = self.private_key
+        if not pk:
             raise IdentityError("private key not loaded")
         secrets_manager.store_private_key(self.service_id, self.to_pem())
 
@@ -189,9 +160,9 @@ class Identity:
             payload: The string to sign.
             passphrase: Required if the private key was stored encrypted.
         """
-        with self.__sign_lock:
-            pk = self.__private_key
-        if pk is None:
+        with self.sign_lock:
+            pk = self.private_key
+        if not pk:
             raise IdentityError("private key not loaded")
         raw = base64.b64decode(pk)
         if self.encrypted:

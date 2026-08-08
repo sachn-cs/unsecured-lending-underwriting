@@ -37,33 +37,35 @@ class MetricsExporter:
     ) -> None:
         if interval_seconds <= 0:
             raise ValueError("interval_seconds must be > 0")
-        self._metrics = metrics
-        self._interval_seconds = interval_seconds
-        self._on_snapshot = on_snapshot
-        self._stop_event: threading.Event = threading.Event()
-        self._thread: threading.Thread | None = None
+        self.__metrics: MetricsCollector = metrics
+        self.__interval_seconds: float = interval_seconds
+        self.__on_snapshot: Callable[[dict], None] | None = on_snapshot
+        self.__stop_event: threading.Event = threading.Event()
+        self.__thread: threading.Thread | None = None
 
     def start(self) -> None:
-        if self._thread is not None:
+        if self.__thread is not None:
             return
-        self._stop_event = threading.Event()
-        self._thread = threading.Thread(target=self._loop, daemon=True, name="metrics-exporter")
-        self._thread.start()
+        self.__stop_event = threading.Event()
+        self.__thread = threading.Thread(
+            target=self.__run, daemon=True, name="metrics-exporter"
+        )
+        self.__thread.start()
 
-    def _loop(self) -> None:
-        while not self._stop_event.is_set():
-            self._stop_event.wait(self._interval_seconds)
-            if self._stop_event.is_set():
+    def __run(self) -> None:
+        while not self.__stop_event.is_set():
+            self.__stop_event.wait(self.__interval_seconds)
+            if self.__stop_event.is_set():
                 break
             try:
-                snap = self._metrics.snapshot()
-                if self._on_snapshot is not None:
-                    self._on_snapshot(snap)
+                snap = self.__metrics.snapshot()
+                if self.__on_snapshot is not None:
+                    self.__on_snapshot(snap)
             except (OSError, ValueError, TypeError) as exc:
                 logger.exception("metrics snapshot failed: {}", exc)
 
     def stop(self, timeout: float = 5.0) -> None:
-        self._stop_event.set()
-        if self._thread is not None:
-            self._thread.join(timeout=timeout)
-            self._thread = None
+        self.__stop_event.set()
+        if self.__thread is not None:
+            self.__thread.join(timeout=timeout)
+            self.__thread = None

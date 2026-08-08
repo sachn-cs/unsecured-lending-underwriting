@@ -261,26 +261,28 @@ class Runtime:
         self.__metrics_exporter.start()
 
     def __register_subsystem_health(self) -> None:
-        def _bus_health() -> dict:
+        bus = self.__bus
+
+        def __bus_health() -> dict:
             subs = 0
-            getter = getattr(self.__bus, "subscriber_count", None)
+            getter = getattr(bus, "subscriber_count", None)
             if callable(getter):
                 try:
                     subs = int(getter())
                 except Exception:
                     logger.exception("bus subscriber_count failed")
             dlq = 0
-            dlq_obj = getattr(self.__bus, "dlq", None)
+            dlq_obj = getattr(bus, "dlq", None)
             if dlq_obj is not None:
                 dlq = int(getattr(dlq_obj, "count", 0))
-            stopped = bool(getattr(self.__bus, "is_stopped", lambda: False)())
+            stopped = bool(getattr(bus, "is_stopped", lambda: False)())
             return {
                 "ok": not stopped,
                 "subscribers": subs,
                 "dlq_count": dlq,
             }
 
-        self.__health.register("bus", _bus_health)
+        self.__health.register("bus", __bus_health)
         self.__health.register("store", lambda: self.__store.health())
         read_store = self.__read_store
         if read_store is not None:

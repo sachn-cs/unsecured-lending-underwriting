@@ -28,6 +28,39 @@ class MetricsSink(Protocol):
     def increment(self, name: str, tags: dict[str, str] | None = None, delta: int = 1) -> None: ...
 
 
+class Clock(Protocol):
+    """Time source abstraction for dependency inversion.
+
+    Services and infrastructure code depend on this Protocol rather
+    than calling ``time.time()`` / ``datetime.now()`` directly. Tests
+    inject a deterministic clock to avoid flaky timing assertions
+    and to control the visible timestamp of emitted events.
+    """
+
+    def now(self) -> float:
+        """Returns monotonic seconds since an arbitrary epoch."""
+
+    def iso(self) -> str:
+        """Returns an ISO-8601 UTC timestamp string."""
+
+
+class SystemClock:
+    """Default Clock backed by the system wall-clock.
+
+    Real production wiring uses this. Tests should inject a
+    ``FakeClock`` (or similar) to make time-dependent behaviour
+    deterministic.
+    """
+
+    def now(self) -> float:
+        return time.time()
+
+    def iso(self) -> str:
+        from datetime import datetime, timezone
+
+        return datetime.now(timezone.utc).isoformat()
+
+
 @dataclass(slots=True)
 class Counter:
     """A monotonically increasing counter metric."""

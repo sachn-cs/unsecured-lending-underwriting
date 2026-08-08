@@ -1,8 +1,8 @@
 """Payment processing service.
 
 Handles payment scheduling, receipt, and overdue detection.  Emits
-``payment.received`` when a payment comes in, ``payment.due`` when a
-payment is expected, and ``payment.overdue`` when a payment is late.
+``payment.received`` when a payment comes in, ``payment.due`` when
+a payment is expected, and ``payment.overdue`` when a payment is late.
 
 Acts as the bridge between payment-gateway events (Razorpay) and
 domain-level ``payment.received`` events so downstream services
@@ -13,10 +13,12 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Any
 
 from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
+from underwrite.__value_objects__ import rupees_to_paise
 from underwrite.services.base import StatefulService
 from underwrite.validate import get_finite
 
@@ -46,6 +48,10 @@ class PaymentService(StatefulService):
         if handler is not None:
             handler(event)
 
+    @staticmethod
+    def __to_paise(amount: float) -> int:
+        return rupees_to_paise(Decimal(str(amount)))
+
     def __on_payment_receive(self, event: Event) -> None:
         """Record a payment received.
 
@@ -57,8 +63,10 @@ class PaymentService(StatefulService):
         if not loan_id or amount <= 0:
             return
         payment_id: str = f"pay_{loan_id}_{uuid.uuid4().hex[:12]}"
+        paise: int = self.__to_paise(amount)
         receipt = {
             "loan_id": loan_id,
+            "amount_paise": paise,
             "amount": amount,
             "received_at": datetime.now(timezone.utc).isoformat(),
         }
@@ -68,6 +76,7 @@ class PaymentService(StatefulService):
             {
                 "payment_id": payment_id,
                 "loan_id": loan_id,
+                "amount_paise": paise,
                 "amount": amount,
             },
             correlation_id=event.correlation_id,
@@ -85,9 +94,11 @@ class PaymentService(StatefulService):
         if not loan_id or not due_date:
             return
         schedule_key: str = f"schedule:{loan_id}:{due_date}"
+        paise: int = self.__to_paise(amount)
         schedule = {
             "loan_id": loan_id,
             "due_date": due_date,
+            "amount_paise": paise,
             "amount": amount,
             "status": "pending",
         }
@@ -97,6 +108,7 @@ class PaymentService(StatefulService):
             {
                 "loan_id": loan_id,
                 "due_date": due_date,
+                "amount_paise": paise,
                 "amount": amount,
             },
             correlation_id=event.correlation_id,
@@ -129,6 +141,7 @@ class PaymentService(StatefulService):
                             "loan_id": loan_id,
                             "due_date": sched["due_date"],
                             "amount": sched["amount"],
+                            "amount_paise": sched.get("amount_paise", 0),
                         },
                         correlation_id=event.correlation_id,
                     )
@@ -144,10 +157,12 @@ class PaymentService(StatefulService):
         razorpay_payment_id: str = event.payload.get("payment_id", "")
         if not loan_id or amount <= 0:
             return
+        paise: int = self.__to_paise(amount)
         self.store.set(
             f"razorpay_payment:{razorpay_payment_id}",
             {
                 "loan_id": loan_id,
+                "amount_paise": paise,
                 "amount": amount,
                 "status": "captured",
                 "received_at": datetime.now(timezone.utc).isoformat(),
@@ -158,6 +173,7 @@ class PaymentService(StatefulService):
             {
                 "payment_id": razorpay_payment_id,
                 "loan_id": loan_id,
+                "amount_paise": paise,
                 "amount": amount,
                 "gateway": "razorpay",
             },
@@ -176,11 +192,13 @@ class PaymentService(StatefulService):
         payment_id: str = event.payload.get("payment_id", "")
         if not loan_id or amount <= 0:
             return
+        paise: int = self.__to_paise(amount)
         self.store.set(
             f"razorpay_subscription:{payment_id}",
             {
                 "loan_id": loan_id,
                 "subscription_id": sub_id,
+                "amount_paise": paise,
                 "amount": amount,
                 "status": "charged",
                 "received_at": datetime.now(timezone.utc).isoformat(),
@@ -191,6 +209,7 @@ class PaymentService(StatefulService):
             {
                 "payment_id": payment_id,
                 "loan_id": loan_id,
+                "amount_paise": paise,
                 "amount": amount,
                 "gateway": "razorpay",
                 "subscription_id": sub_id,
@@ -209,10 +228,12 @@ class PaymentService(StatefulService):
         razorpay_payment_id: str = event.payload.get("payment_id", "")
         if not loan_id or amount <= 0:
             return
+        paise: int = self.__to_paise(amount)
         self.store.set(
             f"razorpay_refund:{razorpay_payment_id}",
             {
                 "loan_id": loan_id,
+                "amount_paise": paise,
                 "amount": amount,
                 "status": "refunded",
                 "refunded_at": datetime.now(timezone.utc).isoformat(),

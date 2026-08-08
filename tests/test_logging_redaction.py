@@ -82,7 +82,13 @@ def capture(
     level: str = "DEBUG",
     formatter: JsonFormatter | TextFormatter | None = None,
 ) -> list[str]:
-    """Emits through a real loguru sink using the given formatter."""
+    """Emits through a real loguru sink using the given formatter.
+
+    ``emissions`` intentionally uses ``Any``: each entry is either a plain
+    message payload or a ``(method, args)`` tuple dispatched dynamically
+    via ``getattr(logger, method)(*args)``, so the accepted types are
+    heterogeneous and cannot be narrowed statically.
+    """
     records: list[str] = []
     sink_format = formatter or "{message}"
     if isinstance(sink_format, str):

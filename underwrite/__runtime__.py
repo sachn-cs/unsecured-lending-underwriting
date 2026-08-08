@@ -16,6 +16,7 @@ __all__ = [
 
 import importlib
 import re
+import sys
 import threading
 from pathlib import Path
 from typing import Any
@@ -27,7 +28,7 @@ from underwrite.__events__ import Event
 from underwrite.__exceptions__ import ServiceNotFoundError
 from underwrite.__health__ import HealthRegistry
 from underwrite.__identity__ import Identity
-from underwrite.__logger__ import logger
+from underwrite.__logger__ import JsonFormatter, TextFormatter, logger, loguru_sink_format
 from underwrite.__metrics__ import MetricsCollector
 from underwrite.__migrate__ import default_plan
 from underwrite.__saga__ import SagaOrchestrator
@@ -112,10 +113,6 @@ class Runtime:
         self.__register_subsystem_health()
 
     def __configure_logging(self) -> None:
-        import sys
-
-        from underwrite.__logger__ import JsonFormatter, TextFormatter, logger, loguru_sink_format
-
         cfg = self.__config.logging
         sink = sys.stdout if cfg.output == "stdout" else sys.stderr
         formatter = JsonFormatter() if cfg.log_format == "json" else TextFormatter()

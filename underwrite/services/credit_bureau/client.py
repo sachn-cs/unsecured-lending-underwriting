@@ -87,6 +87,9 @@ class CreditReport:
     active_accounts: int = 0
     delinquent_accounts: int = 0
     credit_age_years: float = 0.0
+    tradelines: int = 0
+    enquiries_last_30_days: int = 0
+    defaults: list[str] = field(default_factory=list)
     report_date: str = field(default_factory=lambda: datetime.now(timezone.utc).date().isoformat())
 
 
@@ -347,6 +350,9 @@ class HttpCreditBureauClient(CreditBureauClient):
             active_accounts=body.get("active_accounts", 0),
             delinquent_accounts=body.get("delinquent_accounts", 0),
             credit_age_years=float(body.get("credit_age_years", 0)),
+            tradelines=body.get("tradelines", 0),
+            enquiries_last_30_days=body.get("enquiries_last_30_days", 0),
+            defaults=body.get("defaults", []),
             report_date=body.get("report_date", ""),
         )
 

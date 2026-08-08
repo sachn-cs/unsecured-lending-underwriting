@@ -87,6 +87,9 @@ class CreditBureauService(StatefulService):
             active_accounts=d.get("active_accounts", 0),
             delinquent_accounts=d.get("delinquent_accounts", 0),
             credit_age_years=d.get("credit_age_years", 0.0),
+            tradelines=d.get("tradelines", 0),
+            enquiries_last_30_days=d.get("enquiries_last_30_days", 0),
+            defaults=d.get("defaults", []),
             report_date=d.get("report_date", ""),
         )
 
@@ -399,5 +402,8 @@ class CreditBureauService(StatefulService):
             "active_accounts": r.active_accounts,
             "delinquent_accounts": r.delinquent_accounts,
             "credit_age_years": r.credit_age_years,
+            "tradelines": r.tradelines,
+            "enquiries_last_30_days": r.enquiries_last_30_days,
+            "defaults": r.defaults,
             "report_date": r.report_date,
         }

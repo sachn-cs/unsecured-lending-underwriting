@@ -6,6 +6,7 @@ import pytest
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
+from underwrite.__store__ import MemoryStore
 from underwrite.services.credit_bureau.client import (
     CkycResponse,
     CreditReport,
@@ -13,6 +14,37 @@ from underwrite.services.credit_bureau.client import (
     MockCreditBureauClient,
 )
 from underwrite.services.credit_bureau.service import CreditBureauService
+from underwrite.services.kyc_providers.base import ProviderResult, Verdict
+
+
+class CibilProviderStub:
+    """Minimal CIBIL provider stub returning a fixed bureau pull."""
+
+    name = "cibil"
+
+    def verify(
+        self,
+        identifier: str,
+        *,
+        name: str = "",
+        dob: str = "",
+        pan: str = "",
+        address: dict | None = None,
+        consent: str = "Y",
+        **unused: object,
+    ) -> ProviderResult:
+        return ProviderResult(
+            verdict=Verdict.VERIFIED,
+            provider="cibil",
+            reference="req-123",
+            details={
+                "score": 750,
+                "score_band": "Excellent",
+                "tradelines": 5,
+                "enquiries_last_30_days": 1,
+                "defaults": ["LATE_PAYMENT"],
+            },
+        )
 
 
 def svc(**kw) -> CreditBureauService:
@@ -257,6 +289,57 @@ class TestMockCreditBureauClient:
         result = mock.verify_ckyc("CKYC1234", "1234")
         assert result.status == "verified"
         assert result.aadhaar_verified is True
+
+
+class TestCibilProviderIntegration:
+    def test_check_bureau_populates_credit_report_fields(self) -> None:
+        bus = LocalBus()
+        received: list = []
+        bus.subscribe(EventType.CREDIT_BUREAU_CHECKED, lambda e: received.append(e))
+        provider = CibilProviderStub()
+        s = CreditBureauService(service_id="credit_bureau", bus=bus, kyc_providers={"cibil": provider}, allow_mock=True)
+        bus.start()
+        s.handle(
+            Event(
+                event_type=EventType.CREDIT_BUREAU_CHECK,
+                source="test",
+                payload={"pan": "ABCDE1234F", "bureau": "cibil", "consumer_id": "consumer-1"},
+            )
+        )
+        assert len(received) == 1
+        assert received[0].payload["tradelines"] == 5
+        report = s.get_report("ABCDE1234F")
+        assert report is not None
+        assert report.score == 750
+        assert report.tradelines == 5
+        assert report.enquiries_last_30_days == 1
+        assert report.defaults == ["LATE_PAYMENT"]
+
+    def test_check_bureau_persists_and_reloads_credit_report_fields(self) -> None:
+        s = CreditBureauService(
+            service_id="credit_bureau",
+            kyc_providers={"cibil": CibilProviderStub()},
+            store=MemoryStore(),
+            allow_mock=True,
+        )
+        s.handle(
+            Event(
+                event_type=EventType.CREDIT_BUREAU_CHECK,
+                source="test",
+                payload={"pan": "ABCDE1234F", "bureau": "cibil", "consumer_id": "consumer-1"},
+            )
+        )
+        reloaded = CreditBureauService(
+            service_id="credit_bureau",
+            kyc_providers={"cibil": CibilProviderStub()},
+            store=s.store,
+            allow_mock=True,
+        )
+        report = reloaded.get_report("ABCDE1234F")
+        assert report is not None
+        assert report.tradelines == 5
+        assert report.enquiries_last_30_days == 1
+        assert report.defaults == ["LATE_PAYMENT"]
 
 
 class TestHealthCheck:

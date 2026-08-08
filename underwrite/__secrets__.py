@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from underwrite.__logger__ import logger
+from underwrite.__metrics__ import MetricsSink
 
 
 class SecretsBackend(ABC):
@@ -45,12 +46,12 @@ class VaultSecretsBackend(SecretsBackend):
         url: str = "https://localhost:8200",
         token: str | None = None,
         mount_point: str = "secret",
-        metrics_collector: Any | None = None,
+        metrics_collector: MetricsSink | None = None,
     ) -> None:
         self.__url = url
         self.__token = token or os.environ.get("VAULT_TOKEN", "")
         self.__mount_point = mount_point
-        self.__metrics: Any | None = metrics_collector
+        self.__metrics: MetricsSink | None = metrics_collector
 
     def get(self, key: str) -> str | None:
         try:
@@ -82,9 +83,9 @@ class VaultSecretsBackend(SecretsBackend):
 class AwsSecretsBackend(SecretsBackend):
     """AWS Secrets Manager backend."""
 
-    def __init__(self, region: str = "us-east-1", metrics_collector: Any | None = None) -> None:
+    def __init__(self, region: str = "us-east-1", metrics_collector: MetricsSink | None = None) -> None:
         self.__region = region
-        self.__metrics: Any | None = metrics_collector
+        self.__metrics: MetricsSink | None = metrics_collector
 
     def client(self):
         try:

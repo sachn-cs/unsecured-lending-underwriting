@@ -6,6 +6,7 @@ __all__ = [
     "Counter",
     "Gauge",
     "MetricsCollector",
+    "MetricsSink",
     "Timer",
     "TimerContext",
 ]
@@ -13,7 +14,18 @@ __all__ = [
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Protocol
+
+
+class MetricsSink(Protocol):
+    """Minimal interface for emitting a metric increment.
+
+    Any object with an ``increment`` method satisfies this protocol,
+    enabling dependency-inverted wiring of optional metrics
+    collectors without coupling to :class:`MetricsCollector`.
+    """
+
+    def increment(self, name: str, tags: dict[str, str] | None = None, delta: int = 1) -> None: ...
 
 
 @dataclass(slots=True)

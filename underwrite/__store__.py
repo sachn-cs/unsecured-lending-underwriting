@@ -206,14 +206,6 @@ class FileStore(Store):
             self.__executor.shutdown(wait=wait)
             self.__executor = None
 
-    def __del__(self) -> None:
-        try:
-            self.shutdown(wait=False)
-        except Exception:
-            from underwrite.__logger__ import logger
-
-            logger.opt(exception=True).warning("FileStore.__del__: shutdown failed")
-
     def __timeout(self, fn: Any, *args: Any, **kwargs: Any) -> Any:
         """Runs *fn* with the configured timeout via the executor."""
         if self.__executor is None:

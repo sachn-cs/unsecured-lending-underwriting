@@ -38,10 +38,10 @@ from underwrite.__logger__ import logger
 PLUGIN_ENTRYPOINT_GROUP: str = "underwrite.services"
 PLUGIN_ALLOW_ALL: str = "*"
 
-_PLUGIN_ENV: str = "UNDERWRITE_PLUGINS"
+PLUGIN_ENV: str = "UNDERWRITE_PLUGINS"
 
 
-def _read_allowlist() -> frozenset[str] | None:
+def read_allowlist() -> frozenset[str] | None:
     """Reads the plugin allowlist from the environment.
 
     Returns:
@@ -50,7 +50,7 @@ def _read_allowlist() -> frozenset[str] | None:
         as "load everything" (legacy behaviour) and is not
         recommended.
     """
-    raw = os.environ.get(_PLUGIN_ENV)
+    raw = os.environ.get(PLUGIN_ENV)
     if raw is None:
         return frozenset()
     raw = raw.strip()
@@ -75,7 +75,7 @@ def discover_plugins() -> dict[str, type[NanoService]]:
         loaded; any other installed entry points are ignored and a
         warning is logged for each.
     """
-    allowlist = _read_allowlist()
+    allowlist = read_allowlist()
 
     plugins: dict[str, type[NanoService]] = {}
     for ep in importlib.metadata.entry_points(group=PLUGIN_ENTRYPOINT_GROUP):

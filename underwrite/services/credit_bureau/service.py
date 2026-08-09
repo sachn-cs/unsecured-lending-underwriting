@@ -41,7 +41,7 @@ class CreditBureauHandler(StatefulService):
         client_only = ("cibil_api_key", "allow_mock", "kyc_providers")
         client_kwargs = {k: v for k, v in kwargs.items() if k in client_only}
         parent_kwargs = {k: v for k, v in kwargs.items() if k not in client_only}
-        self._kyc_providers: dict[str, Any] = client_kwargs.get("kyc_providers", {})
+        self.__kyc_providers: dict[str, Any] = client_kwargs.get("kyc_providers", {})
         legacy_kwargs = {k: v for k, v in client_kwargs.items() if k != "kyc_providers"}
         super().__init__(**parent_kwargs)
         self.__client: CreditBureauClient = self.build_client(**legacy_kwargs)
@@ -160,7 +160,7 @@ class CreditBureauHandler(StatefulService):
         if not pan:
             logger.warning("credit_bureau.check missing pan")
             return
-        kyc_providers = self._kyc_providers
+        kyc_providers = self.__kyc_providers
         cibil_provider = kyc_providers.get("cibil") if kyc_providers else None
         if cibil_provider is not None and bureau == "cibil":
             try:

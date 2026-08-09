@@ -37,11 +37,11 @@ from typing import Any
 
 from underwrite.__exceptions__ import ProtocolError
 
-_RE_SAFETY_UNSAFE_PATTERN: re.Pattern[str] = re.compile(r"\(\s*(?:[^()]*\[[^]]*\])*[^()]*[+*{]\s*\)\s*[+*{]}")
+RE_SAFETY_UNSAFE_PATTERN: re.Pattern[str] = re.compile(r"\(\s*(?:[^()]*\[[^]]*\])*[^()]*[+*{]\s*\)\s*[+*{]}")
 
-_RE_SAFETY_MAX_PATTERN_LENGTH: int = 200
+RE_SAFETY_MAX_PATTERN_LENGTH: int = 200
 
-_VERHOEFF_MULTIPLICATION = [
+VERHOEFF_MULTIPLICATION = [
     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
     [1, 2, 3, 4, 0, 6, 7, 8, 9, 5],
     [2, 3, 4, 0, 1, 7, 8, 9, 5, 6],
@@ -54,7 +54,7 @@ _VERHOEFF_MULTIPLICATION = [
     [9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
 ]
 
-_VERHOEFF_PERMUTATION = [
+VERHOEFF_PERMUTATION = [
     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
     [1, 5, 7, 6, 2, 8, 3, 0, 9, 4],
     [5, 8, 0, 3, 7, 9, 6, 1, 4, 2],
@@ -65,13 +65,13 @@ _VERHOEFF_PERMUTATION = [
     [7, 0, 4, 6, 9, 1, 3, 2, 5, 8],
 ]
 
-_VERHOEFF_INVERSE = [0, 4, 3, 2, 1, 5, 6, 7, 8, 9]
+VERHOEFF_INVERSE = [0, 4, 3, 2, 1, 5, 6, 7, 8, 9]
 
-def _verhoeff_checksum(digits: str) -> bool:
+def verhoeff_checksum(digits: str) -> bool:
     c = 0
     for i, d in enumerate(reversed(digits)):
-        c = _VERHOEFF_MULTIPLICATION[c][_VERHOEFF_PERMUTATION[(i + 1) % 8][int(d)]]
-    return _VERHOEFF_INVERSE[c] == 0
+        c = VERHOEFF_MULTIPLICATION[c][VERHOEFF_PERMUTATION[(i + 1) % 8][int(d)]]
+    return VERHOEFF_INVERSE[c] == 0
 
 class PayloadValidator:
     """Validates and extracts typed values from unstructured payload dicts.
@@ -202,9 +202,9 @@ class PayloadValidator:
                 pattern is potentially unsafe.
         """
         s = PayloadValidator.require_non_empty(value, name)
-        if len(pattern) > _RE_SAFETY_MAX_PATTERN_LENGTH:
+        if len(pattern) > RE_SAFETY_MAX_PATTERN_LENGTH:
             raise ProtocolError(f"{name} pattern too long")
-        if _RE_SAFETY_UNSAFE_PATTERN.search(pattern):
+        if RE_SAFETY_UNSAFE_PATTERN.search(pattern):
             raise ProtocolError(f"{name} pattern rejected (nested quantifiers)")
         try:
             if not re.match(pattern, s):
@@ -230,7 +230,7 @@ class PayloadValidator:
         s = PayloadValidator.require_non_empty(value, name)
         if not s.isdigit() or len(s) != 12:
             raise ProtocolError(f"{name} must be exactly 12 digits")
-        if not _verhoeff_checksum(s):
+        if not verhoeff_checksum(s):
             raise ProtocolError(f"{name} failed checksum validation")
         return s
 

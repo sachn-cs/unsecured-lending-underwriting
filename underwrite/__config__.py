@@ -685,7 +685,7 @@ class Configuration(ForbidExtra):
                 setattr(section, field_attr, coerced)
         return config
 
-def _build_service_names() -> list[str]:
+def build_service_names() -> list[str]:
     """Build the canonical service name list from the registry.
 
     The registry is the single source of truth — config used to
@@ -696,4 +696,5 @@ def _build_service_names() -> list[str]:
 
     return list(SERVICE_CLASSES.keys())
 
-SERVICE_NAMES: list[str] = _build_service_names()
+
+SERVICE_NAMES: list[str] = build_service_names()

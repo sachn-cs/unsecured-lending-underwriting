@@ -403,7 +403,7 @@ class Configuration(ForbidExtra):
 
     @field_validator("data_dir")
     @classmethod
-    def _validate_data_dir(cls, v: str) -> str:
+    def __validate_data_dir(cls, v: str) -> str:
         if not v or "\x00" in v:
             raise ValueError(f"invalid data_dir: {v!r}")
         from pathlib import Path

@@ -17,6 +17,7 @@ import json
 from datetime import datetime, timezone
 from typing import Any
 
+from underwrite.__constants__ import PAISE_PER_RUPEE
 from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
 from underwrite.services.base import StatefulService
@@ -163,7 +164,7 @@ class RazorpayHandler(StatefulService):
             {
                 "loan_id": loan_id,
                 "order_id": order.id,
-                "amount": amount_paise / 100.0,
+                "amount": amount_paise / PAISE_PER_RUPEE,
                 "currency": currency,
                 "status": order.status,
             },
@@ -356,7 +357,7 @@ class RazorpayHandler(StatefulService):
                 "loan_id": loan_id,
                 "payment_id": payment_id,
                 "order_id": order_id,
-                "amount": amount_paise / 100.0,
+                "amount": amount_paise / PAISE_PER_RUPEE,
                 "method": payment_data.get("method", ""),
             },
             correlation_id=correlation_id,
@@ -387,7 +388,7 @@ class RazorpayHandler(StatefulService):
                 "loan_id": loan_id,
                 "payment_id": payment_id,
                 "order_id": order_id,
-                "amount": amount_paise / 100.0,
+                "amount": amount_paise / PAISE_PER_RUPEE,
                 "error_code": payment_data.get("error_code", ""),
                 "error_description": payment_data.get("error_description", ""),
             },
@@ -419,7 +420,7 @@ class RazorpayHandler(StatefulService):
                 "loan_id": loan_id,
                 "payment_id": payment_id,
                 "order_id": order_id,
-                "amount": amount_paise / 100.0,
+                "amount": amount_paise / PAISE_PER_RUPEE,
             },
             correlation_id=correlation_id,
         )
@@ -447,7 +448,7 @@ class RazorpayHandler(StatefulService):
                 "loan_id": loan_id,
                 "subscription_id": subscription_id,
                 "payment_id": payment_data.get("id", ""),
-                "amount": amount_paise / 100.0,
+                "amount": amount_paise / PAISE_PER_RUPEE,
             },
             correlation_id=correlation_id,
         )

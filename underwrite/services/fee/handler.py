@@ -8,6 +8,7 @@ Emits fee.assessed when a fee is applied to a loan.
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
@@ -16,6 +17,7 @@ from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
 from underwrite.__value_objects__ import IdGenerator
 from underwrite.services.base import StatefulService
+from underwrite.services.persistence import BatchedStoreRepository
 from underwrite.validate import get_finite
 
 DEFAULT_FEE_SCHEDULES: dict[str, float] = {
@@ -27,6 +29,22 @@ DEFAULT_FEE_SCHEDULES: dict[str, float] = {
 
 MAX_FEE_PER_LOAN: float = 1000.0
 MONEY_QUANTUM: Decimal = Decimal("0.01")
+
+
+@dataclass(frozen=True, slots=True)
+class FeeConfig:
+    """Typed configuration for FeeHandler.
+
+    Replaces the previous ``kwargs.pop("penal_interest_daily_rate", ...)``
+    pattern: callers now pass a FeeConfig (or its fields are extracted
+    from kwargs via a constructor that does not mutate the caller's
+    mapping).
+    """
+
+    fee_schedules: dict[str, float] = field(default_factory=lambda: DEFAULT_FEE_SCHEDULES)
+    penal_interest_daily_rate: float = 0.0
+    late_payment_percent: float = 0.0
+    max_penal_interest_per_loan: float = 0.0
 
 
 class FeeHandler(StatefulService):
@@ -41,10 +59,16 @@ class FeeHandler(StatefulService):
     """
 
     def __init__(self, **kwargs: Any) -> None:
-        self.__schedules: dict[str, float] = kwargs.pop("fee_schedules", DEFAULT_FEE_SCHEDULES)
-        self.__penal_daily_rate: float = kwargs.pop("penal_interest_daily_rate", 0.0)
-        self.__late_percent: float = kwargs.pop("late_payment_percent", 0.0)
-        self.__max_penal: float = kwargs.pop("max_penal_interest_per_loan", 0.0)
+        config = FeeConfig(
+            fee_schedules=kwargs.pop("fee_schedules", DEFAULT_FEE_SCHEDULES),
+            penal_interest_daily_rate=kwargs.pop("penal_interest_daily_rate", 0.0),
+            late_payment_percent=kwargs.pop("late_payment_percent", 0.0),
+            max_penal_interest_per_loan=kwargs.pop("max_penal_interest_per_loan", 0.0),
+        )
+        self.__schedules: dict[str, float] = config.fee_schedules
+        self.__penal_daily_rate: float = config.penal_interest_daily_rate
+        self.__late_percent: float = config.late_payment_percent
+        self.__max_penal: float = config.max_penal_interest_per_loan
         super().__init__(**kwargs)
         self.__fees: dict[str, dict[str, Any]] = {}
         self.repo: BatchedStoreRepository[dict[str, dict[str, Any]]] = self.batched_repo("fees", dict, sync_interval=10)

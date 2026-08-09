@@ -12,6 +12,7 @@ PostgresStore) so in-flight recoveries survive service restarts.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any
@@ -27,6 +28,7 @@ NEGOTIATION_DAYS: int = 30
 ESCALATION_THRESHOLD: int = 3
 
 
+@dataclass(frozen=True, slots=True)
 class RecoveryConfig:
     """Typed configuration for RecoveryHandler.
 
@@ -66,9 +68,14 @@ class RecoveryHandler(StatefulService):
             negotiation_days: Days allowed for negotiation.
             escalation_threshold: Number of rejected offers before escalation.
         """
-        self.__recovery_rate: float = kwargs.get("recovery_rate", DEFAULT_RECOVERY_RATE)
-        self.__negotiation_days: int = kwargs.get("negotiation_days", NEGOTIATION_DAYS)
-        self.__escalation_threshold: int = kwargs.get("escalation_threshold", ESCALATION_THRESHOLD)
+        config = RecoveryConfig(
+            recovery_rate=kwargs.pop("recovery_rate", DEFAULT_RECOVERY_RATE),
+            negotiation_days=kwargs.pop("negotiation_days", NEGOTIATION_DAYS),
+            escalation_threshold=kwargs.pop("escalation_threshold", ESCALATION_THRESHOLD),
+        )
+        self.__recovery_rate: float = config.recovery_rate
+        self.__negotiation_days: int = config.negotiation_days
+        self.__escalation_threshold: int = config.escalation_threshold
         super().__init__(**kwargs)
         self.__recoveries: dict[str, dict[str, Any]] = {}
         self.repo: TypedStoreRepository[dict[str, dict[str, Any]]] = self.store_repo("recoveries", dict)

@@ -142,7 +142,7 @@ class TestAuthzBuildFallback:
                 "policy_file": str(bad_policy),
             },
         }
-        rt = Runtime(config=Configuration(**config_data))  # type: ignore[arg-type]
+        rt = Runtime(config=Configuration(**config_data))
         result = build_authz(rt._Runtime__config.authz)
         assert result is None
 
@@ -154,7 +154,7 @@ class TestAuthzBuildFallback:
                 "policy_file": str(missing),
             },
         }
-        rt = Runtime(config=Configuration(**config_data))  # type: ignore[arg-type]
+        rt = Runtime(config=Configuration(**config_data))
         result = build_authz(rt._Runtime__config.authz)
         assert result is not None
 

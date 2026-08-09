@@ -14,6 +14,7 @@ services (payment, servicing, notification) can react.
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
@@ -29,6 +30,27 @@ from underwrite.services.razorpay.client import (
     RazorpayError,
 )
 from underwrite.validate import get_finite
+
+DEFAULT_RAZORPAY_API_BASE_URL: str = "https://api.razorpay.com/v1"
+
+
+@dataclass(frozen=True, slots=True)
+class RazorpayConfig:
+    """Typed configuration for RazorpayHandler.
+
+    Replaces the previous
+    ``{k: kwargs.pop(k) for k in ...}`` dict-comprehension pattern:
+    callers now pass a RazorpayConfig (or its fields are extracted
+    from kwargs via a constructor that does not mutate the caller's
+    mapping).
+    """
+
+    key_id: str = ""
+    key_secret: str = ""
+    webhook_secret: str = ""
+    api_base_url: str = DEFAULT_RAZORPAY_API_BASE_URL
+    timeout_seconds: int = 30
+
 
 class RazorpayHandler(StatefulService):
     """Manages Razorpay order/subscription/payment lifecycle.
@@ -48,20 +70,20 @@ class RazorpayHandler(StatefulService):
             api_base_url: Base URL for Razorpay API.
             timeout_seconds: HTTP request timeout.
         """
-        client_kw = {
-            k: kwargs.pop(k)
-            for k in list(kwargs)
-            if k
-            in (
-                "key_id",
-                "key_secret",
-                "webhook_secret",
-                "api_base_url",
-                "timeout_seconds",
-            )
-        }
+        config = RazorpayConfig(
+            key_id=kwargs.pop("key_id", ""),
+            key_secret=kwargs.pop("key_secret", ""),
+            webhook_secret=kwargs.pop("webhook_secret", ""),
+            api_base_url=kwargs.pop("api_base_url", DEFAULT_RAZORPAY_API_BASE_URL),
+            timeout_seconds=kwargs.pop("timeout_seconds", 30),
+        )
         super().__init__(**kwargs)
-        self.__client: RazorpayClient = self.build_client(**client_kw)
+        self.__client: RazorpayClient = self.build_client(
+            key_id=config.key_id,
+            key_secret=config.key_secret,
+            webhook_secret=config.webhook_secret,
+            api_base_url=config.api_base_url,
+        )
         self.__records: dict[str, dict[str, Any]] = {}
         self.repo: BatchedStoreRepository[dict[str, dict[str, Any]]] = self.batched_repo(
             "razorpay", dict, sync_interval=10

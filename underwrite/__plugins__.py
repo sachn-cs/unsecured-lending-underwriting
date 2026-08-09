@@ -90,6 +90,6 @@ def discover_plugins() -> dict[str, type[NanoService]]:
             cls = ep.load()
             plugins[ep.name] = cls
             logger.info("loaded plugin service {} from {}", ep.name, ep.value)
-        except Exception:
+        except (ImportError, AttributeError, OSError):
             logger.exception("failed to load plugin {} ({})", ep.name, ep.value)
     return plugins

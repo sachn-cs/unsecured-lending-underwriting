@@ -22,8 +22,8 @@ def _configure_webhook_secret(svc_inst, secret: str) -> None:
 
         try:
             client.webhook_secret = lambda s=secret: s
-        except Exception:  # pragma: no cover - defensive
-            raise ConfigurationError(f"cannot set webhook secret on {type(client).__name__}")
+        except Exception as exc:  # pragma: no cover - defensive
+            raise ConfigurationError(f"cannot set webhook secret on {type(client).__name__}") from exc
 
 
 class TestRazorpayServiceOrder:

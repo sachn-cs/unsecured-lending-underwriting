@@ -508,6 +508,70 @@ class EventBus(ABC):
     def idempotency(self) -> IdempotencyGuard:
         """Returns the idempotency guard for this bus."""
 
+class SubscriptionRegistry:
+    """Tracks (subscription_id, handler) tuples keyed by event type.
+
+    Pulled out of LocalBus so the bus is not responsible for both
+    managing subscribers and dispatching events.
+    """
+
+    def __init__(self) -> None:
+        self.__lock: threading.RLock = threading.RLock()
+        self.__handlers: dict[str, list[tuple[str, Callable[[Event], None]]]] = {}
+
+    def subscribe(self, event_type: str, handler: Callable[[Event], None]) -> str:
+        """Register a handler for a given event type.
+
+        Args:
+            event_type: Type to subscribe to (``"*"`` for all).
+            handler: Callback receiving the event.
+
+        Returns:
+            Subscription ID for use with ``unsubscribe``.
+        """
+        sid = str(uuid.uuid4())
+        with self.__lock:
+            self.__handlers.setdefault(event_type, []).append((sid, handler))
+        return sid
+
+    def unsubscribe(self, subscription_id: str) -> None:
+        """Remove a previously registered subscription.
+
+        Args:
+            subscription_id: The ID returned by ``subscribe``.
+        """
+        with self.__lock:
+            for event_type in list(self.__handlers):
+                self.__handlers[event_type] = [
+                    (sid, h) for sid, h in self.__handlers[event_type] if sid != subscription_id
+                ]
+
+    def handlers_for(self, event_type: str) -> list[tuple[str, Callable[[Event], None]]]:
+        """Return a snapshot of (sid, handler) tuples for the given event type.
+
+        Combines the specific-type bucket with the wildcard (``"*"``) bucket.
+        """
+        with self.__lock:
+            return list(self.__handlers.get(event_type, [])) + list(self.__handlers.get("*", []))
+
+    def count(self, event_type: str | None = None) -> int:
+        """Return the number of registered subscribers.
+
+        Args:
+            event_type: If provided, count only subscribers to that event type;
+                pass ``"*"`` for the wildcard bucket, or ``None`` for the total.
+        """
+        with self.__lock:
+            if event_type is None:
+                return sum(len(handlers) for handlers in self.__handlers.values())
+            return len(self.__handlers.get(event_type, ()))
+
+    def clear(self) -> None:
+        """Remove all subscriptions."""
+        with self.__lock:
+            self.__handlers.clear()
+
+
 class LocalBus(EventBus):
     """Thread-safe in-process event bus with async dispatch and idempotency."""
 
@@ -529,7 +593,7 @@ class LocalBus(EventBus):
             store: Optional Store for DLQ persistence.
         """
         self.__lock: threading.RLock = threading.RLock()
-        self.__handlers: dict[str, list[tuple[str, Callable[[Event], None]]]] = {}
+        self.__registry: SubscriptionRegistry = SubscriptionRegistry()
         self.__buffer: deque[Event] = deque()
         self.__running: bool = True
         self.__started: bool = False
@@ -584,10 +648,7 @@ class LocalBus(EventBus):
         Returns:
             Subscription ID for use with ``unsubscribe``.
         """
-        sid = str(uuid.uuid4())
-        with self.__lock:
-            self.__handlers.setdefault(event_type, []).append((sid, handler))
-        return sid
+        return self.__registry.subscribe(event_type, handler)
 
     def unsubscribe(self, subscription_id: str) -> None:
         """Removes a previously registered subscription.
@@ -595,11 +656,7 @@ class LocalBus(EventBus):
         Args:
             subscription_id: The ID returned by ``subscribe``.
         """
-        with self.__lock:
-            for event_type in list(self.__handlers):
-                self.__handlers[event_type] = [
-                    (sid, h) for sid, h in self.__handlers[event_type] if sid != subscription_id
-                ]
+        self.__registry.unsubscribe(subscription_id)
 
     def is_stopped(self) -> bool:
         """Returns True when the bus has been explicitly stopped via ``stop()``.
@@ -618,10 +675,7 @@ class LocalBus(EventBus):
             event_type: If provided, count only subscribers to that event type;
                 pass ``"*"`` for the wildcard bucket, or ``None`` for the total.
         """
-        with self.__lock:
-            if event_type is None:
-                return sum(len(handlers) for handlers in self.__handlers.values())
-            return len(self.__handlers.get(event_type, ()))
+        return self.__registry.count(event_type)
 
     def start(self) -> None:
         """Starts the bus and flushes any buffered events.
@@ -648,7 +702,7 @@ class LocalBus(EventBus):
         """Stops the bus, clears handlers and buffer, and shuts down the executor."""
         with self.__lock:
             self.__running = False
-            self.__handlers.clear()
+            self.__registry.clear()
             self.__buffer.clear()
         if self.__executor:
             done, not_done = concurrent.futures.wait(
@@ -663,7 +717,7 @@ class LocalBus(EventBus):
         pending: deque[Event] = self.__buffer
         self.__buffer = deque()
         for event in pending:
-            handlers = self.__handlers.get(event.event_type, []) + self.__handlers.get("*", [])
+            handlers = self.__registry.handlers_for(event.event_type)
             for sid, handler in handlers:
                 if not self.__circuit_breaker.allow_request(sid):
                     logger.warning("circuit open for subscriber {}, sending {} to DLQ", sid, event.event_type)

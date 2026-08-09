@@ -159,13 +159,13 @@ class SagaOrchestrator:
         """
         try:
             keys = self.__store.keys("saga:", limit=10000)
-        except Exception:
+        except (OSError, ValueError, KeyError):
             logger.exception("failed to enumerate persisted sagas, starting fresh")
             return
         for key in keys:
             try:
                 raw = self.__store.get(key)
-            except Exception:
+            except (OSError, ValueError, KeyError):
                 logger.exception("failed to read saga key {}, skipping", key)
                 continue
             if raw is None or not isinstance(raw, dict):
@@ -174,7 +174,7 @@ class SagaOrchestrator:
             try:
                 saga = Saga.from_dict(raw)
                 saga.validate()
-            except Exception:
+            except (ValueError, TypeError, KeyError, AttributeError, ProtocolError):
                 logger.exception("saga at {} failed to deserialize, skipping", key)
                 continue
             self.__sagas[saga.saga_id] = saga
@@ -183,7 +183,7 @@ class SagaOrchestrator:
         """Write saga state to the store."""
         try:
             self.__store.set(self.__saga_store_key(saga.saga_id), saga.to_dict())
-        except Exception:
+        except (OSError, ValueError, KeyError):
             logger.exception("failed to persist saga {}", saga.saga_id)
 
     def __remove_saga(self, saga_id: str) -> None:
@@ -193,7 +193,7 @@ class SagaOrchestrator:
             self.__saga_locks.pop(saga_id, None)
         try:
             self.__store.delete(self.__saga_store_key(saga_id))
-        except Exception:
+        except (OSError, ValueError, KeyError):
             logger.exception("failed to remove saga {} from store", saga_id)
 
     def register_emitter(self, saga_name: str, emitter: Emitter) -> None:

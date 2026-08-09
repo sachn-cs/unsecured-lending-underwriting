@@ -18,7 +18,7 @@ from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import BatchedStoreRepository
-from underwrite.validate import get_finite, get_non_empty
+from underwrite.validate import PayloadValidator
 
 
 class FraudHandler(StatefulService):
@@ -98,8 +98,8 @@ class FraudHandler(StatefulService):
             event: The incoming event. LOAN_ORIGINATED and REPAID are processed.
         """
         if event.event_type == EventType.LOAN_ORIGINATED:
-            borrower: str = get_non_empty(event.payload, "borrower")
-            principal: float = get_finite(event.payload, "principal")
+            borrower: str = PayloadValidator().non_empty(event.payload, "borrower")
+            principal: float = PayloadValidator().finite(event.payload, "principal")
             with self.state_lock:
                 self.__record(borrower, "origination", principal)
                 self.__check_wash(borrower, event.correlation_id)
@@ -115,8 +115,8 @@ class FraudHandler(StatefulService):
                     correlation_id=event.correlation_id,
                 )
         elif event.event_type == EventType.REPAID:
-            user: str = get_non_empty(event.payload, "user")
-            delta: float = get_finite(event.payload, "delta_earned")
+            user: str = PayloadValidator().non_empty(event.payload, "user")
+            delta: float = PayloadValidator().finite(event.payload, "delta_earned")
             with self.state_lock:
                 self.__record(user, "repayment", delta)
                 self.__check_wash(user, event.correlation_id)

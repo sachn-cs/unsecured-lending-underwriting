@@ -23,7 +23,7 @@ from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
-from underwrite.validate import get_finite, get_non_empty
+from underwrite.validate import PayloadValidator
 
 DEFAULT_PARAM_RANGES: dict[str, tuple[float, float]] = {
     "protocol_rate": (0.0, 1.0),
@@ -131,8 +131,8 @@ class GovernanceHandler(StatefulService):
         if event.event_type != EventType.GOVERNANCE_PROPOSAL:
             return
         p = event.payload
-        param: str = get_non_empty(p, "param")
-        value: float = get_finite(p, "value")
+        param: str = PayloadValidator().non_empty(p, "param")
+        value: float = PayloadValidator().finite(p, "value")
         if param not in self.__params:
             logger.warning("governance proposal for unknown param {!r} ignored", param)
             return

@@ -8,7 +8,6 @@ EMI-based schedules.
 
 from __future__ import annotations
 
-import math
 from datetime import date
 from decimal import Decimal
 from typing import Any
@@ -27,7 +26,7 @@ from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
-from underwrite.validate import get_finite, get_non_empty
+from underwrite.validate import PayloadValidator
 
 
 class CollectionHandler(StatefulService):
@@ -96,10 +95,10 @@ class CollectionHandler(StatefulService):
     def on_loan_originated(self, event: Event) -> None:
         """Create a collection record with amortization schedule."""
         p = event.payload
-        borrower: str = get_non_empty(p, "borrower")
-        principal: float = max(0.0, get_finite(p, "principal", 0.0))
-        term: int = max(1, int(get_finite(p, "term", 1.0)))
-        annual_rate: float = max(0.0, get_finite(p, "annual_rate", 0.0))
+        borrower: str = PayloadValidator().non_empty(p, "borrower")
+        principal: float = max(0.0, PayloadValidator().finite(p, "principal", 0.0))
+        term: int = max(1, int(PayloadValidator().finite(p, "term", 1.0)))
+        annual_rate: float = max(0.0, PayloadValidator().finite(p, "annual_rate", 0.0))
         start_date_str: str = p.get("start_date", "")
 
         with self.state_lock:
@@ -140,7 +139,7 @@ class CollectionHandler(StatefulService):
         if not borrower:
             logger.debug("repaid event missing borrower/user, ignored")
             return
-        delta: float = get_finite(p, "delta_earned")
+        delta: float = PayloadValidator().finite(p, "delta_earned")
         emit_data: dict[str, Any] | None = None
         with self.state_lock:
             loan = self.__loans.get(borrower)

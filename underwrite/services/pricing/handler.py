@@ -25,7 +25,7 @@ from underwrite.__store__ import Store
 from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
 from underwrite.services import Core
-from underwrite.validate import get_finite, get_non_empty
+from underwrite.validate import PayloadValidator
 
 BASE_RATE: float = 0.08
 RISK_PREMIUM_MULTIPLIER: float = 0.50
@@ -202,13 +202,13 @@ class PricingHandler(Core):
             event: The PRICING_REQUEST event.
         """
         p = event.payload
-        borrower: str = get_non_empty(p, "borrower", "")
-        principal: float = get_finite(p, "principal", 0.0)
-        dp: float = get_finite(p, "default_probability", DEFAULT_PROBABILITY_FALLBACK)
-        tenure_months: int = int(get_finite(p, "tenure_months", 12))
+        borrower: str = PayloadValidator().non_empty(p, "borrower", "")
+        principal: float = PayloadValidator().finite(p, "principal", 0.0)
+        dp: float = PayloadValidator().finite(p, "default_probability", DEFAULT_PROBABILITY_FALLBACK)
+        tenure_months: int = int(PayloadValidator().finite(p, "tenure_months", 12))
         loan_type: str = p.get("loan_type", "personal")
-        credit_score: int = int(get_finite(p, "credit_score", 0))
-        annual_income: float = get_finite(p, "annual_income", 0.0)
+        credit_score: int = int(PayloadValidator().finite(p, "credit_score", 0))
+        annual_income: float = PayloadValidator().finite(p, "annual_income", 0.0)
 
         risk_premium: float = dp * RISK_PREMIUM_MULTIPLIER
         interest_rate: float = BASE_RATE + risk_premium
@@ -268,9 +268,9 @@ class PricingHandler(Core):
             event: The pricing.penal_interest event.
         """
         p = event.payload
-        borrower: str = get_non_empty(p, "borrower", "")
-        overdue_amount: float = get_finite(p, "overdue_amount", 0.0)
-        overdue_days: int = int(get_finite(p, "overdue_days", 0))
+        borrower: str = PayloadValidator().non_empty(p, "borrower", "")
+        overdue_amount: float = PayloadValidator().finite(p, "overdue_amount", 0.0)
+        overdue_days: int = int(PayloadValidator().finite(p, "overdue_days", 0))
 
         daily_penal_rate = self.__penal_interest_cap / float(DAYS_PER_YEAR)
         penal_amount = overdue_amount * daily_penal_rate * overdue_days
@@ -294,8 +294,8 @@ class PricingHandler(Core):
             event: The pricing.foreclosure event.
         """
         p = event.payload
-        borrower: str = get_non_empty(p, "borrower", "")
-        outstanding_principal: float = get_finite(p, "outstanding_principal", 0.0)
+        borrower: str = PayloadValidator().non_empty(p, "borrower", "")
+        outstanding_principal: float = PayloadValidator().finite(p, "outstanding_principal", 0.0)
         loan_type: str = p.get("loan_type", "personal")
 
         foreclosure_charge_pct = self.foreclosure_charge_pct(loan_type)

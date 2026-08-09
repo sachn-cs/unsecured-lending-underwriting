@@ -21,7 +21,7 @@ from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
-from underwrite.validate import get_finite
+from underwrite.validate import PayloadValidator
 
 HIGH_RISK_THRESHOLD: float = 0.7
 MEDIUM_RISK_THRESHOLD: float = 0.4
@@ -96,7 +96,7 @@ class DecisionHandler(StatefulService):
                 self.repo.save(self.__signals)
 
         elif event.event_type == EventType.RISK_SCORED:
-            score: float = get_finite(event.payload, "score", 0.0)
+            score: float = PayloadValidator().finite(event.payload, "score", 0.0)
             signal: dict[str, Any] = {
                 "source": "risk",
                 "type": "score",

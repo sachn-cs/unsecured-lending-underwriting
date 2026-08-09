@@ -24,7 +24,7 @@ from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
-from underwrite.validate import get_finite, get_non_empty
+from underwrite.validate import PayloadValidator
 
 NPA_STANDARD_MAX_DAYS: int = 90
 NPA_SUBSTANDARD_MAX_DAYS: int = 180
@@ -119,8 +119,8 @@ class NPAHandler(StatefulService):
         """
         with self.state_lock:
             if event.event_type == EventType.LOAN_ORIGINATED:
-                borrower: str = get_non_empty(event.payload, "borrower")
-                principal: float = get_finite(event.payload, "principal", 0.0)
+                borrower: str = PayloadValidator().non_empty(event.payload, "borrower")
+                principal: float = PayloadValidator().finite(event.payload, "principal", 0.0)
                 self.__accounts[borrower] = {
                     "originated_at": self.__clock.iso(),
                     "days_overdue": 0,
@@ -142,7 +142,7 @@ class NPAHandler(StatefulService):
                 if record is None:
                     return
                 days: int = record.get("days_overdue", self.__trigger_days)
-                event_principal: float = get_finite(event.payload, "principal", 0.0)
+                event_principal: float = PayloadValidator().finite(event.payload, "principal", 0.0)
                 self.classify_and_provision(borrower, record, days, event.correlation_id, event_principal)
 
     def mark_overdue(self, borrower: str, days: int) -> None:

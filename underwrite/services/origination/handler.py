@@ -22,7 +22,7 @@ from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
 from underwrite.__value_objects__ import IdGenerator
 from underwrite.services.base import Core
-from underwrite.validate import get_finite
+from underwrite.validate import PayloadValidator
 
 
 class OriginationHandler(Core):
@@ -83,7 +83,7 @@ class OriginationHandler(Core):
             event: The ORIGINATION_CREATE event.
         """
         borrower: str = event.payload.get("borrower", "")
-        principal: float = get_finite(event.payload, "principal", 0.0)
+        principal: float = PayloadValidator().finite(event.payload, "principal", 0.0)
         if not borrower or principal <= 0:
             logger.warning("dropping ORIGINATION_CREATE with missing borrower or principal")
             return

@@ -21,7 +21,7 @@ from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
-from underwrite.validate import get_finite, get_non_empty
+from underwrite.validate import PayloadValidator
 
 
 class DisbursementHandler(StatefulService):
@@ -72,8 +72,8 @@ class DisbursementHandler(StatefulService):
         if event.event_type != EventType.DOCUMENT_GENERATED:
             return
         p = event.payload
-        borrower: str = get_non_empty(p, "borrower")
-        principal: float = get_finite(p, "principal")
+        borrower: str = PayloadValidator().non_empty(p, "borrower")
+        principal: float = PayloadValidator().finite(p, "principal")
         doc_id: str = p.get("doc_id", "")
 
         with self.state_lock:

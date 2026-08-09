@@ -30,7 +30,7 @@ from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
-from underwrite.validate import get_finite, get_non_empty
+from underwrite.validate import PayloadValidator
 
 DEFAULT_RECOVERY_RATE: float = 0.3
 NEGOTIATION_DAYS: int = 30
@@ -150,8 +150,8 @@ class RecoveryHandler(StatefulService):
         Args:
             event: The DEFAULT_OCCURRED event.
         """
-        borrower: str = get_non_empty(event.payload, "borrower")
-        principal: float = get_finite(event.payload, "principal")
+        borrower: str = PayloadValidator().non_empty(event.payload, "borrower")
+        principal: float = PayloadValidator().finite(event.payload, "principal")
 
         with self.state_lock:
             if borrower in self.__recoveries:
@@ -206,7 +206,7 @@ class RecoveryHandler(StatefulService):
         Args:
             event: The recovery.offer_response event.
         """
-        borrower: str = get_non_empty(event.payload, "borrower")
+        borrower: str = PayloadValidator().non_empty(event.payload, "borrower")
         accepted: bool = event.payload.get("accepted", False)
 
         with self.state_lock:
@@ -271,8 +271,8 @@ class RecoveryHandler(StatefulService):
         Args:
             event: The PAYMENT_RECEIVED event.
         """
-        borrower: str = get_non_empty(event.payload, "borrower")
-        amount: float = get_finite(event.payload, "amount")
+        borrower: str = PayloadValidator().non_empty(event.payload, "borrower")
+        amount: float = PayloadValidator().finite(event.payload, "amount")
 
         with self.state_lock:
             recovery = self.__recoveries.get(borrower)

@@ -21,7 +21,7 @@ from underwrite.__store__ import Store
 from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
 from underwrite.services.base import Core
-from underwrite.validate import require_finite
+from underwrite.validate import PayloadValidator
 
 
 class StatementHandler(Core):
@@ -91,10 +91,12 @@ class StatementHandler(Core):
                 payment = self.store.get(key)
                 if payment:
                     transactions.append(payment)
-            total_paid: float = sum(require_finite(t.get("amount", 0), "amount") for t in transactions)
+            total_paid: float = sum(PayloadValidator.require_finite(t.get("amount", 0), "amount") for t in transactions)
 
             loan = self.store.get(f"loan:{loan_id}")
-            outstanding: float = require_finite(loan.get("outstanding", 0), "outstanding") if loan else 0.0
+            outstanding: float = (
+                PayloadValidator.require_finite(loan.get("outstanding", 0), "outstanding") if loan else 0.0
+            )
 
             statement: dict[str, Any] = {
                 "statement_id": statement_id,

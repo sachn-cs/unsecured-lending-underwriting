@@ -17,7 +17,7 @@ from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
-from underwrite.validate import get_finite, get_non_empty
+from underwrite.validate import PayloadValidator
 
 
 class CollateralHandler(StatefulService):
@@ -91,8 +91,8 @@ class CollateralHandler(StatefulService):
                 principal payload.
 
         """
-        borrower: str = get_non_empty(event.payload, "borrower")
-        principal: float = get_finite(event.payload, "principal")
+        borrower: str = PayloadValidator().non_empty(event.payload, "borrower")
+        principal: float = PayloadValidator().finite(event.payload, "principal")
         required: float = principal * self.__ltv_ratio
         with self.state_lock:
             self.__collateral[borrower] = {

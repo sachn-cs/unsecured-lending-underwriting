@@ -6,7 +6,7 @@ from underwrite.__events__ import Event, EventType
 from underwrite.__identity__ import Identity
 from underwrite.__logger__ import logger
 from underwrite.services import Core
-from underwrite.validate import get_non_empty
+from underwrite.validate import PayloadValidator
 
 
 class IdentityHandler(Core):
@@ -29,7 +29,7 @@ class IdentityHandler(Core):
         Args:
             event: The identity registration event.
         """
-        service_id: str = get_non_empty(event.payload, "service_id")
+        service_id: str = PayloadValidator().non_empty(event.payload, "service_id")
         identity: Identity = Identity.create(service_id)
         self.store.set(
             f"identity:{service_id}",
@@ -53,7 +53,7 @@ class IdentityHandler(Core):
         Args:
             event: The identity rotation event.
         """
-        service_id = get_non_empty(event.payload, "service_id")
+        service_id = PayloadValidator().non_empty(event.payload, "service_id")
         with self.state_lock:
             existing = self.store.get(f"identity:{service_id}")
             if not existing:

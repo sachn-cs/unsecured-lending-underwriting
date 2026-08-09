@@ -34,7 +34,7 @@ from underwrite.__store__ import Store
 from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
 from underwrite.services.base import Core
-from underwrite.validate import get_finite, get_non_empty
+from underwrite.validate import PayloadValidator
 
 DEFAULT_COOLING_OFF_DAYS = 3
 
@@ -152,10 +152,10 @@ class KfsHandler(Core):
             logger.warning("KFS_GENERATE missing loan_id, skipped")
             return
 
-        borrower: str = get_non_empty(p, "borrower", "")
-        principal: float = get_finite(p, "principal", 0.0)
-        annual_rate: float = get_finite(p, "annual_rate", 0.0)
-        tenure_months: int = int(get_finite(p, "tenure_months", 1))
+        borrower: str = PayloadValidator().non_empty(p, "borrower", "")
+        principal: float = PayloadValidator().finite(p, "principal", 0.0)
+        annual_rate: float = PayloadValidator().finite(p, "annual_rate", 0.0)
+        tenure_months: int = int(PayloadValidator().finite(p, "tenure_months", 1))
         fees: list[dict[str, Any]] = p.get("fees", [])
         start_date_str: str = p.get("start_date", "")
 

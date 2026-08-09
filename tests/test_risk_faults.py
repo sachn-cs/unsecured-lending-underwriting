@@ -94,19 +94,19 @@ class TestAuditServiceFaults:
 class TestValidationFaults:
     def test_require_finite_exception_chains_original_error(self) -> None:
         from underwrite.__exceptions__ import ProtocolError
-        from underwrite.validate import require_finite
+        from underwrite.validate import PayloadValidator
 
         with pytest.raises(ProtocolError) as exc_info:
-            require_finite("not_a_number", "value")
+            PayloadValidator.require_finite("not_a_number", "value")
         assert exc_info.value.__cause__ is not None
         assert isinstance(exc_info.value.__cause__, ValueError | TypeError)
 
     def test_require_finite_preserves_value_type_in_chain(self) -> None:
         from underwrite.__exceptions__ import ProtocolError
-        from underwrite.validate import require_finite
+        from underwrite.validate import PayloadValidator
 
         with pytest.raises(ProtocolError) as exc_info:
-            require_finite(None, "value")
+            PayloadValidator.require_finite(None, "value")
         assert exc_info.value.__cause__ is not None
         assert "NoneType" in str(exc_info.value)
 

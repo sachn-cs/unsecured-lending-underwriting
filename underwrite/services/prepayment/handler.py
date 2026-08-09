@@ -19,7 +19,7 @@ from underwrite.__amortization__ import (
 from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
 from underwrite.services.base import Core
-from underwrite.validate import get_finite
+from underwrite.validate import PayloadValidator
 
 
 class PrepaymentHandler(Core):
@@ -52,10 +52,10 @@ class PrepaymentHandler(Core):
         if not loan_id:
             logger.warning("PREPAYMENT_REQUEST missing loan_id, skipped")
             return
-        principal: float = get_finite(p, "principal", 0.0)
-        annual_rate: float = get_finite(p, "annual_rate", 0.0)
-        tenure_months: int = int(get_finite(p, "tenure_months", 1))
-        penalty_rate: float = get_finite(p, "penalty_rate", 0.0)
+        principal: float = PayloadValidator().finite(p, "principal", 0.0)
+        annual_rate: float = PayloadValidator().finite(p, "annual_rate", 0.0)
+        tenure_months: int = int(PayloadValidator().finite(p, "tenure_months", 1))
+        penalty_rate: float = PayloadValidator().finite(p, "penalty_rate", 0.0)
         as_of_str: str = p.get("as_of", "")
 
         as_of: date | None = None

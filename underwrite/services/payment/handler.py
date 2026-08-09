@@ -28,7 +28,7 @@ from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
 from underwrite.__value_objects__ import IdGenerator, Money
 from underwrite.services.base import StatefulService
-from underwrite.validate import get_finite
+from underwrite.validate import PayloadValidator
 
 OVERDUE_CUTOFF_DAYS: int = 30
 
@@ -99,7 +99,7 @@ class PaymentHandler(StatefulService):
             event: The PAYMENT_RECEIVE event.
         """
         loan_id: str = event.payload.get("loan_id", "")
-        amount: float = get_finite(event.payload, "amount", 0.0)
+        amount: float = PayloadValidator().finite(event.payload, "amount", 0.0)
         if not loan_id or amount <= 0:
             return
         payment_id: str = f"pay_{loan_id}_{self.__id_generator.next()}"
@@ -130,7 +130,7 @@ class PaymentHandler(StatefulService):
         """
         loan_id: str = event.payload.get("loan_id", "")
         due_date: str = event.payload.get("due_date", "")
-        amount: float = get_finite(event.payload, "amount", 0.0)
+        amount: float = PayloadValidator().finite(event.payload, "amount", 0.0)
         if not loan_id or not due_date:
             return
         schedule_key: str = f"schedule:{loan_id}:{due_date}"
@@ -193,7 +193,7 @@ class PaymentHandler(StatefulService):
             event: The RAZORPAY_PAYMENT_CAPTURED event.
         """
         loan_id: str = event.payload.get("loan_id", "")
-        amount: float = get_finite(event.payload, "amount", 0.0)
+        amount: float = PayloadValidator().finite(event.payload, "amount", 0.0)
         razorpay_payment_id: str = event.payload.get("payment_id", "")
         if not loan_id or amount <= 0:
             return
@@ -227,7 +227,7 @@ class PaymentHandler(StatefulService):
             event: The RAZORPAY_SUBSCRIPTION_CHARGED event.
         """
         loan_id: str = event.payload.get("loan_id", "")
-        amount: float = get_finite(event.payload, "amount", 0.0)
+        amount: float = PayloadValidator().finite(event.payload, "amount", 0.0)
         sub_id: str = event.payload.get("subscription_id", "")
         payment_id: str = event.payload.get("payment_id", "")
         if not loan_id or amount <= 0:
@@ -264,7 +264,7 @@ class PaymentHandler(StatefulService):
             event: The RAZORPAY_PAYMENT_REFUNDED event.
         """
         loan_id: str = event.payload.get("loan_id", "")
-        amount: float = get_finite(event.payload, "amount", 0.0)
+        amount: float = PayloadValidator().finite(event.payload, "amount", 0.0)
         razorpay_payment_id: str = event.payload.get("payment_id", "")
         if not loan_id or amount <= 0:
             return

@@ -38,7 +38,7 @@ from underwrite.services.razorpay.client import (
     RazorpayClient,
     RazorpayError,
 )
-from underwrite.validate import get_finite
+from underwrite.validate import PayloadValidator
 
 DEFAULT_RAZORPAY_API_BASE_URL: str = "https://api.razorpay.com/v1"
 
@@ -189,7 +189,7 @@ class RazorpayHandler(StatefulService):
         if not loan_id:
             logger.warning("RAZORPAY_ORDER_CREATE missing loan_id, skipped")
             return
-        amount_paise: int = int(get_finite(p, "amount", 0.0) * 100)
+        amount_paise: int = int(PayloadValidator().finite(p, "amount", 0.0) * 100)
         currency: str = p.get("currency", "INR")
         receipt: str = p.get("receipt", f"loan_{loan_id}")
         notes: dict[str, str] = {"loan_id": loan_id}
@@ -247,7 +247,7 @@ class RazorpayHandler(StatefulService):
         if not plan_id:
             logger.warning("RAZORPAY_SUBSCRIBE missing plan_id")
             return
-        total_count: int = int(get_finite(p, "total_count", 12))
+        total_count: int = int(PayloadValidator().finite(p, "total_count", 12))
         notes: dict[str, str] = {"loan_id": loan_id}
 
         try:

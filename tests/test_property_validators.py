@@ -23,12 +23,7 @@ from underwrite.__amortization__ import (
 )
 from underwrite.__exceptions__ import ProtocolError
 from underwrite.services.pricing.handler import compute_rate_cap
-from underwrite.validate import (
-    require_finite,
-    require_in_range,
-    require_non_negative,
-    require_positive,
-)
+from underwrite.validate import PayloadValidator
 
 finite_float = st.floats(min_value=-1e9, max_value=1e9, allow_nan=False, allow_infinity=False)
 positive_float = st.floats(min_value=1e-6, max_value=1e9, allow_nan=False, allow_infinity=False)
@@ -45,7 +40,7 @@ class TestRequirePositive:
     @given(value=positive_float)
     @settings(max_examples=50, suppress_health_check=[HealthCheck.too_slow])
     def test_positive_passes(self, value: float) -> None:
-        result = require_positive(value, "v")
+        result = PayloadValidator.require_positive(value, "v")
         assert result == value
         assert result > 0
 
@@ -53,14 +48,14 @@ class TestRequirePositive:
     @settings(max_examples=30)
     def test_non_positive_raises(self, value: float) -> None:
         with pytest.raises(ProtocolError, match="must be positive"):
-            require_positive(value, "v")
+            PayloadValidator.require_positive(value, "v")
 
 
 class TestRequireNonNegative:
     @given(value=non_negative_float)
     @settings(max_examples=50)
     def test_non_negative_passes(self, value: float) -> None:
-        result = require_non_negative(value, "v")
+        result = PayloadValidator.require_non_negative(value, "v")
         assert result == value
         assert result >= 0
 
@@ -68,26 +63,26 @@ class TestRequireNonNegative:
     @settings(max_examples=30)
     def test_negative_raises(self, value: float) -> None:
         with pytest.raises(ProtocolError, match="must be non-negative"):
-            require_non_negative(value, "v")
+            PayloadValidator.require_non_negative(value, "v")
 
 
 class TestRequireFinite:
     @given(value=finite_float)
     @settings(max_examples=50)
     def test_finite_passes(self, value: float) -> None:
-        assert require_finite(value, "v") == value
+        assert PayloadValidator.require_finite(value, "v") == value
 
     @given(value=st.just(float("inf")))
     @settings(max_examples=10)
     def test_infinity_raises(self, value: float) -> None:
         with pytest.raises(ProtocolError, match="must be finite"):
-            require_finite(value, "v")
+            PayloadValidator.require_finite(value, "v")
 
     @given(value=st.just(float("nan")))
     @settings(max_examples=10)
     def test_nan_raises(self, value: float) -> None:
         with pytest.raises(ProtocolError, match="must be finite"):
-            require_finite(value, "v")
+            PayloadValidator.require_finite(value, "v")
 
 
 class TestRequireInRange:
@@ -99,7 +94,7 @@ class TestRequireInRange:
     def test_midpoint_in_range_passes(self, lo: float, hi: float) -> None:
         assume(hi > lo)
         midpoint = (lo + hi) / 2.0
-        assert require_in_range(midpoint, lo, hi, "v") == midpoint
+        assert PayloadValidator.require_in_range(midpoint, lo, hi, "v") == midpoint
 
     @given(
         lo=st.floats(min_value=-100.0, max_value=0.0, allow_nan=False),
@@ -110,7 +105,7 @@ class TestRequireInRange:
     def test_above_range_raises(self, lo: float, hi: float, delta: float) -> None:
         assume(hi > lo)
         with pytest.raises(ProtocolError, match=r"must be in \["):
-            require_in_range(hi + delta, lo, hi, "v")
+            PayloadValidator.require_in_range(hi + delta, lo, hi, "v")
 
 
 class TestAmortizationInvariants:

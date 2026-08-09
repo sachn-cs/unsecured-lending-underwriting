@@ -14,7 +14,7 @@ from typing import Any
 
 from underwrite.__authz__ import AccessControl
 from underwrite.__bus__ import EventBus
-from underwrite.__constants__ import DAYS_PER_YEAR, MONEY_QUANTUM, RATE_QUANTUM
+from underwrite.__constants__ import DAYS_PER_YEAR, MONEY_QUANTUM
 from underwrite.__events__ import Event, EventType
 from underwrite.__health__ import HealthRegistry
 from underwrite.__identity__ import Identity
@@ -25,7 +25,7 @@ from underwrite.__store__ import Store
 from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
 from underwrite.services.base import Core
-from underwrite.validate import get_finite
+from underwrite.validate import PayloadValidator
 
 RATE_PERCENT_MULTIPLIER: int = 100 * DAYS_PER_YEAR
 
@@ -97,8 +97,8 @@ class ServicingHandler(Core):
         """
         loan_id: str = event.payload.get("loan_id", "")
         borrower: str = event.payload.get("borrower", "")
-        principal: float = get_finite(event.payload, "principal", 0.0)
-        annual_rate: float = get_finite(event.payload, "annual_rate", 0.0)
+        principal: float = PayloadValidator().finite(event.payload, "principal", 0.0)
+        annual_rate: float = PayloadValidator().finite(event.payload, "annual_rate", 0.0)
         if not loan_id:
             logger.warning("dropping LOAN_ORIGINATED with missing loan_id")
             return
@@ -132,7 +132,7 @@ class ServicingHandler(Core):
         if not loan_id:
             logger.warning("dropping REPAID with missing loan_id")
             return
-        amount: float = get_finite(event.payload, "amount", 0.0)
+        amount: float = PayloadValidator().finite(event.payload, "amount", 0.0)
         if self.bus.idempotency.is_duplicate(self.service_id, event.event_id):
             logger.debug("duplicate REPAID event {} dropped", event.event_id)
             return

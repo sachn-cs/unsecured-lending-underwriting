@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from underwrite.__events__ import Event, EventType
 from underwrite.services import Core
-from underwrite.validate import get_finite, get_non_negative, get_positive
+from underwrite.validate import PayloadValidator
 
 
 class QuoteHandler(Core):
@@ -21,11 +21,11 @@ class QuoteHandler(Core):
         if event.event_type != EventType.QUOTE:
             return
         p = event.payload
-        principal: float = get_non_negative(p, "principal")
-        term: float = get_positive(p, "term")
-        dp: float = get_finite(p, "default_probability", 0.02)
-        pr: float = get_finite(p, "protocol_rate", 0.10)
-        mdr: float = get_finite(p, "max_delegation_rate", 0.05)
+        principal: float = PayloadValidator().non_negative(p, "principal")
+        term: float = PayloadValidator().positive(p, "term")
+        dp: float = PayloadValidator().finite(p, "default_probability", 0.02)
+        pr: float = PayloadValidator().finite(p, "protocol_rate", 0.10)
+        mdr: float = PayloadValidator().finite(p, "max_delegation_rate", 0.05)
         borrower: str = p.get("borrower", "")
 
         # protocol_premium is the total protocol interest that would be

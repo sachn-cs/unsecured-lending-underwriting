@@ -20,7 +20,7 @@ from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
-from underwrite.validate import get_finite
+from underwrite.validate import PayloadValidator
 
 
 class ReportingHandler(StatefulService):
@@ -99,7 +99,7 @@ class ReportingHandler(StatefulService):
         if event.event_type == EventType.LOAN_ORIGINATED:
             with self.state_lock:
                 self.__originations += 1
-                self.__total_principal += get_finite(event.payload, "principal")
+                self.__total_principal += PayloadValidator().finite(event.payload, "principal")
                 self.__sync()
         elif event.event_type == EventType.DEFAULT_OCCURRED:
             with self.state_lock:
@@ -129,9 +129,9 @@ class ReportingHandler(StatefulService):
         Args:
             event: The PROVISIONING_COMPUTED event.
         """
-        amount: float = get_finite(event.payload, "provisioning_amount", 0.0)
+        amount: float = PayloadValidator().finite(event.payload, "provisioning_amount", 0.0)
         bucket: str = event.payload.get("bucket", "")
-        principal: float = get_finite(event.payload, "outstanding", 0.0)
+        principal: float = PayloadValidator().finite(event.payload, "outstanding", 0.0)
         if bucket not in self.__bucket_principals:
             return
         with self.state_lock:

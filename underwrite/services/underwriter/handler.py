@@ -31,7 +31,7 @@ from underwrite.services.underwriter.engine import (
     RuleSeverity,
     UnderwritingDecision,
 )
-from underwrite.validate import get_finite, get_non_empty
+from underwrite.validate import PayloadValidator
 
 DEFAULT_RULES: list[Rule] = [
     Rule(
@@ -318,9 +318,9 @@ class UnderwriterHandler(StatefulService):
         """
         p = event.payload
         app_id: str = p.get("application_id", "") or event.correlation_id
-        borrower: str = get_non_empty(p, "borrower", "")
-        principal: float = get_finite(p, "principal", 0.0)
-        dp: float = get_finite(p, "default_probability", 0.0)
+        borrower: str = PayloadValidator().non_empty(p, "borrower", "")
+        principal: float = PayloadValidator().finite(p, "principal", 0.0)
+        dp: float = PayloadValidator().finite(p, "default_probability", 0.0)
 
         if not borrower:
             logger.warning("underwrite.request missing borrower")

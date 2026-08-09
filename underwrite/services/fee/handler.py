@@ -7,7 +7,6 @@ Emits fee.assessed when a fee is applied to a loan.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
@@ -28,7 +27,7 @@ from underwrite.__tracer__ import Tracer
 from underwrite.__value_objects__ import IdGenerator
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import BatchedStoreRepository
-from underwrite.validate import get_finite
+from underwrite.validate import PayloadValidator
 
 DEFAULT_FEE_SCHEDULES: dict[str, float] = {
     "late_payment": 25.0,
@@ -225,7 +224,7 @@ class FeeHandler(StatefulService):
             self.__assess(
                 loan_id=event.payload.get("loan_id", ""),
                 fee_type=event.payload.get("fee_type", ""),
-                principal=get_finite(event.payload, "principal", 0.0),
+                principal=PayloadValidator().finite(event.payload, "principal", 0.0),
                 overdue_days=event.payload.get("overdue_days", 0),
                 overdue_amount=event.payload.get("overdue_amount", 0.0),
                 correlation_id=event.correlation_id,

@@ -21,7 +21,7 @@ from underwrite.__tracer__ import Tracer
 from underwrite.__value_objects__ import IdGenerator
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
-from underwrite.validate import get_finite, get_non_empty
+from underwrite.validate import PayloadValidator
 
 
 class DocumentHandler(StatefulService):
@@ -76,8 +76,8 @@ class DocumentHandler(StatefulService):
         if event.event_type != EventType.UNDERWRITER_APPROVED:
             return
         p = event.payload
-        borrower: str = get_non_empty(p, "borrower")
-        principal: float = get_finite(p, "principal")
+        borrower: str = PayloadValidator().non_empty(p, "borrower")
+        principal: float = PayloadValidator().finite(p, "principal")
         doc_id: str = self.__id_generator.next()
 
         record = {

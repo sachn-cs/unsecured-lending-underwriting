@@ -22,7 +22,7 @@ from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
 from underwrite.services import Core
 from underwrite.services.risk.model import RiskModel
-from underwrite.validate import get_finite, get_non_empty
+from underwrite.validate import PayloadValidator
 
 
 class RiskHandler(Core):
@@ -83,8 +83,8 @@ class RiskHandler(Core):
             event: The incoming event. Only LOAN_ORIGINATED events are processed.
         """
         if event.event_type == EventType.LOAN_ORIGINATED:
-            dp: float = get_finite(event.payload, "default_probability")
-            borrower: str = get_non_empty(event.payload, "borrower")
+            dp: float = PayloadValidator().finite(event.payload, "default_probability")
+            borrower: str = PayloadValidator().non_empty(event.payload, "borrower")
             if dp > 0.3:
                 self.emit(
                     EventType.RISK_EARLY_WARNING,
@@ -96,8 +96,8 @@ class RiskHandler(Core):
                 )
             if self.__model:
                 try:
-                    principal: float = get_finite(event.payload, "principal")
-                    term: float = get_finite(event.payload, "term", 1.0)
+                    principal: float = PayloadValidator().finite(event.payload, "principal")
+                    term: float = PayloadValidator().finite(event.payload, "term", 1.0)
                     score: float = self.__model.predict(principal, term)
                 except Exception as exc:
                     logger.exception("risk scoring failed for {}: {}", borrower, exc)

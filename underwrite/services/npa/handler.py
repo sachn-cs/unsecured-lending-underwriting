@@ -19,6 +19,20 @@ from underwrite.services.persistence import TypedStoreRepository
 from underwrite.validate import get_finite, get_non_empty
 
 
+NPA_STANDARD_MAX_DAYS: int = 90
+NPA_SUBSTANDARD_MAX_DAYS: int = 180
+NPA_DOUBTFUL_MAX_DAYS: int = 360
+SMA0_MAX_DAYS: int = 30
+SMA1_MAX_DAYS: int = 60
+SMA2_MAX_DAYS: int = 90
+DLG_TRIGGER_DAYS_DEFAULT: int = 120
+NPA_DAYS_DEFAULT: int = 90
+STANDARD_PROVISIONING_RATE_DEFAULT: float = 0.0025
+SUBSTANDARD_PROVISIONING_RATE_DEFAULT: float = 0.15
+DOUBTFUL_PROVISIONING_RATE_DEFAULT: float = 0.25
+LOSS_PROVISIONING_RATE_DEFAULT: float = 1.0
+
+
 class NPAHandler(StatefulService):
     """Tracks days-past-due and transitions accounts through SMA/NPA buckets.
 
@@ -44,13 +58,13 @@ class NPAHandler(StatefulService):
         """Initialize the NPA service with provisioning rates and DLG config."""
         super().__init__(**kwargs)
         self.__accounts: dict[str, dict[str, Any]] = {}
-        self.__trigger_days: int = kwargs.get("dlg_trigger_days", 120)
-        self.__npa_days: int = kwargs.get("npa_days", 90)
+        self.__trigger_days: int = kwargs.get("dlg_trigger_days", DLG_TRIGGER_DAYS_DEFAULT)
+        self.__npa_days: int = kwargs.get("npa_days", NPA_DAYS_DEFAULT)
         self.__provisioning_rates: dict[str, float] = {
-            "standard": kwargs.get("standard_provisioning_rate", 0.0025),
-            "substandard": kwargs.get("substandard_provisioning_rate", 0.15),
-            "doubtful": kwargs.get("doubtful_provisioning_rate_secured", 0.25),
-            "loss": kwargs.get("loss_provisioning_rate", 1.0),
+            "standard": kwargs.get("standard_provisioning_rate", STANDARD_PROVISIONING_RATE_DEFAULT),
+            "substandard": kwargs.get("substandard_provisioning_rate", SUBSTANDARD_PROVISIONING_RATE_DEFAULT),
+            "doubtful": kwargs.get("doubtful_provisioning_rate_secured", DOUBTFUL_PROVISIONING_RATE_DEFAULT),
+            "loss": kwargs.get("loss_provisioning_rate", LOSS_PROVISIONING_RATE_DEFAULT),
         }
         self.repo: TypedStoreRepository[dict[str, dict[str, Any]]] = self.store_repo("accounts", dict)
 
@@ -217,11 +231,11 @@ class NPAHandler(StatefulService):
         """
         if days < 0:
             raise ValueError(f"days must be non-negative (got {days})")
-        if days < 90:
+        if days < NPA_STANDARD_MAX_DAYS:
             return "standard"
-        if days < 180:
+        if days < NPA_SUBSTANDARD_MAX_DAYS:
             return "substandard"
-        if days < 360:
+        if days < NPA_DOUBTFUL_MAX_DAYS:
             return "doubtful"
         return "loss"
 
@@ -238,10 +252,10 @@ class NPAHandler(StatefulService):
         """
         if days <= 0:
             return ""
-        if days <= 30:
+        if days <= SMA0_MAX_DAYS:
             return "sma_0"
-        if days <= 60:
+        if days <= SMA1_MAX_DAYS:
             return "sma_1"
-        if days <= 90:
+        if days <= SMA2_MAX_DAYS:
             return "sma_2"
         return ""

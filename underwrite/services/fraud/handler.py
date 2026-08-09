@@ -16,6 +16,10 @@ class FraudHandler(StatefulService):
 
     MAX_BORROWERS: int = 100000
     SYNC_INTERVAL: int = 10
+    LARGE_PRINCIPAL_THRESHOLD: float = 1_000_000.0
+    ACTIVITY_DEQUE_MAXLEN: int = 1000
+    WASH_SCORE_PER_CYCLE: float = 16.67
+    MAX_FRAUD_SCORE: float = 100.0
 
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the fraud service with an empty activity record store.
@@ -62,7 +66,7 @@ class FraudHandler(StatefulService):
                 self.__record(borrower, "origination", principal)
                 self.__check_wash(borrower, event.correlation_id)
                 self.__check_burst(borrower, event.correlation_id)
-            if principal > 1_000_000:
+            if principal > self.LARGE_PRINCIPAL_THRESHOLD:
                 self.emit(
                     EventType.FRAUD_ALERT,
                     {
@@ -90,7 +94,7 @@ class FraudHandler(StatefulService):
         if borrower not in self.__records:
             if len(self.__records) >= self.MAX_BORROWERS:
                 self.__records.pop(next(iter(self.__records)))
-            self.__records[borrower] = deque(maxlen=1000)
+            self.__records[borrower] = deque(maxlen=self.ACTIVITY_DEQUE_MAXLEN)
         else:
             records = self.__records.pop(borrower)
             self.__records[borrower] = records
@@ -111,7 +115,7 @@ class FraudHandler(StatefulService):
             borrower: The borrower identifier.
             correlation_id: Correlation ID for tracing.
         """
-        records = self.__records.get(borrower, deque(maxlen=1000))
+        records = self.__records.get(borrower, deque(maxlen=self.ACTIVITY_DEQUE_MAXLEN))
         if len(records) < 2:
             return
         types = {r["event_type"] for r in records}
@@ -131,7 +135,7 @@ class FraudHandler(StatefulService):
                 {
                     "borrower": borrower,
                     "cycles": cycles,
-                    "score": min(100.0, cycles * 16.67),
+                    "score": min(self.MAX_FRAUD_SCORE, cycles * self.WASH_SCORE_PER_CYCLE),
                 },
                 correlation_id=correlation_id,
             )
@@ -143,7 +147,7 @@ class FraudHandler(StatefulService):
             borrower: The borrower identifier.
             correlation_id: Correlation ID for tracing.
         """
-        records = self.__records.get(borrower, deque(maxlen=1000))
+        records = self.__records.get(borrower, deque(maxlen=self.ACTIVITY_DEQUE_MAXLEN))
         recent = [r for r in records if r["event_type"] == "origination"]
         if len(recent) > 3:
             self.emit(

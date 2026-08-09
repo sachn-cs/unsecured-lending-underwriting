@@ -6,6 +6,7 @@ purposes. Supports consent withdrawal, expiry, and re-consent.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -13,6 +14,22 @@ from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
+
+DEFAULT_CONSENT_VALIDITY_DAYS: int = 365
+
+
+@dataclass(frozen=True, slots=True)
+class ConsentConfig:
+    """Typed configuration for ConsentHandler.
+
+    Replaces the previous ``kwargs.pop("required_purposes", ...)``
+    pattern: callers now pass a ConsentConfig (or its fields are
+    extracted from kwargs via a constructor that does not mutate
+    the caller's mapping).
+    """
+
+    required_purposes: list[str] = field(default_factory=list)
+    consent_validity_days: int = DEFAULT_CONSENT_VALIDITY_DAYS
 
 
 class ConsentHandler(StatefulService):
@@ -34,8 +51,12 @@ class ConsentHandler(StatefulService):
                 empty list and 365 days respectively.
 
         """
-        self.__required_purposes: list[str] = kwargs.pop("required_purposes", [])
-        self.__consent_validity_days: int = kwargs.pop("consent_validity_days", 365)
+        config = ConsentConfig(
+            required_purposes=kwargs.pop("required_purposes", []),
+            consent_validity_days=kwargs.pop("consent_validity_days", DEFAULT_CONSENT_VALIDITY_DAYS),
+        )
+        self.__required_purposes: list[str] = config.required_purposes
+        self.__consent_validity_days: int = config.consent_validity_days
         super().__init__(**kwargs)
         self.__records: dict[str, dict[str, Any]] = {}
         self.repo: TypedStoreRepository[dict[str, dict[str, Any]]] = self.store_repo("consent", dict)

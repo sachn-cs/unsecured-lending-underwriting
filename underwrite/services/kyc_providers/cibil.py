@@ -128,7 +128,7 @@ class CibilBureauClient(KycProvider):
 
         try:
             response = self.__request_score(body)
-        except Exception as exc:
+        except (OSError, ValueError, TypeError, RuntimeError, json.JSONDecodeError) as exc:
             logger.exception("CIBIL bureau pull transport error")
             return ProviderResult(verdict=Verdict.ERROR, provider=self.name, error=str(exc))
         return self.__parse(response)

@@ -55,7 +55,7 @@ class StoreRepository(Generic[T]):
             if raw is None:
                 return default
             return self.deserialize(raw)
-        except Exception:
+        except (OSError, ValueError, TypeError, KeyError):
             logger.exception("failed to load {} from store", self.key)
             return default
 

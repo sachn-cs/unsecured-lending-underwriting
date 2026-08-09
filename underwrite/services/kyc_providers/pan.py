@@ -151,7 +151,7 @@ class PanVerificationClient(KycProvider):
 
         try:
             response = self.__http_post(payload, signature)
-        except Exception as exc:
+        except (OSError, ValueError, TypeError, RuntimeError, json.JSONDecodeError) as exc:
             logger.exception("PAN verification transport error")
             return ProviderResult(verdict=Verdict.ERROR, provider=self.name, error=str(exc))
 

@@ -199,7 +199,9 @@ class TestJsonFormatter:
         assert "\n" not in line.strip()
 
     def test_redacts_private_key_field(self) -> None:
-        out = json.loads(JsonFormatter().format(make_record("{'private_key': 'abc', 'key_id': 'k1'}")))
+        out = json.loads(
+            JsonFormatter().format(make_record("{'private_key': 'abc', 'key_id': 'k1'}"))
+        )
         assert out["message"] == {"private_key": "***REDACTED***", "key_id": "k1"}
 
 
@@ -219,7 +221,9 @@ class TestTextFormatter:
 class TestJsonTraceId:
     def test_trace_id_included_when_bound(self) -> None:
         lines: list[str] = []
-        handler_id = logger.add(lines.append, level="DEBUG", format=loguru_sink_format(JsonFormatter()))
+        handler_id = logger.add(
+            lines.append, level="DEBUG", format=loguru_sink_format(JsonFormatter())
+        )
         try:
             logger.bind(trace_id="trace-1").info("hello")
         finally:
@@ -234,7 +238,9 @@ class TestJsonTraceId:
 
     def test_non_string_trace_id_is_coerced(self) -> None:
         lines: list[str] = []
-        handler_id = logger.add(lines.append, level="DEBUG", format=loguru_sink_format(JsonFormatter()))
+        handler_id = logger.add(
+            lines.append, level="DEBUG", format=loguru_sink_format(JsonFormatter())
+        )
         try:
             logger.bind(trace_id=12345).info("hello")
         finally:
@@ -271,7 +277,9 @@ class TestLoguruIntegration:
 
     def test_opt_exception_attaches_traceback(self) -> None:
         lines: list[str] = []
-        handler_id = logger.add(lines.append, level="DEBUG", format=loguru_sink_format(JsonFormatter()))
+        handler_id = logger.add(
+            lines.append, level="DEBUG", format=loguru_sink_format(JsonFormatter())
+        )
         try:
             try:
                 raise ValueError("boom")

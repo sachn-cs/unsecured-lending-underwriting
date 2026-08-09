@@ -26,13 +26,15 @@ class TestCorrelationContext:
 
     def test_reset_restores_previous_value(self) -> None:
         outer = correlation_context.set("outer")
-        inner = correlation_context.set("inner")
         try:
-            assert get_log_correlation_id() == "inner"
+            inner = correlation_context.set("inner")
+            try:
+                assert get_log_correlation_id() == "inner"
+            finally:
+                correlation_context.reset(inner)
+            assert get_log_correlation_id() == "outer"
         finally:
-            correlation_context.reset(inner)
-        assert get_log_correlation_id() == "outer"
-        correlation_context.reset(outer)
+            correlation_context.reset(outer)
 
     def test_restore_to_unset_yields_empty_string(self) -> None:
         token = correlation_context.set("value")

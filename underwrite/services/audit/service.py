@@ -150,7 +150,7 @@ class AuditHandler(StatefulService):
             client = boto3.client("s3")
             client.put_object(Bucket=bucket, Key=key, Body=body.encode("utf-8"))
             logger.info("audit exported to s3://{}/{} ({} bytes)", bucket, key, len(body))
-        except Exception:
+        except (OSError, ValueError, TypeError):
             logger.exception("audit S3 export failed")
 
     def __export_gcs(self, body: str) -> None:
@@ -171,7 +171,7 @@ class AuditHandler(StatefulService):
             client = storage.Client()
             client.bucket(bucket).blob(key).upload_from_string(body)
             logger.info("audit exported to gs://{}/{} ({} bytes)", bucket, key, len(body))
-        except Exception:
+        except (OSError, ValueError, TypeError):
             logger.exception("audit GCS export failed")
 
     def save_jsonl(self, path: str, chunk_size: int = 1000) -> None:

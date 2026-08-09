@@ -136,6 +136,19 @@ class TestConfiguration:
             Configuration.load(str(p))
         assert "invalid_format" in str(exc.value)
 
+    def test_schema_rejects_invalid_logging_output(self, tmp_path: Path) -> None:
+        p = tmp_path / "config.json"
+        p.write_text(json.dumps({"logging": {"output": "invalid_output"}}))
+        with pytest.raises(ConfigurationError) as exc:
+            Configuration.load(str(p))
+        assert "invalid_output" in str(exc.value)
+
+    def test_schema_accepts_stderr_logging_output(self, tmp_path: Path) -> None:
+        p = tmp_path / "config.json"
+        p.write_text(json.dumps({"logging": {"output": "stderr"}}))
+        config = Configuration.load(str(p))
+        assert config.logging.output == "stderr"
+
     def test_schema_rejects_unknown_field(self, tmp_path: Path) -> None:
         p = tmp_path / "config.json"
         p.write_text(json.dumps({"bus": {"unknown_field": 1}}))

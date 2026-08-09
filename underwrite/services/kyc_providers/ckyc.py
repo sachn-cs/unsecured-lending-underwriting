@@ -120,7 +120,7 @@ class CkycSearchClient(KycProvider):
 
         try:
             response = self.__request_search(body)
-        except Exception as exc:
+        except (OSError, ValueError, TypeError, RuntimeError, json.JSONDecodeError) as exc:
             logger.exception("CKYC search transport error")
             return ProviderResult(verdict=Verdict.ERROR, provider=self.name, error=str(exc))
         return self.__parse(response)

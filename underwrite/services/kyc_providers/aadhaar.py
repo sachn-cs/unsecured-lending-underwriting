@@ -139,7 +139,7 @@ class AadhaarEKycClient(KycProvider):
 
         try:
             response = self.__send_kyc_request(body)
-        except Exception as exc:
+        except (OSError, ValueError, TypeError, RuntimeError, json.JSONDecodeError) as exc:
             logger.exception("Aadhaar eKYC transport error")
             return ProviderResult(verdict=Verdict.ERROR, provider=self.name, error=str(exc))
         return self.__parse(response)

@@ -104,7 +104,7 @@ class NanoService(ABC):
                 "construct one with Runtime as the composition root."
             )
         self.__bus: EventBus = bus
-        self._store: Store = store
+        self.__store: Store = store
         self.__metrics: MetricsCollector | None = metrics
         self.__health: HealthRegistry | None = health
         self.__authz: AccessControl | None = authz
@@ -154,7 +154,17 @@ class NanoService(ABC):
     @property
     def store(self) -> Store:
         """Return the state persistence backend for this service."""
-        return self._store
+        return self.__store
+
+    @store.setter
+    def store(self, value: Store) -> None:
+        """Replace the state persistence backend.
+
+        Provided primarily so tests can swap in a broken store to
+        simulate I/O failures without monkey-patching the private
+        attribute.
+        """
+        self.__store = value
 
     @property
     def metrics_collector(self) -> MetricsCollector | None:
@@ -179,7 +189,7 @@ class NanoService(ABC):
             exception occurs.
         """
         try:
-            return self._store.get(key)
+            return self.__store.get(key)
         except Exception:
             logger.exception("store get failed for {} in service {}", key, self.__service_id)
             return default
@@ -195,7 +205,7 @@ class NanoService(ABC):
             True if the write succeeded, False otherwise.
         """
         try:
-            self._store.set(key, value)
+            self.__store.set(key, value)
             return True
         except Exception:
             logger.exception("store set failed for {} in service {}", key, self.__service_id)

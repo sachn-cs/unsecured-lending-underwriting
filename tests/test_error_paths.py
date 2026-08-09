@@ -29,13 +29,13 @@ from underwrite.services.risk.model import RiskModel
 class TestSafeStoreGet:
     def test_returns_default_on_exception(self) -> None:
         svc = ConcreteService(service_id="test_svc_get", bus=LocalBus(), store=MemoryStore())
-        svc._store = BrokenStore()  # type: ignore[assignment]
+        svc.store = BrokenStore()
         result = svc.safe_store_get("some_key", default="fallback")
         assert result == "fallback"
 
     def test_returns_store_result_for_missing_key(self) -> None:
         svc = ConcreteService(service_id="test_svc_get_missing", bus=LocalBus(), store=MemoryStore())
-        svc._store = MemoryStore()  # type: ignore[assignment]
+        svc.store = MemoryStore()
         result = svc.safe_store_get("missing", default=42)
         assert result is None
 
@@ -48,7 +48,7 @@ class TestSafeStoreGet:
 class TestSafeStoreSet:
     def test_returns_false_on_exception(self) -> None:
         svc = ConcreteService(service_id="test_svc_set", bus=LocalBus(), store=MemoryStore())
-        svc._store = BrokenStore()  # type: ignore[assignment]
+        svc.store = BrokenStore()
         result = svc.safe_store_set("some_key", "value")
         assert result is False
 

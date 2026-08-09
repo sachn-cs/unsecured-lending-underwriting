@@ -22,6 +22,8 @@ from underwrite.__value_objects__ import Money
 from underwrite.services.base import StatefulService
 from underwrite.validate import get_finite
 
+OVERDUE_CUTOFF_DAYS: int = 30
+
 
 class PaymentHandler(StatefulService):
     """Manages payment scheduling, receipt tracking, and delinquency detection."""
@@ -123,7 +125,7 @@ class PaymentHandler(StatefulService):
         loan_id: str = event.payload.get("loan_id", "")
         if not loan_id:
             return
-        cutoff: datetime = datetime.now(timezone.utc) - timedelta(days=30)
+        cutoff: datetime = datetime.now(timezone.utc) - timedelta(days=OVERDUE_CUTOFF_DAYS)
         for key in self.store.keys(f"schedule:{loan_id}:"):
             raw = self.store.get(key)
             if raw is None:

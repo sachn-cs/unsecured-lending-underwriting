@@ -17,6 +17,16 @@ from underwrite.__value_objects__ import IdGenerator
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
 
+from underwrite.__authz__ import AccessControl
+from underwrite.__bus__ import EventBus
+from underwrite.__health__ import HealthRegistry
+from underwrite.__identity__ import Identity
+from underwrite.__metrics__ import MetricsCollector
+from underwrite.__saga__ import SagaOrchestrator
+from underwrite.__store__ import Store
+from underwrite.__supervisor__ import ServiceSupervisor
+from underwrite.__tracer__ import Tracer
+
 DEFAULT_DSR_RESPONSE_DAYS: int = 30
 DEFAULT_GRIEVANCE_RESPONSE_DAYS: int = 15
 
@@ -45,14 +55,42 @@ class DataSubjectRightsHandler(StatefulService):
       - Grievance logging and resolution
     """
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        service_id: str,
+        bus: EventBus,
+        store: Store,
+        identity: Identity | None = None,
+        metrics: MetricsCollector | None = None,
+        health: HealthRegistry | None = None,
+        authz: AccessControl | None = None,
+        tracer: Tracer | None = None,
+        saga: SagaOrchestrator | None = None,
+        supervisor: ServiceSupervisor | None = None,
+        secrets_manager: Any | None = None,
+        max_concurrent: int = 0,
+        **kwargs: Any,
+    ) -> None:
         config = DsrConfig(
             response_time_days=kwargs.pop("response_time_days", DEFAULT_DSR_RESPONSE_DAYS),
             grievance_response_days=kwargs.pop("grievance_response_days", DEFAULT_GRIEVANCE_RESPONSE_DAYS),
         )
         self.__response_days: int = config.response_time_days
         self.__grievance_days: int = config.grievance_response_days
-        super().__init__(**kwargs)
+        super().__init__(
+            service_id=service_id,
+            identity=identity,
+            bus=bus,
+            store=store,
+            metrics=metrics,
+            health=health,
+            authz=authz,
+            tracer=tracer,
+            saga=saga,
+            supervisor=supervisor,
+            secrets_manager=secrets_manager,
+            max_concurrent=max_concurrent,
+        )
         self.__requests: dict[str, dict[str, Any]] = {}
         self.__grievances: dict[str, dict[str, Any]] = {}
         self.__id_generator: IdGenerator = IdGenerator()

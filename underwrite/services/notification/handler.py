@@ -10,6 +10,16 @@ from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
 from underwrite.services import NanoService
 
+from underwrite.__authz__ import AccessControl
+from underwrite.__bus__ import EventBus
+from underwrite.__health__ import HealthRegistry
+from underwrite.__identity__ import Identity
+from underwrite.__metrics__ import MetricsCollector
+from underwrite.__saga__ import SagaOrchestrator
+from underwrite.__store__ import Store
+from underwrite.__supervisor__ import ServiceSupervisor
+from underwrite.__tracer__ import Tracer
+
 class NotificationHandler(NanoService):
     """Sends notifications for fraud alerts, NPA events, and early warnings.
 
@@ -18,9 +28,37 @@ class NotificationHandler(NanoService):
     blocking event dispatch.
     """
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        service_id: str,
+        bus: EventBus,
+        store: Store,
+        identity: Identity | None = None,
+        metrics: MetricsCollector | None = None,
+        health: HealthRegistry | None = None,
+        authz: AccessControl | None = None,
+        tracer: Tracer | None = None,
+        saga: SagaOrchestrator | None = None,
+        supervisor: ServiceSupervisor | None = None,
+        secrets_manager: Any | None = None,
+        max_concurrent: int = 0,
+        **kwargs: Any,
+    ) -> None:
         """Initialize the notification service with a thread pool executor."""
-        super().__init__(**kwargs)
+        super().__init__(
+            service_id=service_id,
+            identity=identity,
+            bus=bus,
+            store=store,
+            metrics=metrics,
+            health=health,
+            authz=authz,
+            tracer=tracer,
+            saga=saga,
+            supervisor=supervisor,
+            secrets_manager=secrets_manager,
+            max_concurrent=max_concurrent,
+        )
         self.__executor: concurrent.futures.ThreadPoolExecutor | None = concurrent.futures.ThreadPoolExecutor(
             max_workers=4
         )

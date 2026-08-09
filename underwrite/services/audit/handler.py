@@ -27,8 +27,6 @@ from underwrite.__tracer__ import Tracer
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import BatchedStoreRepository
 
-_sanitizer = PIISanitizer()
-
 class AuditHandler(StatefulService):
     """Subscribes to all domain events and persists them to an append-only ledger.
 
@@ -128,7 +126,7 @@ class AuditHandler(StatefulService):
                 "seq": len(self._ledger) + 1,
                 "event_type": event.event_type,
                 "source": event.source,
-                "payload": _sanitizer.sanitize(dict(event.payload)),
+                "payload": PIISanitizer().sanitize(dict(event.payload)),
                 "correlation_id": event.correlation_id,
                 "recorded_at": datetime.now(timezone.utc).isoformat(),
             }

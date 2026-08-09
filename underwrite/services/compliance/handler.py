@@ -19,6 +19,16 @@ from underwrite.__logger__ import logger
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
 
+from underwrite.__authz__ import AccessControl
+from underwrite.__bus__ import EventBus
+from underwrite.__health__ import HealthRegistry
+from underwrite.__identity__ import Identity
+from underwrite.__metrics__ import MetricsCollector
+from underwrite.__saga__ import SagaOrchestrator
+from underwrite.__store__ import Store
+from underwrite.__supervisor__ import ServiceSupervisor
+from underwrite.__tracer__ import Tracer
+
 PAN_PATTERN: str = r"^[A-Z]{5}[0-9]{4}[A-Z]$"
 PAN_CATEGORIES: dict[str, str] = {
     "A": "Association of Persons",
@@ -158,7 +168,22 @@ class ComplianceConfig:
 class ComplianceHandler(StatefulService):
     """RBI-compliant KYC/AML verification with risk scoring and AML screening."""
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        service_id: str,
+        bus: EventBus,
+        store: Store,
+        identity: Identity | None = None,
+        metrics: MetricsCollector | None = None,
+        health: HealthRegistry | None = None,
+        authz: AccessControl | None = None,
+        tracer: Tracer | None = None,
+        saga: SagaOrchestrator | None = None,
+        supervisor: ServiceSupervisor | None = None,
+        secrets_manager: Any | None = None,
+        max_concurrent: int = 0,
+        **kwargs: Any,
+    ) -> None:
         """Initialize the compliance service with KYC records and AML blocklist.
 
         Args:
@@ -179,7 +204,20 @@ class ComplianceHandler(StatefulService):
         )
         self.__aml_blocklist_path: str = config.aml_blocklist_path
         self.__kyc_providers: dict[str, Any] = config.kyc_providers
-        super().__init__(**kwargs)
+        super().__init__(
+            service_id=service_id,
+            identity=identity,
+            bus=bus,
+            store=store,
+            metrics=metrics,
+            health=health,
+            authz=authz,
+            tracer=tracer,
+            saga=saga,
+            supervisor=supervisor,
+            secrets_manager=secrets_manager,
+            max_concurrent=max_concurrent,
+        )
         self.__blocklist: set[str] = load_blocklist(self.__aml_blocklist_path)
         self.__kyc_records: dict[str, dict[str, Any]] = {}
         self.repo: TypedStoreRepository[dict[str, Any]] = self.store_repo("compliance", dict)

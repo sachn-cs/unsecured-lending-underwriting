@@ -16,6 +16,16 @@ from underwrite.__metrics__ import SystemClock
 from underwrite.__value_objects__ import IdGenerator
 from underwrite.services.base import NanoService
 
+from underwrite.__authz__ import AccessControl
+from underwrite.__bus__ import EventBus
+from underwrite.__health__ import HealthRegistry
+from underwrite.__identity__ import Identity
+from underwrite.__metrics__ import MetricsCollector
+from underwrite.__saga__ import SagaOrchestrator
+from underwrite.__store__ import Store
+from underwrite.__supervisor__ import ServiceSupervisor
+from underwrite.__tracer__ import Tracer
+
 class CommunicationHandler(NanoService):
     """Dispatches outbound messages through configured channels.
 
@@ -24,14 +34,42 @@ class CommunicationHandler(NanoService):
     and emits communication.sent.
     """
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        service_id: str,
+        bus: EventBus,
+        store: Store,
+        identity: Identity | None = None,
+        metrics: MetricsCollector | None = None,
+        health: HealthRegistry | None = None,
+        authz: AccessControl | None = None,
+        tracer: Tracer | None = None,
+        saga: SagaOrchestrator | None = None,
+        supervisor: ServiceSupervisor | None = None,
+        secrets_manager: Any | None = None,
+        max_concurrent: int = 0,
+        **kwargs: Any,
+    ) -> None:
         """Initialize the communication service and register event handlers.
 
         Args:
             **kwargs: Forwarded to NanoService.__init__.
 
         """
-        super().__init__(**kwargs)
+        super().__init__(
+            service_id=service_id,
+            identity=identity,
+            bus=bus,
+            store=store,
+            metrics=metrics,
+            health=health,
+            authz=authz,
+            tracer=tracer,
+            saga=saga,
+            supervisor=supervisor,
+            secrets_manager=secrets_manager,
+            max_concurrent=max_concurrent,
+        )
         self.__clock: SystemClock = SystemClock()
         self.__id_generator: IdGenerator = IdGenerator()
         self.handlers: dict[str, Any] = {

@@ -18,6 +18,16 @@ from underwrite.__exceptions__ import ProtocolError
 from underwrite.services import NanoService
 from underwrite.validate import get_finite, get_non_empty
 
+from underwrite.__authz__ import AccessControl
+from underwrite.__bus__ import EventBus
+from underwrite.__health__ import HealthRegistry
+from underwrite.__identity__ import Identity
+from underwrite.__metrics__ import MetricsCollector
+from underwrite.__saga__ import SagaOrchestrator
+from underwrite.__store__ import Store
+from underwrite.__supervisor__ import ServiceSupervisor
+from underwrite.__tracer__ import Tracer
+
 BASE_RATE: float = 0.08
 RISK_PREMIUM_MULTIPLIER: float = 0.50
 HOME_LOAN_CAP: float = 0.12
@@ -128,7 +138,22 @@ def compute_rate_cap(principal: float, loan_type: str = "personal") -> float:
 class PricingHandler(NanoService):
     """Computes loan pricing with RBI-mandated rate caps and fee disclosure."""
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        service_id: str,
+        bus: EventBus,
+        store: Store,
+        identity: Identity | None = None,
+        metrics: MetricsCollector | None = None,
+        health: HealthRegistry | None = None,
+        authz: AccessControl | None = None,
+        tracer: Tracer | None = None,
+        saga: SagaOrchestrator | None = None,
+        supervisor: ServiceSupervisor | None = None,
+        secrets_manager: Any | None = None,
+        max_concurrent: int = 0,
+        **kwargs: Any,
+    ) -> None:
         """Initialize the pricing service.
 
         Args:
@@ -139,7 +164,20 @@ class PricingHandler(NanoService):
             rate_cap=kwargs.get("rate_cap", DEFAULT_LOAN_CAP),
             penal_interest_cap=kwargs.get("penal_interest_cap", PENAL_INTEREST_CAP),
         )
-        super().__init__(**kwargs)
+        super().__init__(
+            service_id=service_id,
+            identity=identity,
+            bus=bus,
+            store=store,
+            metrics=metrics,
+            health=health,
+            authz=authz,
+            tracer=tracer,
+            saga=saga,
+            supervisor=supervisor,
+            secrets_manager=secrets_manager,
+            max_concurrent=max_concurrent,
+        )
         self.__rate_cap: float = config.rate_cap
         self.__penal_interest_cap: float = config.penal_interest_cap
         self.handlers: dict[str, Any] = {

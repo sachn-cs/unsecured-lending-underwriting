@@ -9,12 +9,18 @@ order and mandate references against loan records.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
 from underwrite.services.base import NanoService
 from underwrite.validate import get_finite
+
+RATE_QUANTUM: Decimal = Decimal("0.01")
+MONEY_QUANTUM: Decimal = Decimal("0.01")
+DAYS_PER_YEAR: int = 365
+RATE_PERCENT_MULTIPLIER: int = 100 * DAYS_PER_YEAR
 
 
 class ServicingHandler(NanoService):
@@ -62,15 +68,19 @@ class ServicingHandler(NanoService):
         if not loan_id:
             logger.warning("dropping LOAN_ORIGINATED with missing loan_id")
             return
+        principal_dec: Decimal = Decimal(str(principal))
+        rate_dec: Decimal = Decimal(str(annual_rate)) / Decimal(RATE_PERCENT_MULTIPLIER)
         now = datetime.now(timezone.utc)
         self.store.set(
             f"loan:{loan_id}",
             {
                 "borrower": borrower,
-                "principal": principal,
-                "outstanding": principal,
+                "principal": float(principal_dec),
+                "outstanding": float(principal_dec),
                 "annual_rate": annual_rate,
-                "daily_rate": annual_rate / 36500.0,
+                "daily_rate": float(rate_dec),
+                "principal_decimal": str(principal_dec),
+                "daily_rate_decimal": str(rate_dec),
                 "last_interest_date": now.isoformat(),
                 "origin_date": now.isoformat(),
                 "status": "active",
@@ -96,16 +106,18 @@ class ServicingHandler(NanoService):
             record = self.store.get(f"loan:{loan_id}")
             if record:
                 accrued = self.__accrue_interest(record)
-                remaining = amount
-                if accrued > 0 and remaining > 0:
-                    if remaining >= accrued:
-                        remaining -= accrued
+                remaining_dec: Decimal = Decimal(str(amount))
+                if accrued > 0 and remaining_dec > 0:
+                    accrued_dec: Decimal = Decimal(str(accrued))
+                    if remaining_dec >= accrued_dec:
+                        remaining_dec -= accrued_dec
                         record["accrued_interest"] = 0.0
                     else:
-                        record["accrued_interest"] = accrued - remaining
-                        remaining = 0.0
-                if remaining > 0:
-                    record["outstanding"] = max(0.0, record["outstanding"] - remaining)
+                        record["accrued_interest"] = float(accrued_dec - remaining_dec)
+                        remaining_dec = Decimal("0")
+                if remaining_dec > 0:
+                    outstanding_dec: Decimal = Decimal(str(record.get("outstanding", 0.0)))
+                    record["outstanding"] = float(max(Decimal("0"), outstanding_dec - remaining_dec))
                 record["last_interest_date"] = datetime.now(timezone.utc).isoformat()
                 if record["outstanding"] <= 0:
                     record["status"] = "paid"
@@ -220,12 +232,18 @@ class ServicingHandler(NanoService):
         days = (now - last_dt).days
         if days <= 0:
             return 0.0
-        outstanding = record.get("outstanding", 0.0)
-        daily_rate = record.get("daily_rate", 0.0)
-        if outstanding <= 0 or daily_rate <= 0:
+        outstanding_str = str(record.get("outstanding", 0.0))
+        daily_rate_str = str(record.get("daily_rate", 0.0))
+        outstanding_dec: Decimal = Decimal(outstanding_str)
+        daily_rate_dec: Decimal = Decimal(daily_rate_str)
+        if outstanding_dec <= 0 or daily_rate_dec <= 0:
             return 0.0
-        interest = outstanding * daily_rate * days
-        current_accrued = record.get("accrued_interest", 0.0)
-        record["accrued_interest"] = round(current_accrued + interest, 2)
+        interest_dec: Decimal = (outstanding_dec * daily_rate_dec * Decimal(days)).quantize(
+            MONEY_QUANTUM, rounding=ROUND_HALF_UP
+        )
+        current_accrued_str = str(record.get("accrued_interest", 0.0))
+        current_accrued_dec: Decimal = Decimal(current_accrued_str)
+        record["accrued_interest"] = float(current_accrued_dec + interest_dec)
+        record["accrued_interest_decimal"] = str(current_accrued_dec + interest_dec)
         record["last_interest_date"] = now.isoformat()
-        return round(interest, 2)
+        return float(interest_dec)

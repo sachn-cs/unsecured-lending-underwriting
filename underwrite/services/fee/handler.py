@@ -10,6 +10,7 @@ from __future__ import annotations
 import math
 import uuid
 from datetime import datetime, timezone
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 from underwrite.__events__ import Event, EventType
@@ -26,6 +27,7 @@ DEFAULT_FEE_SCHEDULES: dict[str, float] = {
 }
 
 MAX_FEE_PER_LOAN: float = 1000.0
+MONEY_QUANTUM: Decimal = Decimal("0.01")
 
 
 class FeeHandler(StatefulService):
@@ -101,11 +103,13 @@ class FeeHandler(StatefulService):
                 return
 
             fee_id: str = f"fee_{loan_id}_{fee_type}_{uuid.uuid4().hex[:12]}"
+            amount_dec: Decimal = Decimal(str(amount)).quantize(MONEY_QUANTUM, rounding=ROUND_HALF_UP)
             fee_record = {
                 "fee_id": fee_id,
                 "loan_id": loan_id,
                 "fee_type": fee_type,
-                "amount": round(amount, 2),
+                "amount": float(amount_dec),
+                "amount_decimal": str(amount_dec),
                 "assessed_at": datetime.now(timezone.utc).isoformat(),
                 "paid": False,
             }
@@ -118,7 +122,8 @@ class FeeHandler(StatefulService):
                     "fee_id": fee_id,
                     "loan_id": loan_id,
                     "fee_type": fee_type,
-                    "amount": round(amount, 2),
+                    "amount": float(amount_dec),
+                    "amount_decimal": str(amount_dec),
                 },
                 correlation_id=correlation_id,
             )

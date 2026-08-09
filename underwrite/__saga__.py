@@ -31,6 +31,7 @@ class Emitter(Protocol):
 
     def emit(self, event_type: str, payload: dict[str, Any], correlation_id: str = "") -> Event: ...
 
+
 @dataclass(frozen=True, slots=True)
 class SagaStep:
     """One step in a saga — forward action and compensating rollback."""
@@ -59,6 +60,7 @@ class SagaStep:
             compensate_event_type=data["compensate_event_type"],
             compensate_payload=data["compensate_payload"],
         )
+
 
 @dataclass(slots=True)
 class Saga:
@@ -119,6 +121,7 @@ class Saga:
                     f"saga {self.saga_id} completed_steps not strictly increasing "
                     f"({self.completed_steps[i - 1]} >= {idx})"
                 )
+
 
 class SagaOrchestrator:
     """Coordinates saga execution with rollback on failure.

@@ -30,6 +30,7 @@ EPSILON: float = 1e-12
 
 CommandHandler = Callable[[Event], None]
 
+
 class MechanismHandler(NanoService):
     """Maintains the delegation graph and processes all state transitions.
 

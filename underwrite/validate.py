@@ -67,11 +67,13 @@ VERHOEFF_PERMUTATION = [
 
 VERHOEFF_INVERSE = [0, 4, 3, 2, 1, 5, 6, 7, 8, 9]
 
+
 def verhoeff_checksum(digits: str) -> bool:
     c = 0
     for i, d in enumerate(reversed(digits)):
         c = VERHOEFF_MULTIPLICATION[c][VERHOEFF_PERMUTATION[(i + 1) % 8][int(d)]]
     return VERHOEFF_INVERSE[c] == 0
+
 
 class PayloadValidator:
     """Validates and extracts typed values from unstructured payload dicts.
@@ -479,59 +481,78 @@ class PayloadValidator:
         """
         return self.require_match(pattern, payload.get(key, ""), name or key)
 
+
 def require_non_empty(value: Any, name: str) -> str:
     return PayloadValidator.require_non_empty(value, name)
+
 
 def require_finite(value: Any, name: str) -> float:
     return PayloadValidator.require_finite(value, name)
 
+
 def require_positive(value: Any, name: str) -> float:
     return PayloadValidator.require_positive(value, name)
+
 
 def require_non_negative(value: Any, name: str) -> float:
     return PayloadValidator.require_non_negative(value, name)
 
+
 def require_in_range(value: Any, lo: float, hi: float, name: str) -> float:
     return PayloadValidator.require_in_range(value, lo, hi, name)
+
 
 def require_match(pattern: str, value: Any, name: str) -> str:
     return PayloadValidator.require_match(pattern, value, name)
 
+
 def get_non_empty(payload: dict[str, Any], key: str, name: str = "") -> str:
     return PayloadValidator().non_empty(payload, key, name)
+
 
 def get_finite(payload: dict[str, Any], key: str, default: float = 0.0, name: str = "") -> float:
     return PayloadValidator().finite(payload, key, default, name)
 
+
 def get_positive(payload: dict[str, Any], key: str, default: float = 1.0, name: str = "") -> float:
     return PayloadValidator().positive(payload, key, default, name)
+
 
 def get_non_negative(payload: dict[str, Any], key: str, default: float = 0.0, name: str = "") -> float:
     return PayloadValidator().non_negative(payload, key, default, name)
 
+
 def get_in_range(payload: dict[str, Any], key: str, lo: float, hi: float, default: float, name: str = "") -> float:
     return PayloadValidator().in_range(payload, key, lo, hi, default, name)
+
 
 def get_match(payload: dict[str, Any], key: str, pattern: str, name: str = "") -> str:
     return PayloadValidator().match(payload, key, pattern, name)
 
+
 def require_aadhaar(value: Any, name: str = "aadhaar") -> str:
     return PayloadValidator.require_aadhaar(value, name)
+
 
 def require_pan(value: Any, name: str = "pan") -> str:
     return PayloadValidator.require_pan(value, name)
 
+
 def require_ifsc(value: Any, name: str = "ifsc") -> str:
     return PayloadValidator.require_ifsc(value, name)
+
 
 def require_indian_mobile(value: Any, name: str = "mobile") -> str:
     return PayloadValidator.require_indian_mobile(value, name)
 
+
 def require_indian_pincode(value: Any, name: str = "pincode") -> str:
     return PayloadValidator.require_indian_pincode(value, name)
 
+
 def require_gstin(value: Any, name: str = "gstin") -> str:
     return PayloadValidator.require_gstin(value, name)
+
 
 def require_indian_rupees(value: Any, name: str = "amount") -> Decimal:
     return PayloadValidator.require_indian_rupees(value, name)

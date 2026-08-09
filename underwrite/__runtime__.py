@@ -260,6 +260,7 @@ class Runtime:
             return
         if self.__config.tracing.exporter != "otlp":
             return
+
         def on_snapshot(snap: dict) -> None:
             if not any([snap.get("counters"), snap.get("timers"), snap.get("gauges")]):
                 return

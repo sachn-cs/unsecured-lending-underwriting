@@ -259,9 +259,7 @@ class RecoveryHandler(StatefulService):
                         {
                             "borrower": borrower,
                             "offer_amount": offer_amount,
-                            "due_by": (
-                                self.__clock.utc_now() + timedelta(days=self.__negotiation_days)
-                            ).isoformat(),
+                            "due_by": (self.__clock.utc_now() + timedelta(days=self.__negotiation_days)).isoformat(),
                             "stage": RecoveryStage.NEGOTIATION.value,
                         },
                         correlation_id=event.correlation_id,

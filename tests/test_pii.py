@@ -15,7 +15,9 @@ class TestPiiFieldDetection:
     def test_detects_pii_field(self, field_name: str) -> None:
         assert is_pii_field(field_name) is True
 
-    @pytest.mark.parametrize("field_name", ["name", "amount", "company", "panel_id", "panchayat", "expandable", "author", "pinterest"])
+    @pytest.mark.parametrize(
+        "field_name", ["name", "amount", "company", "panel_id", "panchayat", "expandable", "author", "pinterest"]
+    )
     def test_non_pii_field(self, field_name: str) -> None:
         assert is_pii_field(field_name) is False
 

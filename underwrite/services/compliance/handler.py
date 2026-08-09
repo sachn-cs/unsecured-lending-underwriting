@@ -94,6 +94,7 @@ VERHOEFF_P: tuple[tuple[int, ...], ...] = (
 
 VERHOEFF_INV: tuple[int, ...] = (0, 4, 3, 2, 1, 5, 6, 7, 8, 9)
 
+
 def load_blocklist(path: str) -> set[str]:
     """Load AML blocklist from a JSON file.
 
@@ -117,6 +118,7 @@ def load_blocklist(path: str) -> set[str]:
         logger.warning("failed to load AML blocklist {}: {}", path, exc)
     return set()
 
+
 def verify_aadhaar_checksum(aadhaar: str) -> bool:
     """Verify an Aadhaar number using the Verhoeff checksum algorithm.
 
@@ -135,6 +137,7 @@ def verify_aadhaar_checksum(aadhaar: str) -> bool:
         c = VERHOEFF_D[c][VERHOEFF_P[(i + 1) % 8][digit]]
     return c == 0
 
+
 def pan_category(pan: str) -> str:
     """Return the PAN category label based on the 4th character.
 
@@ -149,6 +152,7 @@ def pan_category(pan: str) -> str:
         return "Unknown"
     code = pan[3]
     return PAN_CATEGORIES.get(code, "Unknown")
+
 
 @dataclass(frozen=True, slots=True)
 class ComplianceConfig:

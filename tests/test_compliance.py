@@ -86,9 +86,9 @@ class TestComplianceService:
             assert len(kyc_verified) == 0, f"Expected no KYC_VERIFIED but got: {kyc_verified}"
             assert len(kyc_rejected) == 1, f"Expected KYC_REJECTED but got {len(kyc_rejected)}"
             if expect_reason:
-                assert (
-                    kyc_rejected[0].payload["reason"] == expect_reason
-                ), f"Expected reason '{expect_reason}' got '{kyc_rejected[0].payload.get('reason')}'"
+                assert kyc_rejected[0].payload["reason"] == expect_reason, (
+                    f"Expected reason '{expect_reason}' got '{kyc_rejected[0].payload.get('reason')}'"
+                )
         return all_events
 
     def test_verified_with_valid_pan_and_aadhaar(self) -> None:
@@ -233,7 +233,9 @@ class TestComplianceService:
                 bus = LocalBus()
                 frozen: list[Event] = []
                 bus.subscribe(EventType.AML_FROZEN, lambda e: frozen.append(e))
-                svc = ComplianceHandler(service_id="compliance", bus=bus, aml_blocklist_path=bl_path, store=MemoryStore())
+                svc = ComplianceHandler(
+                    service_id="compliance", bus=bus, aml_blocklist_path=bl_path, store=MemoryStore()
+                )
                 bus.start()
                 svc.handle(
                     Event(

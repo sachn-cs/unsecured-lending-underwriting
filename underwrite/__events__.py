@@ -19,6 +19,7 @@ from underwrite.__logger__ import logger
 
 MAX_PAYLOAD_SIZE: int = 1_000_000
 
+
 @dataclass(frozen=True, slots=True)
 class Event:
     """Standard event envelope for all nano-service communication.
@@ -47,9 +48,7 @@ class Event:
         if len(self.payload) > MAX_PAYLOAD_KEYS:
             from underwrite.__exceptions__ import ProtocolError
 
-            raise ProtocolError(
-                f"event payload has too many keys ({len(self.payload)} > {MAX_PAYLOAD_KEYS})"
-            )
+            raise ProtocolError(f"event payload has too many keys ({len(self.payload)} > {MAX_PAYLOAD_KEYS})")
         try:
             import json as json_mod
 
@@ -89,6 +88,7 @@ class Event:
         if extra:
             logger.warning("Event.from_dict dropping unknown field(s): {}", sorted(extra))
         return cls(**{k: data[k] for k in known if k in data})
+
 
 class EventType(str, enum.Enum):
     """Central registry of all event types in the underwrite system.

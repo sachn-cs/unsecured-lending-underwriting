@@ -26,17 +26,22 @@ except ImportError:
         "Install the 'serve' or 'razorpay' extra to enable production Razorpay calls."
     )
 
+
 class RazorpayError(Exception):
     """Raised when the Razorpay API returns an error."""
+
 
 class RazorpayAuthError(RazorpayError):
     """Raised on authentication/authorization failures."""
 
+
 class RazorpayValidationError(RazorpayError):
     """Raised on request validation errors."""
 
+
 class RazorpayNotFoundError(RazorpayError):
     """Raised when a resource is not found."""
+
 
 @dataclass(frozen=True, slots=True)
 class RazorpayOrder:
@@ -50,6 +55,7 @@ class RazorpayOrder:
     created_at: int
     attempts: int = 0
     notes: dict[str, str] = field(default_factory=dict)
+
 
 @dataclass(frozen=True, slots=True)
 class RazorpayPayment:
@@ -69,6 +75,7 @@ class RazorpayPayment:
     error_description: str = ""
     notes: dict[str, str] = field(default_factory=dict)
 
+
 @dataclass(frozen=True, slots=True)
 class RazorpaySubscription:
     """Razorpay subscription object (UPI Autopay / e-NACH)."""
@@ -84,6 +91,7 @@ class RazorpaySubscription:
     created_at: int
     notes: dict[str, str] = field(default_factory=dict)
 
+
 @dataclass(frozen=True, slots=True)
 class RazorpayPaymentLink:
     """Razorpay payment link object."""
@@ -95,6 +103,7 @@ class RazorpayPaymentLink:
     status: str
     created_at: int
     notes: dict[str, str] = field(default_factory=dict)
+
 
 class RazorpayClient(ABC):
     """Abstract Razorpay API client.
@@ -232,6 +241,7 @@ class RazorpayClient(ABC):
         Returns:
             True if the signature is valid.
         """
+
 
 class HttpRazorpayClient(RazorpayClient):
     """Production Razorpay client using httpx.
@@ -536,6 +546,7 @@ class HttpRazorpayClient(RazorpayClient):
             error_description=body.get("error_description", ""),
             notes=body.get("notes", {}),
         )
+
 
 class MockRazorpayClient(RazorpayClient):
     """In-memory mock Razorpay client for testing.

@@ -141,7 +141,13 @@ class TestFeeService:
 
 class TestIndianFeeService:
     def test_penal_interest_assessed(self) -> None:
-        svc = FeeHandler(service_id="fee", penal_interest_daily_rate=0.05, max_penal_interest_per_loan=1000.0, bus=LocalBus(), store=MemoryStore())
+        svc = FeeHandler(
+            service_id="fee",
+            penal_interest_daily_rate=0.05,
+            max_penal_interest_per_loan=1000.0,
+            bus=LocalBus(),
+            store=MemoryStore(),
+        )
         svc.handle(
             Event(
                 event_type="fee.assess",
@@ -164,7 +170,13 @@ class TestIndianFeeService:
         assert rec["amount"] == 150.0
 
     def test_penal_interest_capped(self) -> None:
-        svc = FeeHandler(service_id="fee", penal_interest_daily_rate=5.0, max_penal_interest_per_loan=500.0, bus=LocalBus(), store=MemoryStore())
+        svc = FeeHandler(
+            service_id="fee",
+            penal_interest_daily_rate=5.0,
+            max_penal_interest_per_loan=500.0,
+            bus=LocalBus(),
+            store=MemoryStore(),
+        )
         svc.handle(
             Event(
                 event_type="fee.assess",

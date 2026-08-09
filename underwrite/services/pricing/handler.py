@@ -134,6 +134,7 @@ def compute_rate_cap(principal: float, loan_type: str = "personal") -> float:
         return MICRO_LOAN_CAP
     return _policy_for(loan_type).rate_cap
 
+
 class PricingHandler(NanoService):
     """Computes loan pricing with RBI-mandated rate caps and fee disclosure."""
 

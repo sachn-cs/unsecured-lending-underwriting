@@ -47,9 +47,7 @@ class MetricsExporter:
         if self.__thread is not None:
             return
         self.__stop_event = threading.Event()
-        self.__thread = threading.Thread(
-            target=self.__run, daemon=True, name="metrics-exporter"
-        )
+        self.__thread = threading.Thread(target=self.__run, daemon=True, name="metrics-exporter")
         self.__thread.start()
 
     def __run(self) -> None:

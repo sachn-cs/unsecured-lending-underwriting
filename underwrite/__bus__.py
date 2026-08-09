@@ -39,6 +39,7 @@ from underwrite.__store__ import Store
 
 _sanitizer = PIISanitizer()
 
+
 def _redact_event(event: Event) -> Event:
     """Returns a copy of *event* with PII fields and values redacted.
 
@@ -64,6 +65,7 @@ def _redact_event(event: Event) -> Event:
         parent_span_id=event.parent_span_id,
     )
 
+
 @dataclass(frozen=True, slots=True)
 class DeadLetterRecord:
     """A single failed event and the error that caused the failure."""
@@ -72,6 +74,7 @@ class DeadLetterRecord:
     error: str
     subscriber_id: str
     timestamp: float = field(default_factory=time.time)
+
 
 class DeadLetterQueue:
     """Captures events that failed processing.
@@ -241,6 +244,7 @@ class DeadLetterQueue:
                 self.put(record.event, f"replay_failed: {record.error}", record.subscriber_id)
         return replayed
 
+
 class PerSubscriberCircuitBreaker:
     """Per-subscriber circuit breaker that stops dispatching to failing subscribers.
 
@@ -315,6 +319,7 @@ class PerSubscriberCircuitBreaker:
                 self.__state.pop(sid, None)
                 self.__opened_at.pop(sid, None)
 
+
 class RateLimiter:
     """Token-bucket rate limiter per key."""
 
@@ -361,6 +366,7 @@ class RateLimiter:
         if not self.check(key):
             raise RateLimitError(f"rate limit exceeded for {key}")
 
+
 class DistributedRateLimiter(RateLimiter):
     """Store-backed distributed token-bucket rate limiter.
 
@@ -404,6 +410,7 @@ class DistributedRateLimiter(RateLimiter):
             return False
         self.__store.set(store_key, {"expires_at": window_end})
         return True
+
 
 class IdempotencyGuard:
     """Prevents duplicate event processing by tracking seen event IDs per handler.
@@ -472,6 +479,7 @@ class IdempotencyGuard:
                 logger.warning("idempotency guard evicting oldest entry for {}", handler_id)
             return False
 
+
 class EventBus(ABC):
     """Abstract event bus.  All nano services publish and subscribe here."""
 
@@ -507,6 +515,7 @@ class EventBus(ABC):
     @abstractmethod
     def idempotency(self) -> IdempotencyGuard:
         """Returns the idempotency guard for this bus."""
+
 
 class SubscriptionRegistry:
     """Tracks (subscription_id, handler) tuples keyed by event type.
@@ -796,6 +805,7 @@ class LocalBus(EventBus):
             self.__dlq.put(event, f"{type(exc).__name__}: {exc}", sid)
             self.__circuit_breaker.record_failure(sid)
 
+
 class AsyncEventBus(ABC):
     """Abstract async event bus. Same contract as EventBus but for async subscribers."""
 
@@ -831,6 +841,7 @@ class AsyncEventBus(ABC):
     @abstractmethod
     def idempotency(self) -> IdempotencyGuard:
         """Returns the idempotency guard for this bus."""
+
 
 class AsyncLocalBus(AsyncEventBus):
     """Async in-process event bus — uses asyncio for non-blocking dispatch.

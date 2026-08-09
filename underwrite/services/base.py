@@ -129,7 +129,6 @@ class EventEmitter:
         return signed
 
 
-
 class NanoService(ABC):
     """Base class that all nano services extend.
 

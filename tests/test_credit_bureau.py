@@ -299,7 +299,9 @@ class TestCibilProviderIntegration:
         received: list = []
         bus.subscribe(EventType.CREDIT_BUREAU_CHECKED, lambda e: received.append(e))
         provider = CibilProviderStub()
-        s = CreditBureauHandler(service_id="credit_bureau", bus=bus, kyc_providers={"cibil": provider}, allow_mock=True, store=MemoryStore())
+        s = CreditBureauHandler(
+            service_id="credit_bureau", bus=bus, kyc_providers={"cibil": provider}, allow_mock=True, store=MemoryStore()
+        )
         bus.start()
         s.handle(
             Event(

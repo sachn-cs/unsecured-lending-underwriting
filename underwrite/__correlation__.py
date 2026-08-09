@@ -16,9 +16,7 @@ import contextvars
 
 __all__ = ["correlation_context", "get_log_correlation_id"]
 
-correlation_context: contextvars.ContextVar[str] = contextvars.ContextVar(
-    "correlation_context", default=""
-)
+correlation_context: contextvars.ContextVar[str] = contextvars.ContextVar("correlation_context", default="")
 
 
 def get_log_correlation_id() -> str:

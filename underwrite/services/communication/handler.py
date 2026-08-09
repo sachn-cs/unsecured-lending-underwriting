@@ -102,9 +102,7 @@ class CommunicationHandler(NanoService):
         if not recipient:
             logger.warning("dropping COMMUNICATION_SEND with missing recipient")
             return
-        message_id: str = (
-            f"msg_{recipient}_{self.__clock.now():.0f}_{self.__id_generator.next()}"
-        )
+        message_id: str = f"msg_{recipient}_{self.__clock.now():.0f}_{self.__id_generator.next()}"
         msg = {
             "recipient": recipient,
             "subject": subject,

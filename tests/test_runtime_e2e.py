@@ -41,11 +41,7 @@ class TestPublishFlow:
         )
         audit = rt.get("audit")
         assert audit is not None
-        records = [
-            e
-            for e in audit.ledger
-            if e["event_type"] == EventType.LOAN_ORIGINATED
-        ]
+        records = [e for e in audit.ledger if e["event_type"] == EventType.LOAN_ORIGINATED]
         assert len(records) == 1
         assert records[0]["payload"]["aadhaar"] == "***REDACTED***"
         rt.stop()

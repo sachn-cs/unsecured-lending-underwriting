@@ -8,8 +8,17 @@ from __future__ import annotations
 
 from typing import Any
 
+from underwrite.__authz__ import AccessControl
+from underwrite.__bus__ import EventBus
 from underwrite.__events__ import Event, EventType
+from underwrite.__health__ import HealthRegistry
+from underwrite.__identity__ import Identity
 from underwrite.__logger__ import logger
+from underwrite.__metrics__ import MetricsCollector
+from underwrite.__saga__ import SagaOrchestrator
+from underwrite.__store__ import Store
+from underwrite.__supervisor__ import ServiceSupervisor
+from underwrite.__tracer__ import Tracer
 from underwrite.services.base import StatefulService
 from underwrite.services.credit_bureau.client import (
     CreditBureauClient,
@@ -17,6 +26,7 @@ from underwrite.services.credit_bureau.client import (
     HttpCreditBureauClient,
     MockCreditBureauClient,
 )
+from underwrite.services.kyc_providers.base import KycProvider
 from underwrite.services.persistence import TypedStoreRepository
 
 
@@ -27,25 +37,66 @@ class CreditBureauHandler(StatefulService):
     reports and CKYC responses in-memory with store persistence.
     """
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        service_id: str,
+        bus: EventBus,
+        store: Store,
+        cibil_api_key: str = "",
+        allow_mock: bool = False,
+        kyc_providers: dict[str, KycProvider] | None = None,
+        identity: Identity | None = None,
+        metrics: MetricsCollector | None = None,
+        health: HealthRegistry | None = None,
+        authz: AccessControl | None = None,
+        tracer: Tracer | None = None,
+        saga: SagaOrchestrator | None = None,
+        supervisor: ServiceSupervisor | None = None,
+        secrets_manager: Any | None = None,
+        max_concurrent: int = 0,
+    ) -> None:
         """Initialize the credit bureau service with client and store.
 
         Args:
-            **kwargs: May include ``cibil_api_key``, ``allow_mock``,
-                and ``kyc_providers`` (a dict mapping
-                ``pan`` / ``aadhaar`` / ``cibil`` / ``ckyc`` to a
-                ``KycProvider`` instance). When ``kyc_providers`` is
-                present the bureau pull goes through the
-                CIBIL partner-API client; otherwise the legacy
-                ``HttpCreditBureauClient`` is used.
+            service_id: Unique identifier for this service instance.
+            bus: Event bus for pub/sub.
+            store: State persistence backend.
+            cibil_api_key: CIBIL API key (enables HttpCreditBureauClient).
+            allow_mock: Permit MockCreditBureauClient when no API key.
+            kyc_providers: Optional map of bureau-name -> KycProvider
+                instance. When present the bureau pull routes through
+                the configured partner-API client; otherwise the
+                legacy HttpCreditBureauClient is used.
+            identity: Ed25519 identity for signing events.
+            metrics: Optional metrics collector.
+            health: Optional health registry.
+            authz: Optional access control.
+            tracer: Optional distributed tracer.
+            saga: Optional saga orchestrator.
+            supervisor: Optional service supervisor.
+            secrets_manager: Optional secrets manager.
+            max_concurrent: Max concurrent handler threads (0=sync).
+
         """
-        client_only = ("cibil_api_key", "allow_mock", "kyc_providers")
-        client_kwargs = {k: v for k, v in kwargs.items() if k in client_only}
-        parent_kwargs = {k: v for k, v in kwargs.items() if k not in client_only}
-        self.__kyc_providers: dict[str, Any] = client_kwargs.get("kyc_providers", {})
-        legacy_kwargs = {k: v for k, v in client_kwargs.items() if k != "kyc_providers"}
-        super().__init__(**parent_kwargs)
-        self.__client: CreditBureauClient = self.build_client(**legacy_kwargs)
+        super().__init__(
+            service_id=service_id,
+            identity=identity,
+            bus=bus,
+            store=store,
+            metrics=metrics,
+            health=health,
+            authz=authz,
+            tracer=tracer,
+            saga=saga,
+            supervisor=supervisor,
+            secrets_manager=secrets_manager,
+            max_concurrent=max_concurrent,
+        )
+        self.__kyc_providers: dict[str, KycProvider] = dict(kyc_providers or {})
+        self.__client: CreditBureauClient = self.build_client(
+            cibil_api_key=cibil_api_key,
+            allow_mock=allow_mock,
+        )
         self.reports: dict[str, CreditReport] = {}
         self.ckyc_records: dict[str, dict[str, Any]] = {}
         self.repo: TypedStoreRepository[dict[str, Any]] = self.store_repo("credit_bureau", dict)
@@ -102,12 +153,16 @@ class CreditBureauHandler(StatefulService):
             report_date=d.get("report_date", ""),
         )
 
-    def build_client(self, **kwargs: Any) -> CreditBureauClient:
+    def build_client(
+        self,
+        cibil_api_key: str = "",
+        allow_mock: bool = False,
+    ) -> CreditBureauClient:
         """Build the appropriate credit bureau client based on config.
 
         Args:
-            **kwargs: Configuration parameters including cibil_api_key
-                and an optional ``allow_mock`` flag (defaults to False).
+            cibil_api_key: CIBIL API key.
+            allow_mock: Permit MockCreditBureauClient when no API key.
 
         Returns:
             An HttpCreditBureauClient if credentials are available,
@@ -118,10 +173,9 @@ class CreditBureauHandler(StatefulService):
             RuntimeError: If no API key is configured and
                 ``allow_mock`` is not explicitly set.
         """
-        api_key = kwargs.get("cibil_api_key", "")
-        if api_key:
-            return HttpCreditBureauClient(cibil_api_key=api_key)
-        if kwargs.get("allow_mock", False):
+        if cibil_api_key:
+            return HttpCreditBureauClient(cibil_api_key=cibil_api_key)
+        if allow_mock:
             logger.warning(
                 "no bureau credentials configured; using in-memory mock — this must NEVER be set in production"
             )

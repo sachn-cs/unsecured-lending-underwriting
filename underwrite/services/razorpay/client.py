@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import urljoin
 
+from underwrite.__constants__ import DAYS_PER_YEAR, SECONDS_PER_DAY
 from underwrite.__logger__ import logger
 
 try:
@@ -691,7 +692,7 @@ class MockRazorpayClient(RazorpayClient):
             paid_count=0,
             remaining_count=total_count,
             start_at=start_at or now,
-            end_at=expire_by or (now + 365 * 86400),
+            end_at=expire_by or (now + DAYS_PER_YEAR * SECONDS_PER_DAY),
             created_at=now,
             notes=notes or {},
         )

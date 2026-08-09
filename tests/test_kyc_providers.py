@@ -33,7 +33,7 @@ class TestPanVerificationClient:
         client = PanVerificationClient(client_id="id", client_secret="secret")
         with patch.object(
             client,
-            "_PanVerificationClient__http_post",
+            "http_post",
             return_value={
                 "request_id": "req-1",
                 "status": "VALID",
@@ -54,7 +54,7 @@ class TestPanVerificationClient:
         client = PanVerificationClient(client_id="id", client_secret="secret")
         with patch.object(
             client,
-            "_PanVerificationClient__http_post",
+            "http_post",
             return_value={"status": "DEACTIVATED"},
         ):
             result = client.verify("ABCDE1234F", consent="Y")
@@ -64,7 +64,7 @@ class TestPanVerificationClient:
         client = PanVerificationClient(client_id="id", client_secret="secret")
         with patch.object(
             client,
-            "_PanVerificationClient__http_post",
+            "http_post",
             side_effect=RuntimeError("network down"),
         ):
             result = client.verify("ABCDE1234F", consent="Y")
@@ -93,7 +93,7 @@ class TestAadhaarEKycClient:
         client = AadhaarEKycClient(kua_id="k", kua_license_key="l")
         with patch.object(
             client,
-            "_AadhaarEKycClient__send_kyc_request",
+            "send_kyc_request",
             return_value={
                 "reference_id": "ref-1",
                 "status": "Y",
@@ -112,7 +112,7 @@ class TestAadhaarEKycClient:
         client = AadhaarEKycClient(kua_id="k", kua_license_key="l")
         with patch.object(
             client,
-            "_AadhaarEKycClient__send_kyc_request",
+            "send_kyc_request",
             return_value={"status": "N", "message": "bad otp"},
         ):
             result = client.verify("123456789012", otp="1234", consent="Y")
@@ -136,7 +136,7 @@ class TestCibilBureauClient:
         client = CibilBureauClient(partner_id="p", partner_key="k")
         with patch.object(
             client,
-            "_CibilBureauClient__request_score",
+            "request_score",
             return_value={
                 "request_id": "req-1",
                 "score": 750,
@@ -155,7 +155,7 @@ class TestCibilBureauClient:
         client = CibilBureauClient(partner_id="p", partner_key="k")
         with patch.object(
             client,
-            "_CibilBureauClient__request_score",
+            "request_score",
             return_value={"request_id": "req-1", "message": "no record"},
         ):
             result = client.verify("C-1", name="John", pan="ABCDE1234F", consent="Y")
@@ -177,7 +177,7 @@ class TestCkycSearchClient:
         client = CkycSearchClient(search_provider_id="p", search_provider_key="k")
         with patch.object(
             client,
-            "_CkycSearchClient__request_search",
+            "request_search",
             return_value={
                 "request_id": "req-1",
                 "ckyc_number": "110000001234",
@@ -198,7 +198,7 @@ class TestCkycSearchClient:
         client = CkycSearchClient(search_provider_id="p", search_provider_key="k")
         with patch.object(
             client,
-            "_CkycSearchClient__request_search",
+            "request_search",
             return_value={"request_id": "req-1", "kyc_status": "NOT_FOUND"},
         ):
             result = client.verify("110000001234", consent="Y")

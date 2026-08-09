@@ -150,12 +150,21 @@ class PanVerificationClient(KycProvider):
         signature = self.__sign(payload)
 
         try:
-            response = self.__http_post(payload, signature)
+            response = self.http_post(payload, signature)
         except (OSError, ValueError, TypeError, RuntimeError, json.JSONDecodeError) as exc:
             logger.exception("PAN verification transport error")
             return ProviderResult(verdict=Verdict.ERROR, provider=self.name, error=str(exc))
 
         return self.__parse(pan, response)
+
+    def http_post(self, payload: str, signature: str) -> dict[str, Any]:
+        """Public transport hook so tests can inject a mock.
+
+        Default delegates to the private __http_post. Override this
+        via ``client.http_post = lambda p, s: {...}`` to inject a
+        canned response without name-mangled private access.
+        """
+        return self.http_post(payload, signature)
 
     def __sign(self, payload: str) -> str:
         digest = hmac.new(

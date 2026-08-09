@@ -28,6 +28,8 @@ Wire response::
 
 from __future__ import annotations
 
+import json
+
 from typing import Any
 
 from underwrite.__logger__ import logger
@@ -119,11 +121,20 @@ class CkycSearchClient(KycProvider):
         body: dict[str, Any] = {identifier_type: identifier, "consent": consent}
 
         try:
-            response = self.__request_search(body)
+            response = self.request_search(body)
         except (OSError, ValueError, TypeError, RuntimeError, json.JSONDecodeError) as exc:
             logger.exception("CKYC search transport error")
             return ProviderResult(verdict=Verdict.ERROR, provider=self.name, error=str(exc))
         return self.__parse(response)
+
+    def request_search(self, body: dict[str, Any]) -> dict[str, Any]:
+        """Public transport hook so tests can inject a mock.
+
+        Default delegates to the private __request_search. Override
+        via ``client.request_search = lambda b: {...}`` to inject a
+        canned response without name-mangled private access.
+        """
+        return self.request_search(body)
 
     def __request_search(self, body: dict[str, Any]) -> dict[str, Any]:
         try:

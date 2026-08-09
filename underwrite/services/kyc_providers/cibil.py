@@ -31,6 +31,8 @@ Wire response::
 
 from __future__ import annotations
 
+import json
+
 from typing import Any
 
 from underwrite.__logger__ import logger
@@ -127,11 +129,20 @@ class CibilBureauClient(KycProvider):
         }
 
         try:
-            response = self.__request_score(body)
+            response = self.request_score(body)
         except (OSError, ValueError, TypeError, RuntimeError, json.JSONDecodeError) as exc:
             logger.exception("CIBIL bureau pull transport error")
             return ProviderResult(verdict=Verdict.ERROR, provider=self.name, error=str(exc))
         return self.__parse(response)
+
+    def request_score(self, body: dict[str, Any]) -> dict[str, Any]:
+        """Public transport hook so tests can inject a mock.
+
+        Default delegates to the private __request_score. Override
+        via ``client.request_score = lambda b: {...}`` to inject a
+        canned response without name-mangled private access.
+        """
+        return self.request_score(body)
 
     def __request_score(self, body: dict[str, Any]) -> dict[str, Any]:
         try:

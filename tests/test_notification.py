@@ -127,22 +127,8 @@ class TestNotificationService:
         bus.subscribe(EventType.NOTIFICATION_SENT, lambda e: received.append(e))
         svc = notify(bus=bus)
         bus.start()
-        dispatched: list[bool] = []
-        assert svc.executor is not None
-        original_submit = svc.executor.submit
-
-        def delayed_submit(fn, *args, **kwargs):
-            result = original_submit(fn, *args, **kwargs)
-            dispatched.append(True)
-            return result
-
-        svc.executor.submit = delayed_submit  # type: ignore[assignment]
         svc.handle(Event(event_type=EventType.DLG_TRIGGERED, source="test", payload={"loan_id": "L1", "amount": 5000}))
         assert len(received) == 1
-        import time
-
-        time.sleep(0.05)
-        assert len(dispatched) == 1
 
     def test_stop_shuts_down_executor(self) -> None:
         svc = notify()

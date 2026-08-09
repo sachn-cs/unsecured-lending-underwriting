@@ -8,7 +8,7 @@ import hmac
 import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+import time
 from typing import Any
 from urllib.parse import urljoin
 
@@ -588,7 +588,7 @@ class MockRazorpayClient(RazorpayClient):
         Returns:
             Current time as integer seconds since epoch.
         """
-        return int(datetime.now(timezone.utc).timestamp())
+        return int(time.time())
 
     def create_order(
         self,

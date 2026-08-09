@@ -7,8 +7,9 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from typing import Any
+
+from underwrite.__metrics__ import SystemClock
 
 try:
     import httpx
@@ -77,7 +78,7 @@ class CreditReport:
     tradelines: int = 0
     enquiries_last_30_days: int = 0
     defaults: list[str] = field(default_factory=list)
-    report_date: str = field(default_factory=lambda: datetime.now(timezone.utc).date().isoformat())
+    report_date: str = field(default_factory=lambda: SystemClock().iso())
 
 @dataclass(frozen=True, slots=True)
 class CkycResponse:
@@ -91,7 +92,7 @@ class CkycResponse:
     aadhaar_verified: bool
     address: str
     status: str
-    verified_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    verified_at: str = field(default_factory=lambda: SystemClock().iso())
 
 class CreditBureauClient(ABC):
     """Abstract credit bureau client.
@@ -148,6 +149,7 @@ class HttpCreditBureauClient(CreditBureauClient):
         ckyc_api_key: str = "",
         ckyc_api_base: str = "https://api.ckycindia.in/v1",
         timeout_seconds: int = 30,
+        clock: SystemClock | None = None,
     ) -> None:
         """Initialize the HTTP bureau client.
 
@@ -161,6 +163,9 @@ class HttpCreditBureauClient(CreditBureauClient):
             ckyc_api_key: API key for CKYC registry.
             ckyc_api_base: Base URL for CKYC API.
             timeout_seconds: HTTP request timeout.
+            clock: Optional time source; defaults to SystemClock(). Used
+                to stamp report_date and verified_at when the upstream
+                response omits them.
         """
         self.__cibil_api_key = cibil_api_key
         self.__cibil_api_base = cibil_api_base.rstrip("/")
@@ -171,6 +176,7 @@ class HttpCreditBureauClient(CreditBureauClient):
         self.__ckyc_api_key = ckyc_api_key
         self.__ckyc_api_base = ckyc_api_base.rstrip("/")
         self.__timeout = timeout_seconds
+        self.__clock = clock if clock is not None else SystemClock()
         self.__http = httpx.Client(timeout=self.__timeout)
 
     def request(
@@ -331,7 +337,7 @@ class HttpCreditBureauClient(CreditBureauClient):
             tradelines=body.get("tradelines", 0),
             enquiries_last_30_days=body.get("enquiries_last_30_days", 0),
             defaults=body.get("defaults", []),
-            report_date=body.get("report_date", ""),
+            report_date=body.get("report_date", "") or self.__clock.iso(),
         )
 
     def verify_ckyc(
@@ -364,7 +370,7 @@ class HttpCreditBureauClient(CreditBureauClient):
             aadhaar_verified=body.get("aadhaar_verified", False),
             address=body.get("address", ""),
             status=body.get("status", "verified"),
-            verified_at=body.get("verified_at", ""),
+            verified_at=body.get("verified_at", "") or self.__clock.iso(),
         )
 
 class MockCreditBureauClient(CreditBureauClient):

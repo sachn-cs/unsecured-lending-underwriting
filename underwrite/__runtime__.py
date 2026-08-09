@@ -74,6 +74,36 @@ def build_authz(authz_config: Any) -> AccessControl | None:
     return acl
 
 
+def build_event_bus(bus_config: Any, store: Store) -> EventBus:
+    """Construct the configured EventBus backend.
+
+    Extracted from Runtime so the bus selection logic is testable
+    without standing up the full Runtime composition root.
+    """
+    backend = bus_config.backend
+    if backend == "sqs":
+        from underwrite.__bus_sqs__ import SqsBus
+
+        return SqsBus(
+            queue_url=bus_config.sqs_queue_url,
+            region=bus_config.sqs_region,
+            store=store,
+        )
+    if backend == "modal":
+        from underwrite.__bus_modal__ import ModalBus
+
+        return ModalBus(
+            queue_name=bus_config.modal_queue_name,
+            store=store,
+        )
+    return LocalBus(
+        rate_limit=bus_config.rate_limit,
+        max_workers=bus_config.max_workers,
+        max_futures=bus_config.max_futures,
+        store=store,
+    )
+
+
 class Runtime:
     """Manages lifecycle of all nano services with health, metrics, authz, migration, tracing, and saga."""
 
@@ -191,28 +221,7 @@ class Runtime:
         return Tracer(service_id="runtime", exporter=exporter)
 
     def __build_bus(self) -> EventBus:
-        backend = self.__config.bus.backend
-        if backend == "sqs":
-            from underwrite.__bus_sqs__ import SqsBus
-
-            return SqsBus(
-                queue_url=self.__config.bus.sqs_queue_url,
-                region=self.__config.bus.sqs_region,
-                store=self.__store,
-            )
-        if backend == "modal":
-            from underwrite.__bus_modal__ import ModalBus
-
-            return ModalBus(
-                queue_name=self.__config.bus.modal_queue_name,
-                store=self.__store,
-            )
-        return LocalBus(
-            rate_limit=self.__config.bus.rate_limit,
-            max_workers=self.__config.bus.max_workers,
-            max_futures=self.__config.bus.max_futures,
-            store=self.__store,
-        )
+        return build_event_bus(self.__config.bus, self.__store)
 
     def __build_store(self) -> Store:
         cfg = self.__config.store

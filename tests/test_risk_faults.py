@@ -17,9 +17,8 @@ class EmitSpy:
     def __init__(self) -> None:
         self.captured: list[tuple[str | EventType, dict[str, Any]]] = []
 
-    def __call__(self, event_type: str | EventType, payload: dict[str, Any], correlation_id: str = "") -> Event:
-        self.captured.append((event_type, payload))
-        return Event(event_type=str(event_type), source="test", payload=payload)
+    def __call__(self, event: Event) -> None:
+        self.captured.append((event.event_type, event.payload))
 
 
 class TestRiskServiceFaults:
@@ -28,11 +27,12 @@ class TestRiskServiceFaults:
             def predict(self, principal: float, term: float) -> float:
                 raise RuntimeError("model crashed")
 
-        svc = RiskHandler(service_id="risk", bus=LocalBus(), store=MemoryStore())
+        bus = LocalBus()
+        spy = EmitSpy()
+        bus.subscribe(EventType.RISK_SCORED, spy)
+        svc = RiskHandler(service_id="risk", bus=bus, store=MemoryStore())
         svc.set_model(FaultyModel())
 
-        spy = EmitSpy()
-        svc.emit = spy  # type: ignore[method-assign]
         event = Event(
             event_type=EventType.LOAN_ORIGINATED,
             source="test",
@@ -49,10 +49,11 @@ class TestRiskServiceFaults:
         assert risk_scored[0][1]["score"] == -1.0
 
     def test_early_warning_emitted_for_high_dp(self) -> None:
-        svc = RiskHandler(service_id="risk", bus=LocalBus(), store=MemoryStore())
-
+        bus = LocalBus()
         spy = EmitSpy()
-        svc.emit = spy  # type: ignore[method-assign]
+        bus.subscribe(EventType.RISK_EARLY_WARNING, spy)
+        svc = RiskHandler(service_id="risk", bus=bus, store=MemoryStore())
+
         event = Event(
             event_type=EventType.LOAN_ORIGINATED,
             source="test",

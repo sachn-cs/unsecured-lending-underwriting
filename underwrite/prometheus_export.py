@@ -152,7 +152,7 @@ class PrometheusMiddleware:
                     if k == b"authorization" or k == "authorization":
                         try:
                             auth = v.decode("latin-1") if isinstance(v, bytes) else str(v)
-                        except Exception:
+                        except (UnicodeDecodeError, AttributeError, TypeError):
                             auth = ""
                         break
                 expected = f"Bearer {self.__api_token}"

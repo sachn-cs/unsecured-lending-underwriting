@@ -91,7 +91,7 @@ class AuditHandler(StatefulService):
             max_concurrent=max_concurrent,
         )
         self.__max_ledger: int = max_ledger
-        self._ledger: deque = deque(maxlen=max_ledger)
+        self.__ledger: deque = deque(maxlen=max_ledger)
         self.__event_index: dict[str, list[dict[str, Any]]] = {}
         self.__export_url: str = export_url
         self.repo: BatchedStoreRepository[list[dict[str, Any]]] = self.batched_repo(
@@ -107,7 +107,7 @@ class AuditHandler(StatefulService):
         super().start()
         loaded = self.repo.load(default=[])
         if loaded:
-            self._ledger.extend(loaded)
+            self.__ledger.extend(loaded)
             for r in loaded:
                 et = r.get("event_type")
                 if et:
@@ -123,14 +123,14 @@ class AuditHandler(StatefulService):
         """
         with self.state_lock:
             record: dict[str, Any] = {
-                "seq": len(self._ledger) + 1,
+                "seq": len(self.__ledger) + 1,
                 "event_type": event.event_type,
                 "source": event.source,
                 "payload": PIISanitizer().sanitize(dict(event.payload)),
                 "correlation_id": event.correlation_id,
                 "recorded_at": datetime.now(timezone.utc).isoformat(),
             }
-            self._ledger.append(record)
+            self.__ledger.append(record)
             self.__event_index.setdefault(record["event_type"], []).append(record)
             if len(self.__event_index) > self.__max_ledger * 2:
                 excess = len(self.__event_index) - self.__max_ledger
@@ -139,13 +139,13 @@ class AuditHandler(StatefulService):
                         self.__event_index.pop(next(iter(self.__event_index)))
                     except StopIteration:
                         break
-            self.repo.incr_and_maybe_sync(list(self._ledger))
+            self.repo.incr_and_maybe_sync(list(self.__ledger))
 
     @property
     def ledger(self) -> list[dict[str, Any]]:
         """Return a snapshot of all audit records."""
         with self.state_lock:
-            return list(self._ledger)
+            return list(self.__ledger)
 
     def events_by_type(self, event_type: str) -> list[dict[str, Any]]:
         """Return all audit records matching a given event type.
@@ -169,7 +169,7 @@ class AuditHandler(StatefulService):
         """
         if not self.__export_url:
             return
-        lines: list[str] = [json.dumps(r, sort_keys=True) for r in self._ledger]
+        lines: list[str] = [json.dumps(r, sort_keys=True) for r in self.__ledger]
         body: str = "\n".join(lines) + "\n"
 
         if self.__export_url.startswith("s3://"):
@@ -232,7 +232,7 @@ class AuditHandler(StatefulService):
         """
         with open(path, "w") as fh:
             batch: list[str] = []
-            for record in self._ledger:
+            for record in self.__ledger:
                 batch.append(json.dumps(record, sort_keys=True))
                 if len(batch) >= chunk_size:
                     fh.write("\n".join(batch) + "\n")
@@ -249,7 +249,7 @@ class AuditHandler(StatefulService):
             path: Source file path. No-op if the file does not exist.
 
         """
-        self._ledger.clear()
+        self.__ledger.clear()
         p = Path(path)
         if not p.exists():
             return
@@ -259,12 +259,12 @@ class AuditHandler(StatefulService):
                 line = line.strip()
                 if line:
                     try:
-                        self._ledger.append(json.loads(line))
+                        self.__ledger.append(json.loads(line))
                     except json.JSONDecodeError as exc:
                         corrupted += 1
                         logger.warning("corrupted audit line {} in {}: {}", i, path, exc)
         self.__event_index.clear()
-        for r in self._ledger:
+        for r in self.__ledger:
             et = r.get("event_type")
             if et:
                 self.__event_index.setdefault(et, []).append(r)

@@ -226,7 +226,7 @@ class TestAuditLoadJsonl:
         ledger_file.write_text('{"valid": true}\nnot json\n{"also_valid": 42}\n')
         svc = AuditHandler(service_id="audit", bus=LocalBus(), store=MemoryStore())
         svc.load_jsonl(str(ledger_file))
-        records = svc._ledger
+        records = svc.ledger
         assert len(records) == 2
         assert records[0] == {"valid": True}
         assert records[1] == {"also_valid": 42}
@@ -236,13 +236,13 @@ class TestAuditLoadJsonl:
         ledger_file.write_text("")
         svc = AuditHandler(service_id="audit", bus=LocalBus(), store=MemoryStore())
         svc.load_jsonl(str(ledger_file))
-        records = svc._ledger
+        records = svc.ledger
         assert len(records) == 0
 
     def test_handles_missing_file(self) -> None:
         svc = AuditHandler(service_id="audit", bus=LocalBus(), store=MemoryStore())
         svc.load_jsonl("/nonexistent/audit.jsonl")
-        records = svc._ledger
+        records = svc.ledger
         assert len(records) == 0
 
 

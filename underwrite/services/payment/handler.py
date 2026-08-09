@@ -11,15 +11,14 @@ domain-level ``payment.received`` events so downstream services
 
 from __future__ import annotations
 
-import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
 from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
 from underwrite.__metrics__ import SystemClock
-from underwrite.__value_objects__ import Money
+from underwrite.__value_objects__ import IdGenerator, Money
 from underwrite.services.base import StatefulService
 from underwrite.validate import get_finite
 
@@ -33,6 +32,7 @@ class PaymentHandler(StatefulService):
         """Initialize the payment service."""
         super().__init__(**kwargs)
         self.__clock: SystemClock = SystemClock()
+        self.__id_generator: IdGenerator = IdGenerator()
         self.handlers: dict[str, Any] = {
             EventType.PAYMENT_RECEIVE: self.__on_payment_receive,
             EventType.PAYMENT_SCHEDULE: self.__on_payment_schedule,
@@ -66,7 +66,7 @@ class PaymentHandler(StatefulService):
         amount: float = get_finite(event.payload, "amount", 0.0)
         if not loan_id or amount <= 0:
             return
-        payment_id: str = f"pay_{loan_id}_{uuid.uuid4().hex[:12]}"
+        payment_id: str = f"pay_{loan_id}_{self.__id_generator.next()}"
         money: Money = self.__to_money(amount)
         receipt = {
             "loan_id": loan_id,

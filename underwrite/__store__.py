@@ -435,6 +435,13 @@ class PostgresStore(Store):
                 logger.opt(exception=True).warning("failed to return connection to pool")
 
     def __execute(self, query: str, params: tuple[Any, ...] = ()) -> list[tuple[Any, ...]] | None:
+        return self.execute(query, params)
+
+    def execute(self, query: str, params: tuple[Any, ...] = ()) -> list[tuple[Any, ...]] | None:
+        """Public query execution hook so tests can inject a mock.
+
+        Default delegates to the private __execute.
+        """
         def run() -> Any:
             with self.__connection() as conn:
                 with conn.cursor() as cur:

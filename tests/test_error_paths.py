@@ -14,7 +14,7 @@ from underwrite.__bus__ import EventBus, LocalBus
 from underwrite.__config__ import Configuration
 from underwrite.__events__ import Event
 from underwrite.__exceptions__ import ProtocolError
-from underwrite.__runtime__ import Runtime
+from underwrite.__runtime__ import Runtime, build_authz
 from underwrite.__store__ import CQRSStore, MemoryStore, PostgresStore, ReadStore, Store
 from underwrite.services.audit.service import AuditHandler
 from underwrite.services.mechanism.service import MechanismHandler
@@ -143,7 +143,7 @@ class TestAuthzBuildFallback:
             },
         }
         rt = Runtime(config=Configuration(**config_data))  # type: ignore[arg-type]
-        result = rt._Runtime__build_authz()  # type: ignore[attr-defined]
+        result = build_authz(rt._Runtime__config.authz)
         assert result is None
 
     def test_returns_none_on_missing_policy_file(self, tmp_path: Path) -> None:
@@ -155,7 +155,7 @@ class TestAuthzBuildFallback:
             },
         }
         rt = Runtime(config=Configuration(**config_data))  # type: ignore[arg-type]
-        result = rt._Runtime__build_authz()  # type: ignore[attr-defined]
+        result = build_authz(rt._Runtime__config.authz)
         assert result is not None
 
 
@@ -167,9 +167,7 @@ class TestAuthzBuildFallback:
 class TestPostgresStoreHealthFallback:
     def test_returns_ok_false_on_query_failure(self) -> None:
         store = PostgresStore(dsn="", table="test")
-        store._PostgresStore__execute = MagicMock(  # type: ignore[attr-defined]
-            side_effect=RuntimeError("db down")
-        )
+        store.execute = MagicMock(side_effect=RuntimeError("db down"))
         result = store.health()
         assert result["ok"] is False
         assert "detail" in result

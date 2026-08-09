@@ -45,6 +45,35 @@ from underwrite.services.kyc_providers.base import KycProvider
 _VALID_SOURCE_RE = re.compile(r"^[a-z][a-z0-9_.-]+$")
 
 
+def build_authz(authz_config: Any) -> AccessControl | None:
+    """Build an AccessControl from AuthzConfig. Extracted so tests
+    can exercise the policy-loading code without needing a full
+    Runtime instance.
+    """
+    if not authz_config.enabled:
+        return None
+    acl = AccessControl()
+    policy_file = authz_config.policy_file
+    if policy_file:
+        import json as json_mod
+
+        p = Path(policy_file)
+        if p.exists():
+            try:
+                with open(p) as fh:
+                    rules = json_mod.load(fh)
+            except (json_mod.JSONDecodeError, OSError) as exc:
+                logger.error("failed to load authz policy file {}: {}", policy_file, exc)
+                return None
+            for rule in rules.get("allow", []):
+                acl.allow(rule.get("subject", "*"), rule.get("resource", "*"))
+            for rule in rules.get("deny", []):
+                acl.deny(rule.get("subject", "*"), rule.get("resource", "*"))
+    else:
+        acl.allow("*", "*")
+    return acl
+
+
 class Runtime:
     """Manages lifecycle of all nano services with health, metrics, authz, migration, tracing, and saga."""
 
@@ -215,28 +244,7 @@ class Runtime:
         return MemoryStore()
 
     def __build_authz(self) -> AccessControl | None:
-        if not self.__config.authz.enabled:
-            return None
-        acl = AccessControl()
-        policy_file = self.__config.authz.policy_file
-        if policy_file:
-            import json as json_mod
-
-            p = Path(policy_file)
-            if p.exists():
-                try:
-                    with open(p) as fh:
-                        rules = json_mod.load(fh)
-                except (json_mod.JSONDecodeError, OSError) as exc:
-                    logger.error("failed to load authz policy file {}: {}", policy_file, exc)
-                    return None
-                for rule in rules.get("allow", []):
-                    acl.allow(rule.get("subject", "*"), rule.get("resource", "*"))
-                for rule in rules.get("deny", []):
-                    acl.deny(rule.get("subject", "*"), rule.get("resource", "*"))
-        else:
-            acl.allow("*", "*")
-        return acl
+        return build_authz(self.__config.authz)
 
     def __start_metrics_export(self) -> None:
         if not self.__metrics or self.__config.metrics.export_interval <= 0:

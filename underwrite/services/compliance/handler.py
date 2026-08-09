@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -140,8 +141,22 @@ def pan_category(pan: str) -> str:
     code = pan[3]
     return PAN_CATEGORIES.get(code, "Unknown")
 
+@dataclass(frozen=True, slots=True)
+class ComplianceConfig:
+    """Typed configuration for ComplianceHandler.
+
+    Replaces the previous ``kwargs.pop("aml_blocklist_path", ...)``
+    pattern: callers now pass a ComplianceConfig (or its fields are
+    extracted from kwargs via a constructor that does not mutate
+    the caller's mapping).
+    """
+
+    aml_blocklist_path: str = ""
+    kyc_providers: dict[str, Any] = field(default_factory=dict)
+
+
 class ComplianceHandler(StatefulService):
-    """RBI-compliant KYC/AML verification with risk scoring."""
+    """RBI-compliant KYC/AML verification with risk scoring and AML screening."""
 
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the compliance service with KYC records and AML blocklist.
@@ -155,11 +170,15 @@ class ComplianceHandler(StatefulService):
                 real upstream verifications are run; when missing
                 the service falls back to format-only validation.
         """
-        self.__aml_blocklist_path: str = kwargs.pop(
-            "aml_blocklist_path",
-            os.environ.get("AML_BLOCKLIST_PATH", BLOCKLIST_PATH),
+        config = ComplianceConfig(
+            aml_blocklist_path=kwargs.pop(
+                "aml_blocklist_path",
+                os.environ.get("AML_BLOCKLIST_PATH", BLOCKLIST_PATH),
+            ),
+            kyc_providers=kwargs.pop("kyc_providers", {}),
         )
-        self.__kyc_providers: dict[str, Any] = kwargs.pop("kyc_providers", {})
+        self.__aml_blocklist_path: str = config.aml_blocklist_path
+        self.__kyc_providers: dict[str, Any] = config.kyc_providers
         super().__init__(**kwargs)
         self.__blocklist: set[str] = load_blocklist(self.__aml_blocklist_path)
         self.__kyc_records: dict[str, dict[str, Any]] = {}

@@ -438,7 +438,7 @@ class PostgresStore(Store):
                     pool.putconn(conn, close=True)
                 else:
                     pool.putconn(conn)
-            except Exception:
+            except (OSError, ValueError, TypeError):
                 logger.opt(exception=True).warning("failed to return connection to pool")
 
     def __execute(self, query: str, params: tuple[Any, ...] = ()) -> list[tuple[Any, ...]] | None:

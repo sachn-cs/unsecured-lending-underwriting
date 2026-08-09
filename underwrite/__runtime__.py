@@ -27,6 +27,7 @@ from underwrite.__bus__ import EventBus, LocalBus
 from underwrite.__config__ import Configuration
 from underwrite.__events__ import Event
 from underwrite.__exceptions__ import ServiceNotFoundError
+from underwrite.__handler_registry__ import HANDLER_CLASSES, HANDLER_MAP, WIRING
 from underwrite.__health__ import HealthRegistry
 from underwrite.__identity__ import Identity
 from underwrite.__logger__ import JsonFormatter, TextFormatter, logger, loguru_sink_format
@@ -35,7 +36,6 @@ from underwrite.__metrics_exporter__ import MetricsExporter
 from underwrite.__migrate__ import default_plan
 from underwrite.__saga__ import SagaOrchestrator
 from underwrite.__secrets__ import SecretsManager
-from underwrite.__handler_registry__ import HANDLER_CLASSES, HANDLER_MAP, WIRING
 from underwrite.__store__ import FileStore, MemoryStore, Store
 from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer

@@ -7,24 +7,22 @@ purposes. Supports consent withdrawal, expiry, and re-consent.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Any
-
-from underwrite.__events__ import Event, EventType
-from underwrite.__logger__ import logger
-from underwrite.__metrics__ import SystemClock
-from underwrite.services.base import StatefulService
-from underwrite.services.persistence import TypedStoreRepository
 
 from underwrite.__authz__ import AccessControl
 from underwrite.__bus__ import EventBus
+from underwrite.__events__ import Event, EventType
 from underwrite.__health__ import HealthRegistry
 from underwrite.__identity__ import Identity
-from underwrite.__metrics__ import MetricsCollector
+from underwrite.__logger__ import logger
+from underwrite.__metrics__ import MetricsCollector, SystemClock
 from underwrite.__saga__ import SagaOrchestrator
 from underwrite.__store__ import Store
 from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
+from underwrite.services.base import StatefulService
+from underwrite.services.persistence import TypedStoreRepository
 
 DEFAULT_CONSENT_VALIDITY_DAYS: int = 365
 

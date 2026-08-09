@@ -9,7 +9,7 @@ and snapshotting logic.
 from __future__ import annotations
 
 import threading
-from typing import Callable
+from collections.abc import Callable
 
 from underwrite.__logger__ import logger
 from underwrite.__metrics__ import MetricsCollector

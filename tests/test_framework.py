@@ -13,7 +13,6 @@ from typing import Any
 import pytest
 
 from underwrite.__bus__ import LocalBus
-from underwrite.__store__ import MemoryStore
 from underwrite.__config__ import HANDLER_NAMES, Configuration
 from underwrite.__events__ import Event
 from underwrite.__exceptions__ import (

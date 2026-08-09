@@ -1,12 +1,12 @@
 """Tests for SettlementHandler — loss recognition and final accounting."""
 
 from __future__ import annotations
-from underwrite.__store__ import MemoryStore
 
 import pytest
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
+from underwrite.__store__ import MemoryStore
 from underwrite.services.settlement.handler import SettlementHandler
 
 

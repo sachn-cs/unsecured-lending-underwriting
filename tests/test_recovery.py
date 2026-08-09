@@ -7,10 +7,10 @@ Tests verify the full recovery workflow with store-backed persistence:
 """
 
 from __future__ import annotations
-from underwrite.__store__ import MemoryStore
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
+from underwrite.__store__ import MemoryStore
 from underwrite.services.recovery.handler import RecoveryHandler
 
 

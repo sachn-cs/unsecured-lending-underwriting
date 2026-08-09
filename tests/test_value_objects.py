@@ -8,11 +8,8 @@ import pytest
 
 from underwrite.__exceptions__ import ProtocolError
 from underwrite.__value_objects__ import (
-    ApplicationId,
-    LoanId,
     Money,
     Rate,
-    UserId,
     application_id,
     loan_id,
     paise_to_rupees,

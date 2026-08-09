@@ -11,21 +11,20 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from underwrite.__events__ import Event, EventType
-from underwrite.__logger__ import logger
-from underwrite.__value_objects__ import IdGenerator
-from underwrite.services.base import StatefulService
-from underwrite.services.persistence import TypedStoreRepository
-
 from underwrite.__authz__ import AccessControl
 from underwrite.__bus__ import EventBus
+from underwrite.__events__ import Event, EventType
 from underwrite.__health__ import HealthRegistry
 from underwrite.__identity__ import Identity
+from underwrite.__logger__ import logger
 from underwrite.__metrics__ import MetricsCollector
 from underwrite.__saga__ import SagaOrchestrator
 from underwrite.__store__ import Store
 from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
+from underwrite.__value_objects__ import IdGenerator
+from underwrite.services.base import StatefulService
+from underwrite.services.persistence import TypedStoreRepository
 
 DEFAULT_DSR_RESPONSE_DAYS: int = 30
 DEFAULT_GRIEVANCE_RESPONSE_DAYS: int = 15

@@ -19,6 +19,7 @@ from underwrite.services.credit_bureau.client import (
 )
 from underwrite.services.persistence import TypedStoreRepository
 
+
 class CreditBureauHandler(StatefulService):
     """Pulls credit bureau reports and verifies CKYC identity.
 

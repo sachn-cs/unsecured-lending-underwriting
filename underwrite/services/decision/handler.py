@@ -7,7 +7,6 @@ recommended action and supporting evidence.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Any
 
 from underwrite.__authz__ import AccessControl

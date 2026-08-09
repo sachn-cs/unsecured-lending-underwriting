@@ -20,6 +20,7 @@ from underwrite.__events__ import Event
 from underwrite.__logger__ import logger
 from underwrite.__store__ import Store
 
+
 class SqsBus(EventBus):
     """Event bus backed by an SQS queue."""
 

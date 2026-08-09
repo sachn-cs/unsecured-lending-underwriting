@@ -13,7 +13,8 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-from hypothesis import HealthCheck, assume, given, settings, strategies as st
+from hypothesis import HealthCheck, assume, given, settings
+from hypothesis import strategies as st
 
 from underwrite.__amortization__ import (
     calculate_emi,
@@ -21,14 +22,13 @@ from underwrite.__amortization__ import (
     project_outstanding,
 )
 from underwrite.__exceptions__ import ProtocolError
+from underwrite.services.pricing.handler import compute_rate_cap
 from underwrite.validate import (
     require_finite,
     require_in_range,
     require_non_negative,
     require_positive,
 )
-from underwrite.services.pricing.handler import compute_rate_cap
-
 
 finite_float = st.floats(min_value=-1e9, max_value=1e9, allow_nan=False, allow_infinity=False)
 positive_float = st.floats(min_value=1e-6, max_value=1e9, allow_nan=False, allow_infinity=False)

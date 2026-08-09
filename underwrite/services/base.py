@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     )
 
 from underwrite.__authz__ import AccessControl, AuthzError
-from underwrite.__bus__ import EventBus, LocalBus
+from underwrite.__bus__ import EventBus
 from underwrite.__correlation__ import (
     correlation_context,
 )
@@ -41,7 +41,7 @@ from underwrite.__identity__ import Identity
 from underwrite.__logger__ import logger
 from underwrite.__metrics__ import MetricsCollector
 from underwrite.__saga__ import SagaOrchestrator
-from underwrite.__store__ import MemoryStore, Store
+from underwrite.__store__ import Store
 from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
 from underwrite.validate import PayloadValidator

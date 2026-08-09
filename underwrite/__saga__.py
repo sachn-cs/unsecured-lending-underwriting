@@ -25,6 +25,7 @@ from underwrite.__exceptions__ import ProtocolError
 from underwrite.__logger__ import logger
 from underwrite.__store__ import MemoryStore, Store
 
+
 class Emitter(Protocol):
     """Protocol for saga event emitters (typically a NanoService)."""
 

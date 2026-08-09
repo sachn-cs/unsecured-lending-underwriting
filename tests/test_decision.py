@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from underwrite.__bus__ import LocalBus
-from underwrite.__store__ import MemoryStore
 from underwrite.__events__ import Event, EventType
+from underwrite.__store__ import MemoryStore
 from underwrite.services.decision.handler import DecisionHandler
 
 

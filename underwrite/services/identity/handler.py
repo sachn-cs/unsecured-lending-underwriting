@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from underwrite.__events__ import Event, EventType
 from underwrite.__identity__ import Identity
 from underwrite.__logger__ import logger

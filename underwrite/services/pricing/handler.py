@@ -12,14 +12,11 @@ from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
+from underwrite.__authz__ import AccessControl
+from underwrite.__bus__ import EventBus
 from underwrite.__constants__ import DAYS_PER_YEAR
 from underwrite.__events__ import Event, EventType
 from underwrite.__exceptions__ import ProtocolError
-from underwrite.services import NanoService
-from underwrite.validate import get_finite, get_non_empty
-
-from underwrite.__authz__ import AccessControl
-from underwrite.__bus__ import EventBus
 from underwrite.__health__ import HealthRegistry
 from underwrite.__identity__ import Identity
 from underwrite.__metrics__ import MetricsCollector
@@ -27,6 +24,8 @@ from underwrite.__saga__ import SagaOrchestrator
 from underwrite.__store__ import Store
 from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
+from underwrite.services import NanoService
+from underwrite.validate import get_finite, get_non_empty
 
 BASE_RATE: float = 0.08
 RISK_PREMIUM_MULTIPLIER: float = 0.50

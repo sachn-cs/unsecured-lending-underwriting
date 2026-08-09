@@ -1,7 +1,6 @@
 """Error-path tests for narrowed exception blocks — graceful degradation checks."""
 
 from __future__ import annotations
-from underwrite.__store__ import MemoryStore
 
 import json
 from pathlib import Path

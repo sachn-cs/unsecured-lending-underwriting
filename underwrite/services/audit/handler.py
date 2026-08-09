@@ -27,6 +27,7 @@ from underwrite.__tracer__ import Tracer
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import BatchedStoreRepository
 
+
 class AuditHandler(StatefulService):
     """Subscribes to all domain events and persists them to an append-only ledger.
 

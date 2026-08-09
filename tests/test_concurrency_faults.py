@@ -5,7 +5,6 @@ asserts no data corruption, no exceptions, and correct final state.
 """
 
 from __future__ import annotations
-from underwrite.__store__ import MemoryStore
 
 import threading
 from typing import Any

@@ -9,9 +9,8 @@ import pytest
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
 from underwrite.__store__ import MemoryStore
-from underwrite.__store__ import MemoryStore
-from underwrite.services.risk.model import RiskModel
 from underwrite.services.risk.handler import RiskHandler
+from underwrite.services.risk.model import RiskModel
 
 
 class EmitSpy:

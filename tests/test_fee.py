@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 
 from underwrite.__bus__ import LocalBus
-from underwrite.__store__ import MemoryStore
 from underwrite.__events__ import Event, EventType
+from underwrite.__store__ import MemoryStore
 from underwrite.services.fee.handler import FeeHandler
 
 

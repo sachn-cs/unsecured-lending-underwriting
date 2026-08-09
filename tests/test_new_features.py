@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from underwrite.__async_bus__ import HANDLER_TIMEOUT, AsyncLocalBus
+from underwrite.__async_bus__ import AsyncLocalBus
 from underwrite.__authz__ import AccessControl
 from underwrite.__bus__ import DeadLetterQueue
 from underwrite.__events__ import MAX_PAYLOAD_SIZE, Event

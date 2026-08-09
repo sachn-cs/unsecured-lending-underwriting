@@ -21,7 +21,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
-from typing import NewType, Union
+from typing import NewType
 
 from underwrite.__exceptions__ import ProtocolError
 
@@ -77,19 +77,19 @@ class Money:
             raise ProtocolError(f"Money.currency must be a non-empty alpha code, got {self.currency!r}")
 
     @classmethod
-    def from_rupees(cls, rupees: Decimal | float | str, currency: str = "INR") -> "Money":
+    def from_rupees(cls, rupees: Decimal | float | str, currency: str = "INR") -> Money:
         return cls(paise=rupees_to_paise(rupees), currency=currency)
 
     @property
     def rupees(self) -> Decimal:
         return paise_to_rupees(self.paise)
 
-    def __add__(self, other: "Money") -> "Money":
+    def __add__(self, other: Money) -> Money:
         if self.currency != other.currency:
             raise ProtocolError(f"cannot add Money in {self.currency} and {other.currency}")
         return Money(paise=self.paise + other.paise, currency=self.currency)
 
-    def __sub__(self, other: "Money") -> "Money":
+    def __sub__(self, other: Money) -> Money:
         if self.currency != other.currency:
             raise ProtocolError(f"cannot subtract Money in {self.currency} and {other.currency}")
         if self.paise < other.paise:
@@ -117,7 +117,7 @@ class Rate:
             raise ProtocolError(f"Rate.annual must be >= 0, got {self.annual}")
 
     @classmethod
-    def from_fraction(cls, fraction: float | int | str, *, max_fraction: Decimal = Decimal("5")) -> "Rate":
+    def from_fraction(cls, fraction: float | int | str, *, max_fraction: Decimal = Decimal("5")) -> Rate:
         """Parse a decimal fraction (e.g. 0.18) with an upper bound default.
 
         The default ``max_fraction=5`` allows up to 500% annual rate

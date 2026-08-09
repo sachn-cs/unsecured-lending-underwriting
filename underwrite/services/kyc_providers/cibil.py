@@ -32,7 +32,6 @@ Wire response::
 from __future__ import annotations
 
 import json
-
 from typing import Any
 
 from underwrite.__logger__ import logger

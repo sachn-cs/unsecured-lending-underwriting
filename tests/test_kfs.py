@@ -1,10 +1,10 @@
 """Tests for KFS service — Key Fact Statement generation."""
 
 from __future__ import annotations
-from underwrite.__store__ import MemoryStore
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
+from underwrite.__store__ import MemoryStore
 from underwrite.services.kfs.handler import KfsHandler
 
 

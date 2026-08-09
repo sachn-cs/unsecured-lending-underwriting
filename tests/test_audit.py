@@ -9,10 +9,10 @@ Tests verify behavior through public interfaces only:
 from __future__ import annotations
 
 from typing import Any
-from underwrite.__bus__ import LocalBus
-from underwrite.__store__ import MemoryStore
 
+from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event
+from underwrite.__store__ import MemoryStore
 from underwrite.services.audit.handler import AuditHandler
 
 

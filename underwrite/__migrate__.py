@@ -14,7 +14,7 @@ __all__ = [
 ]
 
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from underwrite.__exceptions__ import MigrationError

@@ -77,7 +77,7 @@ class TestMechanismServiceConcurrency:
     """Verify MechanismHandler thread safety under concurrent commands."""
 
     def __make_mechanism(self, store):
-        from underwrite.services.mechanism.service import MechanismHandler
+        from underwrite.services.mechanism.handler import MechanismHandler
 
         bus = LocalBus()
         return MechanismHandler(

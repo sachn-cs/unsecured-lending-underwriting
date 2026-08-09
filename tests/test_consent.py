@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from underwrite.__events__ import Event, EventType
-from underwrite.services.consent.service import ConsentHandler
+from underwrite.services.consent.handler import ConsentHandler
 
 
 def svc(**kw) -> ConsentHandler:

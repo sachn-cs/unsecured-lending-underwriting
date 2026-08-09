@@ -6,7 +6,7 @@ Tests verify behavior through the public generate_report() method.
 from __future__ import annotations
 
 from underwrite.__events__ import Event, EventType
-from underwrite.services.reporting.service import ReportingHandler
+from underwrite.services.reporting.handler import ReportingHandler
 
 
 def reporting() -> ReportingHandler:

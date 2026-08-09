@@ -14,7 +14,7 @@ from typing import Any
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event
 from underwrite.__store__ import MemoryStore
-from underwrite.services.graph.service import GraphHandler
+from underwrite.services.graph.handler import GraphHandler
 
 
 def graph(store_data: dict[str, Any], bus=None) -> GraphHandler:

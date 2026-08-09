@@ -13,7 +13,7 @@ from underwrite.services.credit_bureau.client import (
     HttpCreditBureauClient,
     MockCreditBureauClient,
 )
-from underwrite.services.credit_bureau.service import CreditBureauHandler
+from underwrite.services.credit_bureau.handler import CreditBureauHandler
 from underwrite.services.kyc_providers.base import ProviderResult, Verdict
 
 

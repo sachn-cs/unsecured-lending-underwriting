@@ -12,7 +12,7 @@ import pytest
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
 from underwrite.__exceptions__ import ProtocolError
-from underwrite.services.risk.service import RiskHandler
+from underwrite.services.risk.handler import RiskHandler
 
 
 def risk(bus=None) -> RiskHandler:

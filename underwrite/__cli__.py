@@ -19,7 +19,7 @@ from pathlib import Path
 
 import typer
 
-from underwrite.__config__ import SERVICE_NAMES, Configuration, ServiceConfig
+from underwrite.__config__ import HANDLER_NAMES, Configuration, ServiceConfig
 from underwrite.__identity__ import Identity
 from underwrite.__runtime__ import Runtime
 
@@ -74,9 +74,9 @@ def run(
 ) -> None:
     """Starts one or more nano services."""
     for name in services:
-        if name not in SERVICE_NAMES:
+        if name not in HANDLER_NAMES:
             typer.secho(f"Unknown service: {name}", err=True, fg=typer.colors.RED)
-            typer.echo(f"Available: {', '.join(SERVICE_NAMES)}")
+            typer.echo(f"Available: {', '.join(HANDLER_NAMES)}")
             raise typer.Exit(code=1)
 
     config = load_config()
@@ -102,7 +102,7 @@ def run(
 def list_services() -> None:
     """Lists all available nano services."""
     typer.echo("Available nano services:")
-    for name in SERVICE_NAMES:
+    for name in HANDLER_NAMES:
         typer.echo(f"  - {name}")
 
 

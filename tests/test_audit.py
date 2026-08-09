@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 from underwrite.__events__ import Event
-from underwrite.services.audit.service import AuditHandler
+from underwrite.services.audit.handler import AuditHandler
 
 
 def audit() -> AuditHandler:
@@ -136,7 +136,7 @@ class TestAuditService:
         with patch.dict("sys.modules", {"boto3": mock_boto3_mod}):
             if "underwrite.services.audit.service" in __import__("sys").modules:
                 __import__("sys").modules.pop("underwrite.services.audit.service", None)
-            from underwrite.services.audit.service import AuditHandler as AuditSvc2
+            from underwrite.services.audit.handler import AuditHandler as AuditSvc2
 
             svc2 = AuditSvc2(service_id="audit", export_url="s3://bucket/path.jsonl")
             svc2.handle(Event(event_type="ev", source="s"))

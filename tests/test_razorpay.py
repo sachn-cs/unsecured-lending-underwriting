@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
-from underwrite.services.razorpay.service import RazorpayHandler
+from underwrite.services.razorpay.handler import RazorpayHandler
 
 
 def svc(bus=None) -> RazorpayHandler:

@@ -1,5 +1,5 @@
 """Razorpay payment gateway integration."""
 
-from underwrite.services.razorpay.service import RazorpayHandler
+from underwrite.services.razorpay.handler import RazorpayHandler
 
 __all__ = ["RazorpayHandler"]

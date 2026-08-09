@@ -1,5 +1,5 @@
 """Reporting service — NPA and portfolio reports."""
 
-from underwrite.services.reporting.service import ReportingHandler
+from underwrite.services.reporting.handler import ReportingHandler
 
 __all__ = ["ReportingHandler"]

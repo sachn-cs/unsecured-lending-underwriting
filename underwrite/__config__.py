@@ -35,7 +35,7 @@ __all__ = [
     "RecoveryConfig",
     "SagaConfig",
     "SecretsConfig",
-    "SERVICE_NAMES",
+    "HANDLER_NAMES",
     "ServiceConfig",
     "StoreConfig",
     "TracingConfig",
@@ -407,7 +407,7 @@ class Configuration(ForbidExtra):
     def default(cls) -> Configuration:
         config = Configuration()
         config.store.backend = "filesystem"
-        for service_name in SERVICE_NAMES:
+        for service_name in HANDLER_NAMES:
             config.services[service_name] = ServiceConfig(enabled=False)
         return config
 
@@ -692,9 +692,9 @@ def build_service_names() -> list[str]:
     duplicate the list which drifted out of sync. This helper
     produces the same ordering as the registry.
     """
-    from underwrite.__service_registry__ import SERVICE_CLASSES
+    from underwrite.__handler_registry__ import HANDLER_CLASSES
 
-    return list(SERVICE_CLASSES.keys())
+    return list(HANDLER_CLASSES.keys())
 
 
-SERVICE_NAMES: list[str] = build_service_names()
+HANDLER_NAMES: list[str] = build_service_names()

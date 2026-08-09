@@ -13,7 +13,7 @@ from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
 from underwrite.__exceptions__ import ProtocolError
 from underwrite.__store__ import MemoryStore
-from underwrite.services.mechanism.service import MechanismHandler
+from underwrite.services.mechanism.handler import MechanismHandler
 
 
 def make_svc() -> MechanismHandler:

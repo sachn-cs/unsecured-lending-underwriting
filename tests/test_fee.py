@@ -6,7 +6,7 @@ import pytest
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
-from underwrite.services.fee.service import FeeHandler
+from underwrite.services.fee.handler import FeeHandler
 
 
 class TestFeeService:

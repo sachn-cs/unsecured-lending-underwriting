@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from underwrite.__events__ import Event, EventType
-from underwrite.services.collection.service import CollectionHandler
-from underwrite.services.disbursement.service import DisbursementHandler
-from underwrite.services.document.service import DocumentHandler
-from underwrite.services.pricing.service import PricingHandler
-from underwrite.services.settlement.service import SettlementHandler
-from underwrite.services.underwriter.service import UnderwriterHandler
+from underwrite.services.collection.handler import CollectionHandler
+from underwrite.services.disbursement.handler import DisbursementHandler
+from underwrite.services.document.handler import DocumentHandler
+from underwrite.services.pricing.handler import PricingHandler
+from underwrite.services.settlement.handler import SettlementHandler
+from underwrite.services.underwriter.handler import UnderwriterHandler
 
 
 class TestUnderwriterService:

@@ -13,7 +13,7 @@ from typing import Any
 import pytest
 
 from underwrite.__bus__ import LocalBus
-from underwrite.__config__ import SERVICE_NAMES, Configuration
+from underwrite.__config__ import HANDLER_NAMES, Configuration
 from underwrite.__events__ import Event
 from underwrite.__exceptions__ import (
     ServiceNotFoundError,
@@ -31,7 +31,7 @@ from underwrite.services.base import NanoService
 class TestConfiguration:
     def test_default_creates_all_services_disabled(self) -> None:
         config: Configuration = Configuration.default()
-        assert len(config.services) == len(SERVICE_NAMES)
+        assert len(config.services) == len(HANDLER_NAMES)
         for svc in config.services.values():
             assert svc.enabled is False
 
@@ -68,7 +68,7 @@ class TestConfiguration:
         assert "bus" in d
         assert "store" in d
         assert "services" in d
-        assert len(d["services"]) == len(SERVICE_NAMES)
+        assert len(d["services"]) == len(HANDLER_NAMES)
 
 
 # =============================================================================

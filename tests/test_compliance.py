@@ -18,7 +18,7 @@ from unittest.mock import patch
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
-from underwrite.services.compliance.service import (
+from underwrite.services.compliance.handler import (
     ComplianceHandler,
     pan_category,
     verify_aadhaar_checksum,

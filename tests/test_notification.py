@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
-from underwrite.services.notification.service import NotificationHandler
+from underwrite.services.notification.handler import NotificationHandler
 
 
 def notify(bus=None) -> NotificationHandler:

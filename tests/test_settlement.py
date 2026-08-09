@@ -6,7 +6,7 @@ import pytest
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
-from underwrite.services.settlement.service import SettlementHandler
+from underwrite.services.settlement.handler import SettlementHandler
 
 
 def svc(bus=None) -> SettlementHandler:

@@ -35,7 +35,7 @@ from underwrite.__metrics_exporter__ import MetricsExporter
 from underwrite.__migrate__ import default_plan
 from underwrite.__saga__ import SagaOrchestrator
 from underwrite.__secrets__ import SecretsManager
-from underwrite.__service_registry__ import SERVICE_CLASSES, SERVICE_MAP, WIRING
+from underwrite.__handler_registry__ import HANDLER_CLASSES, HANDLER_MAP, WIRING
 from underwrite.__store__ import FileStore, MemoryStore, Store
 from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
@@ -383,10 +383,10 @@ class Runtime:
 
     def register(self, service_name: str, identity: Identity | None = None) -> NanoService:
         """Instantiates a nano service by name and registers it."""
-        module_path = SERVICE_MAP.get(service_name)
+        module_path = HANDLER_MAP.get(service_name)
         if not module_path:
             raise ServiceNotFoundError(f"unknown service: {service_name}")
-        class_name = SERVICE_CLASSES.get(service_name)
+        class_name = HANDLER_CLASSES.get(service_name)
         if not class_name:
             raise ServiceNotFoundError(f"no class mapping for service: {service_name}")
         module = importlib.import_module(module_path)

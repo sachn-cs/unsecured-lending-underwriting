@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
-from underwrite.services.governance.service import GovernanceHandler
+from underwrite.services.governance.handler import GovernanceHandler
 
 
 def gov(bus=None) -> GovernanceHandler:

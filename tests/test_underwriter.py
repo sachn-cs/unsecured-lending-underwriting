@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
-from underwrite.services.underwriter.service import UnderwriterHandler
+from underwrite.services.underwriter.handler import UnderwriterHandler
 
 
 def svc(bus=None) -> UnderwriterHandler:

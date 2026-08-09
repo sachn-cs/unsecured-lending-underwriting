@@ -16,8 +16,8 @@ from underwrite.__events__ import Event
 from underwrite.__exceptions__ import ProtocolError
 from underwrite.__runtime__ import Runtime, build_authz
 from underwrite.__store__ import CQRSStore, MemoryStore, PostgresStore, ReadStore, Store
-from underwrite.services.audit.service import AuditHandler
-from underwrite.services.mechanism.service import MechanismHandler
+from underwrite.services.audit.handler import AuditHandler
+from underwrite.services.mechanism.handler import MechanismHandler
 from underwrite.services.risk.model import RiskModel
 
 # ---------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 """Fee assessment service."""
 
-from underwrite.services.fee.service import FeeHandler
+from underwrite.services.fee.handler import FeeHandler
 
 __all__ = ["FeeHandler"]

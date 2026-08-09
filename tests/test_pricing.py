@@ -6,7 +6,7 @@ import pytest
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
-from underwrite.services.pricing.service import (
+from underwrite.services.pricing.handler import (
     HOME_LOAN_CAP,
     MICRO_LOAN_CAP,
     PERSONAL_LOAN_CAP,

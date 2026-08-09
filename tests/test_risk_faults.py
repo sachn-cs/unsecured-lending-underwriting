@@ -8,7 +8,7 @@ import pytest
 
 from underwrite.__events__ import Event, EventType
 from underwrite.services.risk.model import RiskModel
-from underwrite.services.risk.service import RiskHandler
+from underwrite.services.risk.handler import RiskHandler
 
 
 class EmitSpy:
@@ -68,7 +68,7 @@ class TestRiskServiceFaults:
 
 class TestAuditServiceFaults:
     def test_load_corrupted_jsonl_skips_bad_lines(self, tmp_path: Any) -> None:
-        from underwrite.services.audit.service import AuditHandler
+        from underwrite.services.audit.handler import AuditHandler
 
         svc = AuditHandler(service_id="audit")
         p = tmp_path / "audit.jsonl"
@@ -79,7 +79,7 @@ class TestAuditServiceFaults:
         assert svc.ledger[1]["event_type"] == "b"
 
     def test_load_nonexistent_file_clears_ledger(self, tmp_path: Any) -> None:
-        from underwrite.services.audit.service import AuditHandler
+        from underwrite.services.audit.handler import AuditHandler
 
         svc = AuditHandler(service_id="audit")
         svc.handle(Event(event_type="test", source="test", payload={"dummy": True}))

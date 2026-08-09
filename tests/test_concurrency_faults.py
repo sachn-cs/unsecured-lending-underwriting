@@ -16,7 +16,7 @@ from underwrite.__metrics__ import MetricsCollector
 from underwrite.__saga__ import SagaOrchestrator, SagaStep
 from underwrite.__store__ import FileStore, MemoryStore
 from underwrite.__tracer__ import Tracer
-from underwrite.services.mechanism.service import MechanismHandler
+from underwrite.services.mechanism.handler import MechanismHandler
 
 NUM_THREADS: int = 10
 OPS_PER_THREAD: int = 100

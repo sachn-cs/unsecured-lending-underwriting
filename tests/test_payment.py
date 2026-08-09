@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
-from underwrite.services.payment.service import PaymentHandler
+from underwrite.services.payment.handler import PaymentHandler
 
 
 class TestPaymentService:

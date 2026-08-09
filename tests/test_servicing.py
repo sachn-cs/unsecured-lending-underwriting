@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from underwrite.__events__ import Event, EventType
-from underwrite.services.servicing.service import ServicingHandler
+from underwrite.services.servicing.handler import ServicingHandler
 
 
 class TestServicingService:

@@ -5,7 +5,7 @@ from __future__ import annotations
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
 from underwrite.__store__ import MemoryStore
-from underwrite.services.origination.service import OriginationHandler
+from underwrite.services.origination.handler import OriginationHandler
 
 
 class TestOriginationService:

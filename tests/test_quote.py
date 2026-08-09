@@ -9,7 +9,7 @@ import pytest
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
-from underwrite.services.quote.service import QuoteHandler
+from underwrite.services.quote.handler import QuoteHandler
 
 
 def quote(bus=None) -> QuoteHandler:

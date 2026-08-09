@@ -1,5 +1,5 @@
 """Settlement service — loss recognition and final accounting."""
 
-from underwrite.services.settlement.service import SettlementHandler
+from underwrite.services.settlement.handler import SettlementHandler
 
 __all__ = ["SettlementHandler"]

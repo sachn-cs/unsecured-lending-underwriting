@@ -12,7 +12,7 @@ import pytest
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
-from underwrite.services.collateral.service import CollateralHandler
+from underwrite.services.collateral.handler import CollateralHandler
 
 
 def collateral(bus=None) -> CollateralHandler:

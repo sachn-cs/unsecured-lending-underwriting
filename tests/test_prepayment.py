@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
-from underwrite.services.prepayment.service import PrepaymentHandler
+from underwrite.services.prepayment.handler import PrepaymentHandler
 
 
 def svc(bus=None) -> PrepaymentHandler:

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
-from underwrite.services.npa.service import NPAHandler
+from underwrite.services.npa.handler import NPAHandler
 
 
 def npa(bus=None) -> NPAHandler:

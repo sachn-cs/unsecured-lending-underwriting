@@ -27,7 +27,7 @@ from underwrite.validate import (
     require_non_negative,
     require_positive,
 )
-from underwrite.services.pricing.service import compute_rate_cap
+from underwrite.services.pricing.handler import compute_rate_cap
 
 
 finite_float = st.floats(min_value=-1e9, max_value=1e9, allow_nan=False, allow_infinity=False)

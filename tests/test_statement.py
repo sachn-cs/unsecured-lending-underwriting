@@ -5,7 +5,7 @@ from __future__ import annotations
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
 from underwrite.__store__ import MemoryStore
-from underwrite.services.statement.service import StatementHandler
+from underwrite.services.statement.handler import StatementHandler
 
 
 class TestStatementService:

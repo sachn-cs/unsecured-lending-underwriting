@@ -12,7 +12,7 @@ import pytest
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
 from underwrite.__store__ import MemoryStore
-from underwrite.services.identity.service import IdentityHandler
+from underwrite.services.identity.handler import IdentityHandler
 
 
 class TestIdentityService:

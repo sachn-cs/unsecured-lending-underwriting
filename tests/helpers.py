@@ -9,7 +9,7 @@ from typing import Any
 
 from underwrite.__events__ import Event
 from underwrite.__store__ import ReadStore, Store
-from underwrite.services.base import NanoService
+from underwrite.services.base import Core
 
 
 class BrokenStore:
@@ -38,8 +38,8 @@ class BadStr:
         raise ValueError("bad str")
 
 
-class ConcreteService(NanoService):
-    """Minimal concrete NanoService subclass for testing base-class error paths."""
+class ConcreteService(Core):
+    """Minimal concrete Core subclass for testing base-class error paths."""
 
     def handle(self, event: Event) -> None:
         pass

@@ -27,7 +27,7 @@ from underwrite.__store__ import MemoryStore, Store
 
 
 class Emitter(Protocol):
-    """Protocol for saga event emitters (typically a NanoService)."""
+    """Protocol for saga event emitters (typically a Core)."""
 
     def emit(self, event_type: str, payload: dict[str, Any], correlation_id: str = "") -> Event: ...
 
@@ -197,7 +197,7 @@ class SagaOrchestrator:
             logger.exception("failed to remove saga {} from store", saga_id)
 
     def register_emitter(self, saga_name: str, emitter: Emitter) -> None:
-        """Registers an event emitter (NanoService) for a saga type."""
+        """Registers an event emitter (Core) for a saga type."""
         with self.__global_lock:
             self.__emitters[saga_name] = emitter
 

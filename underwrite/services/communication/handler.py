@@ -22,10 +22,10 @@ from underwrite.__store__ import Store
 from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
 from underwrite.__value_objects__ import IdGenerator
-from underwrite.services.base import NanoService
+from underwrite.services.base import Core
 
 
-class CommunicationHandler(NanoService):
+class CommunicationHandler(Core):
     """Dispatches outbound messages through configured channels.
 
     In production, each channel (email / SMS / push) is backed by a
@@ -52,7 +52,7 @@ class CommunicationHandler(NanoService):
         """Initialize the communication service and register event handlers.
 
         Args:
-            **kwargs: Forwarded to NanoService.__init__.
+            **kwargs: Forwarded to Core.__init__.
 
         """
         super().__init__(

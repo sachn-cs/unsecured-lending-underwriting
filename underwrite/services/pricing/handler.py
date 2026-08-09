@@ -24,7 +24,7 @@ from underwrite.__saga__ import SagaOrchestrator
 from underwrite.__store__ import Store
 from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
-from underwrite.services import NanoService
+from underwrite.services import Core
 from underwrite.validate import get_finite, get_non_empty
 
 BASE_RATE: float = 0.08
@@ -134,7 +134,7 @@ def compute_rate_cap(principal: float, loan_type: str = "personal") -> float:
     return _policy_for(loan_type).rate_cap
 
 
-class PricingHandler(NanoService):
+class PricingHandler(Core):
     """Computes loan pricing with RBI-mandated rate caps and fee disclosure."""
 
     def __init__(

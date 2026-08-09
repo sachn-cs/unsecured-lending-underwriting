@@ -20,11 +20,11 @@ from underwrite.__saga__ import SagaOrchestrator
 from underwrite.__store__ import Store
 from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
-from underwrite.services.base import NanoService
+from underwrite.services.base import Core
 from underwrite.validate import require_finite
 
 
-class StatementHandler(NanoService):
+class StatementHandler(Core):
     """Generates account statements showing loan activity and current status."""
 
     def __init__(

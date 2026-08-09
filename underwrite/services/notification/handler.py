@@ -17,10 +17,10 @@ from underwrite.__saga__ import SagaOrchestrator
 from underwrite.__store__ import Store
 from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
-from underwrite.services import NanoService
+from underwrite.services import Core
 
 
-class NotificationHandler(NanoService):
+class NotificationHandler(Core):
     """Sends notifications for fraud alerts, NPA events, and early warnings.
 
     Dispatches via configurable channels (SES/SendGrid for email,

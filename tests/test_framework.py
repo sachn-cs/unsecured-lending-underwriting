@@ -1,6 +1,6 @@
 """Exhaustive tests for the underwrite framework.
 
-Covers: Configuration, Identity, Event, EventBus, Store, NanoService, Runtime.
+Covers: Configuration, Identity, Event, EventBus, Store, Core, Runtime.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from underwrite.__exceptions__ import (
 from underwrite.__identity__ import Identity
 from underwrite.__runtime__ import Runtime
 from underwrite.__store__ import FileStore, MemoryStore
-from underwrite.services.base import NanoService
+from underwrite.services.base import Core
 
 # =============================================================================
 # Configuration
@@ -285,11 +285,11 @@ class TestFileStore:
 
 
 # =============================================================================
-# NanoService base
+# Core base
 # =============================================================================
 
 
-class ServiceHelper(NanoService):
+class ServiceHelper(Core):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.handled: list[Event] = []
@@ -299,7 +299,7 @@ class ServiceHelper(NanoService):
         self.emit("response", {"received": event.event_type}, correlation_id=event.correlation_id)
 
 
-class TestNanoService:
+class TestCore:
     def test_service_id(self) -> None:
         svc: ServiceHelper = ServiceHelper(service_id="mysvc", bus=LocalBus(), store=MemoryStore())
         assert svc.service_id == "mysvc"

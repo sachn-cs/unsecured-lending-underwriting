@@ -52,7 +52,7 @@ MAX_EXECUTOR_QUEUE_FACTOR: int = 2
 class EventEmitter:
     """Encapsulates the create/sign/publish sequence for outbound events.
 
-    Pulled out of NanoService so the base class is not responsible for
+    Pulled out of Core so the base class is not responsible for
     both subscribing to events and emitting them. Holds references to
     the bus, identity, metrics, tracer, and authz collaborator needed
     to construct, sign, authorise-publish, and instrument an event.
@@ -129,7 +129,7 @@ class EventEmitter:
         return signed
 
 
-class NanoService(ABC):
+class Core(ABC):
     """Base class that all nano services extend.
 
     Provides event emission/subscription, identity-based signing, state
@@ -491,7 +491,7 @@ class NanoService(ABC):
             }
 
 
-class StatefulService(NanoService, ABC):
+class StatefulService(Core, ABC):
     """Base class for nano services that hold mutable in-memory state.
 
     Provides a shared reentrant lock (self.state_lock) and factory

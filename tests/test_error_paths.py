@@ -21,7 +21,7 @@ from underwrite.services.mechanism.handler import MechanismHandler
 from underwrite.services.risk.model import RiskModel
 
 # ---------------------------------------------------------------------------
-# 1) NanoService.safe_store_get returns default on store error
+# 1) Core.safe_store_get returns default on store error
 # ---------------------------------------------------------------------------
 
 
@@ -40,7 +40,7 @@ class TestSafeStoreGet:
 
 
 # ---------------------------------------------------------------------------
-# 2) NanoService.safe_store_set returns False on store error
+# 2) Core.safe_store_set returns False on store error
 # ---------------------------------------------------------------------------
 
 

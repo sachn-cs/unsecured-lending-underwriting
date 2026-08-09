@@ -33,7 +33,7 @@ from underwrite.__saga__ import SagaOrchestrator
 from underwrite.__store__ import Store
 from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
-from underwrite.services.base import NanoService
+from underwrite.services.base import Core
 from underwrite.validate import get_finite, get_non_empty
 
 DEFAULT_COOLING_OFF_DAYS = 3
@@ -89,7 +89,7 @@ def compute_apr(principal: float, emi: Decimal, tenure_months: int, total_fees: 
     return rate * Decimal("1200")
 
 
-class KfsHandler(NanoService):
+class KfsHandler(Core):
     """Generates Key Fact Statements for loan products.
 
     Produces a structured KFS document as specified by RBI guidelines,

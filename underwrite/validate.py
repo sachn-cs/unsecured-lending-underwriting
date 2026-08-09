@@ -1,7 +1,7 @@
 """Shared validation helpers for nano services.
 
 All functions raise ``ProtocolError`` on invalid input, which is
-silently caught by ``NanoService.__dispatch``, preventing state
+silently caught by ``Core.__dispatch``, preventing state
 corruption while keeping the bus alive.
 """
 

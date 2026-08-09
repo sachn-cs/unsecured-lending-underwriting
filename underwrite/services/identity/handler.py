@@ -5,11 +5,11 @@ from __future__ import annotations
 from underwrite.__events__ import Event, EventType
 from underwrite.__identity__ import Identity
 from underwrite.__logger__ import logger
-from underwrite.services import NanoService
+from underwrite.services import Core
 from underwrite.validate import get_non_empty
 
 
-class IdentityHandler(NanoService):
+class IdentityHandler(Core):
     """Manages nano-service identities: registration and key rotation."""
 
     def handle(self, event: Event) -> None:

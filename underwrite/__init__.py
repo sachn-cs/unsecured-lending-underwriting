@@ -33,7 +33,7 @@ from underwrite.__exceptions__ import (
 from underwrite.__identity__ import Identity
 from underwrite.__runtime__ import Runtime
 from underwrite.__store__ import FileStore, MemoryStore, Store
-from underwrite.services import NanoService
+from underwrite.services import Core
 
 try:
     from underwrite.__version__ import __version__ as _version
@@ -47,7 +47,7 @@ __version_tuple__ = _version_tuple
 __all__: list[str] = [
     "Runtime",
     "Configuration",
-    "NanoService",
+    "Core",
     "Event",
     "EventType",
     "Identity",

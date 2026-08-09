@@ -18,11 +18,11 @@ from underwrite.__amortization__ import (
 )
 from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
-from underwrite.services.base import NanoService
+from underwrite.services.base import Core
 from underwrite.validate import get_finite
 
 
-class PrepaymentHandler(NanoService):
+class PrepaymentHandler(Core):
     """Computes foreclosure quotes and processes prepayment requests."""
 
     def handlers(self) -> dict[str, Any]:

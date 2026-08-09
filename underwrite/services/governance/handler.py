@@ -78,7 +78,7 @@ class GovernanceHandler(StatefulService):
         """Initialize the governance service with default parameter values.
 
         Args:
-            **kwargs: Forwarded to NanoService.__init__.
+            **kwargs: Forwarded to Core.__init__.
         """
         config = GovernanceConfig(
             param_ranges=kwargs.pop("param_ranges", {}),

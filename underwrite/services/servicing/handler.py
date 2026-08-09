@@ -24,13 +24,13 @@ from underwrite.__saga__ import SagaOrchestrator
 from underwrite.__store__ import Store
 from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
-from underwrite.services.base import NanoService
+from underwrite.services.base import Core
 from underwrite.validate import get_finite
 
 RATE_PERCENT_MULTIPLIER: int = 100 * DAYS_PER_YEAR
 
 
-class ServicingHandler(NanoService):
+class ServicingHandler(Core):
     """Tracks active loan state, status transitions, and outstanding balances.
 
     Uses actual/365 daily interest accrual for accurate outstanding

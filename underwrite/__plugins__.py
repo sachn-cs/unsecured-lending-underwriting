@@ -1,7 +1,7 @@
 """Plugin discovery — loads third-party services via ``importlib.metadata.entry_points``.
 
 Plugins register under the ``underwrite.services`` entry-point group.
-Each entry point must resolve to a ``type[NanoService]``.
+Each entry point must resolve to a ``type[Core]``.
 
 The default behaviour requires an explicit allowlist so that
 arbitrary installed packages cannot register services with the
@@ -31,7 +31,7 @@ import os
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from underwrite.services import NanoService
+    from underwrite.services import Core
 
 from underwrite.__logger__ import logger
 
@@ -66,18 +66,18 @@ def read_allowlist() -> frozenset[str] | None:
     return frozenset(name.strip() for name in raw.split(",") if name.strip())
 
 
-def discover_plugins() -> dict[str, type[NanoService]]:
+def discover_plugins() -> dict[str, type[Core]]:
     """Discover and load the allowlisted ``underwrite.services`` plugins.
 
     Returns:
-        A dict mapping service name → NanoService subclass. Only
+        A dict mapping service name → Core subclass. Only
         plugins in the allowlist (set via ``UNDERWRITE_PLUGINS``) are
         loaded; any other installed entry points are ignored and a
         warning is logged for each.
     """
     allowlist = read_allowlist()
 
-    plugins: dict[str, type[NanoService]] = {}
+    plugins: dict[str, type[Core]] = {}
     for ep in importlib.metadata.entry_points(group=PLUGIN_ENTRYPOINT_GROUP):
         if allowlist is not None and ep.name not in allowlist:
             logger.warning(

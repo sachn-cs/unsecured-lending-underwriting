@@ -15,10 +15,10 @@ from underwrite.__saga__ import SagaOrchestrator
 from underwrite.__store__ import Store
 from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
-from underwrite.services.base import NanoService
+from underwrite.services.base import Core
 
 
-class GraphHandler(NanoService):
+class GraphHandler(Core):
     """Provides read-only queries against the delegation graph.
 
     Reads state from the shared store to answer path, credit-limit,

@@ -21,11 +21,11 @@ from underwrite.__store__ import Store
 from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
 from underwrite.__value_objects__ import IdGenerator
-from underwrite.services.base import NanoService
+from underwrite.services.base import Core
 from underwrite.validate import get_finite
 
 
-class OriginationHandler(NanoService):
+class OriginationHandler(Core):
     """Manages loan application lifecycle: creation, validation, submission."""
 
     def __init__(

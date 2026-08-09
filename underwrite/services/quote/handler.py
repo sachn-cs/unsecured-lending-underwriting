@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from underwrite.__events__ import Event, EventType
-from underwrite.services import NanoService
+from underwrite.services import Core
 from underwrite.validate import get_finite, get_non_negative, get_positive
 
 
-class QuoteHandler(NanoService):
+class QuoteHandler(Core):
     """Computes loan quotes.  Pure function — no side effects on state."""
 
     def handle(self, event: Event) -> None:

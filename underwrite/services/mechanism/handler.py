@@ -22,7 +22,7 @@ from underwrite.__saga__ import SagaOrchestrator
 from underwrite.__store__ import Store
 from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
-from underwrite.services.base import NanoService
+from underwrite.services.base import Core
 from underwrite.services.mechanism.graph import DelegationGraph
 from underwrite.validate import PayloadValidator
 
@@ -31,7 +31,7 @@ EPSILON: float = 1e-12
 CommandHandler = Callable[[Event], None]
 
 
-class MechanismHandler(NanoService):
+class MechanismHandler(Core):
     """Maintains the delegation graph and processes all state transitions.
 
     Listens for service-name events (mechanism) carrying a command

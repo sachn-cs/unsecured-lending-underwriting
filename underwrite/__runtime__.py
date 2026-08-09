@@ -39,7 +39,7 @@ from underwrite.__secrets__ import SecretsManager
 from underwrite.__store__ import FileStore, MemoryStore, Store
 from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
-from underwrite.services import NanoService
+from underwrite.services import Core
 from underwrite.services.kyc_providers.base import KycProvider
 
 _VALID_SOURCE_RE = re.compile(r"^[a-z][a-z0-9_.-]+$")
@@ -109,7 +109,7 @@ class Runtime:
 
     __store: Store
     __read_store: Store | None
-    __services: dict[str, NanoService]
+    __services: dict[str, Core]
     __bus: EventBus
     __health: HealthRegistry
     __tracer: Tracer | None
@@ -351,7 +351,7 @@ class Runtime:
         return self.__store
 
     @property
-    def services(self) -> dict[str, NanoService]:
+    def services(self) -> dict[str, Core]:
         """Returns a snapshot of registered services keyed by name."""
         with self.__lock:
             return dict(self.__services)
@@ -391,7 +391,7 @@ class Runtime:
         """Returns the secrets manager, or ``None`` if secrets are disabled."""
         return self.__secrets
 
-    def register(self, service_name: str, identity: Identity | None = None) -> NanoService:
+    def register(self, service_name: str, identity: Identity | None = None) -> Core:
         """Instantiates a nano service by name and registers it."""
         module_path = HANDLER_MAP.get(service_name)
         if not module_path:
@@ -401,7 +401,7 @@ class Runtime:
             raise ServiceNotFoundError(f"no class mapping for service: {service_name}")
         module = importlib.import_module(module_path)
         cls = getattr(module, class_name, None)
-        if cls is None or not (isinstance(cls, type) and issubclass(cls, NanoService)):
+        if cls is None or not (isinstance(cls, type) and issubclass(cls, Core)):
             raise ServiceNotFoundError(f"class {class_name} not found in {module_path}")
         extra: dict[str, Any] = {}
         if service_name == "fee":
@@ -582,7 +582,7 @@ class Runtime:
         if errors:
             logger.error("Runtime.stop completed with {} error(s): {}", len(errors), "; ".join(errors))
 
-    def get(self, service_name: str) -> NanoService | None:
+    def get(self, service_name: str) -> Core | None:
         """Returns a registered service by name, or ``None``."""
         return self.__services.get(service_name)
 

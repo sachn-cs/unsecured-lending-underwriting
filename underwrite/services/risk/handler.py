@@ -20,12 +20,12 @@ from underwrite.__saga__ import SagaOrchestrator
 from underwrite.__store__ import Store
 from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
-from underwrite.services import NanoService
+from underwrite.services import Core
 from underwrite.services.risk.model import RiskModel
 from underwrite.validate import get_finite, get_non_empty
 
 
-class RiskHandler(NanoService):
+class RiskHandler(Core):
     """Computes default-probability scores and triggers early-warning alerts."""
 
     def __init__(
@@ -47,7 +47,7 @@ class RiskHandler(NanoService):
         """Initialise the risk service and optionally load an ML model.
 
         Args:
-            **kwargs: Forwarded to NanoService.__init__.
+            **kwargs: Forwarded to Core.__init__.
         """
         super().__init__(
             service_id=service_id,

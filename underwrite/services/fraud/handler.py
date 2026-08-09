@@ -50,7 +50,7 @@ class FraudHandler(StatefulService):
         """Initialize the fraud service with an empty activity record store.
 
         Args:
-            **kwargs: Forwarded to NanoService.__init__.
+            **kwargs: Forwarded to Core.__init__.
         """
         super().__init__(
             service_id=service_id,

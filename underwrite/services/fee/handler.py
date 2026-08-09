@@ -155,10 +155,6 @@ class FeeHandler(StatefulService):
                 return
 
             amount = self.__compute_amount(fee_type, principal, overdue_days, overdue_amount)
-            if not math.isfinite(amount):
-                logger.error("non-finite fee amount {} for loan {}, skipping", amount, loan_id)
-                return
-
             if amount <= 0:
                 logger.debug("zero/negative fee amount {} for loan {}, skipped", amount, loan_id)
                 return

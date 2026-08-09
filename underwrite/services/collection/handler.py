@@ -99,9 +99,7 @@ class CollectionHandler(StatefulService):
         borrower: str = get_non_empty(p, "borrower")
         principal: float = max(0.0, get_finite(p, "principal", 0.0))
         term: int = max(1, int(get_finite(p, "term", 1.0)))
-        annual_rate: float = get_finite(p, "annual_rate", 0.0)
-        if not math.isfinite(annual_rate) or annual_rate < 0:
-            annual_rate = 0.0
+        annual_rate: float = max(0.0, get_finite(p, "annual_rate", 0.0))
         start_date_str: str = p.get("start_date", "")
 
         with self.state_lock:

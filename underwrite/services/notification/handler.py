@@ -142,7 +142,7 @@ class NotificationHandler(Core):
                 logger.info("notification dispatched (log-only): {}", log_data)
             else:
                 logger.info("notification dispatched: {}", log_data)
-        except Exception:
+        except (OSError, ValueError, TypeError, RuntimeError):
             logger.exception("failed to dispatch notification for {}", event.event_id)
 
     def __send_email(self, recipient: str, event_type: str, payload: dict[str, Any]) -> None:
@@ -168,7 +168,7 @@ class NotificationHandler(Core):
                         "Body": {"Text": {"Data": str(payload)}},
                     },
                 )
-            except Exception:
+            except (OSError, ValueError, TypeError, KeyError):
                 logger.exception("SES email failed for {}", recipient)
         else:
             logger.info("email to {}: [{}] {}", recipient, event_type, payload)
@@ -197,7 +197,7 @@ class NotificationHandler(Core):
                     from_=from_number,
                     to=recipient,
                 )
-            except Exception:
+            except (OSError, ValueError, TypeError, KeyError):
                 logger.exception("Twilio SMS failed for {}", recipient)
         else:
             logger.info("SMS to {}: [{}] {}", recipient, event_type, payload)

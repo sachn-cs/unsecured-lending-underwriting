@@ -287,7 +287,7 @@ class Runtime:
             if callable(getter):
                 try:
                     subs = int(getter())
-                except Exception:
+                except (TypeError, ValueError, AttributeError):
                     logger.exception("bus subscriber_count failed")
             dlq = 0
             dlq_obj = getattr(bus, "dlq", None)

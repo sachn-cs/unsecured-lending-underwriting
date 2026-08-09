@@ -43,6 +43,10 @@ class Clock(Protocol):
     def iso(self) -> str:
         """Returns an ISO-8601 UTC timestamp string."""
 
+    def utc_now(self) -> Any:
+        """Returns the current UTC ``datetime`` for callers that need
+        timedelta arithmetic on a wall-clock value."""
+
 
 class SystemClock:
     """Default Clock backed by the system wall-clock.
@@ -59,6 +63,11 @@ class SystemClock:
         from datetime import datetime, timezone
 
         return datetime.now(timezone.utc).isoformat()
+
+    def utc_now(self) -> Any:
+        from datetime import datetime, timezone
+
+        return datetime.now(timezone.utc)
 
 
 @dataclass(slots=True)

@@ -19,6 +19,7 @@ from typing import Any
 
 from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
+from underwrite.__metrics__ import SystemClock
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
 from underwrite.validate import get_finite, get_non_empty
@@ -77,6 +78,7 @@ class RecoveryHandler(StatefulService):
         self.__negotiation_days: int = config.negotiation_days
         self.__escalation_threshold: int = config.escalation_threshold
         super().__init__(**kwargs)
+        self.__clock: SystemClock = SystemClock()
         self.__recoveries: dict[str, dict[str, Any]] = {}
         self.repo: TypedStoreRepository[dict[str, dict[str, Any]]] = self.store_repo("recoveries", dict)
 
@@ -124,11 +126,11 @@ class RecoveryHandler(StatefulService):
                 "borrower": borrower,
                 "principal": principal,
                 "stage": RecoveryStage.NEGOTIATION.value,
-                "started_at": datetime.now(timezone.utc).isoformat(),
+                "started_at": self.__clock.iso(),
                 "offer_count": 0,
                 "plan_failures": 0,
                 "recovered": 0.0,
-                "last_action": datetime.now(timezone.utc).isoformat(),
+                "last_action": self.__clock.iso(),
             }
             self.__recoveries[borrower] = recovery
             self.__sync()
@@ -148,7 +150,7 @@ class RecoveryHandler(StatefulService):
         offer_amount: float = principal * self.__recovery_rate
         with self.state_lock:
             recovery["offer_count"] += 1
-            recovery["last_action"] = datetime.now(timezone.utc).isoformat()
+            recovery["last_action"] = self.__clock.iso()
             self.__sync()
 
         self.emit(
@@ -156,7 +158,7 @@ class RecoveryHandler(StatefulService):
             {
                 "borrower": borrower,
                 "offer_amount": offer_amount,
-                "due_by": (datetime.now(timezone.utc) + timedelta(days=self.__negotiation_days)).isoformat(),
+                "due_by": (self.__clock.utc_now() + timedelta(days=self.__negotiation_days)).isoformat(),
                 "stage": RecoveryStage.NEGOTIATION.value,
             },
             correlation_id=event.correlation_id,
@@ -183,7 +185,7 @@ class RecoveryHandler(StatefulService):
 
             if accepted:
                 recovery["stage"] = RecoveryStage.PAYMENT_PLAN.value
-                recovery["last_action"] = datetime.now(timezone.utc).isoformat()
+                recovery["last_action"] = self.__clock.iso()
                 self.__sync()
                 logger.info("recovery offer accepted for {}", borrower)
                 self.emit(
@@ -200,7 +202,7 @@ class RecoveryHandler(StatefulService):
                 recovery["offer_count"] += 1
                 if recovery["offer_count"] >= self.__escalation_threshold:
                     recovery["stage"] = RecoveryStage.ESCALATION.value
-                    recovery["last_action"] = datetime.now(timezone.utc).isoformat()
+                    recovery["last_action"] = self.__clock.iso()
                     self.__sync()
                     logger.warning("recovery escalated for {}", borrower)
                     self.emit(
@@ -213,7 +215,7 @@ class RecoveryHandler(StatefulService):
                         correlation_id=event.correlation_id,
                     )
                 else:
-                    recovery["last_action"] = datetime.now(timezone.utc).isoformat()
+                    recovery["last_action"] = self.__clock.iso()
                     self.__sync()
                     offer_amount = recovery["principal"] * self.__recovery_rate
                     self.emit(
@@ -222,7 +224,7 @@ class RecoveryHandler(StatefulService):
                             "borrower": borrower,
                             "offer_amount": offer_amount,
                             "due_by": (
-                                datetime.now(timezone.utc) + timedelta(days=self.__negotiation_days)
+                                self.__clock.utc_now() + timedelta(days=self.__negotiation_days)
                             ).isoformat(),
                             "stage": RecoveryStage.NEGOTIATION.value,
                         },
@@ -246,7 +248,7 @@ class RecoveryHandler(StatefulService):
                 return
 
             recovery["recovered"] += amount
-            recovery["last_action"] = datetime.now(timezone.utc).isoformat()
+            recovery["last_action"] = self.__clock.iso()
             outstanding: float = recovery["principal"] - recovery["recovered"]
 
             if outstanding <= 0:

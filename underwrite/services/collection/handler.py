@@ -16,6 +16,7 @@ from typing import Any
 from underwrite.__amortization__ import generate_schedule
 from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
+from underwrite.__metrics__ import SystemClock
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
 from underwrite.validate import get_finite, get_non_empty
@@ -36,6 +37,7 @@ class CollectionHandler(StatefulService):
 
         """
         super().__init__(**kwargs)
+        self.__clock: SystemClock = SystemClock()
         self.__loans: dict[str, dict[str, Any]] = {}
         self.repo: TypedStoreRepository[dict[str, dict[str, Any]]] = self.store_repo("loans", dict)
         loaded = self.repo.load(default={})
@@ -78,7 +80,7 @@ class CollectionHandler(StatefulService):
                 "monthly": monthly,
                 "paid": 0.0,
                 "status": "active",
-                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": self.__clock.iso(),
             }
             if annual_rate > 0:
                 loan_record["schedule"] = sched.to_dict()

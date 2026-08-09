@@ -11,6 +11,7 @@ from typing import Any
 
 from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
+from underwrite.__metrics__ import SystemClock
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
 from underwrite.validate import get_finite, get_non_empty
@@ -21,6 +22,7 @@ class DisbursementHandler(StatefulService):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
+        self.__clock: SystemClock = SystemClock()
         self.__disbursements: dict[str, dict[str, Any]] = {}
         self.repo: TypedStoreRepository[dict[str, dict[str, Any]]] = self.store_repo("disbursements", dict)
         loaded = self.repo.load(default={})
@@ -48,7 +50,7 @@ class DisbursementHandler(StatefulService):
                 "borrower": borrower,
                 "principal": principal,
                 "doc_id": doc_id,
-                "disbursed_at": datetime.now(timezone.utc).isoformat(),
+                "disbursed_at": self.__clock.iso(),
                 "status": "disbursed",
             }
             self.__disbursements[borrower] = record

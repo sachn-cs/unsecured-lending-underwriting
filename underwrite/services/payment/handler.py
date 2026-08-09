@@ -18,6 +18,7 @@ from typing import Any
 
 from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
+from underwrite.__metrics__ import SystemClock
 from underwrite.__value_objects__ import Money
 from underwrite.services.base import StatefulService
 from underwrite.validate import get_finite
@@ -31,6 +32,7 @@ class PaymentHandler(StatefulService):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the payment service."""
         super().__init__(**kwargs)
+        self.__clock: SystemClock = SystemClock()
         self.handlers: dict[str, Any] = {
             EventType.PAYMENT_RECEIVE: self.__on_payment_receive,
             EventType.PAYMENT_SCHEDULE: self.__on_payment_schedule,
@@ -70,7 +72,7 @@ class PaymentHandler(StatefulService):
             "loan_id": loan_id,
             "amount_paise": money.paise,
             "amount": amount,
-            "received_at": datetime.now(timezone.utc).isoformat(),
+            "received_at": self.__clock.iso(),
         }
         self.store.set(f"payment:{payment_id}", receipt)
         self.emit(
@@ -125,7 +127,7 @@ class PaymentHandler(StatefulService):
         loan_id: str = event.payload.get("loan_id", "")
         if not loan_id:
             return
-        cutoff: datetime = datetime.now(timezone.utc) - timedelta(days=OVERDUE_CUTOFF_DAYS)
+        cutoff: datetime = self.__clock.utc_now() - timedelta(days=OVERDUE_CUTOFF_DAYS)
         for key in self.store.keys(f"schedule:{loan_id}:"):
             raw = self.store.get(key)
             if raw is None:
@@ -167,7 +169,7 @@ class PaymentHandler(StatefulService):
                 "amount_paise": money.paise,
                 "amount": amount,
                 "status": "captured",
-                "received_at": datetime.now(timezone.utc).isoformat(),
+                "received_at": self.__clock.iso(),
             },
         )
         self.emit(
@@ -203,7 +205,7 @@ class PaymentHandler(StatefulService):
                 "amount_paise": money.paise,
                 "amount": amount,
                 "status": "charged",
-                "received_at": datetime.now(timezone.utc).isoformat(),
+                "received_at": self.__clock.iso(),
             },
         )
         self.emit(
@@ -238,7 +240,7 @@ class PaymentHandler(StatefulService):
                 "amount_paise": money.paise,
                 "amount": amount,
                 "status": "refunded",
-                "refunded_at": datetime.now(timezone.utc).isoformat(),
+                "refunded_at": self.__clock.iso(),
             },
         )
         logger.info(

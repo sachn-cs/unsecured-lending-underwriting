@@ -24,6 +24,7 @@ from typing import Any
 from underwrite.__amortization__ import AmortizationSchedule, generate_schedule
 from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
+from underwrite.__metrics__ import SystemClock
 from underwrite.services.base import NanoService
 from underwrite.validate import get_finite, get_non_empty
 
@@ -91,6 +92,7 @@ class KfsHandler(NanoService):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the KFS service with configurable cooling-off period."""
         super().__init__(**kwargs)
+        self.__clock: SystemClock = SystemClock()
         self.__cooling_off_days: int = kwargs.get("cooling_off_days", DEFAULT_COOLING_OFF_DAYS)
 
     def handle(self, event: Event) -> None:
@@ -174,7 +176,7 @@ class KfsHandler(NanoService):
         """
         total_fees = sum(f.get("amount", 0.0) for f in fees)
         apr = compute_apr(principal, sched.emi, tenure_months, Decimal(str(total_fees)))
-        generated_at = datetime.now(timezone.utc).isoformat()
+        generated_at = self.__clock.iso()
 
         kfs: dict[str, Any] = {
             "loan_id": loan_id,

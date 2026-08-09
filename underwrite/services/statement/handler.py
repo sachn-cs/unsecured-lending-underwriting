@@ -12,6 +12,7 @@ from typing import Any
 
 from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
+from underwrite.__metrics__ import SystemClock
 from underwrite.services.base import NanoService
 from underwrite.validate import require_finite
 
@@ -21,6 +22,7 @@ class StatementHandler(NanoService):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
+        self.__clock: SystemClock = SystemClock()
         self.handlers: dict[str, Any] = {
             EventType.STATEMENT_GENERATE: self.__on_statement_generate,
             EventType.COLLECTION_UPDATED: self.__on_collection_updated,
@@ -64,11 +66,11 @@ class StatementHandler(NanoService):
                 "statement_id": statement_id,
                 "loan_id": loan_id,
                 "period_start": period_start,
-                "period_end": period_end or datetime.now(timezone.utc).isoformat(),
+                "period_end": period_end or self.__clock.iso(),
                 "outstanding": outstanding,
                 "total_paid": total_paid,
                 "transaction_count": len(transactions),
-                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "generated_at": self.__clock.iso(),
             }
             self.store.set(f"statement:{statement_id}", statement)
         self.emit(
@@ -91,7 +93,7 @@ class StatementHandler(NanoService):
         loan_id = event.payload.get("loan_id", "")
         if loan_id:
             self.store.set(
-                f"stmt_trigger:{loan_id}:{datetime.now(timezone.utc).isoformat()}",
+                f"stmt_trigger:{loan_id}:{self.__clock.iso()}",
                 {
                     "loan_id": loan_id,
                     "trigger": "collection_update",
@@ -107,7 +109,7 @@ class StatementHandler(NanoService):
         loan_id = event.payload.get("loan_id", "")
         if loan_id:
             self.store.set(
-                f"stmt_trigger:{loan_id}:{datetime.now(timezone.utc).isoformat()}",
+                f"stmt_trigger:{loan_id}:{self.__clock.iso()}",
                 {
                     "loan_id": loan_id,
                     "trigger": "payment",

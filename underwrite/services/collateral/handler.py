@@ -7,6 +7,7 @@ from typing import Any
 
 from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
+from underwrite.__metrics__ import SystemClock
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
 from underwrite.validate import get_finite, get_non_empty
@@ -23,6 +24,7 @@ class CollateralHandler(StatefulService):
 
         """
         super().__init__(**kwargs)
+        self.__clock: SystemClock = SystemClock()
         self.__ltv_ratio: float = 0.75
         self.__collateral: dict[str, dict[str, Any]] = {}
         self.repo: TypedStoreRepository[dict[str, dict[str, Any]]] = self.store_repo("collateral", dict)
@@ -63,7 +65,7 @@ class CollateralHandler(StatefulService):
                 "required": required,
                 "posted": 0.0,
                 "ltv": self.__ltv_ratio,
-                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": self.__clock.iso(),
             }
             self.repo.save(self.__collateral)
         self.emit(

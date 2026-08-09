@@ -14,6 +14,7 @@ from typing import Any
 
 from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
+from underwrite.__metrics__ import SystemClock
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
 from underwrite.validate import get_finite, get_non_empty
@@ -57,6 +58,7 @@ class NPAHandler(StatefulService):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the NPA service with provisioning rates and DLG config."""
         super().__init__(**kwargs)
+        self.__clock: SystemClock = SystemClock()
         self.__accounts: dict[str, dict[str, Any]] = {}
         self.__trigger_days: int = kwargs.get("dlg_trigger_days", DLG_TRIGGER_DAYS_DEFAULT)
         self.__npa_days: int = kwargs.get("npa_days", NPA_DAYS_DEFAULT)
@@ -86,7 +88,7 @@ class NPAHandler(StatefulService):
                 borrower: str = get_non_empty(event.payload, "borrower")
                 principal: float = get_finite(event.payload, "principal", 0.0)
                 self.__accounts[borrower] = {
-                    "originated_at": datetime.now(timezone.utc).isoformat(),
+                    "originated_at": self.__clock.iso(),
                     "days_overdue": 0,
                     "dlg_invoked": False,
                     "principal": principal,
@@ -176,7 +178,7 @@ class NPAHandler(StatefulService):
 
         if bucket in ("substandard", "doubtful", "loss") and not record.get("income_suspended", False):
             record["income_suspended"] = True
-            record["income_suspended_at"] = datetime.now(timezone.utc).isoformat()
+            record["income_suspended_at"] = self.__clock.iso()
             self.emit(
                 EventType.INCOME_RECOGNITION_SUSPENDED,
                 {

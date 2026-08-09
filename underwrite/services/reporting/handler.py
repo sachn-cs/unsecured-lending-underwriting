@@ -15,6 +15,8 @@ from underwrite.services.persistence import TypedStoreRepository
 from underwrite.validate import get_finite
 
 
+from underwrite.__metrics__ import SystemClock
+
 class ReportingHandler(StatefulService):
     """Generates regulatory reports (RBI, internal) from the audit trail.
 
@@ -26,6 +28,7 @@ class ReportingHandler(StatefulService):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the reporting service with empty counters."""
         super().__init__(**kwargs)
+        self.__clock: SystemClock = SystemClock()
         self.__originations: int = 0
         self.__defaults: int = 0
         self.__total_principal: float = 0.0
@@ -114,7 +117,7 @@ class ReportingHandler(StatefulService):
         """
         return {
             "report_type": report_type,
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": self.__clock.iso(),
             "total_originations": self.__originations,
             "total_defaults": self.__defaults,
             "total_principal_originated": self.__total_principal,
@@ -140,7 +143,7 @@ class ReportingHandler(StatefulService):
             outstanding = sum(self.__bucket_principals.values()) or 1.0
             return {
                 "report_type": "npa_detailed",
-                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "generated_at": self.__clock.iso(),
                 "bucket_counts": self.__bucket_counts,
                 "bucket_principals": self.__bucket_principals,
                 "npa_principal": npa_principal,

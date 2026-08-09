@@ -33,11 +33,14 @@ STAGES: dict[str, list[str]] = {
 }
 
 
+from underwrite.__metrics__ import SystemClock
+
 class WorkflowHandler(StatefulService):
     """Manages business process state machines for origination, recovery, etc."""
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
+        self.__clock: SystemClock = SystemClock()
         self.handlers: dict[str, Any] = {
             EventType.WORKFLOW_START: self.__on_workflow_start,
             EventType.WORKFLOW_ADVANCE: self.__on_workflow_advance,
@@ -113,7 +116,7 @@ class WorkflowHandler(StatefulService):
                 "stages": stages,
                 "stage_index": 0,
                 "status": "active",
-                "started_at": datetime.now(timezone.utc).isoformat(),
+                "started_at": self.__clock.iso(),
             },
         )
         self.emit(
@@ -142,7 +145,7 @@ class WorkflowHandler(StatefulService):
             next_idx: int = record["stage_index"] + 1
             if next_idx >= len(record["stages"]):
                 record["status"] = "completed"
-                record["completed_at"] = datetime.now(timezone.utc).isoformat()
+                record["completed_at"] = self.__clock.iso()
                 self.store.set(f"workflow:{entity_id}", record)
             else:
                 record["stage_index"] = next_idx

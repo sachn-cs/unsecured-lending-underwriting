@@ -12,6 +12,7 @@ from typing import Any
 
 from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
+from underwrite.__metrics__ import SystemClock
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
 
@@ -58,6 +59,7 @@ class ConsentHandler(StatefulService):
         self.__required_purposes: list[str] = config.required_purposes
         self.__consent_validity_days: int = config.consent_validity_days
         super().__init__(**kwargs)
+        self.__clock: SystemClock = SystemClock()
         self.__records: dict[str, dict[str, Any]] = {}
         self.repo: TypedStoreRepository[dict[str, dict[str, Any]]] = self.store_repo("consent", dict)
 
@@ -94,7 +96,7 @@ class ConsentHandler(StatefulService):
             logger.warning("consent.recorded missing user_id or purpose")
             return
         key = f"{user_id}:{purpose}"
-        now = datetime.now(timezone.utc)
+        now = self.__clock.utc_now()
         expires = now + timedelta(days=self.__consent_validity_days)
         with self.state_lock:
             self.__records[key] = {
@@ -127,12 +129,12 @@ class ConsentHandler(StatefulService):
                 record = self.__records.get(key)
                 if record and record.get("status") == "active":
                     record["status"] = "withdrawn"
-                    record["withdrawn_at"] = datetime.now(timezone.utc).isoformat()
+                    record["withdrawn_at"] = self.__clock.iso()
             else:
                 for key, record in self.__records.items():
                     if key.startswith(f"{user_id}:") and record.get("status") == "active":
                         record["status"] = "withdrawn"
-                        record["withdrawn_at"] = datetime.now(timezone.utc).isoformat()
+                        record["withdrawn_at"] = self.__clock.iso()
             self.repo.save(self.__records)
 
     def get_consent(self, user_id: str, purpose: str) -> dict[str, Any] | None:
@@ -170,7 +172,7 @@ class ConsentHandler(StatefulService):
             if expires_str:
                 try:
                     expires = datetime.fromisoformat(expires_str)
-                    if expires < datetime.now(timezone.utc):
+                    if expires < self.__clock.utc_now():
                         return False
                 except (ValueError, TypeError):
                     logger.warning(

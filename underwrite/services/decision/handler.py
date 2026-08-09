@@ -19,6 +19,8 @@ HIGH_RISK_THRESHOLD: float = 0.7
 MEDIUM_RISK_THRESHOLD: float = 0.4
 
 
+from underwrite.__metrics__ import SystemClock
+
 class DecisionHandler(StatefulService):
     """Consolidates multi-signal inputs into a single decision recommendation.
 
@@ -28,6 +30,7 @@ class DecisionHandler(StatefulService):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
+        self.__clock: SystemClock = SystemClock()
         self.__signals: dict[str, list[dict[str, Any]]] = {}
         self.repo: TypedStoreRepository[dict[str, list[dict[str, Any]]]] = self.store_repo("signals", dict)
 
@@ -114,7 +117,7 @@ class DecisionHandler(StatefulService):
                 "entity_id": entity_id,
                 "action": action,
                 "signals": signals,
-                "decided_at": datetime.now(timezone.utc).isoformat(),
+                "decided_at": self.__clock.iso(),
             },
         )
         with self.state_lock:

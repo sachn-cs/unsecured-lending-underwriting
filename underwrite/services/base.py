@@ -389,8 +389,7 @@ class NanoService(ABC):
         if self.__executor is not None:
             worker_count = self.__executor._max_workers if hasattr(self.__executor, "_max_workers") else 0
             queue_size = self.__executor._work_queue.qsize() if hasattr(self.__executor, "_work_queue") else 0
-            # Allow up to 2x worker count queued before dropping
-            if worker_count > 0 and queue_size > worker_count * 2:
+            if worker_count > 0 and queue_size > worker_count * MAX_EXECUTOR_QUEUE_FACTOR:
                 logger.warning(
                     "{} executor queue full ({} queued, {} workers), dropping event {}",
                     self.__service_id,

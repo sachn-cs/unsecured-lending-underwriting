@@ -179,4 +179,4 @@ class FraudHandler(StatefulService):
         Returns:
             Restored dict of deques.
         """
-        return {k: deque(v, maxlen=1000) for k, v in raw.items() if isinstance(v, list)}
+        return {k: deque(v, maxlen=self.ACTIVITY_DEQUE_MAXLEN) for k, v in raw.items() if isinstance(v, list)}

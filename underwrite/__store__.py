@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 
 from underwrite.__circuit__ import CircuitBreaker, RetryPolicy
+from underwrite.__constants__ import RETRY_BASE_DELAY_SECONDS
 from underwrite.__exceptions__ import MigrationError, StoreError
 from underwrite.__logger__ import logger
 
@@ -368,7 +369,7 @@ class PostgresStore(Store):
             pass
         self.__retry: RetryPolicy = RetryPolicy(
             max_retries=2,
-            base_delay=0.05,
+            base_delay=RETRY_BASE_DELAY_SECONDS,
             retryable_exceptions=retryable,
         )
         self.__lock: threading.Lock = threading.Lock()

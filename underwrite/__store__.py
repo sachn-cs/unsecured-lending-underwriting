@@ -255,14 +255,14 @@ class FileStore(Store):
         def write() -> None:
             path = self.__path(key)
             path.parent.mkdir(parents=True, exist_ok=True)
-            tmp = path.with_suffix(f".tmp.{os.getpid()}")
+            tmp_path = path.with_suffix(f".tmp.{os.getpid()}")
             with self.__lock:
-                with open(tmp, "w") as fh:
+                with open(tmp_path, "w") as fh:
                     json.dump(value, fh, default=str)
                     if self.__fsync:
                         fh.flush()
                         os.fsync(fh.fileno())
-                os.replace(tmp, path)
+                os.replace(tmp_path, path)
 
         self.__circuit_call(write)
 

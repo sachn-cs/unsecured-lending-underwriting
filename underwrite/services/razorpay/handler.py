@@ -31,6 +31,7 @@ from underwrite.__store__ import Store
 from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
 from underwrite.services.base import StatefulService
+from underwrite.services.persistence import BatchedStoreRepository
 from underwrite.services.razorpay.client import (
     HttpRazorpayClient,
     MockRazorpayClient,

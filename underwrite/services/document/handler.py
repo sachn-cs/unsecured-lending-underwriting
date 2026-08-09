@@ -6,10 +6,11 @@ and emits document.generated.
 
 from __future__ import annotations
 
-import uuid
 from typing import Any
 
 from underwrite.__events__ import Event, EventType
+from underwrite.__metrics__ import SystemClock
+from underwrite.__value_objects__ import IdGenerator
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
 from underwrite.validate import get_finite, get_non_empty
@@ -21,6 +22,7 @@ class DocumentHandler(StatefulService):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.__documents: dict[str, list[dict[str, Any]]] = {}
+        self.__id_generator: IdGenerator = IdGenerator()
         self.repo: TypedStoreRepository[dict[str, list[dict[str, Any]]]] = self.store_repo("documents", dict)
 
     def start(self) -> None:
@@ -31,7 +33,7 @@ class DocumentHandler(StatefulService):
             self.__documents = loaded
 
     def handle(self, event: Event) -> None:
-        """Generate a document record on underwrite approval.
+        """Generate a document record on underwriter approval.
 
         Args:
             event: The incoming domain event.
@@ -41,7 +43,7 @@ class DocumentHandler(StatefulService):
         p = event.payload
         borrower: str = get_non_empty(p, "borrower")
         principal: float = get_finite(p, "principal")
-        doc_id: str = uuid.uuid4().hex
+        doc_id: str = self.__id_generator.next()
 
         record = {
             "doc_id": doc_id,

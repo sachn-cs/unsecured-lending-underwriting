@@ -7,12 +7,13 @@ communication.sent on successful dispatch.
 
 from __future__ import annotations
 
-import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
+from underwrite.__metrics__ import SystemClock
+from underwrite.__value_objects__ import IdGenerator
 from underwrite.services.base import NanoService
 
 class CommunicationHandler(NanoService):
@@ -31,6 +32,8 @@ class CommunicationHandler(NanoService):
 
         """
         super().__init__(**kwargs)
+        self.__clock: SystemClock = SystemClock()
+        self.__id_generator: IdGenerator = IdGenerator()
         self.handlers: dict[str, Any] = {
             EventType.COMMUNICATION_SEND: self.__on_communication_send,
             EventType.STATEMENT_GENERATED: self.__on_statement_generated,
@@ -63,13 +66,13 @@ class CommunicationHandler(NanoService):
             logger.warning("dropping COMMUNICATION_SEND with missing recipient")
             return
         message_id: str = (
-            f"msg_{recipient}_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')}_{uuid.uuid4().hex[:8]}"
+            f"msg_{recipient}_{self.__clock.now():.0f}_{self.__id_generator.next()}"
         )
         msg = {
             "recipient": recipient,
             "subject": subject,
             "channel": channel,
-            "sent_at": datetime.now(timezone.utc).isoformat(),
+            "sent_at": self.__clock.iso(),
         }
         delivery_status = self.__dispatch_channel(channel, recipient, subject)
         self.store.set(f"message:{message_id}", {**msg, "delivery_status": delivery_status})

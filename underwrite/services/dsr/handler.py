@@ -7,12 +7,12 @@ Protection Act 2023.
 
 from __future__ import annotations
 
-import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
+from underwrite.__value_objects__ import IdGenerator
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
 
@@ -33,6 +33,7 @@ class DataSubjectRightsHandler(StatefulService):
         super().__init__(**kwargs)
         self.__requests: dict[str, dict[str, Any]] = {}
         self.__grievances: dict[str, dict[str, Any]] = {}
+        self.__id_generator: IdGenerator = IdGenerator()
         self.repo: TypedStoreRepository[dict[str, Any]] = self.store_repo("dsr", dict)
 
     def start(self) -> None:
@@ -66,7 +67,7 @@ class DataSubjectRightsHandler(StatefulService):
         if not user_id or request_type not in ("access", "correction", "erasure"):
             logger.warning("dsr.request missing or invalid fields")
             return
-        request_id = f"dsr_{user_id}_{uuid.uuid4().hex[:12]}"
+        request_id = f"dsr_{user_id}_{self.__id_generator.next()}"
         now = datetime.now(timezone.utc)
         with self.state_lock:
             self.__requests[request_id] = {
@@ -106,7 +107,7 @@ class DataSubjectRightsHandler(StatefulService):
         if not user_id or not subject:
             logger.warning("grievance.logged missing user_id or subject")
             return
-        grievance_id = f"gr_{user_id}_{uuid.uuid4().hex[:12]}"
+        grievance_id = f"gr_{user_id}_{self.__id_generator.next()}"
         now = datetime.now(timezone.utc)
         with self.state_lock:
             self.__grievances[grievance_id] = {

@@ -8,15 +8,14 @@ Emits fee.assessed when a fee is applied to a loan.
 from __future__ import annotations
 
 import math
-import uuid
 from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
+from underwrite.__value_objects__ import IdGenerator
 from underwrite.services.base import StatefulService
-from underwrite.services.persistence import BatchedStoreRepository
 from underwrite.validate import get_finite
 
 DEFAULT_FEE_SCHEDULES: dict[str, float] = {
@@ -49,6 +48,7 @@ class FeeHandler(StatefulService):
         super().__init__(**kwargs)
         self.__fees: dict[str, dict[str, Any]] = {}
         self.repo: BatchedStoreRepository[dict[str, dict[str, Any]]] = self.batched_repo("fees", dict, sync_interval=10)
+        self.__id_generator: IdGenerator = IdGenerator()
 
     def start(self) -> None:
         """Load persisted fee records when the service starts."""
@@ -102,7 +102,7 @@ class FeeHandler(StatefulService):
                 logger.debug("zero/negative fee amount {} for loan {}, skipped", amount, loan_id)
                 return
 
-            fee_id: str = f"fee_{loan_id}_{fee_type}_{uuid.uuid4().hex[:12]}"
+            fee_id: str = f"fee_{loan_id}_{fee_type}_{self.__id_generator.next()}"
             amount_dec: Decimal = Decimal(str(amount)).quantize(MONEY_QUANTUM, rounding=ROUND_HALF_UP)
             fee_record = {
                 "fee_id": fee_id,

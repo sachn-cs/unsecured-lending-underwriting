@@ -171,9 +171,9 @@ class TestRuntimeIntegration:
         assert EventType.USER_ADDED in emitted
         assert EventType.LOAN_ORIGINATED in emitted
 
-        audit = rt.get("audit")
+        audit = cast(Any, rt.get("audit"))
         assert audit is not None
-        assert len(audit.ledger) >= 3  # type: ignore[attr-defined]
+        assert len(audit.ledger) >= 3
         rt.stop()
 
 

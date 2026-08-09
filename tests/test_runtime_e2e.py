@@ -264,9 +264,9 @@ class TestMultipleServiceCoordination:
                 payload={"command": "add_seed", "user": "bank", "base_budget": 100000},
             )
         )
-        audit = rt.get("audit")
+        audit = cast(Any, rt.get("audit"))
         assert audit is not None
-        assert len(audit.ledger) >= 1  # type: ignore[attr-defined]
+        assert len(audit.ledger) >= 1
         rt.stop()
         mech_svc = rt.get("mechanism")
         assert mech_svc is not None

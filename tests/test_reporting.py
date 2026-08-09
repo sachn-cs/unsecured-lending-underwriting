@@ -5,12 +5,14 @@ Tests verify behavior through the public generate_report() method.
 
 from __future__ import annotations
 
+from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
+from underwrite.__store__ import MemoryStore
 from underwrite.services.reporting.handler import ReportingHandler
 
 
 def reporting() -> ReportingHandler:
-    return ReportingHandler(service_id="reporting")
+    return ReportingHandler(service_id="reporting", bus=LocalBus(), store=MemoryStore())
 
 
 class TestReportingService:

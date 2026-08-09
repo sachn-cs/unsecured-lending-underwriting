@@ -4,6 +4,7 @@ Tests verify behavior through emitted QUOTE_CALCULATED events.
 """
 
 from __future__ import annotations
+from underwrite.__store__ import MemoryStore
 
 import pytest
 
@@ -13,7 +14,7 @@ from underwrite.services.quote.handler import QuoteHandler
 
 
 def quote(bus=None) -> QuoteHandler:
-    return QuoteHandler(service_id="quote", bus=bus)
+    return QuoteHandler(service_id="quote", bus=bus, store=MemoryStore())
 
 
 def emit_quote(svc, **overrides) -> None:

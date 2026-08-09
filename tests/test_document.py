@@ -1,6 +1,7 @@
 """Tests for DocumentHandler — loan document generation."""
 
 from __future__ import annotations
+from underwrite.__store__ import MemoryStore
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
@@ -8,7 +9,7 @@ from underwrite.services.document.handler import DocumentHandler
 
 
 def svc(bus=None) -> DocumentHandler:
-    return DocumentHandler(service_id="document", bus=bus)
+    return DocumentHandler(service_id="document", bus=bus or LocalBus(), store=MemoryStore())
 
 
 class TestDocumentService:

@@ -8,6 +8,7 @@ Tests verify behavior through emitted events only:
 """
 
 from __future__ import annotations
+from underwrite.__store__ import MemoryStore
 
 from collections import deque
 
@@ -20,7 +21,7 @@ from underwrite.services.fraud.handler import FraudHandler
 
 
 def fraud(bus=None) -> FraudHandler:
-    return FraudHandler(service_id="fraud", bus=bus)
+    return FraudHandler(service_id="fraud", bus=bus or LocalBus(), store=MemoryStore())
 
 
 def originate(svc: FraudHandler, borrower: str, principal: int = 1000) -> None:

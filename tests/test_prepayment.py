@@ -1,6 +1,7 @@
 """Tests for PrepaymentHandler — foreclosure/prepayment workflow."""
 
 from __future__ import annotations
+from underwrite.__store__ import MemoryStore
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
@@ -8,7 +9,7 @@ from underwrite.services.prepayment.handler import PrepaymentHandler
 
 
 def svc(bus=None) -> PrepaymentHandler:
-    return PrepaymentHandler(service_id="prepayment", bus=bus)
+    return PrepaymentHandler(service_id="prepayment", bus=bus or LocalBus(), store=MemoryStore())
 
 
 class TestPrepaymentService:

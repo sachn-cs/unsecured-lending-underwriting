@@ -5,6 +5,7 @@ direct dispatch of the background notification logic.
 """
 
 from __future__ import annotations
+from underwrite.__store__ import MemoryStore
 
 from unittest.mock import patch
 
@@ -14,7 +15,7 @@ from underwrite.services.notification.handler import NotificationHandler
 
 
 def notify(bus=None) -> NotificationHandler:
-    return NotificationHandler(service_id="notify", bus=bus)
+    return NotificationHandler(service_id="notify", bus=bus or LocalBus(), store=MemoryStore())
 
 
 class TestNotificationService:

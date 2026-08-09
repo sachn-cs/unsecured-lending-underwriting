@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 from underwrite.__events__ import Event, EventType
+from underwrite.__bus__ import LocalBus
+from underwrite.__store__ import MemoryStore
 from underwrite.services.consent.handler import ConsentHandler
 
 
 def svc(**kw) -> ConsentHandler:
+    kw.setdefault("bus", LocalBus())
+    kw.setdefault("store", MemoryStore())
     return ConsentHandler(service_id="consent", **kw)
 
 

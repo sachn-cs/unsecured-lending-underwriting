@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from underwrite.__bus__ import LocalBus
+from underwrite.__store__ import MemoryStore
 from underwrite.__events__ import Event, EventType
 from underwrite.services.workflow.handler import WorkflowHandler
 
 
 class TestWorkflowService:
     def test_start_creates_workflow(self) -> None:
-        svc = WorkflowHandler(service_id="workflow")
+        svc = WorkflowHandler(service_id="workflow", bus=LocalBus(), store=MemoryStore())
         svc.handle(
             Event(event_type="workflow.start", source="test", payload={"type": "origination", "entity_id": "app_1"})
         )
@@ -23,7 +24,7 @@ class TestWorkflowService:
         bus = LocalBus()
         received: list = []
         bus.subscribe(EventType.WORKFLOW_STARTED, lambda e: received.append(e))
-        svc = WorkflowHandler(service_id="workflow", bus=bus)
+        svc = WorkflowHandler(service_id="workflow", bus=bus, store=MemoryStore())
         bus.start()
         svc.handle(
             Event(event_type="workflow.start", source="test", payload={"type": "recovery", "entity_id": "loan_1"})
@@ -32,17 +33,17 @@ class TestWorkflowService:
         assert received[0].payload["workflow_type"] == "recovery"
 
     def test_rejects_empty_type(self) -> None:
-        svc = WorkflowHandler(service_id="workflow")
+        svc = WorkflowHandler(service_id="workflow", bus=LocalBus(), store=MemoryStore())
         svc.handle(Event(event_type="workflow.start", source="test", payload={"type": "", "entity_id": "x"}))
         assert len(svc.store.keys("workflow:")) == 0
 
     def test_rejects_empty_entity_id(self) -> None:
-        svc = WorkflowHandler(service_id="workflow")
+        svc = WorkflowHandler(service_id="workflow", bus=LocalBus(), store=MemoryStore())
         svc.handle(Event(event_type="workflow.start", source="test", payload={"type": "origination", "entity_id": ""}))
         assert len(svc.store.keys("workflow:")) == 0
 
     def test_advance_moves_to_next_stage(self) -> None:
-        svc = WorkflowHandler(service_id="workflow")
+        svc = WorkflowHandler(service_id="workflow", bus=LocalBus(), store=MemoryStore())
         svc.handle(
             Event(event_type="workflow.start", source="test", payload={"type": "origination", "entity_id": "app_2"})
         )
@@ -53,7 +54,7 @@ class TestWorkflowService:
         assert rec["stage_index"] == 1
 
     def test_advance_completes_workflow(self) -> None:
-        svc = WorkflowHandler(service_id="workflow")
+        svc = WorkflowHandler(service_id="workflow", bus=LocalBus(), store=MemoryStore())
         svc.handle(
             Event(event_type="workflow.start", source="test", payload={"type": "origination", "entity_id": "app_3"})
         )
@@ -68,7 +69,7 @@ class TestWorkflowService:
         bus = LocalBus()
         received: list = []
         bus.subscribe(EventType.WORKFLOW_COMPLETED, lambda e: received.append(e))
-        svc = WorkflowHandler(service_id="workflow", bus=bus)
+        svc = WorkflowHandler(service_id="workflow", bus=bus, store=MemoryStore())
         bus.start()
         svc.handle(
             Event(event_type="workflow.start", source="test", payload={"type": "origination", "entity_id": "app_4"})
@@ -78,11 +79,11 @@ class TestWorkflowService:
         assert len(received) == 1
 
     def test_advance_unknown_entity_noop(self) -> None:
-        svc = WorkflowHandler(service_id="workflow")
+        svc = WorkflowHandler(service_id="workflow", bus=LocalBus(), store=MemoryStore())
         svc.handle(Event(event_type="workflow.advance", source="test", payload={"entity_id": "NONEXISTENT"}))
 
     def test_auto_starts_on_origination_submitted(self) -> None:
-        svc = WorkflowHandler(service_id="workflow")
+        svc = WorkflowHandler(service_id="workflow", bus=LocalBus(), store=MemoryStore())
         svc.handle(
             Event(event_type=EventType.ORIGINATION_SUBMITTED, source="test", payload={"application_id": "app_5"})
         )
@@ -91,7 +92,7 @@ class TestWorkflowService:
         assert rec["type"] == "origination"
 
     def test_auto_advances_on_underwriter_approved(self) -> None:
-        svc = WorkflowHandler(service_id="workflow")
+        svc = WorkflowHandler(service_id="workflow", bus=LocalBus(), store=MemoryStore())
         svc.handle(
             Event(event_type=EventType.ORIGINATION_SUBMITTED, source="test", payload={"application_id": "app_6"})
         )
@@ -101,12 +102,12 @@ class TestWorkflowService:
         assert rec["current_stage"] == "kyc_pending"
 
     def test_ignores_unrelated_events(self) -> None:
-        svc = WorkflowHandler(service_id="workflow")
+        svc = WorkflowHandler(service_id="workflow", bus=LocalBus(), store=MemoryStore())
         svc.handle(Event(event_type="seed.added", source="test", payload={}))
         assert len(svc.store.keys("workflow:")) == 0
 
     def test_multiple_workflows_independent(self) -> None:
-        svc = WorkflowHandler(service_id="workflow")
+        svc = WorkflowHandler(service_id="workflow", bus=LocalBus(), store=MemoryStore())
         svc.handle(Event(event_type="workflow.start", source="test", payload={"type": "origination", "entity_id": "a"}))
         svc.handle(Event(event_type="workflow.start", source="test", payload={"type": "recovery", "entity_id": "b"}))
         rec_a = svc.store.get("workflow:a")

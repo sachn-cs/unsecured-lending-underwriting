@@ -1,6 +1,7 @@
 """Tests for DisbursementHandler — loan payout processing."""
 
 from __future__ import annotations
+from underwrite.__store__ import MemoryStore
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
@@ -8,7 +9,7 @@ from underwrite.services.disbursement.handler import DisbursementHandler
 
 
 def svc(bus=None) -> DisbursementHandler:
-    return DisbursementHandler(service_id="disbursement", bus=bus)
+    return DisbursementHandler(service_id="disbursement", bus=bus or LocalBus(), store=MemoryStore())
 
 
 class TestDisbursementService:

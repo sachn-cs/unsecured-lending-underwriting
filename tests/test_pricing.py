@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from underwrite.__bus__ import LocalBus
+from underwrite.__store__ import MemoryStore
 from underwrite.__events__ import Event, EventType
 from underwrite.services.pricing.handler import (
     HOME_LOAN_CAP,
@@ -16,6 +17,8 @@ from underwrite.services.pricing.handler import (
 
 
 def svc(**kwargs) -> PricingHandler:
+    kwargs.setdefault("bus", LocalBus())
+    kwargs.setdefault("store", MemoryStore())
     return PricingHandler(service_id="pricing", **kwargs)
 
 

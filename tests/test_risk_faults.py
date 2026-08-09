@@ -6,7 +6,10 @@ from typing import Any
 
 import pytest
 
+from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
+from underwrite.__store__ import MemoryStore
+from underwrite.__store__ import MemoryStore
 from underwrite.services.risk.model import RiskModel
 from underwrite.services.risk.handler import RiskHandler
 
@@ -26,7 +29,7 @@ class TestRiskServiceFaults:
             def predict(self, principal: float, term: float) -> float:
                 raise RuntimeError("model crashed")
 
-        svc = RiskHandler(service_id="risk")
+        svc = RiskHandler(service_id="risk", bus=LocalBus(), store=MemoryStore())
         svc.set_model(FaultyModel())
 
         spy = EmitSpy()
@@ -47,7 +50,7 @@ class TestRiskServiceFaults:
         assert risk_scored[0][1]["score"] == -1.0
 
     def test_early_warning_emitted_for_high_dp(self) -> None:
-        svc = RiskHandler(service_id="risk")
+        svc = RiskHandler(service_id="risk", bus=LocalBus(), store=MemoryStore())
 
         spy = EmitSpy()
         svc.emit = spy  # type: ignore[method-assign]
@@ -70,7 +73,7 @@ class TestAuditServiceFaults:
     def test_load_corrupted_jsonl_skips_bad_lines(self, tmp_path: Any) -> None:
         from underwrite.services.audit.handler import AuditHandler
 
-        svc = AuditHandler(service_id="audit")
+        svc = AuditHandler(service_id="audit", bus=LocalBus(), store=MemoryStore())
         p = tmp_path / "audit.jsonl"
         p.write_text('{"event_type":"a","source":"s"}\nnot json\n{"event_type":"b","source":"s"}\n')
         svc.load_jsonl(str(p))
@@ -81,7 +84,7 @@ class TestAuditServiceFaults:
     def test_load_nonexistent_file_clears_ledger(self, tmp_path: Any) -> None:
         from underwrite.services.audit.handler import AuditHandler
 
-        svc = AuditHandler(service_id="audit")
+        svc = AuditHandler(service_id="audit", bus=LocalBus(), store=MemoryStore())
         svc.handle(Event(event_type="test", source="test", payload={"dummy": True}))
         assert len(svc.ledger) == 1
         svc.load_jsonl(str(tmp_path / "nonexistent.jsonl"))

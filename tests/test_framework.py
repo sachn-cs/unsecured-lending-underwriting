@@ -13,6 +13,7 @@ from typing import Any
 import pytest
 
 from underwrite.__bus__ import LocalBus
+from underwrite.__store__ import MemoryStore
 from underwrite.__config__ import HANDLER_NAMES, Configuration
 from underwrite.__events__ import Event
 from underwrite.__exceptions__ import (
@@ -301,11 +302,11 @@ class ServiceHelper(NanoService):
 
 class TestNanoService:
     def test_service_id(self) -> None:
-        svc: ServiceHelper = ServiceHelper(service_id="mysvc")
+        svc: ServiceHelper = ServiceHelper(service_id="mysvc", bus=LocalBus(), store=MemoryStore())
         assert svc.service_id == "mysvc"
 
     def test_identity_auto_created(self) -> None:
-        svc: ServiceHelper = ServiceHelper(service_id="test")
+        svc: ServiceHelper = ServiceHelper(service_id="test", bus=LocalBus(), store=MemoryStore())
         assert svc.service_id == "test"
         sig: str = svc.sign_event("test_payload")
         assert len(sig) > 0
@@ -318,7 +319,7 @@ class TestNanoService:
             received.append(event)
 
         bus.subscribe("custom.event", handler)
-        svc: ServiceHelper = ServiceHelper(service_id="emitter", bus=bus)
+        svc: ServiceHelper = ServiceHelper(service_id="emitter", bus=bus, store=MemoryStore())
         svc.emit("custom.event", {"msg": "hello"})
         bus.start()
         time.sleep(0.01)
@@ -326,13 +327,13 @@ class TestNanoService:
         assert received[0].event_type == "custom.event"
 
     def test_event_has_signature(self) -> None:
-        svc: ServiceHelper = ServiceHelper(service_id="signer")
+        svc: ServiceHelper = ServiceHelper(service_id="signer", bus=LocalBus(), store=MemoryStore())
         event: Event = svc.emit("signed.event", {"data": 1})
         assert event.signature != ""
 
     def test_subscribe_receives_events(self) -> None:
         bus: LocalBus = LocalBus()
-        svc: ServiceHelper = ServiceHelper(service_id="subscriber", bus=bus)
+        svc: ServiceHelper = ServiceHelper(service_id="subscriber", bus=bus, store=MemoryStore())
         svc.subscribe("incoming")
         bus.start()
         svc.start()
@@ -343,7 +344,7 @@ class TestNanoService:
 
     def test_stop_unsubscribes(self) -> None:
         bus: LocalBus = LocalBus()
-        svc: ServiceHelper = ServiceHelper(service_id="stoppable", bus=bus)
+        svc: ServiceHelper = ServiceHelper(service_id="stoppable", bus=bus, store=MemoryStore())
         svc.subscribe("incoming")
         svc.start()
         svc.stop()
@@ -360,7 +361,7 @@ class TestNanoService:
             received.append(event)
 
         bus.subscribe("response", handler)
-        svc: ServiceHelper = ServiceHelper(service_id="responder", bus=bus)
+        svc: ServiceHelper = ServiceHelper(service_id="responder", bus=bus, store=MemoryStore())
         svc.subscribe("request")
         bus.start()
         svc.start()

@@ -7,6 +7,7 @@ Tests verify behavior through public interfaces only:
 """
 
 from __future__ import annotations
+from underwrite.__store__ import MemoryStore
 
 import pytest
 
@@ -16,7 +17,7 @@ from underwrite.services.collateral.handler import CollateralHandler
 
 
 def collateral(bus=None) -> CollateralHandler:
-    return CollateralHandler(service_id="collateral", bus=bus)
+    return CollateralHandler(service_id="collateral", bus=bus or LocalBus(), store=MemoryStore())
 
 
 class TestCollateralService:

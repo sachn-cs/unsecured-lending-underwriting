@@ -1,6 +1,7 @@
 """Tests for SettlementHandler — loss recognition and final accounting."""
 
 from __future__ import annotations
+from underwrite.__store__ import MemoryStore
 
 import pytest
 
@@ -10,7 +11,7 @@ from underwrite.services.settlement.handler import SettlementHandler
 
 
 def svc(bus=None) -> SettlementHandler:
-    return SettlementHandler(service_id="settlement", bus=bus)
+    return SettlementHandler(service_id="settlement", bus=bus or LocalBus(), store=MemoryStore())
 
 
 class TestSettlementService:

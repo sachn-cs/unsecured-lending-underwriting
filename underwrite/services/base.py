@@ -93,8 +93,18 @@ class NanoService(ABC):
         if identity is None:
             identity = Identity.create(service_id, secrets_manager=secrets_manager)
         self.__identity: Identity = identity
-        self.__bus: EventBus = bus or LocalBus()
-        self._store: Store = store or MemoryStore()
+        if bus is None:
+            raise ValueError(
+                f"{type(self).__name__}({service_id!r}) requires bus; "
+                "construct one with Runtime as the composition root."
+            )
+        if store is None:
+            raise ValueError(
+                f"{type(self).__name__}({service_id!r}) requires store; "
+                "construct one with Runtime as the composition root."
+            )
+        self.__bus: EventBus = bus
+        self._store: Store = store
         self.__metrics: MetricsCollector | None = metrics
         self.__health: HealthRegistry | None = health
         self.__authz: AccessControl | None = authz

@@ -9,17 +9,19 @@ Tests verify behavior through public interfaces only:
 from __future__ import annotations
 
 from typing import Any
+from underwrite.__bus__ import LocalBus
+from underwrite.__store__ import MemoryStore
 
 from underwrite.__events__ import Event
 from underwrite.services.audit.handler import AuditHandler
 
 
 def audit() -> AuditHandler:
-    return AuditHandler(service_id="audit")
+    return AuditHandler(service_id="audit", bus=LocalBus(), store=MemoryStore())
 
 
 def audit_capped() -> AuditHandler:
-    return AuditHandler(service_id="audit", max_ledger=5)
+    return AuditHandler(service_id="audit", max_ledger=5, bus=LocalBus(), store=MemoryStore())
 
 
 class TestAuditService:
@@ -118,7 +120,7 @@ class TestAuditService:
         assert svc.ledger[-1]["payload"] == {"i": 9}
 
     def test_export_noop_without_url(self) -> None:
-        svc = AuditHandler(service_id="audit")
+        svc = AuditHandler(service_id="audit", bus=LocalBus(), store=MemoryStore())
         svc.handle(Event(event_type="ev", source="s"))
         svc.export()  # should not raise
 
@@ -138,12 +140,17 @@ class TestAuditService:
                 __import__("sys").modules.pop("underwrite.services.audit.service", None)
             from underwrite.services.audit.handler import AuditHandler as AuditSvc2
 
-            svc2 = AuditSvc2(service_id="audit", export_url="s3://bucket/path.jsonl")
+            svc2 = AuditSvc2(
+                service_id="audit",
+                bus=LocalBus(),
+                store=MemoryStore(),
+                export_url="s3://bucket/path.jsonl",
+            )
             svc2.handle(Event(event_type="ev", source="s"))
             svc2.export()
         assert put_called[0]
 
     def test_export_gcs_noop_without_library(self) -> None:
-        svc = AuditHandler(service_id="audit", export_url="gs://bucket/path.jsonl")
+        svc = AuditHandler(service_id="audit", export_url="gs://bucket/path.jsonl", bus=LocalBus(), store=MemoryStore())
         svc.handle(Event(event_type="ev", source="s"))
         svc.export()  # should log warning, not raise

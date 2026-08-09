@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from underwrite.__bus__ import LocalBus
 from underwrite.__events__ import Event, EventType
+from underwrite.__store__ import MemoryStore
 from underwrite.services.underwriter.handler import UnderwriterHandler
 
 
 def svc(bus=None) -> UnderwriterHandler:
-    return UnderwriterHandler(service_id="underwriter", bus=bus)
+    return UnderwriterHandler(service_id="underwriter", bus=bus or LocalBus(), store=MemoryStore())
 
 
 def request(svc, bus, **kw) -> None:

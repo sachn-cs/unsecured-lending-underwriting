@@ -10,6 +10,7 @@ Tests verify behavior through emitted events:
 """
 
 from __future__ import annotations
+from underwrite.__store__ import MemoryStore
 
 import json
 import os
@@ -26,7 +27,7 @@ from underwrite.services.compliance.handler import (
 
 
 def compliance(bus=None) -> ComplianceHandler:
-    svc = ComplianceHandler(service_id="compliance", bus=bus)
+    svc = ComplianceHandler(service_id="compliance", bus=bus, store=MemoryStore())
     svc.repo.save({})
     return svc
 
@@ -232,7 +233,7 @@ class TestComplianceService:
                 bus = LocalBus()
                 frozen: list[Event] = []
                 bus.subscribe(EventType.AML_FROZEN, lambda e: frozen.append(e))
-                svc = ComplianceHandler(service_id="compliance", bus=bus, aml_blocklist_path=bl_path)
+                svc = ComplianceHandler(service_id="compliance", bus=bus, aml_blocklist_path=bl_path, store=MemoryStore())
                 bus.start()
                 svc.handle(
                     Event(

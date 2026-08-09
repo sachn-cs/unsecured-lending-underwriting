@@ -1,6 +1,7 @@
 """Error-path tests for narrowed exception blocks — graceful degradation checks."""
 
 from __future__ import annotations
+from underwrite.__store__ import MemoryStore
 
 import json
 from pathlib import Path
@@ -27,13 +28,13 @@ from underwrite.services.risk.model import RiskModel
 
 class TestSafeStoreGet:
     def test_returns_default_on_exception(self) -> None:
-        svc = ConcreteService(service_id="test_svc_get")
+        svc = ConcreteService(service_id="test_svc_get", bus=LocalBus(), store=MemoryStore())
         svc._store = BrokenStore()  # type: ignore[assignment]
         result = svc.safe_store_get("some_key", default="fallback")
         assert result == "fallback"
 
     def test_returns_store_result_for_missing_key(self) -> None:
-        svc = ConcreteService(service_id="test_svc_get_missing")
+        svc = ConcreteService(service_id="test_svc_get_missing", bus=LocalBus(), store=MemoryStore())
         svc._store = MemoryStore()  # type: ignore[assignment]
         result = svc.safe_store_get("missing", default=42)
         assert result is None
@@ -46,7 +47,7 @@ class TestSafeStoreGet:
 
 class TestSafeStoreSet:
     def test_returns_false_on_exception(self) -> None:
-        svc = ConcreteService(service_id="test_svc_set")
+        svc = ConcreteService(service_id="test_svc_set", bus=LocalBus(), store=MemoryStore())
         svc._store = BrokenStore()  # type: ignore[assignment]
         result = svc.safe_store_set("some_key", "value")
         assert result is False
@@ -198,7 +199,7 @@ class TestMechanismRejection:
     def test_repay_unknown_user_emits_rejected(self) -> None:
         bus: EventBus = LocalBus()
         bus.start()
-        svc = MechanismHandler(service_id="mechanism", bus=bus)
+        svc = MechanismHandler(service_id="mechanism", bus=bus, store=MemoryStore())
         emitted: list[Event] = []
 
         def capture(e: Event) -> None:
@@ -223,7 +224,7 @@ class TestAuditLoadJsonl:
     def test_skips_corrupted_line(self, tmp_path: Path) -> None:
         ledger_file = tmp_path / "audit.jsonl"
         ledger_file.write_text('{"valid": true}\nnot json\n{"also_valid": 42}\n')
-        svc = AuditHandler(service_id="audit")
+        svc = AuditHandler(service_id="audit", bus=LocalBus(), store=MemoryStore())
         svc.load_jsonl(str(ledger_file))
         records = svc._ledger
         assert len(records) == 2
@@ -233,13 +234,13 @@ class TestAuditLoadJsonl:
     def test_handles_empty_file(self, tmp_path: Path) -> None:
         ledger_file = tmp_path / "empty.jsonl"
         ledger_file.write_text("")
-        svc = AuditHandler(service_id="audit")
+        svc = AuditHandler(service_id="audit", bus=LocalBus(), store=MemoryStore())
         svc.load_jsonl(str(ledger_file))
         records = svc._ledger
         assert len(records) == 0
 
     def test_handles_missing_file(self) -> None:
-        svc = AuditHandler(service_id="audit")
+        svc = AuditHandler(service_id="audit", bus=LocalBus(), store=MemoryStore())
         svc.load_jsonl("/nonexistent/audit.jsonl")
         records = svc._ledger
         assert len(records) == 0

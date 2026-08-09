@@ -49,6 +49,8 @@ class CibilProviderStub:
 
 def svc(**kw) -> CreditBureauHandler:
     kw.setdefault("allow_mock", True)
+    kw.setdefault("bus", LocalBus())
+    kw.setdefault("store", MemoryStore())
     return CreditBureauHandler(service_id="credit_bureau", **kw)
 
 
@@ -297,7 +299,7 @@ class TestCibilProviderIntegration:
         received: list = []
         bus.subscribe(EventType.CREDIT_BUREAU_CHECKED, lambda e: received.append(e))
         provider = CibilProviderStub()
-        s = CreditBureauHandler(service_id="credit_bureau", bus=bus, kyc_providers={"cibil": provider}, allow_mock=True)
+        s = CreditBureauHandler(service_id="credit_bureau", bus=bus, kyc_providers={"cibil": provider}, allow_mock=True, store=MemoryStore())
         bus.start()
         s.handle(
             Event(
@@ -318,6 +320,7 @@ class TestCibilProviderIntegration:
     def test_check_bureau_persists_and_reloads_credit_report_fields(self) -> None:
         s = CreditBureauHandler(
             service_id="credit_bureau",
+            bus=LocalBus(),
             kyc_providers={"cibil": CibilProviderStub()},
             store=MemoryStore(),
             allow_mock=True,
@@ -331,6 +334,7 @@ class TestCibilProviderIntegration:
         )
         reloaded = CreditBureauHandler(
             service_id="credit_bureau",
+            bus=LocalBus(),
             kyc_providers={"cibil": CibilProviderStub()},
             store=s.store,
             allow_mock=True,
@@ -359,7 +363,12 @@ class TestClientSelection:
         import pytest
 
         with pytest.raises(RuntimeError, match="no credit bureau credentials"):
-            CreditBureauHandler(service_id="credit_bureau", allow_mock=False)
+            CreditBureauHandler(
+                service_id="credit_bureau",
+                bus=LocalBus(),
+                store=MemoryStore(),
+                allow_mock=False,
+            )
 
     def test_no_api_key_with_allow_mock_returns_mock(self) -> None:
         s = svc(allow_mock=True)

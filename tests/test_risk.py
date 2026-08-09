@@ -6,6 +6,7 @@ Tests verify behavior through emitted events:
 """
 
 from __future__ import annotations
+from underwrite.__store__ import MemoryStore
 
 import pytest
 
@@ -16,7 +17,7 @@ from underwrite.services.risk.handler import RiskHandler
 
 
 def risk(bus=None) -> RiskHandler:
-    return RiskHandler(service_id="risk", bus=bus)
+    return RiskHandler(service_id="risk", bus=bus or LocalBus(), store=MemoryStore())
 
 
 class TestEarlyWarning:

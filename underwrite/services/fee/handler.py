@@ -15,6 +15,7 @@ from typing import Any
 
 from underwrite.__authz__ import AccessControl
 from underwrite.__bus__ import EventBus
+from underwrite.__constants__ import MONEY_QUANTUM
 from underwrite.__events__ import Event, EventType
 from underwrite.__health__ import HealthRegistry
 from underwrite.__identity__ import Identity
@@ -37,7 +38,6 @@ DEFAULT_FEE_SCHEDULES: dict[str, float] = {
 }
 
 MAX_FEE_PER_LOAN: float = 1000.0
-MONEY_QUANTUM: Decimal = Decimal("0.01")
 
 
 @dataclass(frozen=True, slots=True)

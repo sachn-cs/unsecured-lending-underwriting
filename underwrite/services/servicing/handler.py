@@ -14,6 +14,7 @@ from typing import Any
 
 from underwrite.__authz__ import AccessControl
 from underwrite.__bus__ import EventBus
+from underwrite.__constants__ import DAYS_PER_YEAR, MONEY_QUANTUM, RATE_QUANTUM
 from underwrite.__events__ import Event, EventType
 from underwrite.__health__ import HealthRegistry
 from underwrite.__identity__ import Identity
@@ -26,9 +27,6 @@ from underwrite.__tracer__ import Tracer
 from underwrite.services.base import NanoService
 from underwrite.validate import get_finite
 
-RATE_QUANTUM: Decimal = Decimal("0.01")
-MONEY_QUANTUM: Decimal = Decimal("0.01")
-DAYS_PER_YEAR: int = 365
 RATE_PERCENT_MULTIPLIER: int = 100 * DAYS_PER_YEAR
 
 

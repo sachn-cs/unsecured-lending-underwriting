@@ -14,7 +14,7 @@ from typing import Any
 
 from underwrite.__authz__ import AccessControl
 from underwrite.__bus__ import EventBus
-from underwrite.__constants__ import DAYS_PER_YEAR
+from underwrite.__constants__ import DAYS_PER_YEAR, RATE_QUANTUM
 from underwrite.__events__ import Event, EventType
 from underwrite.__exceptions__ import ProtocolError
 from underwrite.__health__ import HealthRegistry
@@ -44,7 +44,6 @@ MICRO_LOAN_PROCESSING_FEE_RATE: float = 0.0025
 HIGH_RISK_ORIGINATION_FEE_RATE: float = 0.05
 LOW_RISK_ORIGINATION_FEE_RATE: float = 0.04
 APPR_TOLERANCE: float = 1e-10
-RATE_QUANTUM: Decimal = Decimal("0.01")
 MAX_NEWTON_ITERATIONS: int = 100
 
 

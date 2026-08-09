@@ -20,7 +20,7 @@ import re
 import uuid
 from typing import Any
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from underwrite.__exceptions__ import ProtocolError
@@ -265,7 +265,9 @@ def create_app(
             return __error_response(403, str(exc))
         except ProtocolError:
             return __error_response(400, "invalid request")
-        except Exception:
+        except HTTPException:
+            raise
+        except (RuntimeError, ValueError, TypeError, OSError, AttributeError):
             logger.exception("publish failed")
             return __error_response(500, "internal server error")
 

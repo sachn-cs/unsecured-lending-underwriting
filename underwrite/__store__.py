@@ -379,19 +379,19 @@ class PostgresStore(Store):
             retryable_exceptions=retryable,
         )
         self.__lock: threading.Lock = threading.Lock()
-        self.__sql_get: str = self._build_sql("SELECT value FROM {} WHERE key = %s", table)
-        self.__sql_set: str = self._build_sql(
+        self.__sql_get: str = self.__build_sql("SELECT value FROM {} WHERE key = %s", table)
+        self.__sql_set: str = self.__build_sql(
             "INSERT INTO {} (key, value, updated_at) VALUES (%s, %s, NOW()) "
             "ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()",
             table,
         )
-        self.__sql_delete: str = self._build_sql("DELETE FROM {} WHERE key = %s RETURNING *", table)
-        self.__sql_exists: str = self._build_sql("SELECT 1 FROM {} WHERE key = %s", table)
-        self.__sql_keys_all: str = self._build_sql("SELECT key FROM {}", table)
-        self.__sql_keys_pattern: str = self._build_sql("SELECT key FROM {} WHERE key LIKE %s", table)
-        self.__timeout_sql: str = self._build_sql("SET statement_timeout = {}", str(int(operation_timeout * 1000)))
+        self.__sql_delete: str = self.__build_sql("DELETE FROM {} WHERE key = %s RETURNING *", table)
+        self.__sql_exists: str = self.__build_sql("SELECT 1 FROM {} WHERE key = %s", table)
+        self.__sql_keys_all: str = self.__build_sql("SELECT key FROM {}", table)
+        self.__sql_keys_pattern: str = self.__build_sql("SELECT key FROM {} WHERE key LIKE %s", table)
+        self.__timeout_sql: str = self.__build_sql("SET statement_timeout = {}", str(int(operation_timeout * 1000)))
 
-    def _get_pool(self) -> Any:
+    def get_pool(self) -> Any:
         if self.__pool is not None:
             return self.__pool
         try:
@@ -418,7 +418,7 @@ class PostgresStore(Store):
 
     @contextmanager
     def __connection(self) -> Generator[Connection, None, None]:
-        pool = self._get_pool()
+        pool = self.get_pool()
         conn = pool.getconn()
         close_conn = False
         try:
@@ -510,7 +510,7 @@ class PostgresStore(Store):
             return {"ok": False, "detail": "Postgres health check failed", "circuit": self.__circuit.state.value}
 
     @staticmethod
-    def _build_sql(template: str, table: str) -> str:
+    def __build_sql(template: str, table: str) -> str:
         """Build a parameterised SQL statement from a template and a validated table name.
 
         Args:
@@ -535,8 +535,9 @@ class PostgresStore(Store):
         Raises:
             MigrationError: If any migration fails.
         """
-        pool = self._get_pool()
+        pool = self.get_pool()
         conn = pool.getconn()
+
         try:
             conn.autocommit = False
             with conn.cursor() as cur:

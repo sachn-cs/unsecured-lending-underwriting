@@ -45,7 +45,7 @@ __all__ = [
 import json
 import os
 from pathlib import Path
-from typing import Annotated, Any, TypeVar
+from typing import Any, TypeVar
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -68,9 +68,6 @@ class ServiceConfig(ForbidExtra):
 
     enabled: bool = False
     priority: int = 0
-
-
-BACKENDS = Annotated[str, Field(validate_default=True)]
 
 
 class BusConfig(ForbidExtra):

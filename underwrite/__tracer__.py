@@ -214,7 +214,7 @@ class OtlpSpanExporter(SpanExporter):
         self.__tracer: Any = None
         self.__processor: Any = None
 
-    def _lazy_init(self) -> bool:
+    def __lazy_init(self) -> bool:
         if self.__provider is not None:
             return True
         try:
@@ -240,7 +240,7 @@ class OtlpSpanExporter(SpanExporter):
         return True
 
     def export(self, spans: list[Span]) -> None:
-        if not self._lazy_init():
+        if not self.__lazy_init():
             return
 
         for span in spans:

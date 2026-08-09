@@ -162,8 +162,8 @@ class IdGenerator:
     """
 
     def __init__(self, prefix: str = "") -> None:
-        self._prefix = prefix
-        self._counter = 0
+        self.__prefix = prefix
+        self.__counter = 0
 
     def next(self) -> str:
         """Return a new unique random hex identifier (12 chars)."""
@@ -177,8 +177,8 @@ class IdGenerator:
         Used exclusively by tests for reproducibility; falls back
         to ``next()`` if the counter would overflow.
         """
-        self._counter += 1
-        return f"{self._counter:08d}"
+        self.__counter += 1
+        return f"{self.__counter:08d}"
 
 
 UserId = NewType("UserId", str)

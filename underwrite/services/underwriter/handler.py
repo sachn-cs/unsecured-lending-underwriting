@@ -196,7 +196,7 @@ class UnderwriterHandler(StatefulService):
         if loaded:
             self.applications = loaded.get("applications", {})
 
-    def _evict_if_full(self) -> None:
+    def __evict_if_full(self) -> None:
         if len(self.applications) >= self.MAX_APPLICATIONS:
             excess = len(self.applications) - self.MAX_APPLICATIONS + 1
             for _ in range(min(excess, max(1, self.MAX_APPLICATIONS // 10))):
@@ -263,7 +263,7 @@ class UnderwriterHandler(StatefulService):
             return
         with self.state_lock:
             if app_id not in self.applications:
-                self._evict_if_full()
+                self.__evict_if_full()
                 self.applications[app_id] = {}
             self.applications[app_id][key] = extractor(event.payload)
             self.sync()
@@ -280,7 +280,7 @@ class UnderwriterHandler(StatefulService):
             return
         with self.state_lock:
             if app_id not in self.applications:
-                self._evict_if_full()
+                self.__evict_if_full()
                 self.applications[app_id] = {}
             current = self.applications[app_id].get(key, 0)
             self.applications[app_id][key] = current + 1
@@ -299,7 +299,7 @@ class UnderwriterHandler(StatefulService):
             return
         with self.state_lock:
             if app_id not in self.applications:
-                self._evict_if_full()
+                self.__evict_if_full()
                 self.applications[app_id] = {}
             self.applications[app_id].update(
                 {
@@ -328,7 +328,7 @@ class UnderwriterHandler(StatefulService):
 
         with self.state_lock:
             if app_id not in self.applications:
-                self._evict_if_full()
+                self.__evict_if_full()
             facts: dict[str, Any] = self.applications.get(app_id, {})
             facts.update(
                 {

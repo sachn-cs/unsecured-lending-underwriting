@@ -185,7 +185,7 @@ class AccessControl:
             window = self.__replay_window_seconds
         if not public_key_b64:
             return False
-        if window > 0 and not self._within_window(event.timestamp, window):
+        if window > 0 and not self.__within_window(event.timestamp, window):
             return False
         try:
             public_bytes = base64.b64decode(public_key_b64)
@@ -200,7 +200,7 @@ class AccessControl:
             return False
 
     @staticmethod
-    def _within_window(timestamp: str, window: float) -> bool:
+    def __within_window(timestamp: str, window: float) -> bool:
         try:
             ts = datetime.fromisoformat(timestamp)
         except (TypeError, ValueError):

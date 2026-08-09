@@ -15,6 +15,9 @@ from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
 from underwrite.validate import get_finite
 
+HIGH_RISK_THRESHOLD: float = 0.7
+MEDIUM_RISK_THRESHOLD: float = 0.4
+
 
 class DecisionHandler(StatefulService):
     """Consolidates multi-signal inputs into a single decision recommendation.
@@ -63,9 +66,9 @@ class DecisionHandler(StatefulService):
                 "type": "score",
                 "value": score,
             }
-            if score >= 0.7:
+            if score >= HIGH_RISK_THRESHOLD:
                 signal["severity"] = "high"
-            elif score >= 0.4:
+            elif score >= MEDIUM_RISK_THRESHOLD:
                 signal["severity"] = "medium"
             else:
                 signal["severity"] = "low"

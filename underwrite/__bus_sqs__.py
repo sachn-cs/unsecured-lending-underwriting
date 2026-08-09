@@ -131,7 +131,7 @@ class SqsBus(EventBus):
                     if not self.__running:
                         break
                     self.__handle_message(msg)
-            except Exception:
+            except (OSError, ValueError, TypeError, KeyError):
                 if self.__running:
                     logger.exception("SQS poll error")
                     time.sleep(1)
@@ -148,17 +148,17 @@ class SqsBus(EventBus):
             logger.warning("SQS message missing receipt or body, deleting")
             try:
                 self.__client.delete_message(QueueUrl=self.__queue_url, ReceiptHandle=receipt)
-            except Exception:
+            except OSError:
                 logger.exception("failed to delete malformed SQS message")
             return
         try:
             data = json.loads(body)
             event = Event.from_dict(data)
-        except Exception:
+        except (json.JSONDecodeError, ValueError, TypeError, KeyError):
             logger.exception("SQS message body failed to parse, deleting")
             try:
                 self.__client.delete_message(QueueUrl=self.__queue_url, ReceiptHandle=receipt)
-            except Exception:
+            except OSError:
                 logger.exception("failed to delete unparseable SQS message")
             return
 
@@ -187,7 +187,7 @@ class SqsBus(EventBus):
             return
         try:
             self.__client.delete_message(QueueUrl=self.__queue_url, ReceiptHandle=receipt)
-        except Exception:
+        except OSError:
             logger.exception(
                 "failed to delete SQS message after successful dispatch — "
                 "message will be redelivered (idempotency guard absorbs the duplicate)"

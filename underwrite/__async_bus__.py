@@ -137,7 +137,7 @@ class AsyncLocalBus(AsyncEventBus):
                 await self.__dispatch(event)
             except asyncio.CancelledError:
                 break
-            except Exception:
+            except (RuntimeError, ValueError, TypeError, OSError, AttributeError, KeyError):
                 logger.exception("dispatch loop: unexpected error processing {}", event.event_id)
 
     async def __dispatch(self, event: Event) -> None:

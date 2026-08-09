@@ -46,6 +46,89 @@ from underwrite.__supervisor__ import ServiceSupervisor
 from underwrite.__tracer__ import Tracer
 from underwrite.validate import PayloadValidator
 
+MAX_EXECUTOR_QUEUE_FACTOR: int = 2
+
+
+class EventEmitter:
+    """Encapsulates the create/sign/publish sequence for outbound events.
+
+    Pulled out of NanoService so the base class is not responsible for
+    both subscribing to events and emitting them. Holds references to
+    the bus, identity, metrics, tracer, and authz collaborator needed
+    to construct, sign, authorise-publish, and instrument an event.
+    """
+
+    def __init__(
+        self,
+        service_id: str,
+        identity: Identity,
+        bus: EventBus,
+        metrics: MetricsCollector | None,
+        tracer: Tracer | None,
+        authz: AccessControl | None,
+    ) -> None:
+        self.__service_id: str = service_id
+        self.__identity: Identity = identity
+        self.__bus: EventBus = bus
+        self.__metrics: MetricsCollector | None = metrics
+        self.__tracer: Tracer | None = tracer
+        self.__authz: AccessControl | None = authz
+
+    def emit(
+        self,
+        event_type: str,
+        payload: dict[str, Any],
+        correlation_id: str,
+    ) -> Event:
+        """Create, sign, authorise, publish and instrument an event.
+
+        Args:
+            event_type: The event type string.
+            payload: Event payload dictionary.
+            correlation_id: Optional correlation ID for tracing.
+
+        Returns:
+            The signed Event that was published.
+        """
+        if self.__authz:
+            self.__authz.assert_publish(self.__service_id, event_type)
+        trace_id: str = ""
+        parent_span_id: str = ""
+        if self.__tracer:
+            trace_id = correlation_id or ""
+        event: Event = Event(
+            event_type=event_type,
+            source=self.__service_id,
+            source_key=self.__identity.public_key,
+            payload=payload,
+            correlation_id=correlation_id or "",
+            trace_id=trace_id,
+            parent_span_id=parent_span_id,
+        )
+        signed: Event = Event(
+            event_id=event.event_id,
+            event_type=event.event_type,
+            source=event.source,
+            source_key=event.source_key,
+            timestamp=event.timestamp,
+            payload=event.payload,
+            correlation_id=event.correlation_id,
+            trace_id=event.trace_id,
+            parent_span_id=event.parent_span_id,
+            signature=self.__identity.sign(event.canonical_sign_bytes().decode("utf-8")),
+        )
+        self.__bus.publish(signed)
+        if self.__metrics:
+            self.__metrics.increment(
+                "events.emitted",
+                {
+                    "service": self.__service_id,
+                    "event_type": event_type,
+                },
+            )
+        return signed
+
+
 
 class NanoService(ABC):
     """Base class that all nano services extend.
@@ -130,6 +213,15 @@ class NanoService(ABC):
 
         if self.__saga:
             self.__saga.register_emitter(self.__service_id, self)
+
+        self.__emitter: EventEmitter = EventEmitter(
+            service_id=self.__service_id,
+            identity=self.__identity,
+            bus=self.__bus,
+            metrics=self.__metrics,
+            tracer=self.__tracer,
+            authz=self.__authz,
+        )
 
     @property
     def state_lock(self) -> threading.RLock:
@@ -253,43 +345,7 @@ class NanoService(ABC):
         Returns:
             The signed Event that was published.
         """
-        if self.__authz:
-            self.__authz.assert_publish(self.__service_id, event_type)
-        trace_id: str = ""
-        parent_span_id: str = ""
-        if self.__tracer:
-            trace_id = correlation_id or ""
-        event: Event = Event(
-            event_type=event_type,
-            source=self.__service_id,
-            source_key=self.__identity.public_key,
-            payload=payload,
-            correlation_id=correlation_id or "",
-            trace_id=trace_id,
-            parent_span_id=parent_span_id,
-        )
-        signed: Event = Event(
-            event_id=event.event_id,
-            event_type=event.event_type,
-            source=event.source,
-            source_key=event.source_key,
-            timestamp=event.timestamp,
-            payload=event.payload,
-            correlation_id=event.correlation_id,
-            trace_id=event.trace_id,
-            parent_span_id=event.parent_span_id,
-            signature=self.__identity.sign(event.canonical_sign_bytes().decode("utf-8")),
-        )
-        self.__bus.publish(signed)
-        if self.__metrics:
-            self.__metrics.increment(
-                "events.emitted",
-                {
-                    "service": self.__service_id,
-                    "event_type": event_type,
-                },
-            )
-        return signed
+        return self.__emitter.emit(event_type, payload, correlation_id)
 
     def sign_event(self, payload: str) -> str:
         """Sign an arbitrary payload with this service's identity.

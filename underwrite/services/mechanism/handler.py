@@ -141,7 +141,7 @@ class MechanismHandler(Core):
             serialized = self.__graph.to_dict()
             try:
                 self.store.set("protocol:state", serialized)
-            except Exception:
+            except (OSError, ValueError, KeyError, TypeError):
                 logger.exception("failed to persist mechanism state, rolling back")
                 self.__graph.restore(snap)
                 raise

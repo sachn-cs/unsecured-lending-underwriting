@@ -73,7 +73,7 @@ def default_plan() -> MigrationPlan:
         Migration(
             version=1,
             description="Initial store schema — key-value table",
-            statements=[
+            statements=(
                 """CREATE TABLE IF NOT EXISTS store (
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL,
@@ -84,14 +84,14 @@ def default_plan() -> MigrationPlan:
                 description TEXT NOT NULL,
                 applied_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
             )""",
-            ],
+            ),
         )
     )
     plan.add(
         Migration(
             version=2,
             description="Event dead-letter queue",
-            statements=[
+            statements=(
                 """CREATE TABLE IF NOT EXISTS dead_letters (
                 id SERIAL PRIMARY KEY,
                 event_id TEXT NOT NULL,
@@ -102,20 +102,20 @@ def default_plan() -> MigrationPlan:
                 failed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                 replayed BOOLEAN NOT NULL DEFAULT FALSE
             )""",
-            ],
+            ),
         )
     )
     plan.add(
         Migration(
             version=3,
             description="Metrics snapshot table",
-            statements=[
+            statements=(
                 """CREATE TABLE IF NOT EXISTS metrics_snapshots (
                 id SERIAL PRIMARY KEY,
                 data JSONB NOT NULL,
                 captured_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
             )""",
-            ],
+            ),
         )
     )
     return plan

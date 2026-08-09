@@ -21,6 +21,10 @@ class SettlementHandler(StatefulService):
         super().__init__(**kwargs)
         self.__settlements: list[dict[str, Any]] = []
         self.repo: TypedStoreRepository[list[dict[str, Any]]] = self.store_repo("settlements", list)
+
+    def start(self) -> None:
+        """Load persisted settlement records when the service starts."""
+        super().start()
         loaded = self.repo.load(default=[])
         if loaded:
             self.__settlements = loaded

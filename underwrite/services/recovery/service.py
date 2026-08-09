@@ -58,6 +58,10 @@ class RecoveryHandler(StatefulService):
         super().__init__(**kwargs)
         self.__recoveries: dict[str, dict[str, Any]] = {}
         self.repo: TypedStoreRepository[dict[str, dict[str, Any]]] = self.store_repo("recoveries", dict)
+
+    def start(self) -> None:
+        """Load persisted recovery state when the service starts."""
+        super().start()
         loaded = self.repo.load(default={})
         if loaded:
             self.__recoveries = loaded

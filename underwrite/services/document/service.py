@@ -22,6 +22,10 @@ class DocumentHandler(StatefulService):
         super().__init__(**kwargs)
         self.__documents: dict[str, list[dict[str, Any]]] = {}
         self.repo: TypedStoreRepository[dict[str, list[dict[str, Any]]]] = self.store_repo("documents", dict)
+
+    def start(self) -> None:
+        """Load persisted document records when the service starts."""
+        super().start()
         loaded = self.repo.load(default={})
         if loaded:
             self.__documents = loaded

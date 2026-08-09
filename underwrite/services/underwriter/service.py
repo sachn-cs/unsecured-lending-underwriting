@@ -152,6 +152,10 @@ class UnderwriterHandler(StatefulService):
         self.engine = RuleEngine(rules=DEFAULT_RULES, policies=DEFAULT_POLICIES)
         self.applications: dict[str, dict[str, Any]] = {}
         self.repo: TypedStoreRepository[dict[str, Any]] = self.store_repo("underwriter", dict)
+
+    def start(self) -> None:
+        """Load persisted applications when the service starts."""
+        super().start()
         loaded = self.repo.load(default={})
         if loaded:
             self.applications = loaded.get("applications", {})

@@ -34,6 +34,10 @@ class DataSubjectRightsHandler(StatefulService):
         self.__requests: dict[str, dict[str, Any]] = {}
         self.__grievances: dict[str, dict[str, Any]] = {}
         self.repo: TypedStoreRepository[dict[str, Any]] = self.store_repo("dsr", dict)
+
+    def start(self) -> None:
+        """Load persisted DSR / grievance records when the service starts."""
+        super().start()
         loaded = self.repo.load(default={})
         if loaded:
             self.__requests = loaded.get("requests", {})

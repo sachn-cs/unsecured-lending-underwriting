@@ -28,6 +28,10 @@ class FraudHandler(StatefulService):
         self.repo: BatchedStoreRepository[dict[str, list[dict[str, Any]]]] = self.batched_repo(
             "records", dict, sync_interval=self.SYNC_INTERVAL
         )
+
+    def start(self) -> None:
+        """Load persisted fraud records when the service starts."""
+        super().start()
         loaded = self.repo.load(default={})
         if loaded:
             self.__records = self.__deserialize_records(loaded)

@@ -47,6 +47,10 @@ class FeeHandler(StatefulService):
         super().__init__(**kwargs)
         self.__fees: dict[str, dict[str, Any]] = {}
         self.repo: BatchedStoreRepository[dict[str, dict[str, Any]]] = self.batched_repo("fees", dict, sync_interval=10)
+
+    def start(self) -> None:
+        """Load persisted fee records when the service starts."""
+        super().start()
         loaded = self.repo.load(default={})
         if loaded:
             self.__fees = loaded

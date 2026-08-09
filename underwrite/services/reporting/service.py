@@ -43,6 +43,10 @@ class ReportingHandler(StatefulService):
         }
         self.__provisioning_total: float = 0.0
         self.repo: TypedStoreRepository[dict[str, Any]] = self.store_repo("counters", dict)
+
+    def start(self) -> None:
+        """Load persisted counters when the service starts."""
+        super().start()
         loaded = self.repo.load(default={})
         if loaded:
             self.__originations = loaded.get("originations", 0)

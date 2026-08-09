@@ -53,6 +53,10 @@ class NPAHandler(StatefulService):
             "loss": kwargs.get("loss_provisioning_rate", 1.0),
         }
         self.repo: TypedStoreRepository[dict[str, dict[str, Any]]] = self.store_repo("accounts", dict)
+
+    def start(self) -> None:
+        """Load persisted NPA accounts when the service starts."""
+        super().start()
         loaded = self.repo.load(default={})
         if loaded:
             self.__accounts = loaded

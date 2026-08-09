@@ -55,6 +55,10 @@ class GovernanceHandler(StatefulService):
         super().__init__(**kwargs)
         self.__params: dict[str, float] = raw_defaults.copy() if raw_defaults else DEFAULT_PARAM_DEFAULTS.copy()
         self.repo: TypedStoreRepository[dict[str, float]] = self.store_repo("params", dict)
+
+    def start(self) -> None:
+        """Load persisted parameters when the service starts."""
+        super().start()
         loaded = self.repo.load(default={})
         if loaded:
             self.__params = loaded

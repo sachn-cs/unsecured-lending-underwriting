@@ -39,6 +39,10 @@ class ConsentHandler(StatefulService):
         super().__init__(**kwargs)
         self.__records: dict[str, dict[str, Any]] = {}
         self.repo: TypedStoreRepository[dict[str, dict[str, Any]]] = self.store_repo("consent", dict)
+
+    def start(self) -> None:
+        """Load persisted consent records when the service starts."""
+        super().start()
         loaded = self.repo.load(default={})
         if loaded:
             self.__records = loaded

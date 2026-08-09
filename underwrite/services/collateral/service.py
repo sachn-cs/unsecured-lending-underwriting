@@ -26,6 +26,10 @@ class CollateralHandler(StatefulService):
         self.__ltv_ratio: float = 0.75
         self.__collateral: dict[str, dict[str, Any]] = {}
         self.repo: TypedStoreRepository[dict[str, dict[str, Any]]] = self.store_repo("collateral", dict)
+
+    def start(self) -> None:
+        """Load persisted collateral state when the service starts."""
+        super().start()
         loaded = self.repo.load(default={})
         if loaded:
             self.__collateral = loaded

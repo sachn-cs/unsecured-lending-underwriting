@@ -572,6 +572,72 @@ class SubscriptionRegistry:
             self.__handlers.clear()
 
 
+class AsyncDispatcher:
+    """Owns the thread-pool executor and pending-future bookkeeping for async dispatch.
+
+    Pulled out of LocalBus so the bus is not responsible for both
+    subscriber bookkeeping and async-executor lifecycle. Provides
+    submit-and-trim, future-completion observation, and graceful
+    shutdown of the underlying executor.
+    """
+
+    def __init__(self, max_workers: int, max_futures: int) -> None:
+        self.__executor: concurrent.futures.ThreadPoolExecutor | None = (
+            concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) if max_workers > 0 else None
+        )
+        self.__futures: list[concurrent.futures.Future] = []
+        self.__MAX_FUTURES: int = max_futures
+
+    def submit(self, fn: Callable[..., Any], *args: Any) -> concurrent.futures.Future | None:
+        """Submit work to the executor pool.
+
+        Returns:
+            The submitted Future, or None if no executor was configured.
+        """
+        if self.__executor is None:
+            return None
+        future = self.__executor.submit(fn, *args)
+        future.add_done_callback(self.__handle_future)
+        self.__futures.append(future)
+        self.__trim_futures()
+        return future
+
+    def has_executor(self) -> bool:
+        return self.__executor is not None
+
+    def shutdown(self, timeout_seconds: float = 5.0) -> None:
+        """Wait for outstanding futures and shut the executor down."""
+        if self.__executor is not None:
+            done, not_done = concurrent.futures.wait(
+                self.__futures, timeout=timeout_seconds, return_when=concurrent.futures.ALL_COMPLETED
+            )
+            if not_done:
+                logger.warning("{} future(s) did not complete within stop timeout", len(not_done))
+            self.__executor.shutdown(wait=True)
+        self.__futures.clear()
+
+    def __handle_future(self, f: concurrent.futures.Future) -> None:
+        try:
+            exc = f.exception(timeout=0)
+        except concurrent.futures.TimeoutError:
+            return
+        if exc is not None:
+            logger.warning("future {} raised: {}", f, exc)
+
+    def __trim_futures(self) -> None:
+        if len(self.__futures) < self.__MAX_FUTURES:
+            return
+        done = [f for f in self.__futures if f.done()]
+        for f in done:
+            try:
+                exc = f.exception(timeout=0)
+            except concurrent.futures.TimeoutError:
+                continue
+            if exc is not None:
+                logger.warning("future {} raised: {}", f, exc)
+        self.__futures = [f for f in self.__futures if not f.done()]
+
+
 class LocalBus(EventBus):
     """Thread-safe in-process event bus with async dispatch and idempotency."""
 
@@ -602,11 +668,7 @@ class LocalBus(EventBus):
         self.__circuit_breaker: PerSubscriberCircuitBreaker = PerSubscriberCircuitBreaker()
         self.__max_buffer_size: int = max_buffer_size
         self.__rate_limiter: RateLimiter | None = RateLimiter(rate_limit) if rate_limit > 0 else None
-        self.__executor: concurrent.futures.ThreadPoolExecutor | None = (
-            concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) if max_workers > 0 else None
-        )
-        self.__futures: list[concurrent.futures.Future] = []
-        self.__MAX_FUTURES: int = max_futures
+        self.__dispatcher: AsyncDispatcher = AsyncDispatcher(max_workers, max_futures)
 
     @property
     def dlq(self) -> DeadLetterQueue:
@@ -690,28 +752,13 @@ class LocalBus(EventBus):
         if not already_started:
             self.__flush()
 
-    def __handle_future(self, f: concurrent.futures.Future) -> None:
-        try:
-            exc = f.exception(timeout=0)
-        except concurrent.futures.TimeoutError:
-            return
-        if exc is not None:
-            logger.warning("future {} raised: {}", f, exc)
-
     def stop(self) -> None:
         """Stops the bus, clears handlers and buffer, and shuts down the executor."""
         with self.__lock:
             self.__running = False
             self.__registry.clear()
             self.__buffer.clear()
-        if self.__executor:
-            done, not_done = concurrent.futures.wait(
-                self.__futures, timeout=5, return_when=concurrent.futures.ALL_COMPLETED
-            )
-            if not_done:
-                logger.warning("{} future(s) did not complete within stop timeout", len(not_done))
-            self.__executor.shutdown(wait=True)
-        self.__futures.clear()
+        self.__dispatcher.shutdown()
 
     def __flush(self) -> None:
         pending: deque[Event] = self.__buffer
@@ -726,26 +773,10 @@ class LocalBus(EventBus):
                 if self.__rate_limiter and not self.__rate_limiter.check(f"sub:{sid}"):
                     self.__dlq.put(event, "rate_limited", sid)
                     continue
-                if self.__executor:
-                    future = self.__executor.submit(self.__dispatch, handler, event, sid)
-                    future.add_done_callback(self.__handle_future)
-                    self.__futures.append(future)
-                    self.__trim_futures()
+                if self.__dispatcher.has_executor():
+                    self.__dispatcher.submit(self.__dispatch, handler, event, sid)
                 else:
                     self.__dispatch_sync(handler, event, sid)
-
-    def __trim_futures(self) -> None:
-        if len(self.__futures) < self.__MAX_FUTURES:
-            return
-        done = [f for f in self.__futures if f.done()]
-        for f in done:
-            try:
-                exc = f.exception(timeout=0)
-            except concurrent.futures.TimeoutError:
-                continue
-            if exc is not None:
-                logger.warning("future {} raised: {}", f, exc)
-        self.__futures = [f for f in self.__futures if not f.done()]
 
     def __dispatch_sync(self, handler: Callable[[Event], None], event: Event, sid: str) -> None:
         try:

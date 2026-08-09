@@ -7,6 +7,7 @@ processes GOVERNANCE_PROPOSAL events to update them.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import Any
 
 from underwrite.__events__ import Event, EventType
@@ -32,6 +33,20 @@ DEFAULT_PARAM_DEFAULTS: dict[str, float] = {
 }
 
 
+@dataclass(frozen=True, slots=True)
+class GovernanceConfig:
+    """Typed configuration for GovernanceHandler.
+
+    Replaces the previous ``kwargs.pop("param_ranges", ...)`` pattern:
+    callers now pass a GovernanceConfig (or its fields are extracted
+    from kwargs via a constructor that does not mutate the caller's
+    mapping).
+    """
+
+    param_ranges: dict[str, list[float]] = field(default_factory=dict)
+    param_defaults: dict[str, float] = field(default_factory=dict)
+
+
 class GovernanceHandler(StatefulService):
     """Manages protocol parameters and handles governance proposals."""
 
@@ -41,8 +56,12 @@ class GovernanceHandler(StatefulService):
         Args:
             **kwargs: Forwarded to NanoService.__init__.
         """
-        raw_ranges: dict[str, list[float]] = kwargs.pop("param_ranges", {})
-        raw_defaults: dict[str, float] = kwargs.pop("param_defaults", {})
+        config = GovernanceConfig(
+            param_ranges=kwargs.pop("param_ranges", {}),
+            param_defaults=kwargs.pop("param_defaults", {}),
+        )
+        raw_ranges = config.param_ranges
+        raw_defaults = config.param_defaults
         self.__ranges: dict[str, tuple[float, float]] = (
             {
                 k: (float(v[0]), float(v[1]))

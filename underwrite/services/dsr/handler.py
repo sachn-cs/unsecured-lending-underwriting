@@ -7,6 +7,7 @@ Protection Act 2023.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -15,6 +16,23 @@ from underwrite.__logger__ import logger
 from underwrite.__value_objects__ import IdGenerator
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
+
+DEFAULT_DSR_RESPONSE_DAYS: int = 30
+DEFAULT_GRIEVANCE_RESPONSE_DAYS: int = 15
+
+
+@dataclass(frozen=True, slots=True)
+class DsrConfig:
+    """Typed configuration for DataSubjectRightsHandler.
+
+    Replaces the previous ``kwargs.pop("response_time_days", ...)``
+    pattern: callers now pass a DsrConfig (or its fields are
+    extracted from kwargs via a constructor that does not mutate
+    the caller's mapping).
+    """
+
+    response_time_days: int = DEFAULT_DSR_RESPONSE_DAYS
+    grievance_response_days: int = DEFAULT_GRIEVANCE_RESPONSE_DAYS
 
 
 class DataSubjectRightsHandler(StatefulService):
@@ -28,8 +46,12 @@ class DataSubjectRightsHandler(StatefulService):
     """
 
     def __init__(self, **kwargs: Any) -> None:
-        self.__response_days: int = kwargs.pop("response_time_days", 30)
-        self.__grievance_days: int = kwargs.pop("grievance_response_days", 15)
+        config = DsrConfig(
+            response_time_days=kwargs.pop("response_time_days", DEFAULT_DSR_RESPONSE_DAYS),
+            grievance_response_days=kwargs.pop("grievance_response_days", DEFAULT_GRIEVANCE_RESPONSE_DAYS),
+        )
+        self.__response_days: int = config.response_time_days
+        self.__grievance_days: int = config.grievance_response_days
         super().__init__(**kwargs)
         self.__requests: dict[str, dict[str, Any]] = {}
         self.__grievances: dict[str, dict[str, Any]] = {}

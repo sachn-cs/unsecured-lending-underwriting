@@ -16,8 +16,13 @@ def _configure_webhook_secret(svc_inst, secret: str) -> None:
     client = svc_inst.client
     if hasattr(client, "set_webhook_secret"):
         client.set_webhook_secret(secret)
-    elif hasattr(client, "_HttpRazorpayClient__webhook_secret"):
-        client._HttpRazorpayClient__webhook_secret = secret  # noqa: SLF001
+    elif hasattr(client, "webhook_secret"):
+        from underwrite.__exceptions__ import ConfigurationError
+
+        try:
+            client.webhook_secret = lambda s=secret: s
+        except Exception:  # pragma: no cover - defensive
+            raise ConfigurationError(f"cannot set webhook secret on {type(client).__name__}")
 
 
 class TestRazorpayServiceOrder:

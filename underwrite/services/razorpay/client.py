@@ -551,13 +551,13 @@ class MockRazorpayClient(RazorpayClient):
         self.refunds: list[dict[str, Any]] = []
         self.fail_on: dict[str, Exception] = {}
         self.counter: int = 0
-        self._webhook_secret: str = "test_webhook_secret"
+        self.__webhook_secret: str = "test_webhook_secret"
 
     def webhook_secret(self) -> str:
-        return self._webhook_secret
+        return self.__webhook_secret
 
     def set_webhook_secret(self, secret: str) -> None:
-        self._webhook_secret = secret
+        self.__webhook_secret = secret
 
     def next_id(self, prefix: str) -> str:
         """Generate a unique test ID with the given prefix.

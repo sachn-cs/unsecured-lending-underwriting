@@ -31,7 +31,7 @@ EPSILON: float = 1e-12
 CommandHandler = Callable[[Message], None]
 
 
-class MechanismHandler(Core):
+class Handler(Core):
     """Maintains the delegation graph and processes all state transitions.
 
     Listens for service-name events (mechanism) carrying a command

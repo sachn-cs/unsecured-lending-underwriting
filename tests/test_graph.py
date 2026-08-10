@@ -1,4 +1,4 @@
-"""Tests for GraphHandler — read-only delegation graph queries.
+"""Tests for Handler — read-only delegation graph queries.
 
 Tests verify behavior through emitted events only:
   - graph_path_result events
@@ -13,11 +13,12 @@ from typing import Any
 
 from underwrite.local import LocalBus
 from underwrite.message import Message
-from underwrite.services.graph.handler import GraphHandler
 from underwrite.store import MemoryStore
+from underwrite.services.graph.handler import Handler
+from underwrite.services.graph.handler import Handler as GraphHandler
 
 
-def graph(store_data: dict[str, Any], bus=None) -> GraphHandler:
+def graph(store_data: dict[str, Any], bus=None) -> Handler:
     store = MemoryStore()
     if store_data:
         store.set("protocol:state", store_data)

@@ -184,31 +184,31 @@ Cross-cutting concerns (authz, tracing, metrics, sagas, supervisor, circuit brea
 
 | Symbol | Type | Description |
 |--------|------|-------------|
-| `underwrite.NanoService` | ABC | Base class; implement `handle(event)` |
-| `underwrite.__bus__` | module | Event bus — pub/sub, DLQ, rate limiter |
-| `underwrite.__store__` | module | State store — MemoryStore / FileStore / PostgresStore |
-| `underwrite.__saga__` | module | Saga orchestrator |
-| `underwrite.__authz__` | module | Access control + Ed25519 verification |
-| `underwrite.__identity__` | module | Ed25519 key management |
-| `underwrite.__events__` | module | 105+ event types |
-| `underwrite.__pii__` | module | PII redaction (Aadhaar, PAN, etc.) |
-| `underwrite.__config__` | module | Pydantic configuration (28 sections) |
-| `underwrite.__cli__:main` | function | `underwrite` CLI entry |
-| `services.*` | packages | 31 nano-services (mechanism, compliance, pricing, kfs, consent, dsr, credit_bureau, razorpay, risk, fraud, audit, npa, recovery, …) |
+| `underwrite.Core` | ABC | Base class; implement `handle(event)` |
+| `underwrite.bus` | module | Event bus — pub/sub, DLQ, rate limiter |
+| `underwrite.store` | module | State store — InMemory / Disk / Sqlite |
+| `underwrite.saga` | module | Saga orchestrator |
+| `underwrite.authz` | module | Access control + Ed25519 verification |
+| `underwrite.keypair` | module | Ed25519 key management |
+| `underwrite.message` | module | 105+ event types (`Type` enum, `Message` envelope) |
+| `underwrite.pii` | module | PII redaction (Aadhaar, PAN, etc.) |
+| `underwrite.config` | module | Pydantic configuration (28 sections) |
+| `underwrite.cli:main` | function | `underwrite` CLI entry |
+| `services.*` | packages | 34 wired nano-services + 4 KYC provider clients |
 
 ## Project Structure
 
 ```
 underwrite/
 ├── underwrite/                    # Source (90+ modules, fully typed)
-│   ├── __config__.py              # Pydantic configuration (28 sections)
-│   ├── __bus__.py                 # Event bus — pub/sub, DLQ, rate limiter
-│   ├── __store__.py               # State store — memory / file / postgres
-│   ├── __saga__.py                # Saga orchestrator
-│   ├── __authz__.py               # Access control & Ed25519 verification
-│   ├── __identity__.py            # Ed25519 key management
-│   ├── __events__.py              # 105+ event types
-│   ├── __pii__.py                 # PII redaction (Aadhaar, PAN, etc.)
+│   ├── config.py                 # Pydantic configuration (28 sections)
+│   ├── bus.py                    # Event bus — pub/sub, DLQ, rate limiter
+│   ├── store.py                  # State store — InMemory / Disk / Sqlite
+│   ├── saga.py                   # Saga orchestrator
+│   ├── authz.py                  # Access control & Ed25519 verification
+│   ├── keypair.py                # Ed25519 key management
+│   ├── message.py                # 105+ event types (`Type` enum, `Message` envelope)
+│   ├── pii.py                    # PII redaction (Aadhaar, PAN, etc.)
 │   └── services/                  # 31 nano-services
 │       ├── base.py                # NanoService ABC
 │       ├── mechanism/             # Delegation state machine (core)

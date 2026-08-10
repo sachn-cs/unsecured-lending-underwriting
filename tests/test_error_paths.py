@@ -12,7 +12,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from tests.helpers import BadStr, BrokenStore, ConcreteService, RaisingStrategy
+from helpers import BadStr, BrokenStore, ConcreteService, RaisingStrategy
 from underwrite.bus import EventBus
 from underwrite.config import Configuration
 from underwrite.exceptions import ProtocolError

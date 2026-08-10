@@ -21,7 +21,7 @@ from underwrite.message import Message
 from underwrite.runtime import Runtime, build_authz
 from underwrite.services.audit.handler import Handler as AuditHandler
 from underwrite.services.mechanism.handler import Handler as MechanismHandler
-from underwrite.services.risk.model import RiskModel
+from underwrite.services.risk.model import RiskModel, RiskScoringStrategy
 from underwrite.store import CQRSStore, InMemory, ReadStore, Store
 
 # ---------------------------------------------------------------------------
@@ -32,7 +32,7 @@ from underwrite.store import CQRSStore, InMemory, ReadStore, Store
 class TestSafeStoreGet:
     def test_returns_default_on_exception(self) -> None:
         svc = ConcreteService(name="test_svc_get", bus=LocalBus(), store=InMemory())
-        svc.store = BrokenStore()
+        svc.store = cast(Store, BrokenStore())
         result = svc.safe_store_get("some_key", default="fallback")
         assert result == "fallback"
 
@@ -51,7 +51,7 @@ class TestSafeStoreGet:
 class TestSafeStoreSet:
     def test_returns_false_on_exception(self) -> None:
         svc = ConcreteService(name="test_svc_set", bus=LocalBus(), store=InMemory())
-        svc.store = BrokenStore()
+        svc.store = cast(Store, BrokenStore())
         result = svc.safe_store_set("some_key", "value")
         assert result is False
 
@@ -64,13 +64,13 @@ class TestSafeStoreSet:
 class TestRiskModelPredictFallback:
     def test_falls_back_on_strategy_exception(self) -> None:
         model = RiskModel()
-        model.strategy = RaisingStrategy()
+        model.strategy = cast(RiskScoringStrategy, RaisingStrategy())
         score = model.predict(10000.0, 12.0)
         assert 0.0 <= score <= 1.0
 
     def test_falls_back_for_extreme_input(self) -> None:
         model = RiskModel()
-        model.strategy = RaisingStrategy()
+        model.strategy = cast(RiskScoringStrategy, RaisingStrategy())
         score = model.predict(float("nan"), 12.0)
         assert isinstance(score, float)
         assert 0.0 <= score <= 1.0
@@ -83,7 +83,7 @@ class TestRiskModelPredictFallback:
 
 class TestBusSyncDispatchDLQ:
     def test_handler_failure_sends_to_dlq(self) -> None:
-        bus: EventBus = LocalBus()
+        bus: EventBus | LocalBus = LocalBus()
         bus.subscribe("test.event", lambda e: (_ for _ in ()).throw(ValueError("fail")))
         bus.start()
         event = Message(event_type="test.event", source="test", payload={})
@@ -91,7 +91,7 @@ class TestBusSyncDispatchDLQ:
         assert bus.dlq.count > 0
 
     def test_dlq_contains_event_after_handler_failure(self) -> None:
-        bus: EventBus = LocalBus()
+        bus: EventBus | LocalBus = LocalBus()
         bus.subscribe("test.event3", lambda e: (_ for _ in ()).throw(ValueError("fail")))
         bus.start()
         event = Message(event_type="test.event3", source="test", payload={})
@@ -176,7 +176,7 @@ class TestCQRSStoreHealthFallback:
 
 class TestMechanismRejection:
     def test_repay_unknown_user_emits_rejected(self) -> None:
-        bus: EventBus = LocalBus()
+        bus: EventBus | LocalBus = LocalBus()
         bus.start()
         svc = MechanismHandler(name="mechanism", bus=bus, store=InMemory())
         emitted: list[Message] = []

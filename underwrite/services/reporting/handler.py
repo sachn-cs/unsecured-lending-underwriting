@@ -23,7 +23,7 @@ from underwrite.tracer import Tracer
 from underwrite.validate import PayloadValidator
 
 
-class ReportingHandler(StatefulService):
+class Handler(StatefulService):
     """Generates regulatory reports (RBI, internal) from the audit trail.
 
     Accumulates portfolio-wide counters as well as NPA bucket-wise

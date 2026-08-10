@@ -84,11 +84,11 @@ class Handler(Core):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.__clock: SystemClock = SystemClock()
-        self.__id_generator: IdGenerator = IdGenerator()
+        self.clock: SystemClock = SystemClock()
+        self.id_generator: IdGenerator = IdGenerator()
         self.handlers: dict[str, Any] = {
-            Type.COMMUNICATION_SEND: self.__on_communication_send,
-            Type.STATEMENT_GENERATED: self.__on_statement_generated,
+            Type.COMMUNICATION_SEND: self.on_communication_send,
+            Type.STATEMENT_GENERATED: self.on_statement_generated,
         }
 
     def handle(self, event: Message) -> None:
@@ -103,7 +103,7 @@ class Handler(Core):
         if handler is not None:
             handler(event)
 
-    def __on_communication_send(self, event: Message) -> None:
+    def on_communication_send(self, event: Message) -> None:
         """Send a communication via the configured channel.
 
         Args:
@@ -117,14 +117,14 @@ class Handler(Core):
         if not recipient:
             logger.warning("dropping COMMUNICATION_SEND with missing recipient")
             return
-        message_id: str = f"msg_{recipient}_{self.__clock.now():.0f}_{self.__id_generator.next()}"
+        message_id: str = f"msg_{recipient}_{self.clock.now():.0f}_{self.id_generator.next()}"
         msg = {
             "recipient": recipient,
             "subject": subject,
             "channel": channel,
-            "sent_at": self.__clock.iso(),
+            "sent_at": self.clock.iso(),
         }
-        delivery_status = self.__dispatch_channel(channel, recipient, subject)
+        delivery_status = self.dispatch_channel(channel, recipient, subject)
         self.store.set(f"message:{message_id}", {**msg, "delivery_status": delivery_status})
         if delivery_status == "sent":
             self.emit(
@@ -146,7 +146,7 @@ class Handler(Core):
                 delivery_status,
             )
 
-    def __dispatch_channel(self, channel: str, recipient: str, subject: str) -> str:
+    def dispatch_channel(self, channel: str, recipient: str, subject: str) -> str:
         """Hook for actually delivering the message through a channel.
 
         Subclasses or production deployments can override this to
@@ -162,7 +162,7 @@ class Handler(Core):
         """
         return "queued"
 
-    def __on_statement_generated(self, event: Message) -> None:
+    def on_statement_generated(self, event: Message) -> None:
         """Record that a statement notification was sent.
 
         Args:

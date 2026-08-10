@@ -31,7 +31,7 @@ class TestRiskServiceFaults:
         bus = LocalBus()
         spy = EmitSpy()
         bus.subscribe(Type.RISK_SCORED, spy)
-        svc = RiskHandler(service_id="risk", bus=bus, store=MemoryStore())
+        svc = RiskHandler(name="risk", bus=bus, store=MemoryStore())
         svc.set_model(FaultyModel())
 
         event = Message(
@@ -53,7 +53,7 @@ class TestRiskServiceFaults:
         bus = LocalBus()
         spy = EmitSpy()
         bus.subscribe(Type.RISK_EARLY_WARNING, spy)
-        svc = RiskHandler(service_id="risk", bus=bus, store=MemoryStore())
+        svc = RiskHandler(name="risk", bus=bus, store=MemoryStore())
 
         event = Message(
             event_type=Type.LOAN_ORIGINATED,
@@ -72,7 +72,7 @@ class TestRiskServiceFaults:
 
 class TestAuditServiceFaults:
     def test_load_corrupted_jsonl_skips_bad_lines(self, tmp_path: Any) -> None:
-        svc = AuditHandler(service_id="audit", bus=LocalBus(), store=MemoryStore())
+        svc = AuditHandler(name="audit", bus=LocalBus(), store=MemoryStore())
         p = tmp_path / "audit.jsonl"
         p.write_text('{"event_type":"a","source":"s"}\nnot json\n{"event_type":"b","source":"s"}\n')
         svc.load_jsonl(str(p))
@@ -81,7 +81,7 @@ class TestAuditServiceFaults:
         assert svc.ledger[1]["event_type"] == "b"
 
     def test_load_nonexistent_file_clears_ledger(self, tmp_path: Any) -> None:
-        svc = AuditHandler(service_id="audit", bus=LocalBus(), store=MemoryStore())
+        svc = AuditHandler(name="audit", bus=LocalBus(), store=MemoryStore())
         svc.handle(Message(event_type="test", source="test", payload={"dummy": True}))
         assert len(svc.ledger) == 1
         svc.load_jsonl(str(tmp_path / "nonexistent.jsonl"))

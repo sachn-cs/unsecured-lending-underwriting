@@ -18,7 +18,7 @@ from underwrite.store import MemoryStore
 
 
 def risk(bus=None) -> Handler:
-    return RiskHandler(service_id="risk", bus=bus or LocalBus(), store=MemoryStore())
+    return RiskHandler(name="risk", bus=bus or LocalBus(), store=MemoryStore())
 
 
 class TestEarlyWarning:

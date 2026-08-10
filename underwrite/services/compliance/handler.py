@@ -173,7 +173,7 @@ class Handler(StatefulService):
 
     def __init__(
         self,
-        service_id: str,
+        name: str,
         bus: EventBus,
         store: Store,
         identity: Keypair | None = None,
@@ -208,7 +208,7 @@ class Handler(StatefulService):
         self.__aml_blocklist_path: str = config.aml_blocklist_path
         self.__kyc_providers: dict[str, Any] = config.kyc_providers
         super().__init__(
-            service_id=service_id,
+            name=name,
             identity=identity,
             bus=bus,
             store=store,

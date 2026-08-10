@@ -18,7 +18,7 @@ from underwrite.store import MemoryStore
 
 
 def npa(bus=None) -> Handler:
-    return NpaHandler(service_id="npa", bus=bus or LocalBus(), store=MemoryStore())
+    return NpaHandler(name="npa", bus=bus or LocalBus(), store=MemoryStore())
 
 
 class TestBucketClassification:

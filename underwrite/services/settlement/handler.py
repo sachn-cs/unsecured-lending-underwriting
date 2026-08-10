@@ -28,7 +28,7 @@ class Handler(StatefulService):
 
     def __init__(
         self,
-        service_id: str,
+        name: str,
         bus: EventBus,
         store: Store,
         identity: Keypair | None = None,
@@ -42,7 +42,7 @@ class Handler(StatefulService):
         max_concurrent: int = 0,
     ) -> None:
         super().__init__(
-            service_id=service_id,
+            name=name,
             identity=identity,
             bus=bus,
             store=store,

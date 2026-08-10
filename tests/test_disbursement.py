@@ -10,7 +10,7 @@ from underwrite.store import MemoryStore
 
 
 def svc(bus=None) -> Handler:
-    return DisbursementHandler(service_id="disbursement", bus=bus or LocalBus(), store=MemoryStore())
+    return DisbursementHandler(name="disbursement", bus=bus or LocalBus(), store=MemoryStore())
 
 
 class TestDisbursementService:

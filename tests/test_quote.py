@@ -15,7 +15,7 @@ from underwrite.store import MemoryStore
 
 
 def quote(bus=None) -> Handler:
-    return QuoteHandler(service_id="quote", bus=bus, store=MemoryStore())
+    return QuoteHandler(name="quote", bus=bus, store=MemoryStore())
 
 
 def emit_quote(svc, **overrides) -> None:

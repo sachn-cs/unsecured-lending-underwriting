@@ -12,7 +12,7 @@ from underwrite.store import MemoryStore
 def svc(**kw) -> Handler:
     kw.setdefault("bus", LocalBus())
     kw.setdefault("store", MemoryStore())
-    return ConsentHandler(service_id="consent", **kw)
+    return ConsentHandler(name="consent", **kw)
 
 
 class TestConsentRecording:

@@ -10,7 +10,7 @@ from underwrite.store import MemoryStore
 
 
 def svc(**kw) -> Handler:
-    return DsrHandler(service_id="dsr", bus=LocalBus(), store=MemoryStore(), **kw)
+    return DsrHandler(name="dsr", bus=LocalBus(), store=MemoryStore(), **kw)
 
 
 class TestDsrRequestCreation:
@@ -60,7 +60,7 @@ class TestDsrRequestCreation:
         bus = LocalBus()
         received: list = []
         bus.subscribe(Type.DSR_REQUESTED, lambda e: received.append(e))
-        s = DsrHandler(service_id="dsr", bus=bus, store=MemoryStore())
+        s = DsrHandler(name="dsr", bus=bus, store=MemoryStore())
         bus.start()
         s.handle(
             Message(event_type=Type.DSR_REQUEST, source="test", payload={"user_id": "u5", "request_type": "access"})

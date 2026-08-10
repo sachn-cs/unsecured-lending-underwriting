@@ -18,11 +18,11 @@ from underwrite.store import MemoryStore
 class TestIdentityService:
     def test_register_creates_key_in_store(self) -> None:
         store = MemoryStore()
-        svc = IdentityHandler(service_id="identity", store=store, bus=LocalBus())
-        svc.handle(Message(event_type=Type.IDENTITY_REGISTER, source="test", payload={"service_id": "risk"}))
+        svc = IdentityHandler(name="identity", store=store, bus=LocalBus())
+        svc.handle(Message(event_type=Type.IDENTITY_REGISTER, source="test", payload={"name": "risk"}))
         stored = store.get("identity:risk")
         assert stored is not None
-        assert stored["service_id"] == "risk"
+        assert stored["name"] == "risk"
         assert len(stored["public_key"]) > 0
 
     def test_register_emits_registered_event(self) -> None:
@@ -30,21 +30,21 @@ class TestIdentityService:
         received: list[Message] = []
         bus.subscribe(Type.IDENTITY_REGISTERED, lambda e: received.append(e))
         store = MemoryStore()
-        svc = IdentityHandler(service_id="identity", store=store, bus=bus or LocalBus())
+        svc = IdentityHandler(name="identity", store=store, bus=bus or LocalBus())
         bus.start()
-        svc.handle(Message(event_type=Type.IDENTITY_REGISTER, source="test", payload={"service_id": "fraud"}))
+        svc.handle(Message(event_type=Type.IDENTITY_REGISTER, source="test", payload={"name": "fraud"}))
         assert len(received) == 1
-        assert received[0].payload["service_id"] == "fraud"
+        assert received[0].payload["name"] == "fraud"
         assert len(received[0].payload["public_key"]) > 0
 
     def test_rotate_updates_public_key(self) -> None:
         store = MemoryStore()
-        svc = IdentityHandler(service_id="identity", store=store, bus=LocalBus())
-        svc.handle(Message(event_type=Type.IDENTITY_REGISTER, source="test", payload={"service_id": "audit"}))
+        svc = IdentityHandler(name="identity", store=store, bus=LocalBus())
+        svc.handle(Message(event_type=Type.IDENTITY_REGISTER, source="test", payload={"name": "audit"}))
         orig_rec = store.get("identity:audit")
         assert orig_rec is not None
         original = orig_rec["public_key"]
-        svc.handle(Message(event_type=Type.IDENTITY_ROTATE, source="test", payload={"service_id": "audit"}))
+        svc.handle(Message(event_type=Type.IDENTITY_ROTATE, source="test", payload={"name": "audit"}))
         rot_rec = store.get("identity:audit")
         assert rot_rec is not None
         rotated = rot_rec["public_key"]
@@ -55,17 +55,17 @@ class TestIdentityService:
         received: list[Message] = []
         bus.subscribe(Type.IDENTITY_ROTATED, lambda e: received.append(e))
         store = MemoryStore()
-        svc = IdentityHandler(service_id="identity", store=store, bus=bus or LocalBus())
+        svc = IdentityHandler(name="identity", store=store, bus=bus or LocalBus())
         bus.start()
-        svc.handle(Message(event_type=Type.IDENTITY_REGISTER, source="test", payload={"service_id": "gov"}))
-        svc.handle(Message(event_type=Type.IDENTITY_ROTATE, source="test", payload={"service_id": "gov"}))
+        svc.handle(Message(event_type=Type.IDENTITY_REGISTER, source="test", payload={"name": "gov"}))
+        svc.handle(Message(event_type=Type.IDENTITY_ROTATE, source="test", payload={"name": "gov"}))
         assert len(received) == 1
 
     def test_multiple_registrations_independent(self) -> None:
         store = MemoryStore()
-        svc = IdentityHandler(service_id="identity", store=store, bus=LocalBus())
-        svc.handle(Message(event_type=Type.IDENTITY_REGISTER, source="test", payload={"service_id": "a"}))
-        svc.handle(Message(event_type=Type.IDENTITY_REGISTER, source="test", payload={"service_id": "b"}))
+        svc = IdentityHandler(name="identity", store=store, bus=LocalBus())
+        svc.handle(Message(event_type=Type.IDENTITY_REGISTER, source="test", payload={"name": "a"}))
+        svc.handle(Message(event_type=Type.IDENTITY_REGISTER, source="test", payload={"name": "b"}))
         assert store.get("identity:a") is not None
         assert store.get("identity:b") is not None
         key_a = store.get("identity:a")
@@ -76,7 +76,7 @@ class TestIdentityService:
 
     def test_ignores_unrelated_events(self) -> None:
         store = MemoryStore()
-        svc = IdentityHandler(service_id="identity", store=store, bus=LocalBus())
+        svc = IdentityHandler(name="identity", store=store, bus=LocalBus())
         svc.handle(Message(event_type="seed.added", source="test", payload={}))
         svc.handle(Message(event_type=Type.LOAN_ORIGINATED, source="test", payload={}))
         assert len(store.keys()) == 0
@@ -84,6 +84,6 @@ class TestIdentityService:
     def test_rejects_empty_service_id(self) -> None:
         from underwrite.exceptions import ProtocolError
 
-        svc = IdentityHandler(service_id="identity", store=MemoryStore(), bus=LocalBus())
+        svc = IdentityHandler(name="identity", store=MemoryStore(), bus=LocalBus())
         with pytest.raises(ProtocolError):
-            svc.handle(Message(event_type=Type.IDENTITY_REGISTER, source="test", payload={"service_id": ""}))
+            svc.handle(Message(event_type=Type.IDENTITY_REGISTER, source="test", payload={"name": ""}))

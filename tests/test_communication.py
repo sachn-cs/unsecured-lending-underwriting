@@ -10,7 +10,7 @@ from underwrite.store import MemoryStore
 
 class TestCommunicationService:
     def test_send_message_creates_record(self) -> None:
-        svc = CommHandler(service_id="comm", bus=LocalBus(), store=MemoryStore())
+        svc = CommHandler(name="comm", bus=LocalBus(), store=MemoryStore())
         svc.handle(
             Message(
                 event_type="communication.send",
@@ -32,7 +32,7 @@ class TestCommunicationService:
         bus = LocalBus()
         received: list = []
         bus.subscribe("communication.sent", lambda e: received.append(e))
-        svc = CommHandler(service_id="comm", bus=bus, store=MemoryStore())
+        svc = CommHandler(name="comm", bus=bus, store=MemoryStore())
         bus.start()
         svc.handle(
             Message(
@@ -49,7 +49,7 @@ class TestCommunicationService:
         assert rec["delivery_status"] == "queued"
 
     def test_send_with_custom_channel(self) -> None:
-        svc = CommHandler(service_id="comm", bus=LocalBus(), store=MemoryStore())
+        svc = CommHandler(name="comm", bus=LocalBus(), store=MemoryStore())
         svc.handle(
             Message(
                 event_type="communication.send",
@@ -64,7 +64,7 @@ class TestCommunicationService:
         assert rec["channel"] == "sms"
 
     def test_rejects_empty_recipient(self) -> None:
-        svc = CommHandler(service_id="comm", bus=LocalBus(), store=MemoryStore())
+        svc = CommHandler(name="comm", bus=LocalBus(), store=MemoryStore())
         svc.handle(
             Message(
                 event_type="communication.send",
@@ -75,18 +75,18 @@ class TestCommunicationService:
         assert len(svc.store.keys("message:")) == 0
 
     def test_handles_statement_generated(self) -> None:
-        svc = CommHandler(service_id="comm", bus=LocalBus(), store=MemoryStore())
+        svc = CommHandler(name="comm", bus=LocalBus(), store=MemoryStore())
         svc.handle(Message(event_type=Type.STATEMENT_GENERATED, source="test", payload={"loan_id": "L1"}))
         keys = svc.store.keys("comm_stmt:L1:")
         assert len(keys) == 1
 
     def test_ignores_unrelated_events(self) -> None:
-        svc = CommHandler(service_id="comm", bus=LocalBus(), store=MemoryStore())
+        svc = CommHandler(name="comm", bus=LocalBus(), store=MemoryStore())
         svc.handle(Message(event_type="seed.added", source="test", payload={}))
         assert len(svc.store.keys("message:")) == 0
 
     def test_multiple_messages_to_same_recipient(self) -> None:
-        svc = CommHandler(service_id="comm", bus=LocalBus(), store=MemoryStore())
+        svc = CommHandler(name="comm", bus=LocalBus(), store=MemoryStore())
         svc.handle(
             Message(
                 event_type="communication.send",

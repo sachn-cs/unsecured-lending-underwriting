@@ -39,7 +39,7 @@ class Handler(StatefulService):
 
     def __init__(
         self,
-        service_id: str,
+        name: str,
         bus: EventBus,
         store: Store,
         cibil_api_key: str = "",
@@ -58,7 +58,7 @@ class Handler(StatefulService):
         """Initialize the credit bureau service with client and store.
 
         Args:
-            service_id: Unique identifier for this service instance.
+            name: Unique name for this service instance.
             bus: Message bus for pub/sub.
             store: State persistence backend.
             cibil_api_key: CIBIL API key (enables HttpCreditBureauClient).
@@ -79,7 +79,7 @@ class Handler(StatefulService):
 
         """
         super().__init__(
-            service_id=service_id,
+            name=name,
             identity=identity,
             bus=bus,
             store=store,

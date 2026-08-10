@@ -301,11 +301,11 @@ class ServiceHelper(Core):
 
 class TestCore:
     def test_service_id(self) -> None:
-        svc: ServiceHelper = ServiceHelper(service_id="mysvc", bus=LocalBus(), store=MemoryStore())
+        svc: ServiceHelper = ServiceHelper(name="mysvc", bus=LocalBus(), store=MemoryStore())
         assert svc.service_id == "mysvc"
 
     def test_identity_auto_created(self) -> None:
-        svc: ServiceHelper = ServiceHelper(service_id="test", bus=LocalBus(), store=MemoryStore())
+        svc: ServiceHelper = ServiceHelper(name="test", bus=LocalBus(), store=MemoryStore())
         assert svc.service_id == "test"
         sig: str = svc.sign_event("test_payload")
         assert len(sig) > 0
@@ -318,7 +318,7 @@ class TestCore:
             received.append(event)
 
         bus.subscribe("custom.event", handler)
-        svc: ServiceHelper = ServiceHelper(service_id="emitter", bus=bus, store=MemoryStore())
+        svc: ServiceHelper = ServiceHelper(name="emitter", bus=bus, store=MemoryStore())
         svc.emit("custom.event", {"msg": "hello"})
         bus.start()
         time.sleep(0.01)
@@ -326,13 +326,13 @@ class TestCore:
         assert received[0].event_type == "custom.event"
 
     def test_event_has_signature(self) -> None:
-        svc: ServiceHelper = ServiceHelper(service_id="signer", bus=LocalBus(), store=MemoryStore())
+        svc: ServiceHelper = ServiceHelper(name="signer", bus=LocalBus(), store=MemoryStore())
         event: Message = svc.emit("signed.event", {"data": 1})
         assert event.signature != ""
 
     def test_subscribe_receives_events(self) -> None:
         bus: LocalBus = LocalBus()
-        svc: ServiceHelper = ServiceHelper(service_id="subscriber", bus=bus, store=MemoryStore())
+        svc: ServiceHelper = ServiceHelper(name="subscriber", bus=bus, store=MemoryStore())
         svc.subscribe("incoming")
         bus.start()
         svc.start()
@@ -343,7 +343,7 @@ class TestCore:
 
     def test_stop_unsubscribes(self) -> None:
         bus: LocalBus = LocalBus()
-        svc: ServiceHelper = ServiceHelper(service_id="stoppable", bus=bus, store=MemoryStore())
+        svc: ServiceHelper = ServiceHelper(name="stoppable", bus=bus, store=MemoryStore())
         svc.subscribe("incoming")
         svc.start()
         svc.stop()
@@ -360,7 +360,7 @@ class TestCore:
             received.append(event)
 
         bus.subscribe("response", handler)
-        svc: ServiceHelper = ServiceHelper(service_id="responder", bus=bus, store=MemoryStore())
+        svc: ServiceHelper = ServiceHelper(name="responder", bus=bus, store=MemoryStore())
         svc.subscribe("request")
         bus.start()
         svc.start()

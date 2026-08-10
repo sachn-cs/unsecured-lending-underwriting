@@ -9,33 +9,33 @@ from underwrite.tracer import Console, Span, SpanExporter, Tracer
 
 class TestTracer:
     def test_start_span_creates_span(self) -> None:
-        t = Tracer(service_id="test")
+        t = Tracer(name="test")
         span = t.start_span("op1")
         assert span.operation == "op1"
-        assert span.service_id == "test"
+        assert span.name == "test"
         assert span.trace_id != ""
 
     def test_end_span_records_end_time(self) -> None:
-        t = Tracer(service_id="test")
+        t = Tracer(name="test")
         span = t.start_span("op1")
         t.end_span(span)
         assert span.end_ms > 0
         assert len(t.spans) == 1
 
     def test_span_records_error(self) -> None:
-        t = Tracer(service_id="test")
+        t = Tracer(name="test")
         span = t.start_span("op1")
         t.end_span(span, error="boom")
         assert span.error == "boom"
 
     def test_trace_context_manager_records_span(self) -> None:
-        t = Tracer(service_id="test")
+        t = Tracer(name="test")
         with t.trace("ctx_op") as span:
             assert span.operation == "ctx_op"
         assert len(t.spans) == 1
 
     def test_trace_context_manager_records_exception(self) -> None:
-        t = Tracer(service_id="test")
+        t = Tracer(name="test")
         with pytest.raises(ValueError):
             with t.trace("fail_op"):
                 raise ValueError("bad")
@@ -49,13 +49,13 @@ class TestTracer:
             def export(self, spans: list) -> None:
                 exported.extend(spans)
 
-        t = Tracer(service_id="test", exporter=CaptureExporter())
+        t = Tracer(name="test", exporter=CaptureExporter())
         span = t.start_span("op1")
         t.end_span(span)
         assert len(exported) == 1
 
     def test_max_spans_evicts_oldest(self) -> None:
-        t = Tracer(service_id="test", max_spans=3)
+        t = Tracer(name="test", max_spans=3)
         for i in range(5):
             span = t.start_span(f"op{i}")
             t.end_span(span)
@@ -69,7 +69,7 @@ class TestTracer:
         assert "op4" in ops
 
     def test_max_spans_no_eviction_below_limit(self) -> None:
-        t = Tracer(service_id="test", max_spans=10)
+        t = Tracer(name="test", max_spans=10)
         for i in range(5):
             span = t.start_span(f"op{i}")
             t.end_span(span)
@@ -83,7 +83,7 @@ class TestTracer:
                 exported.append(len(spans))
 
         t = Tracer(
-            service_id="test",
+            name="test",
             exporter=CaptureExporter(),
             max_spans=2,
         )
@@ -102,6 +102,6 @@ class TestTracer:
 class TestConsoleSpanExporter:
     def test_export_does_not_raise(self) -> None:
         exporter = Console()
-        span = Span(trace_id="t", span_id="s", parent_span_id="p", service_id="svc", operation="op", start_ms=0.0)
+        span = Span(trace_id="t", span_id="s", parent_span_id="p", name="svc", operation="op", start_ms=0.0)
         span.end_ms = 1.0
         exporter.export([span])

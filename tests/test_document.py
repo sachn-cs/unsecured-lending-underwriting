@@ -10,7 +10,7 @@ from underwrite.store import MemoryStore
 
 
 def svc(bus=None) -> Handler:
-    return DocumentHandler(service_id="document", bus=bus or LocalBus(), store=MemoryStore())
+    return DocumentHandler(name="document", bus=bus or LocalBus(), store=MemoryStore())
 
 
 class TestDocumentService:

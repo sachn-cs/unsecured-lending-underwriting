@@ -29,19 +29,19 @@ class Handler(Core):
         Args:
             event: The identity registration event.
         """
-        service_id: str = PayloadValidator().non_empty(event.payload, "service_id")
+        service_id: str = PayloadValidator().non_empty(event.payload, "name")
         identity: Keypair = Keypair.create(service_id)
         self.store.set(
             f"identity:{service_id}",
             {
-                "service_id": service_id,
+                "name": service_id,
                 "public_key": identity.public_key,
             },
         )
         self.emit(
             Type.IDENTITY_REGISTERED,
             {
-                "service_id": service_id,
+                "name": service_id,
                 "public_key": identity.public_key,
             },
             correlation_id=event.correlation_id,
@@ -53,7 +53,7 @@ class Handler(Core):
         Args:
             event: The identity rotation event.
         """
-        service_id = PayloadValidator().non_empty(event.payload, "service_id")
+        service_id = PayloadValidator().non_empty(event.payload, "name")
         with self.state_lock:
             existing = self.store.get(f"identity:{service_id}")
             if not existing:
@@ -63,14 +63,14 @@ class Handler(Core):
             self.store.set(
                 f"identity:{service_id}",
                 {
-                    "service_id": service_id,
+                    "name": service_id,
                     "public_key": identity.public_key,
                 },
             )
         self.emit(
             Type.IDENTITY_ROTATED,
             {
-                "service_id": service_id,
+                "name": service_id,
                 "public_key": identity.public_key,
             },
             correlation_id=event.correlation_id,

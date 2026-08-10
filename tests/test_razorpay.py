@@ -10,7 +10,7 @@ from underwrite.store import MemoryStore
 
 
 def svc(bus=None) -> Handler:
-    return RazorpayHandler(service_id="razorpay", bus=bus or LocalBus(), store=MemoryStore())
+    return RazorpayHandler(name="razorpay", bus=bus or LocalBus(), store=MemoryStore())
 
 
 def _configure_webhook_secret(svc_inst, secret: str) -> None:

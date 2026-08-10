@@ -16,7 +16,7 @@ from underwrite.store import MemoryStore
 
 
 def notify(bus=None) -> Handler:
-    return NotificationHandler(service_id="notification", bus=bus or LocalBus(), store=MemoryStore())
+    return NotificationHandler(name="notification", bus=bus or LocalBus(), store=MemoryStore())
 
 
 class TestNotificationService:

@@ -163,10 +163,6 @@ class Prometheus:
 _exporter = Prometheus()
 
 
-def prometheus_text(runtime: Any) -> str:
-    return _exporter.to_prometheus_text(runtime)
-
-
 class PrometheusMiddleware:
     """Starlette/FastAPI middleware that exposes Prometheus metrics.
 

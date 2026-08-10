@@ -22,7 +22,7 @@ def graph(store_data: dict[str, Any], bus=None) -> Handler:
     store = MemoryStore()
     if store_data:
         store.set("protocol:state", store_data)
-    return GraphHandler(service_id="graph", store=store, bus=bus or LocalBus())
+    return GraphHandler(name="graph", store=store, bus=bus or LocalBus())
 
 
 class TestPathQuery:
@@ -179,6 +179,6 @@ class TestEdgeCases:
         assert svc.is_running is False
 
     def test_handles_none_store(self) -> None:
-        svc = GraphHandler(service_id="graph", store=MemoryStore(), bus=LocalBus())
+        svc = GraphHandler(name="graph", store=MemoryStore(), bus=LocalBus())
         svc.handle(Message(event_type="graph_users", source="test", payload={}))
         assert svc.is_running is False

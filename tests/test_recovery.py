@@ -16,7 +16,7 @@ from underwrite.store import MemoryStore
 
 
 def _recovery(bus=None) -> Handler:
-    svc = RecoveryHandler(service_id="recovery", bus=bus, store=MemoryStore())
+    svc = RecoveryHandler(name="recovery", bus=bus, store=MemoryStore())
     svc.repo.save({})
     return svc
 

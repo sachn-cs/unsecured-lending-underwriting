@@ -100,7 +100,7 @@ def build_tracer(config: Configuration) -> Tracer | None:
         exporter = Console()
     elif config.tracing.exporter == "otlp":
         exporter = Otlp(service_name="underwrite")
-    return Tracer(service_id="runtime", exporter=exporter)
+    return Tracer(name="runtime", exporter=exporter)
 
 
 def build_store(config: Configuration) -> Store:
@@ -439,7 +439,7 @@ class Runtime:
             extra["response_time_days"] = dconf.response_time_days
             extra["grievance_response_days"] = dconf.grievance_response_days
         svc = cls(
-            service_id=service_name,
+            name=service_name,
             identity=identity,
             bus=self.__bus,
             store=self.__store,

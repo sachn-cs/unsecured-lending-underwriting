@@ -68,7 +68,7 @@ class Handler(StatefulService):
 
     def __init__(
         self,
-        service_id: str,
+        name: str,
         bus: EventBus,
         store: Store,
         identity: Keypair | None = None,
@@ -93,7 +93,7 @@ class Handler(StatefulService):
         self.__late_percent: float = config.late_payment_percent
         self.__max_penal: float = config.max_penal_interest_per_loan
         super().__init__(
-            service_id=service_id,
+            name=name,
             identity=identity,
             bus=bus,
             store=store,

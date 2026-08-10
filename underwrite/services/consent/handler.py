@@ -53,7 +53,7 @@ class Handler(StatefulService):
 
     def __init__(
         self,
-        service_id: str,
+        name: str,
         bus: EventBus,
         store: Store,
         identity: Keypair | None = None,
@@ -82,7 +82,7 @@ class Handler(StatefulService):
         self.__required_purposes: list[str] = config.required_purposes
         self.__consent_validity_days: int = config.consent_validity_days
         super().__init__(
-            service_id=service_id,
+            name=name,
             identity=identity,
             bus=bus,
             store=store,

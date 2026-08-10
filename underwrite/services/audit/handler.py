@@ -41,7 +41,7 @@ class Handler(StatefulService):
 
     def __init__(
         self,
-        service_id: str,
+        name: str,
         bus: EventBus,
         store: Store,
         max_ledger: int = 100000,
@@ -59,7 +59,7 @@ class Handler(StatefulService):
         """Initialize the audit service with a bounded in-memory ledger.
 
         Args:
-            service_id: Unique identifier for this service instance.
+            name: Unique name for this service instance.
             bus: Message bus for pub/sub.
             store: State persistence backend.
             max_ledger: Maximum number of records to keep. Oldest entries
@@ -78,7 +78,7 @@ class Handler(StatefulService):
 
         """
         super().__init__(
-            service_id=service_id,
+            name=name,
             identity=identity,
             bus=bus,
             store=store,

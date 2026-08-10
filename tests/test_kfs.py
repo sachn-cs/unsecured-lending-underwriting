@@ -10,7 +10,7 @@ from underwrite.store import MemoryStore
 
 
 def svc(bus=None) -> Handler:
-    return KfsHandler(service_id="kfs", bus=bus or LocalBus(), store=MemoryStore())
+    return KfsHandler(name="kfs", bus=bus or LocalBus(), store=MemoryStore())
 
 
 class TestKfsService:

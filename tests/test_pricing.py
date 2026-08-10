@@ -22,7 +22,7 @@ from underwrite.store import MemoryStore
 def svc(**kwargs) -> Handler:
     kwargs.setdefault("bus", LocalBus())
     kwargs.setdefault("store", MemoryStore())
-    return PricingHandler(service_id="pricing", **kwargs)
+    return PricingHandler(name="pricing", **kwargs)
 
 
 def request(svc, bus, **kw) -> None:

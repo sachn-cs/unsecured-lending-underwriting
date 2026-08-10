@@ -10,7 +10,7 @@ from underwrite.store import MemoryStore
 
 
 def svc(bus=None) -> Handler:
-    return CollectionHandler(service_id="collection", bus=bus or LocalBus(), store=MemoryStore())
+    return CollectionHandler(name="collection", bus=bus or LocalBus(), store=MemoryStore())
 
 
 class TestCollectionService:

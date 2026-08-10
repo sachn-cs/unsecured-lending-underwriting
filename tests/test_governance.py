@@ -16,7 +16,7 @@ from underwrite.store import MemoryStore
 
 
 def gov(bus=None) -> Handler:
-    return GovHandler(service_id="gov", bus=bus or LocalBus(), store=MemoryStore())
+    return GovHandler(name="gov", bus=bus or LocalBus(), store=MemoryStore())
 
 
 class TestGovernanceService:

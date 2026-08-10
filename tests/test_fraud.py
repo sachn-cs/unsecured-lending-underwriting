@@ -22,7 +22,7 @@ from underwrite.store import MemoryStore
 
 
 def fraud(bus=None) -> Handler:
-    return FraudHandler(service_id="fraud", bus=bus or LocalBus(), store=MemoryStore())
+    return FraudHandler(name="fraud", bus=bus or LocalBus(), store=MemoryStore())
 
 
 def originate(svc: Handler, borrower: str, principal: int = 1000) -> None:

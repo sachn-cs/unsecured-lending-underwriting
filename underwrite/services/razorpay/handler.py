@@ -71,7 +71,7 @@ class Handler(StatefulService):
 
     def __init__(
         self,
-        service_id: str,
+        name: str,
         bus: EventBus,
         store: Store,
         identity: Keypair | None = None,
@@ -102,7 +102,7 @@ class Handler(StatefulService):
             timeout_seconds=kwargs.pop("timeout_seconds", 30),
         )
         super().__init__(
-            service_id=service_id,
+            name=name,
             identity=identity,
             bus=bus,
             store=store,

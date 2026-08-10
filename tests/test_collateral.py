@@ -18,7 +18,7 @@ from underwrite.store import MemoryStore
 
 
 def collateral(bus=None) -> Handler:
-    return CollateralHandler(service_id="collateral", bus=bus or LocalBus(), store=MemoryStore())
+    return CollateralHandler(name="collateral", bus=bus or LocalBus(), store=MemoryStore())
 
 
 class TestCollateralService:

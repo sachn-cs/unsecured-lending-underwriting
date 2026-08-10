@@ -12,7 +12,7 @@ from underwrite.store import MemoryStore
 
 
 def svc(bus=None) -> Handler:
-    return SettlementHandler(service_id="settlement", bus=bus or LocalBus(), store=MemoryStore())
+    return SettlementHandler(name="settlement", bus=bus or LocalBus(), store=MemoryStore())
 
 
 class TestSettlementService:

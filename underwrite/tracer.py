@@ -31,7 +31,7 @@ class Span:
     trace_id: str
     span_id: str
     parent_span_id: str
-    service_id: str
+    name: str
     operation: str
     start_ms: float
     end_ms: float = 0.0
@@ -55,8 +55,8 @@ class SpanExporter:
 class Tracer:
     """Creates and manages spans for a service."""
 
-    def __init__(self, service_id: str, exporter: SpanExporter | None = None, max_spans: int = 10000) -> None:
-        self.__service_id: str = service_id
+    def __init__(self, name: str, exporter: SpanExporter | None = None, max_spans: int = 10000) -> None:
+        self.__name: str = name
         self.__exporter: SpanExporter = exporter or SpanExporter()
         self.__lock: threading.Lock = threading.Lock()
         self.__spans: list[Span] = []
@@ -96,7 +96,7 @@ class Tracer:
             trace_id=trace_id or str(uuid.uuid4()),
             span_id=str(uuid.uuid4()),
             parent_span_id=parent_span_id,
-            service_id=self.__service_id,
+            name=self.__name,
             operation=operation,
             start_ms=time.perf_counter() * 1000.0,
             tags=tags or {},
@@ -180,7 +180,7 @@ class Console(SpanExporter):
             logger.info(
                 "[trace] {} {}.{} {:.1f}ms parent={}{} {}",
                 span.trace_id[:8],
-                span.service_id,
+                span.name,
                 span.operation,
                 duration,
                 span.parent_span_id[:8],
@@ -256,7 +256,7 @@ class Otlp(SpanExporter):
                     **span.tags,
                     "trace_id": span.trace_id,
                     "span_id": span.span_id,
-                    "service_id": span.service_id,
+                    "service_id": span.name,
                     "duration_ms": f"{span.end_ms - span.start_ms:.1f}",
                 },
             )

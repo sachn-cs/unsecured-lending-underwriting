@@ -10,7 +10,7 @@ from underwrite.store import MemoryStore
 
 
 def svc(bus=None) -> Handler:
-    return UnderwriterHandler(service_id="underwriter", bus=bus or LocalBus(), store=MemoryStore())
+    return UnderwriterHandler(name="underwriter", bus=bus or LocalBus(), store=MemoryStore())
 
 
 def request(svc, bus, **kw) -> None:

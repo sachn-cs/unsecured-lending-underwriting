@@ -1,7 +1,7 @@
 """Abstract base class for every nano service.
 
 Each service:
-  - Has a unique service_id
+  - Has a unique id (BSON-style, auto-generated), name (human-readable)
   - Owns an Ed25519 Keypair for signing its emitted events
   - Subscribes to events on a shared EventBus
   - Persists state through a Store
@@ -46,6 +46,7 @@ from underwrite.secrets import Manager
 from underwrite.store import Store
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
+from underwrite.utils import generate_id, now_iso
 from underwrite.validate import PayloadValidator
 
 MAX_EXECUTOR_QUEUE_FACTOR: int = 2
@@ -55,7 +56,7 @@ MAX_EXECUTOR_QUEUE_FACTOR: int = 2
 class Dependencies:
     """Group of optional dependencies every service handler may receive.
 
-    Use ``Core.from_dependencies(service_id, deps)`` to construct a
+    Use ``Core.from_dependencies(name, deps)`` to construct a
     ``Core`` from a ``Dependencies`` bundle. Each field maps to a
     constructor argument of the same name on ``Core``.
     """
@@ -84,14 +85,14 @@ class Emitter:
 
     def __init__(
         self,
-        service_id: str,
+        name: str,
         identity: Keypair,
         bus: EventBus,
         metrics: Collector | None,
         tracer: Tracer | None,
         authz: AccessControl | None,
     ) -> None:
-        self.__service_id: str = service_id
+        self.__name: str = name
         self.__identity: Keypair = identity
         self.__bus: EventBus = bus
         self.__metrics: Collector | None = metrics
@@ -115,7 +116,7 @@ class Emitter:
             The signed Message that was published.
         """
         if self.__authz:
-            self.__authz.assert_publish(self.__service_id, event_type)
+            self.__authz.assert_publish(self.__name, event_type)
         trace_id: str = ""
         parent_span_id: str = ""
         if self.__tracer:
@@ -123,7 +124,7 @@ class Emitter:
         signed: Message = Message.signed(
             self.__identity,
             type=event_type,
-            source=self.__service_id,
+            source=self.__name,
             payload=payload,
             correlation_id=correlation_id or "",
             trace_id=trace_id,
@@ -134,7 +135,7 @@ class Emitter:
             self.__metrics.increment(
                 "events.emitted",
                 {
-                    "service": self.__service_id,
+                    "service": self.__name,
                     "event_type": event_type,
                 },
             )
@@ -151,7 +152,7 @@ class Core(ABC):
 
     def __init__(
         self,
-        service_id: str,
+        name: str,
         identity: Keypair | None = None,
         bus: EventBus | None = None,
         store: Store | None = None,
@@ -167,7 +168,9 @@ class Core(ABC):
         """Initialize the nano service.
 
         Args:
-            service_id: Unique identifier for this service instance.
+            name: Unique name for this service instance. The instance
+                gets an auto-generated `id` (BSON-style) and `created_at`
+                timestamp at construction.
             identity: Ed25519 identity for signing events. Created if omitted.
             bus: Message bus for pub/sub. Uses LocalBus if omitted.
             store: State persistence backend. Uses MemoryStore if omitted.
@@ -183,18 +186,23 @@ class Core(ABC):
             max_concurrent: Max concurrent handler threads
                 (0 = synchronous).
         """
-        self.__service_id: str = service_id
+        self.__name: str = name
+        self.id: str = generate_id()
+        self.type: str = type(self).__name__
+        self.ref: str = f"{name}:"
+        now: str = now_iso()
+        self.created_at: str = now
+        self.updated_at: str = now
         if identity is None:
-            identity = Keypair.create(service_id, secrets_manager=secrets_manager)
+            identity = Keypair.create(name, secrets_manager=secrets_manager)
         self.__identity: Keypair = identity
         if bus is None:
             raise ValueError(
-                f"{type(self).__name__}({service_id!r}) requires bus; "
-                "construct one with Runtime as the composition root."
+                f"{type(self).__name__}({name!r}) requires bus; " "construct one with Runtime as the composition root."
             )
         if store is None:
             raise ValueError(
-                f"{type(self).__name__}({service_id!r}) requires store; "
+                f"{type(self).__name__}({name!r}) requires store; "
                 "construct one with Runtime as the composition root."
             )
         self.__bus: EventBus = bus
@@ -220,13 +228,13 @@ class Core(ABC):
         self.__validator: PayloadValidator = PayloadValidator()
 
         if self.__authz is not None:
-            self.__authz.trust(self.__service_id, self.__identity.public_key)
+            self.__authz.trust(self.__name, self.__identity.public_key)
 
         if self.__saga:
-            self.__saga.register_emitter(self.__service_id, self)
+            self.__saga.register_emitter(self.__name, self)
 
         self.__emitter: Emitter = Emitter(
-            service_id=self.__service_id,
+            name=self.__name,
             identity=self.__identity,
             bus=self.__bus,
             metrics=self.__metrics,
@@ -242,7 +250,7 @@ class Core(ABC):
     @property
     def service_id(self) -> str:
         """Return the unique identifier for this service instance."""
-        return self.__service_id
+        return self.__name
 
     @property
     def bus(self) -> EventBus:
@@ -294,7 +302,7 @@ class Core(ABC):
         try:
             return self.__store.get(key)
         except Exception:
-            logger.exception("store get failed for {} in service {}", key, self.__service_id)
+            logger.exception("store get failed for {} in service {}", key, self.__name)
             return default
 
     def safe_store_set(self, key: str, value: Any) -> bool:
@@ -311,7 +319,7 @@ class Core(ABC):
             self.__store.set(key, value)
             return True
         except Exception:
-            logger.exception("store set failed for {} in service {}", key, self.__service_id)
+            logger.exception("store set failed for {} in service {}", key, self.__name)
             return False
 
     def subscribe(self, event_type: str) -> None:
@@ -320,8 +328,8 @@ class Core(ABC):
         Args:
             event_type: The event type string to subscribe to.
         """
-        if self.__authz and not self.__authz.check_subscribe(self.__service_id, event_type):
-            logger.warning("{} not authorized to subscribe to {}", self.__service_id, event_type)
+        if self.__authz and not self.__authz.check_subscribe(self.__name, event_type):
+            logger.warning("{} not authorized to subscribe to {}", self.__name, event_type)
             return
         sid: str = self.__bus.subscribe(event_type, self.__dispatch)
         self.__subscriptions.append(sid)
@@ -386,17 +394,17 @@ class Core(ABC):
                     self.__metrics.increment(
                         "authz.failures",
                         {
-                            "service": self.__service_id,
+                            "service": self.__name,
                             "event_type": event.event_type,
                         },
                     )
                 if hasattr(self.__bus, "dlq") and self.__bus.dlq:
-                    self.__bus.dlq.put(event, "authz_failed", self.__service_id)
+                    self.__bus.dlq.put(event, "authz_failed", self.__name)
                 return
-        if self.__bus.idempotency.is_duplicate(self.__service_id, event.event_id):
-            logger.debug("duplicate event {} dropped by {}", event.event_id, self.__service_id)
+        if self.__bus.idempotency.is_duplicate(self.__name, event.event_id):
+            logger.debug("duplicate event {} dropped by {}", event.event_id, self.__name)
             if hasattr(self.__bus, "dlq") and self.__bus.dlq:
-                self.__bus.dlq.put(event, "duplicate", self.__service_id)
+                self.__bus.dlq.put(event, "duplicate", self.__name)
             return
         if self.__executor is not None:
             worker_count = self.__executor._max_workers if hasattr(self.__executor, "_max_workers") else 0
@@ -404,13 +412,13 @@ class Core(ABC):
             if worker_count > 0 and queue_size > worker_count * MAX_EXECUTOR_QUEUE_FACTOR:
                 logger.warning(
                     "{} executor queue full ({} queued, {} workers), dropping event {}",
-                    self.__service_id,
+                    self.__name,
                     queue_size,
                     worker_count,
                     event.event_id,
                 )
                 if hasattr(self.__bus, "dlq") and self.__bus.dlq:
-                    self.__bus.dlq.put(event, "executor_queue_full", self.__service_id)
+                    self.__bus.dlq.put(event, "executor_queue_full", self.__name)
                 return
             self.__executor.submit(self.__handle_event, event)
         else:
@@ -424,7 +432,7 @@ class Core(ABC):
                 f"handle.{event.event_type}",
                 trace_id=event.trace_id or event.correlation_id or event.event_id,
                 parent_span_id=event.parent_span_id,
-                tags={"service": self.__service_id, "event_type": event.event_type},
+                tags={"service": self.__name, "event_type": event.event_type},
             )
             if self.__tracer
             else contextlib.nullcontext()
@@ -441,21 +449,21 @@ class Core(ABC):
                     self.__events_handled += 1
                     self.__last_event_time = start
                 if self.__supervisor:
-                    self.__supervisor.record_success(self.__service_id)
+                    self.__supervisor.record_success(self.__name)
                 if self.__metrics:
                     elapsed = (time.perf_counter() - start) * 1000.0
                     self.__metrics.timer(
                         "handle.duration",
                         elapsed,
                         {
-                            "service": self.__service_id,
+                            "service": self.__name,
                             "event_type": event.event_type,
                         },
                     )
                     self.__metrics.increment(
                         "events.handled",
                         {
-                            "service": self.__service_id,
+                            "service": self.__name,
                             "event_type": event.event_type,
                         },
                     )
@@ -463,17 +471,17 @@ class Core(ABC):
                 with self.__counter_lock:
                     self.__events_failed += 1
                 if self.__supervisor:
-                    self.__supervisor.record_failure(self.__service_id)
+                    self.__supervisor.record_failure(self.__name)
                 logger.exception(
                     "handler {} failed processing {}",
-                    self.__service_id,
+                    self.__name,
                     event.event_type,
                 )
                 if self.__metrics:
                     self.__metrics.increment(
                         "events.failed",
                         {
-                            "service": self.__service_id,
+                            "service": self.__name,
                             "event_type": event.event_type,
                         },
                     )
@@ -496,7 +504,7 @@ class Core(ABC):
         with self.__counter_lock:
             return {
                 "ok": self.__running,
-                "service_id": self.__service_id,
+                "service_id": self.__name,
                 "events_handled": self.__events_handled,
                 "events_failed": self.__events_failed,
                 "last_event_time": self.__last_event_time,

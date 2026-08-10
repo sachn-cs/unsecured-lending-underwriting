@@ -10,7 +10,7 @@ from underwrite.store import MemoryStore
 
 
 def svc(bus=None) -> Handler:
-    return PrepaymentHandler(service_id="prepayment", bus=bus or LocalBus(), store=MemoryStore())
+    return PrepaymentHandler(name="prepayment", bus=bus or LocalBus(), store=MemoryStore())
 
 
 class TestPrepaymentService:

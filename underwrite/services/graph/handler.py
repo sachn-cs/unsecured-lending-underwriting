@@ -27,7 +27,7 @@ class Handler(Core):
 
     def __init__(
         self,
-        service_id: str,
+        name: str,
         bus: EventBus,
         store: Store,
         identity: Keypair | None = None,
@@ -43,7 +43,7 @@ class Handler(Core):
     ) -> None:
         """Initialize the graph service query handlers."""
         super().__init__(
-            service_id=service_id,
+            name=name,
             identity=identity,
             bus=bus,
             store=store,

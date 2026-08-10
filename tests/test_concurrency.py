@@ -80,7 +80,7 @@ class TestMechanismServiceConcurrency:
     def __make_mechanism(self, store):
         bus = LocalBus()
         return MechanismHandler(
-            service_id="mechanism",
+            name="mechanism",
             bus=bus,
             store=store,
         )

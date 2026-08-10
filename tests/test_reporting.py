@@ -13,7 +13,7 @@ from underwrite.store import MemoryStore
 
 
 def reporting() -> Handler:
-    return ReportingHandler(service_id="reporting", bus=LocalBus(), store=MemoryStore())
+    return ReportingHandler(name="reporting", bus=LocalBus(), store=MemoryStore())
 
 
 class TestReportingService:

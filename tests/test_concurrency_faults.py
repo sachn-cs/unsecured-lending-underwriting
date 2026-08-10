@@ -27,7 +27,7 @@ NUM_THREADS: int = 10
 OPS_PER_THREAD: int = 100
 
 
-def _mechanism_cmd(svc: Handler, cmd: str, payload: dict[str, Any]) -> None:
+def _mechanism_cmd(svc: Handler | MechanismHandler, cmd: str, payload: dict[str, Any]) -> None:
     svc.handle(
         Message(
             event_type="mechanism",

@@ -25,7 +25,7 @@ from underwrite.tracer import Tracer
 from underwrite.validate import PayloadValidator
 
 
-class RiskHandler(Core):
+class Handler(Core):
     """Computes default-probability scores and triggers early-warning alerts."""
 
     def __init__(

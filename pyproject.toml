@@ -9,6 +9,12 @@ description = "Delegated Underwriting Protocol — nano-service platform for uns
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
+authors = [
+    {name = "Sachin", email = "sachncs@gmail.com"},
+]
+maintainers = [
+    {name = "Sachin", email = "sachncs@gmail.com"},
+]
 keywords = [
     "underwriting",
     "lending",

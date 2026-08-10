@@ -1,14 +1,15 @@
-"""Tests for DisbursementHandler — loan payout processing."""
+"""Tests for Handler — loan payout processing."""
 
 from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.disbursement.handler import DisbursementHandler
 from underwrite.store import MemoryStore
+from underwrite.services.disbursement.handler import Handler
+from underwrite.services.disbursement.handler import Handler as DisbursementHandler
 
 
-def svc(bus=None) -> DisbursementHandler:
+def svc(bus=None) -> Handler:
     return DisbursementHandler(service_id="disbursement", bus=bus or LocalBus(), store=MemoryStore())
 
 

@@ -140,5 +140,3 @@ class Dispatcher:
             if exc is not None:
                 logger.warning("future {} raised: {}", f, exc)
         self.__futures = [f for f in self.__futures if not f.done()]
-
-

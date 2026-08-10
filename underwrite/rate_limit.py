@@ -100,5 +100,3 @@ class DistributedLimiter(Limiter):
             return False
         self.__store.set(store_key, {"expires_at": window_end})
         return True
-
-

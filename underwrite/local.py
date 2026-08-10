@@ -181,4 +181,3 @@ class LocalBus:
             logger.exception("subscriber {} failed on {} ({}), sent to DLQ", sid, event.event_type, exc)
             self.__dlq.put(event, f"{type(exc).__name__}: {exc}", sid)
             self.__circuit_breaker.record_failure(sid)
-

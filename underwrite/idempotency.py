@@ -74,6 +74,3 @@ class Guard:
                 seen.discard(evicted)
                 logger.warning("idempotency guard evicting oldest entry for {}", handler_id)
             return False
-
-
-

@@ -289,106 +289,65 @@ class Runtime:
                 tracer, authz).  Intended for CLI commands that only
                 read state.
         """
-        self.__config: Configuration = config or Configuration.load()
-        self.__configure_logging()
-        self.__store = build_store(self.__config)
-        self.__read_store = build_read_store(self.__config)
-        self.__services = {}
-        self.__lock: threading.RLock = threading.RLock()
-        self.__runtime_identity = None
-        self.__publisher_identities = {}
-        self.__publisher_lock = threading.Lock()
+        self.config: Configuration = config or Configuration.load()
+        self.configure_logging()
+        self.store = build_store(self.config)
+        self.read_store = build_read_store(self.config)
+        self.services = {}
+        self.lock: threading.RLock = threading.RLock()
+        self.runtime_identity = None
+        self.publisher_identities = {}
+        self.publisher_lock = threading.Lock()
         if readonly:
-            self.__bus = LocalBus(store=self.__store)  # type: ignore[assignment]
-            self.__health = Checks()
-            self.__tracer = None
-            self.__secrets = None
-            self.__saga = None
-            self.__metrics = None
-            self.__authz = None
-            self.__supervisor = None
-            self.__metrics_exporter = None
+            self.bus = LocalBus(store=self.store)  # type: ignore[assignment]
+            self.health = Checks()
+            self.tracer = None
+            self.secrets = None
+            self.saga = None
+            self.metrics = None
+            self.authz = None
+            self.supervisor = None
+            self.metrics_exporter = None
             register_subsystem_health(self)
             return
-        self.__runtime_identity = None
-        self.__secrets = build_secrets(self.__config)
-        self.__runtime_identity = Keypair.create("runtime", secrets_manager=self.__secrets)
-        self.__kyc_providers = build_kyc_providers(self.__config, self.__secrets)
-        self.__tracer = build_tracer(self.__config)
-        self.__bus = build_event_bus(self.__config.bus, self.__store)
-        self.__saga = Orchestrator(store=self.__store) if self.__config.saga.enabled else None
-        self.__health = Checks()
-        self.__metrics = Collector() if self.__config.metrics.enabled else None
-        self.__authz = build_authz(self.__config.authz)
-        if self.__authz is not None and self.__runtime_identity is not None:
-            self.__authz.trust(self.__runtime_identity.name, self.__runtime_identity.public_key)
-        self.__supervisor = build_supervisor(self.__config)
-        self.__metrics_exporter = None
+        self.runtime_identity = None
+        self.secrets = build_secrets(self.config)
+        self.runtime_identity = Keypair.create("runtime", secrets_manager=self.secrets)
+        self.kyc_providers = build_kyc_providers(self.config, self.secrets)
+        self.tracer = build_tracer(self.config)
+        self.bus = build_event_bus(self.config.bus, self.store)
+        self.saga = Orchestrator(store=self.store) if self.config.saga.enabled else None
+        self.health = Checks()
+        self.metrics = Collector() if self.config.metrics.enabled else None
+        self.authz = build_authz(self.config.authz)
+        if self.authz is not None and self.runtime_identity is not None:
+            self.authz.trust(self.runtime_identity.name, self.runtime_identity.public_key)
+        self.supervisor = build_supervisor(self.config)
+        self.metrics_exporter = None
 
         register_subsystem_health(self)
 
-    def __configure_logging(self) -> None:
-        cfg = self.__config.logging
+    def configure_logging(self) -> None:
+        cfg = self.config.logging
         sink = sys.stdout if cfg.output == "stdout" else sys.stderr
         formatter = JsonFormatter() if cfg.log_format == "json" else TextFormatter()
         logger.remove()
         logger.add(sink, level=cfg.level, format=loguru_sink_format(formatter), colorize=False)
 
-    @property
-    def bus(self) -> EventBus:
-        """Returns the event bus instance."""
-        return self.__bus
 
-    @property
-    def store(self) -> Store:
-        """Returns the primary store instance."""
-        return self.__store
 
-    @property
-    def read_store(self) -> Store | None:
-        """Returns the read-only store for CQRS reads, or ``None`` if not configured."""
-        return self.__read_store
 
-    @property
     def services(self) -> dict[str, Core]:
         """Returns a snapshot of registered services keyed by name."""
-        with self.__lock:
-            return dict(self.__services)
+        with self.lock:
+            return dict(self.services)
 
-    @property
-    def health(self) -> Checks:
-        """Returns the health check registry."""
-        return self.__health
 
-    @property
-    def metrics(self) -> Collector | None:
-        """Returns the metrics collector, or ``None`` if disabled."""
-        return self.__metrics
 
-    @property
-    def authz(self) -> AccessControl | None:
-        """Returns the access control instance, or ``None`` if disabled."""
-        return self.__authz
 
-    @property
-    def tracer(self) -> Tracer | None:
-        """Returns the tracer, or ``None`` if tracing is disabled."""
-        return self.__tracer
 
-    @property
-    def saga(self) -> Orchestrator | None:
-        """Returns the saga orchestrator, or ``None`` if sagas are disabled."""
-        return self.__saga
 
-    @property
-    def supervisor(self) -> Watcher | None:
-        """Returns the service supervisor, or ``None`` if auto-recovery is disabled."""
-        return self.__supervisor
 
-    @property
-    def secrets(self) -> Manager | None:
-        """Returns the secrets manager, or ``None`` if secrets are disabled."""
-        return self.__secrets
 
     def register(self, service_name: str, identity: Keypair | None = None) -> Core:
         """Instantiates a nano service by name and registers it."""
@@ -404,17 +363,17 @@ class Runtime:
             raise ServiceNotFoundError(f"class {class_name} not found in {module_path}")
         extra: dict[str, Any] = {}
         if service_name == "fee":
-            extra["fee_schedules"] = dict(self.__config.fee.schedules)
-            extra["penal_interest_daily_rate"] = self.__config.fee.penal_interest_daily_rate
-            extra["late_payment_percent"] = self.__config.fee.late_payment_percent
-            extra["max_penal_interest_per_loan"] = self.__config.fee.max_penal_interest_per_loan
+            extra["fee_schedules"] = dict(self.config.fee.schedules)
+            extra["penal_interest_daily_rate"] = self.config.fee.penal_interest_daily_rate
+            extra["late_payment_percent"] = self.config.fee.late_payment_percent
+            extra["max_penal_interest_per_loan"] = self.config.fee.max_penal_interest_per_loan
         elif service_name == "kfs":
             extra["cooling_off_days"] = 3
         elif service_name == "governance":
-            extra["param_ranges"] = {k: list(v) for k, v in self.__config.governance.param_ranges.items()}
-            extra["param_defaults"] = dict(self.__config.governance.param_defaults)
+            extra["param_ranges"] = {k: list(v) for k, v in self.config.governance.param_ranges.items()}
+            extra["param_defaults"] = dict(self.config.governance.param_defaults)
         elif service_name == "npa":
-            nconf = self.__config.npa
+            nconf = self.config.npa
             extra["standard_provisioning_rate"] = nconf.standard_provisioning_rate
             extra["substandard_provisioning_rate"] = nconf.substandard_provisioning_rate
             extra["doubtful_provisioning_rate_secured"] = nconf.doubtful_provisioning_rate_secured
@@ -422,50 +381,50 @@ class Runtime:
             extra["npa_days"] = nconf.npa_days
             extra["dlg_trigger_days"] = nconf.dlg_trigger_days
         elif service_name == "audit":
-            extra["max_ledger"] = self.__config.audit.max_ledger
-            extra["export_url"] = self.__config.audit.export_url
+            extra["max_ledger"] = self.config.audit.max_ledger
+            extra["export_url"] = self.config.audit.export_url
         elif service_name == "razorpay":
-            rconf = self.__config.razorpay
+            rconf = self.config.razorpay
             extra["key_id"] = rconf.key_id
             extra["key_secret"] = rconf.key_secret
             extra["webhook_secret"] = rconf.webhook_secret
             extra["api_base_url"] = rconf.api_base_url
         elif service_name == "compliance":
-            extra["kyc_providers"] = self.__kyc_providers
+            extra["kyc_providers"] = self.kyc_providers
         elif service_name == "credit_bureau":
-            extra["kyc_providers"] = self.__kyc_providers
+            extra["kyc_providers"] = self.kyc_providers
         elif service_name == "consent":
-            cconf = self.__config.dpdpa.consent
+            cconf = self.config.dpdpa.consent
             extra["required_purposes"] = list(cconf.required_purposes)
             extra["consent_validity_days"] = cconf.consent_validity_days
         elif service_name == "dsr":
-            dconf = self.__config.dpdpa.dsr
+            dconf = self.config.dpdpa.dsr
             extra["response_time_days"] = dconf.response_time_days
             extra["grievance_response_days"] = dconf.grievance_response_days
         svc = cls(
             name=service_name,
             identity=identity,
-            bus=self.__bus,
-            store=self.__store,
-            metrics=self.__metrics,
-            health=self.__health,
-            authz=self.__authz,
-            tracer=self.__tracer,
-            saga=self.__saga,
-            supervisor=self.__supervisor,
-            secrets_manager=self.__secrets,
+            bus=self.bus,
+            store=self.store,
+            metrics=self.metrics,
+            health=self.health,
+            authz=self.authz,
+            tracer=self.tracer,
+            saga=self.saga,
+            supervisor=self.supervisor,
+            secrets_manager=self.secrets,
             **extra,
         )
-        with self.__lock:
-            self.__services[service_name] = svc
-        if self.__health:
+        with self.lock:
+            self.services[service_name] = svc
+        if self.health:
             svc_id = service_name
-            self.__health.register(f"service:{svc_id}", svc.health_check)
+            self.health.register(f"service:{svc_id}", svc.health_check)
         return svc
 
     def wire(self, service_name: str) -> None:
         """Subscribes a service to all event types it cares about."""
-        svc = self.__services.get(service_name)
+        svc = self.services.get(service_name)
         if not svc:
             logger.warning("wire called for unregistered service {}", service_name)
             return
@@ -488,22 +447,22 @@ class Runtime:
                 starts only the services enabled in configuration.
         """
         if service_names is None:
-            service_names = self.__config.enabled_services()
-        self.__service_names = list(service_names)
-        run_migrations(self.__store, self.__config)
-        self.__metrics_exporter = start_metrics_export(self.__metrics, self.__config)
-        with self.__lock:
-            registered: list[str] = [n for n in service_names if n not in self.__services]
+            service_names = self.config.enabled_services()
+        self.service_names = list(service_names)
+        run_migrations(self.store, self.config)
+        self.metrics_exporter = start_metrics_export(self.metrics, self.config)
+        with self.lock:
+            registered: list[str] = [n for n in service_names if n not in self.services]
         for name in registered:
             self.register(name)
         for name in service_names:
             self.wire(name)
-        with self.__lock:
+        with self.lock:
             for name in service_names:
-                svc = self.__services.get(name)
+                svc = self.services.get(name)
                 if svc:
                     svc.start()
-        self.__bus.start()
+        self.bus.start()
 
     def restart_failing_services(self) -> list[str]:
         """Restarts services that have recorded failures under the supervisor.
@@ -514,19 +473,19 @@ class Runtime:
         Returns:
             List of service IDs that were restarted.
         """
-        if self.__supervisor is None:
+        if self.supervisor is None:
             return []
         restarted: list[str] = []
-        for service_id in self.__supervisor.failing_services():
-            if not self.__supervisor.should_restart(service_id):
+        for service_id in self.supervisor.failing_services():
+            if not self.supervisor.should_restart(service_id):
                 continue
-            with self.__lock:
-                if service_id not in self.__services:
-                    self.__supervisor.reset(service_id)
+            with self.lock:
+                if service_id not in self.services:
+                    self.supervisor.reset(service_id)
                     continue
                 logger.warning("restarting failing service {}", service_id)
                 try:
-                    old = self.__services.pop(service_id)
+                    old = self.services.pop(service_id)
                     old.stop()
                 except (OSError, RuntimeError, ValueError):
                     logger.exception("error stopping service {} during restart", service_id)
@@ -535,8 +494,8 @@ class Runtime:
                 svc = self.register(service_id)
                 self.wire(service_id)
                 svc.start()
-                self.__supervisor.record_restart(service_id)
-                self.__supervisor.reset(service_id)
+                self.supervisor.record_restart(service_id)
+                self.supervisor.reset(service_id)
                 restarted.append(service_id)
                 logger.info("service {} restarted successfully", service_id)
             except (OSError, RuntimeError, ValueError, KeyError):
@@ -547,35 +506,35 @@ class Runtime:
         """Stops all services, the metrics export loop, and the event bus."""
         errors: list[str] = []
         try:
-            if self.__metrics_exporter is not None:
-                self.__metrics_exporter.stop()
+            if self.metrics_exporter is not None:
+                self.metrics_exporter.stop()
         except Exception as exc:
             errors.append(f"metrics_exporter: {exc}")
-        for svc in self.__services.values():
+        for svc in self.services.values():
             try:
                 svc.stop()
             except Exception as exc:
                 errors.append(f"service {svc.service_id}: {exc}")
         try:
-            self.__bus.stop()
+            self.bus.stop()
         except Exception as exc:
             errors.append(f"bus: {exc}")
         try:
-            self.__store.shutdown()
+            self.store.shutdown()
         except Exception as exc:
             errors.append(f"store: {exc}")
-        if self.__read_store is not None:
+        if self.read_store is not None:
             try:
-                self.__read_store.shutdown()
+                self.read_store.shutdown()
             except Exception as exc:
                 errors.append(f"read_store: {exc}")
-        if self.__supervisor is not None:
+        if self.supervisor is not None:
             try:
-                self.__supervisor.shutdown()
+                self.supervisor.shutdown()
             except Exception as exc:
                 errors.append(f"supervisor: {exc}")
         try:
-            self.__health.shutdown()
+            self.health.shutdown()
         except Exception as exc:
             errors.append(f"health: {exc}")
         if errors:
@@ -583,7 +542,7 @@ class Runtime:
 
     def get(self, service_name: str) -> Core | None:
         """Returns a registered service by name, or ``None``."""
-        return self.__services.get(service_name)
+        return self.services.get(service_name)
 
     def publish(self, event_type: str, payload: dict[str, Any], correlation_id: str = "") -> str:
         """Publishes an event directly to the bus (used for external input).
@@ -592,8 +551,8 @@ class Runtime:
         authz enabled can verify its provenance against the runtime's
         public key.
         """
-        event = self.__sign_outbound_event(event_type, payload, correlation_id)
-        return self.__bus.publish(event)
+        event = self.sign_outbound_event(event_type, payload, correlation_id)
+        return self.bus.publish(event)
 
     def publish_as(
         self,
@@ -626,9 +585,9 @@ class Runtime:
         """
         if not source or not _VALID_SOURCE_RE.match(source):
             raise PermissionError(f"invalid source id: {source!r}")
-        if self.__authz is not None and not self.__authz.is_trusted(source):
+        if self.authz is not None and not self.authz.is_trusted(source):
             raise PermissionError(f"source {source!r} is not trusted")
-        identity = self.__identity_for(source)
+        identity = self.identity_for(source)
         event = Message(
             event_type=event_type,
             source=identity.name,
@@ -638,21 +597,21 @@ class Runtime:
         )
         signed = identity.sign(event.canonical_sign_bytes().decode("utf-8"))
         event = dataclasses.replace(event, signature=signed)
-        if self.__authz is not None:
-            self.__authz.trust(identity.name, identity.public_key)
-        return self.__bus.publish(event)
+        if self.authz is not None:
+            self.authz.trust(identity.name, identity.public_key)
+        return self.bus.publish(event)
 
-    def __identity_for(self, service_id: str) -> Keypair:
-        existing = self.__publisher_identities.get(service_id)
+    def identity_for(self, service_id: str) -> Keypair:
+        existing = self.publisher_identities.get(service_id)
         if existing is not None:
             return existing
-        identity = Keypair.create(service_id, secrets_manager=self.__secrets)
-        with self.__publisher_lock:
-            self.__publisher_identities[service_id] = identity
+        identity = Keypair.create(service_id, secrets_manager=self.secrets)
+        with self.publisher_lock:
+            self.publisher_identities[service_id] = identity
         return identity
 
-    def __sign_outbound_event(self, event_type: str, payload: dict[str, Any], correlation_id: str) -> Message:
-        identity: Keypair | None = self.__runtime_identity
+    def sign_outbound_event(self, event_type: str, payload: dict[str, Any], correlation_id: str) -> Message:
+        identity: Keypair | None = self.runtime_identity
         if identity is None:
             return Message(
                 event_type=event_type,
@@ -670,8 +629,8 @@ class Runtime:
         )
         signed = identity.sign(event.canonical_sign_bytes().decode("utf-8"))
         event = dataclasses.replace(event, signature=signed)
-        if self.__authz is not None:
-            self.__authz.trust(identity.name, identity.public_key)
+        if self.authz is not None:
+            self.authz.trust(identity.name, identity.public_key)
         return event
 
     async def async_publish(self, event_type: str, payload: dict[str, Any], correlation_id: str = "") -> str:
@@ -689,10 +648,10 @@ class Runtime:
 
         Delegates to ``Orchestrator.replay_saga``.
         """
-        if self.__saga is None:
+        if self.saga is None:
             logger.warning("replay_saga: sagas are disabled")
             return False
-        return self.__saga.replay_saga(saga_id)
+        return self.saga.replay_saga(saga_id)
 
 
 _VALID_SOURCE_RE = re.compile(r"^[a-z][a-z0-9_.-]+$")

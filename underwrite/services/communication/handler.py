@@ -25,7 +25,7 @@ from underwrite.tracer import Tracer
 from underwrite.value_objects import IdGenerator
 
 
-class CommunicationHandler(Core):
+class Handler(Core):
     """Dispatches outbound messages through configured channels.
 
     In production, each channel (email / SMS / push) is backed by a

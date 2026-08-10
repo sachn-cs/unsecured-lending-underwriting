@@ -107,7 +107,7 @@ class Handler(StatefulService):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.__kyc_providers: dict[str, Provider] = dict(kyc_providers or {})
+        self.kyc_provider_dict: dict[str, Provider] = dict(kyc_providers or {})
         self.bureau_client: CreditBureauClient = self.build_client(
             cibil_api_key=cibil_api_key,
             allow_mock=allow_mock,
@@ -230,7 +230,7 @@ class Handler(StatefulService):
         if not pan:
             logger.warning("credit_bureau.check missing pan")
             return
-        kyc_providers = self.__kyc_providers
+        kyc_providers = self.kyc_provider_dict
         cibil_provider = kyc_providers.get("cibil") if kyc_providers else None
         if cibil_provider is not None and bureau == "cibil":
             try:

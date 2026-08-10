@@ -149,9 +149,9 @@ class Handler(Core):
             sms_enabled = os.environ.get("NOTIFICATION_SMS_ENABLED", "false").lower() == "true"
 
             if email_enabled:
-                self.__send_email(recipient, event_type, payload)
+                self.send_email(recipient, event_type, payload)
             if sms_enabled:
-                self.__send_sms(recipient, event_type, payload)
+                self.send_sms(recipient, event_type, payload)
 
             if not email_enabled and not sms_enabled:
                 logger.info("notification dispatched (log-only): {}", log_data)
@@ -160,7 +160,7 @@ class Handler(Core):
         except (OSError, ValueError, TypeError, RuntimeError):
             logger.exception("failed to dispatch notification for {}", event.event_id)
 
-    def __send_email(self, recipient: str, event_type: str, payload: dict[str, Any]) -> None:
+    def send_email_method(self, recipient: str, event_type: str, payload: dict[str, Any]) -> None:
         """Send an email notification via SES or log.
 
         Args:
@@ -188,7 +188,7 @@ class Handler(Core):
         else:
             logger.info("email to {}: [{}] {}", recipient, event_type, payload)
 
-    def __send_sms(self, recipient: str, event_type: str, payload: dict[str, Any]) -> None:
+    def send_sms_method(self, recipient: str, event_type: str, payload: dict[str, Any]) -> None:
         """Send an SMS notification via Twilio or log.
 
         Args:

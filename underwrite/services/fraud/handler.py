@@ -118,7 +118,7 @@ class Handler(StatefulService):
             with self.state_lock:
                 self.record(borrower, "origination", principal)
                 self.check_wash(borrower, event.correlation_id)
-                self.__check_burst(borrower, event.correlation_id)
+                self.check_burst_velocity(borrower, event.correlation_id)
             if principal > self.LARGE_PRINCIPAL_THRESHOLD:
                 self.emit(
                     Type.FRAUD_ALERT,
@@ -159,7 +159,7 @@ class Handler(StatefulService):
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
-        self.repo.incr_and_maybe_sync(self.__serialize_records())
+        self.repo.incr_and_maybe_sync(self.serialize_records())
 
     def check_wash(self, borrower: str, correlation_id: str) -> None:
         """Check for wash lending cycles (alternating origination/repayment).
@@ -193,7 +193,7 @@ class Handler(StatefulService):
                 correlation_id=correlation_id,
             )
 
-    def __check_burst(self, borrower: str, correlation_id: str) -> None:
+    def check_burst_velocity(self, borrower: str, correlation_id: str) -> None:
         """Check for velocity bursts (multiple rapid originations).
 
         Args:
@@ -212,7 +212,7 @@ class Handler(StatefulService):
                 correlation_id=correlation_id,
             )
 
-    def __serialize_records(self) -> dict[str, list[dict[str, Any]]]:
+    def serialize_records(self) -> dict[str, list[dict[str, Any]]]:
         """Convert internal records dict to store-friendly dict of lists.
 
         Returns:
@@ -221,7 +221,7 @@ class Handler(StatefulService):
         return {k: list(v) for k, v in self.records_storage.items()}
 
     @staticmethod
-    def __deserialize_records(
+    def deserialize_records(
         raw: dict[str, list[dict[str, Any]]],
     ) -> dict[str, deque[dict[str, Any]]]:
         """Restore internal dict of deques from store-friendly dict of lists.

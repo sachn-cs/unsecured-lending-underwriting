@@ -25,7 +25,7 @@ class Watcher:
         self.cooldown_seconds: float = cooldown_seconds
         self.supervisor_lock: threading.RLock = threading.RLock()
         self.failure_counts: dict[str, int] = {}
-        self.__last_restart_time: dict[str, float] = {}
+        self.last_restart_times: dict[str, float] = {}
 
     def record_failure(self, service_id: str) -> bool:
         """Records a handler failure. Returns True if restart is allowed."""
@@ -50,7 +50,7 @@ class Watcher:
     def record_restart(self, service_id: str) -> None:
         """Records the time of a service restart for cooldown enforcement."""
         with self.supervisor_lock:
-            self.__last_restart_time[service_id] = time.monotonic()
+            self.last_restart_times[service_id] = time.monotonic()
 
     def reset(self, service_id: str) -> None:
         """Resets the failure count for a service."""
@@ -71,7 +71,7 @@ class Watcher:
             count = self.failure_counts.get(service_id, 0)
             if count <= 0 or count > self.max_restarts_limit:
                 return False
-            last = self.__last_restart_time.get(service_id, 0.0)
+            last = self.last_restart_times.get(service_id, 0.0)
             if time.monotonic() - last < self.cooldown_seconds:
                 return False
             return True

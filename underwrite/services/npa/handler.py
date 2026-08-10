@@ -107,11 +107,11 @@ class Handler(StatefulService):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.__clock: SystemClock = SystemClock()
-        self.__accounts: dict[str, dict[str, Any]] = {}
-        self.__trigger_days: int = kwargs.get("dlg_trigger_days", DLG_TRIGGER_DAYS_DEFAULT)
-        self.__npa_days: int = kwargs.get("npa_days", NPA_DAYS_DEFAULT)
-        self.__provisioning_rates: dict[str, float] = {
+        self.clock: SystemClock = SystemClock()
+        self.accounts: dict[str, dict[str, Any]] = {}
+        self.trigger_days: int = kwargs.get("dlg_trigger_days", DLG_TRIGGER_DAYS_DEFAULT)
+        self.npa_days: int = kwargs.get("npa_days", NPA_DAYS_DEFAULT)
+        self.provisioning_rates: dict[str, float] = {
             "standard": kwargs.get("standard_provisioning_rate", STANDARD_PROVISIONING_RATE_DEFAULT),
             "substandard": kwargs.get("substandard_provisioning_rate", SUBSTANDARD_PROVISIONING_RATE_DEFAULT),
             "doubtful": kwargs.get("doubtful_provisioning_rate_secured", DOUBTFUL_PROVISIONING_RATE_DEFAULT),
@@ -124,7 +124,7 @@ class Handler(StatefulService):
         super().start()
         loaded = self.repo.load(default={})
         if loaded:
-            self.__accounts = loaded
+            self.accounts = loaded
 
     def handle(self, event: Message) -> None:
         """Process loan-originated and default-occurred events.
@@ -136,8 +136,8 @@ class Handler(StatefulService):
             if event.event_type == Type.LOAN_ORIGINATED:
                 borrower: str = PayloadValidator().non_empty(event.payload, "borrower")
                 principal: float = PayloadValidator().finite(event.payload, "principal", 0.0)
-                self.__accounts[borrower] = {
-                    "originated_at": self.__clock.iso(),
+                self.accounts[borrower] = {
+                    "originated_at": self.clock.iso(),
                     "days_overdue": 0,
                     "dlg_invoked": False,
                     "principal": principal,
@@ -147,16 +147,16 @@ class Handler(StatefulService):
                     "provisioning_amount": 0.0,
                     "income_suspended": False,
                 }
-                self.__sync()
+                self.sync()
             elif event.event_type == Type.DEFAULT_OCCURRED:
                 borrower = event.payload.get("borrower", "")
                 if not borrower:
                     logger.warning("dropping DEFAULT_OCCURRED with missing borrower")
                     return
-                record = self.__accounts.get(borrower)
+                record = self.accounts.get(borrower)
                 if record is None:
                     return
-                days: int = record.get("days_overdue", self.__trigger_days)
+                days: int = record.get("days_overdue", self.trigger_days)
                 event_principal: float = PayloadValidator().finite(event.payload, "principal", 0.0)
                 self.classify_and_provision(borrower, record, days, event.correlation_id, event_principal)
 
@@ -168,9 +168,9 @@ class Handler(StatefulService):
             days: Number of days past due to record.
         """
         with self.state_lock:
-            if borrower in self.__accounts:
-                self.__accounts[borrower]["days_overdue"] = days
-                self.__sync()
+            if borrower in self.accounts:
+                self.accounts[borrower]["days_overdue"] = days
+                self.sync()
 
     def classify_and_provision(
         self,
@@ -206,7 +206,7 @@ class Handler(StatefulService):
         record["bucket"] = bucket
         record["days_overdue"] = days
 
-        rate = self.__provisioning_rates.get(bucket, 0.0)
+        rate = self.provisioning_rates.get(bucket, 0.0)
         outstanding = record.get("outstanding", record.get("principal", event_principal or 0.0))
         provisioning_amount = round(outstanding * rate, 2)
 
@@ -227,7 +227,7 @@ class Handler(StatefulService):
 
         if bucket in ("substandard", "doubtful", "loss") and not record.get("income_suspended", False):
             record["income_suspended"] = True
-            record["income_suspended_at"] = self.__clock.iso()
+            record["income_suspended_at"] = self.clock.iso()
             self.emit(
                 Type.INCOME_RECOGNITION_SUSPENDED,
                 {
@@ -247,10 +247,10 @@ class Handler(StatefulService):
             correlation_id=correlation_id,
         )
 
-        should_trigger_dlg: bool = days >= self.__trigger_days and not record.get("dlg_invoked", False)
+        should_trigger_dlg: bool = days >= self.trigger_days and not record.get("dlg_invoked", False)
         if should_trigger_dlg:
             record["dlg_invoked"] = True
-            self.__sync()
+            self.sync()
             self.emit(
                 Type.DLG_TRIGGERED,
                 {
@@ -260,11 +260,11 @@ class Handler(StatefulService):
                 correlation_id=correlation_id,
             )
 
-        self.__sync()
+        self.sync()
 
-    def __sync(self) -> None:
+    def sync(self) -> None:
         """Persist the current NPA accounts to the store."""
-        self.repo.save(self.__accounts)
+        self.repo.save(self.accounts)
 
     @staticmethod
     def classify_overdue_days(days: int) -> str:

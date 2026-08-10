@@ -1,4 +1,4 @@
-"""Tests for RecoveryHandler — multi-stage post-default recovery orchestration.
+"""Tests for Handler — multi-stage post-default recovery orchestration.
 
 Tests verify the full recovery workflow with store-backed persistence:
   DEFAULT_OCCURRED -> RECOVERY_STARTED -> recovery.offer ->
@@ -10,11 +10,12 @@ from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.recovery.handler import RecoveryHandler
 from underwrite.store import MemoryStore
+from underwrite.services.recovery.handler import Handler
+from underwrite.services.recovery.handler import Handler as RecoveryHandler
 
 
-def _recovery(bus=None) -> RecoveryHandler:
+def _recovery(bus=None) -> Handler:
     svc = RecoveryHandler(service_id="recovery", bus=bus, store=MemoryStore())
     svc.repo.save({})
     return svc

@@ -35,109 +35,103 @@ class ModalBus(EventBus):
         cooldown_seconds: float = 60.0,
         store: Store | None = None,
     ) -> None:
-        self.__queue_name: str = queue_name
-        self.__poll_interval: float = max(0.1, poll_interval)
-        self.__modal: ModuleType | None = None
-        self.__modal_queue: Any = None
-        self.__handlers: dict[str, list[tuple[str, Callable[[Message], None]]]] = {}
-        self.__running: bool = False
-        self.__poll_thread: threading.Thread | None = None
-        self.__lock: threading.Lock = threading.Lock()
-        self.__dlq: Queue = Queue(store=store)
-        self.__idempotency: Guard = Guard()
-        self.__circuit_breaker: Breaker = Breaker(
+        self.queue_name: str = queue_name
+        self.poll_interval: float = max(0.1, poll_interval)
+        self.modal: ModuleType | None = None
+        self.modal_queue: Any = None
+        self.handlers: dict[str, list[tuple[str, Callable[[Message], None]]]] = {}
+        self.running: bool = False
+        self.poll_thread: threading.Thread | None = None
+        self.lock: threading.Lock = threading.Lock()
+        self.dlq: Queue = Queue(store=store)
+        self.idempotency: Guard = Guard()
+        self.circuit_breaker: Breaker = Breaker(
             failure_threshold=failure_threshold,
             cooldown_seconds=cooldown_seconds,
         )
-        self.__import_modal()
+        self.import_modal()
 
-    def __import_modal(self) -> None:
+    def import_modal(self) -> None:
         try:
-            self.__modal = importlib.import_module("modal")
-            self.__modal_queue = self.__modal.Queue(self.__queue_name)
+            self.modal = importlib.import_module("modal")
+            self.modal_queue = self.modal.Queue(self.queue_name)
         except ImportError:
-            self.__modal = None
+            self.modal = None
 
     def publish(self, event: Message) -> str:
-        if self.__modal is None:
+        if self.modal is None:
             raise RuntimeError("modal is not installed; install underwrite[modal]")
-        if self.__modal_queue is None:
+        if self.modal_queue is None:
             raise RuntimeError("modal queue is not initialized")
         body: str = json.dumps(event.to_dict())
-        self.__modal_queue.put(body)
+        self.modal_queue.put(body)
         return event.event_id
 
     def subscribe(self, event_type: str, handler: Callable[[Message], None]) -> str:
         sid: str = uuid.uuid4().hex
-        with self.__lock:
-            self.__handlers.setdefault(event_type, []).append((sid, handler))
+        with self.lock:
+            self.handlers.setdefault(event_type, []).append((sid, handler))
         return sid
 
     def unsubscribe(self, subscription_id: str) -> None:
-        with self.__lock:
-            for handlers in self.__handlers.values():
+        with self.lock:
+            for handlers in self.handlers.values():
                 idx = next((i for i, (sid, _) in enumerate(handlers) if sid == subscription_id), None)
                 if idx is not None:
                     handlers.pop(idx)
                     return
 
     def start(self) -> None:
-        if self.__running:
+        if self.running:
             return
-        self.__running = True
-        self.__poll_thread = threading.Thread(target=self.__poll_loop, daemon=True, name="modal-poll")
-        self.__poll_thread.start()
+        self.running = True
+        self.poll_thread = threading.Thread(target=self.poll_loop, daemon=True, name="modal-poll")
+        self.poll_thread.start()
 
     def stop(self) -> None:
-        self.__running = False
-        if self.__poll_thread:
-            self.__poll_thread.join(timeout=5)
-            self.__poll_thread = None
-        with self.__lock:
-            self.__handlers.clear()
+        self.running = False
+        if self.poll_thread:
+            self.poll_thread.join(timeout=5)
+            self.poll_thread = None
+        with self.lock:
+            self.handlers.clear()
 
-    @property
-    def dlq(self) -> Queue:
-        return self.__dlq
 
-    @property
-    def idempotency(self) -> Guard:
-        return self.__idempotency
 
-    def __poll_loop(self) -> None:
-        while self.__running:
+    def poll_loop(self) -> None:
+        while self.running:
             try:
-                if self.__modal_queue is None:
-                    time.sleep(self.__poll_interval)
+                if self.modal_queue is None:
+                    time.sleep(self.poll_interval)
                     continue
-                time.sleep(self.__poll_interval)
-                if not self.__running:
+                time.sleep(self.poll_interval)
+                if not self.running:
                     break
-                raw = self.__modal_queue.get(block=False)
-                while raw is not None and self.__running:
+                raw = self.modal_queue.get(block=False)
+                while raw is not None and self.running:
                     data: dict[str, Any] = json.loads(raw)
                     event: Message = Message.from_dict(data)
-                    self.__dispatch(event)
-                    raw = self.__modal_queue.get(block=False)
+                    self.dispatch(event)
+                    raw = self.modal_queue.get(block=False)
             except (json.JSONDecodeError, KeyError) as exc:
                 logger.warning("modal poll message parse error: {}", exc)
             except Exception as exc:
-                if self.__running:
+                if self.running:
                     logger.warning("modal poll error: {}", exc)
 
-    def __dispatch(self, event: Message) -> None:
-        with self.__lock:
-            wildcards: list[tuple[str, Callable[[Message], None]]] = self.__handlers.get("*", [])
-            specific: list[tuple[str, Callable[[Message], None]]] = self.__handlers.get(event.event_type, [])
+    def dispatch(self, event: Message) -> None:
+        with self.lock:
+            wildcards: list[tuple[str, Callable[[Message], None]]] = self.handlers.get("*", [])
+            specific: list[tuple[str, Callable[[Message], None]]] = self.handlers.get(event.event_type, [])
         for sid, handler in wildcards + specific:
-            if not self.__circuit_breaker.allow_request(sid):
+            if not self.circuit_breaker.allow_request(sid):
                 logger.warning("circuit open for subscriber {}, sending {} to DLQ", sid, event.event_type)
-                self.__dlq.put(event, "circuit_open", sid)
+                self.dlq.put(event, "circuit_open", sid)
                 continue
             try:
                 handler(event)
-                self.__circuit_breaker.record_success(sid)
+                self.circuit_breaker.record_success(sid)
             except Exception as exc:
                 logger.exception("handler failed for {}", event.event_type)
-                self.__dlq.put(event, f"{type(exc).__name__}: {exc}", sid)
-                self.__circuit_breaker.record_failure(sid)
+                self.dlq.put(event, f"{type(exc).__name__}: {exc}", sid)
+                self.circuit_breaker.record_failure(sid)

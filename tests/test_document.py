@@ -1,14 +1,15 @@
-"""Tests for DocumentHandler — loan document generation."""
+"""Tests for Handler — loan document generation."""
 
 from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.document.handler import DocumentHandler
 from underwrite.store import MemoryStore
+from underwrite.services.document.handler import Handler
+from underwrite.services.document.handler import Handler as DocumentHandler
 
 
-def svc(bus=None) -> DocumentHandler:
+def svc(bus=None) -> Handler:
     return DocumentHandler(service_id="document", bus=bus or LocalBus(), store=MemoryStore())
 
 

@@ -64,7 +64,7 @@ class TestCreditBureauCheck:
         received: list = []
         bus.subscribe(Type.CREDIT_BUREAU_CHECKED, lambda e: received.append(e))
         s = svc(bus=bus)
-        s.client = MockCreditBureauClient()
+        s.set_client(MockCreditBureauClient())
         s.client.add_report(
             "ABCDE1234F", CreditReport(bureau="cibil", pan="ABCDE1234F", name="A", dob="1990-01-01", score=750)
         )
@@ -96,7 +96,7 @@ class TestCreditBureauCheck:
         bus.subscribe(Type.CREDIT_BUREAU_CHECK_FAILED, lambda e: received.append(e))
         s = svc(bus=bus)
         mock = MockCreditBureauClient()
-        s.client = mock
+        s.set_client(mock)
         bus.start()
         s.handle(
             Message(event_type=Type.CREDIT_BUREAU_CHECK, source="test", payload={"pan": "NOTFOUND1", "bureau": "cibil"})
@@ -106,7 +106,7 @@ class TestCreditBureauCheck:
 
     def test_get_report_after_check(self) -> None:
         s = svc()
-        s.client = MockCreditBureauClient()
+        s.set_client(MockCreditBureauClient())
         s.client.add_report(
             "ABCDE1234F", CreditReport(bureau="cibil", pan="ABCDE1234F", name="Test", dob="1990-06-15", score=720)
         )
@@ -128,7 +128,7 @@ class TestCreditBureauCheck:
 
     def test_multiple_bureau_checks(self) -> None:
         s = svc()
-        s.client = MockCreditBureauClient()
+        s.set_client(MockCreditBureauClient())
         s.client.add_report("PAN1", CreditReport(bureau="cibil", pan="PAN1", name="A", dob="1990-01-01", score=750))
         s.client.add_report("PAN2", CreditReport(bureau="experian", pan="PAN2", name="B", dob="1991-02-02", score=680))
         s.handle(
@@ -151,7 +151,7 @@ class TestCkycVerification:
         bus.subscribe(Type.CKYC_VERIFIED, lambda e: received.append(e))
         s = svc(bus=bus)
         mock = MockCreditBureauClient()
-        s.client = mock
+        s.set_client(mock)
         mock.add_ckyc(
             "CKYC1234567890",
             CkycResponse(
@@ -191,7 +191,7 @@ class TestCkycVerification:
         received: list = []
         bus.subscribe(Type.CKYC_REJECTED, lambda e: received.append(e))
         s = svc(bus=bus)
-        s.client = MockCreditBureauClient()
+        s.set_client(MockCreditBureauClient())
         bus.start()
         s.handle(
             Message(event_type=Type.CKYC_VERIFY, source="test", payload={"ckyc_number": "UNKNOWN", "aadhaar": "0000"})
@@ -202,7 +202,7 @@ class TestCkycVerification:
     def test_get_ckyc_after_verify(self) -> None:
         s = svc()
         mock = MockCreditBureauClient()
-        s.client = mock
+        s.set_client(mock)
         mock.add_ckyc(
             "CKYC9999999999",
             CkycResponse(
@@ -347,7 +347,7 @@ class TestCibilProviderIntegration:
 class TestHealthCheck:
     def test_health_returns_counts(self) -> None:
         s = svc()
-        s.client = MockCreditBureauClient()
+        s.set_client(MockCreditBureauClient())
         s.client.add_report("PAN1", CreditReport(bureau="cibil", pan="PAN1", name="A", dob="1990-01-01", score=750))
         s.handle(
             Message(event_type=Type.CREDIT_BUREAU_CHECK, source="test", payload={"pan": "PAN1", "bureau": "cibil"})

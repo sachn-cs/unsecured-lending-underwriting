@@ -7,7 +7,7 @@ from underwrite.services import Core
 from underwrite.validate import PayloadValidator
 
 
-class QuoteHandler(Core):
+class Handler(Core):
     """Computes loan quotes.  Pure function — no side effects on state."""
 
     def handle(self, event: Message) -> None:

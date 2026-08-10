@@ -12,7 +12,7 @@
 
 **A nano-service platform for Indian retail lending. Designed for RBI Digital Lending Guidelines compliance, with DPDPA 2023 data protection and 30+ independently deployable services connected by an event bus with Ed25519 cryptographic attestation.**
 
-> **Beta — not yet production-ready.** Known gaps include stubbed PAN / Aadhaar / CKYC / CIBIL integrations, no video KYC, stubbed e-NACH / UPI Autopay mandate collection, basic RBAC only, undocumented disaster-recovery procedures, and rough developer experience (no prebuilt Docker images, no Helm charts, manual service wiring required). See [Status](#status) below.
+> **Beta — v0.9 hardening landed, v1.0 deferred.** v0.9 ships real KYC wire-protocol clients (PAN, Aadhaar, CIBIL, CKYC), production Docker image with multi-stage build, and the full CI gate suite (mypy strict, ruff, bandit, pip-audit, TruffleHog). Known deferrals to v1.0: video KYC, e-NACH / UPI Autopay mandate collection, full RBAC, on-call runbook, pre-built multi-arch images, real partner-sandbox validation. A Helm chart is **not** planned. See [Status](#status) below for the full list.
 
 ## Features
 
@@ -317,7 +317,7 @@ git tag vX.Y.Z && git push origin vX.Y.Z
 
 - **v0.8.x** — Current beta: 34 wired nano-services + 4 KYC provider clients, 1167 tests, Ed25519 event provenance, RBI/DPDPA-aligned defaults.
 - **v0.9.0** — Planned: real PAN (NSDL/ITD) and Aadhaar (UIDAI) integrations; CKYC live lookup; CIBIL production keys.
-- **v1.0.0** — Planned: video KYC; e-NACH / UPI Autopay mandate collection; full RBAC; documented DR procedures; Docker images + Helm charts.
+- **v1.0.0** — Planned: live KYC partner-sandbox validation; e-NACH / UPI Autopay mandate collection; full RBAC; documented on-call runbook; pre-built multi-arch Docker images. A Helm chart is not planned.
 
 ## Contributing
 

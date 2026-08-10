@@ -57,6 +57,7 @@ Thumbs.db
 
 # Project-specific
 data/
+!underwrite/data/
 *.sha256
 
 # Build artifacts

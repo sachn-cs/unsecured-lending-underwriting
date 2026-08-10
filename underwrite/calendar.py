@@ -12,20 +12,24 @@ from __future__ import annotations
 import calendar
 import json
 from datetime import date, timedelta
-from pathlib import Path
+from importlib import resources
 
 from underwrite.logger import logger
 
-_HOLIDAYS_PATH = Path(__file__).resolve().parent.parent / "data" / "holidays.json"
 _HOLIDAYS_DATA: dict[str, list[dict[str, int]]] | None = None
 
 
 def _load_holidays() -> dict[str, list[dict[str, int]]]:
-    """Load holiday data from the JSON table. Cached after first load."""
+    """Load holiday data from the bundled JSON table. Cached after first load.
+
+    The JSON lives at ``underwrite/data/holidays.json`` and is shipped as
+    package data so it survives an editable install and the runtime
+    ``data/`` directory remains free for per-deployment state.
+    """
     global _HOLIDAYS_DATA
     if _HOLIDAYS_DATA is None:
-        with open(_HOLIDAYS_PATH) as f:
-            _HOLIDAYS_DATA = json.load(f)
+        payload = resources.files("underwrite.data").joinpath("holidays.json").read_text(encoding="utf-8")
+        _HOLIDAYS_DATA = json.loads(payload)
     return _HOLIDAYS_DATA
 
 

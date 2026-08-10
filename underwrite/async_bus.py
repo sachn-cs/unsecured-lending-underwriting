@@ -156,7 +156,7 @@ class AsyncLocalBus(AsyncEventBus):
                 async with self.async_semaphore:
                     await self.safe_dispatch(h, e)
 
-            coros = [__bounded(h, event) for h in handlers]
+            coros = [run_bounded_handler(h, event) for h in handlers]
         else:
             coros = [self.safe_dispatch(h, event) for h in handlers]
         try:

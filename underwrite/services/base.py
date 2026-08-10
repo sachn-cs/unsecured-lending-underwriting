@@ -98,7 +98,7 @@ class Emitter:
     ) -> None:
         self.name: str = name
         self.identity: Keypair = identity
-        self.bus: EventBus = bus
+        self.bus: EventBus | LocalBus = bus
         self.metrics: Collector | None = metrics
         self.tracer: Tracer | None = tracer
         self.authz: AccessControl | None = authz
@@ -208,8 +208,8 @@ class Core(ABC):
             raise ValueError(
                 f"{type(self).__name__}({name!r}) requires store; construct one with Runtime as the composition root."
             )
-        self.bus: EventBus = bus
-        self.store: Store = store
+        self.bus: EventBus | LocalBus = bus
+        self.store: Store | InMemory | Disk | Sqlite = store
         self.metrics: Collector | None = metrics
         self.health: Checks | None = health
         self.authz: AccessControl | None = authz

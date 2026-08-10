@@ -150,9 +150,9 @@ class Handler(Core):
             sms_enabled = os.environ.get("NOTIFICATION_SMS_ENABLED", "false").lower() == "true"
 
             if email_enabled:
-                self.send_email(recipient, event_type, payload)
+                self.send_email_method(recipient, event_type, payload)
             if sms_enabled:
-                self.send_sms(recipient, event_type, payload)
+                self.send_sms_method(recipient, event_type, payload)
 
             if not email_enabled and not sms_enabled:
                 logger.info("notification dispatched (log-only): {}", log_data)

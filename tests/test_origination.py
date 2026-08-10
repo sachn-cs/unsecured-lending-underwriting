@@ -1,11 +1,12 @@
-"""Exhaustive tests for OriginationHandler."""
+"""Exhaustive tests for Handler."""
 
 from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.origination.handler import OriginationHandler
 from underwrite.store import MemoryStore
+from underwrite.services.origination.handler import Handler
+from underwrite.services.origination.handler import Handler as OriginationHandler
 
 
 class TestOriginationService:

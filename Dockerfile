@@ -81,8 +81,9 @@ RUN groupadd --system --gid 1001 underwrite && \
 WORKDIR /app
 
 # Copy the installed Python packages and the CLI entrypoint from
-# the builder. Use --chown to avoid a separate chown layer.
-COPY --from=builder --chown=underwrite:underwrite /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+# the builder. Use --chown to avoid a separate chown layer. The
+# globs survive PYTHON_VERSION build-arg changes between 3.10 and 3.13.
+COPY --from=builder --chown=underwrite:underwrite /usr/local/lib/python*/site-packages /usr/local/lib/python*/site-packages
 COPY --from=builder --chown=underwrite:underwrite /usr/local/bin/underwrite /usr/local/bin/underwrite
 
 # A healthcheck that pings the FastAPI liveness endpoint. The

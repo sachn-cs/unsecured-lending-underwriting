@@ -44,7 +44,7 @@ DEFAULT_PARAM_DEFAULTS: dict[str, float] = {
 
 @dataclass(frozen=True, slots=True)
 class GovernanceConfig:
-    """Typed configuration for GovernanceHandler.
+    """Typed configuration for Handler.
 
     Replaces the previous ``kwargs.pop("param_ranges", ...)`` pattern:
     callers now pass a GovernanceConfig (or its fields are extracted
@@ -56,7 +56,7 @@ class GovernanceConfig:
     param_defaults: dict[str, float] = field(default_factory=dict)
 
 
-class GovernanceHandler(StatefulService):
+class Handler(StatefulService):
     """Manages protocol parameters and handles governance proposals."""
 
     def __init__(

@@ -41,7 +41,7 @@ STAGES: dict[str, list[str]] = {
 }
 
 
-class WorkflowHandler(StatefulService):
+class Handler(StatefulService):
     """Manages business process state machines for origination, recovery, etc."""
 
     def __init__(

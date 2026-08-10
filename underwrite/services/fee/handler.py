@@ -91,10 +91,10 @@ class Handler(StatefulService):
             late_payment_percent=kwargs.pop("late_payment_percent", 0.0),
             max_penal_interest_per_loan=kwargs.pop("max_penal_interest_per_loan", 0.0),
         )
-        self.__schedules: dict[str, float] = config.fee_schedules
-        self.__penal_daily_rate: float = config.penal_interest_daily_rate
-        self.__late_percent: float = config.late_payment_percent
-        self.__max_penal: float = config.max_penal_interest_per_loan
+        self.schedules: dict[str, float] = config.fee_schedules
+        self.penal_daily_rate: float = config.penal_interest_daily_rate
+        self.late_percent: float = config.late_payment_percent
+        self.max_penal: float = config.max_penal_interest_per_loan
         deps = Dependencies(
             identity=identity,
             bus=bus,
@@ -121,18 +121,18 @@ class Handler(StatefulService):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.__fees: dict[str, dict[str, Any]] = {}
+        self.fees: dict[str, dict[str, Any]] = {}
         self.repo: BatchedStoreRepository[dict[str, dict[str, Any]]] = self.batched_repo("fees", dict, sync_interval=10)
-        self.__id_generator: IdGenerator = IdGenerator()
+        self.id_generator: IdGenerator = IdGenerator()
 
     def start(self) -> None:
         """Load persisted fee records when the service starts."""
         super().start()
         loaded = self.repo.load(default={})
         if loaded:
-            self.__fees = loaded
+            self.fees = loaded
 
-    def __assess(
+    def assess(
         self,
         loan_id: str,
         fee_type: str,
@@ -158,7 +158,7 @@ class Handler(StatefulService):
 
             principal = max(0.0, principal)
 
-            total_assessed = sum(r.get("amount", 0.0) for r in self.__fees.values() if r.get("loan_id", "") == loan_id)
+            total_assessed = sum(r.get("amount", 0.0) for r in self.fees.values() if r.get("loan_id", "") == loan_id)
             if total_assessed >= MAX_FEE_PER_LOAN:
                 logger.warning(
                     "fee cap reached for loan {} (total {:.2f} >= {:.2f}), skipping fee assessment",
@@ -168,12 +168,12 @@ class Handler(StatefulService):
                 )
                 return
 
-            amount = self.__compute_amount(fee_type, principal, overdue_days, overdue_amount)
+            amount = self.compute_amount(fee_type, principal, overdue_days, overdue_amount)
             if amount <= 0:
                 logger.debug("zero/negative fee amount {} for loan {}, skipped", amount, loan_id)
                 return
 
-            fee_id: str = f"fee_{loan_id}_{fee_type}_{self.__id_generator.next()}"
+            fee_id: str = f"fee_{loan_id}_{fee_type}_{self.id_generator.next()}"
             amount_dec: Decimal = Decimal(str(amount)).quantize(MONEY_QUANTUM, rounding=ROUND_HALF_UP)
             fee_record = {
                 "fee_id": fee_id,
@@ -185,8 +185,8 @@ class Handler(StatefulService):
                 "paid": False,
             }
             self.store.set(f"fee:{fee_id}", fee_record)
-            self.__fees[f"fee:{fee_id}"] = fee_record
-            self.repo.incr_and_maybe_sync(self.__fees)
+            self.fees[f"fee:{fee_id}"] = fee_record
+            self.repo.incr_and_maybe_sync(self.fees)
             self.emit(
                 Type.FEE_ASSESSED,
                 {
@@ -199,7 +199,7 @@ class Handler(StatefulService):
                 correlation_id=correlation_id,
             )
 
-    def __compute_amount(self, fee_type: str, principal: float, overdue_days: int, overdue_amount: float) -> float:
+    def compute_amount(self, fee_type: str, principal: float, overdue_days: int, overdue_amount: float) -> float:
         """Compute the fee amount based on type and parameters.
 
         Args:
@@ -212,21 +212,21 @@ class Handler(StatefulService):
             Computed fee amount.
         """
         if fee_type == "origination":
-            return principal * self.__schedules.get("origination", 0.0)
+            return principal * self.schedules.get("origination", 0.0)
         if fee_type == "prepayment":
-            return self.__schedules.get("prepayment", 0.0)
+            return self.schedules.get("prepayment", 0.0)
         if fee_type == "late_payment":
-            return self.__schedules.get("late_payment", 0.0)
+            return self.schedules.get("late_payment", 0.0)
         if fee_type == "late_payment_percent":
-            return overdue_amount * self.__late_percent / 100.0
+            return overdue_amount * self.late_percent / 100.0
         if fee_type == "penal_interest":
-            daily = self.__penal_daily_rate / 100.0
+            daily = self.penal_daily_rate / 100.0
             penal = overdue_amount * daily * overdue_days
-            if self.__max_penal > 0 and penal > self.__max_penal:
-                penal = self.__max_penal
+            if self.max_penal > 0 and penal > self.max_penal:
+                penal = self.max_penal
             return penal
         if fee_type == "service":
-            return self.__schedules.get("service", 0.0)
+            return self.schedules.get("service", 0.0)
         return 0.0
 
     def handle(self, event: Message) -> None:
@@ -236,7 +236,7 @@ class Handler(StatefulService):
             event: The incoming event.
         """
         if event.event_type == Type.FEE_ASSESS:
-            self.__assess(
+            self.assess(
                 loan_id=event.payload.get("loan_id", ""),
                 fee_type=event.payload.get("fee_type", ""),
                 principal=PayloadValidator().finite(event.payload, "principal", 0.0),
@@ -253,8 +253,8 @@ class Handler(StatefulService):
                     record["paid"] = True
                     record["paid_at"] = datetime.now(timezone.utc).isoformat()
                     self.store.set(f"fee:{fee_id}", record)
-                    self.__fees[f"fee:{fee_id}"] = record.copy()
-                    self.repo.incr_and_maybe_sync(self.__fees)
+                    self.fees[f"fee:{fee_id}"] = record.copy()
+                    self.repo.incr_and_maybe_sync(self.fees)
 
         elif event.event_type == Type.PAYMENT_OVERDUE:
             loan_id = event.payload.get("loan_id", "")
@@ -265,7 +265,7 @@ class Handler(StatefulService):
             if existing:
                 logger.debug("late_payment fee already assessed for loan {}, skipping", loan_id)
                 return
-            self.__assess(
+            self.assess(
                 loan_id=loan_id,
                 fee_type="late_payment",
                 correlation_id=event.correlation_id,
@@ -274,11 +274,11 @@ class Handler(StatefulService):
     def health_check(self) -> dict[str, Any]:
         """Fee-specific health: reports total fee count and pending fees."""
         with self.state_lock:
-            if not self.__fees:
+            if not self.fees:
                 return {**super().health_check(), "fee_count": 0, "pending_fees": 0}
-            pending = sum(1 for r in self.__fees.values() if not r.get("paid", False))
+            pending = sum(1 for r in self.fees.values() if not r.get("paid", False))
             return {
                 **super().health_check(),
-                "fee_count": len(self.__fees),
+                "fee_count": len(self.fees),
                 "pending_fees": pending,
             }

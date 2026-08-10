@@ -70,7 +70,7 @@ class Handler(StatefulService):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.__settlements: list[dict[str, Any]] = []
+        self.settlements_list: list[dict[str, Any]] = []
         self.repo: TypedStoreRepository[list[dict[str, Any]]] = self.store_repo("settlements", list)
 
     def start(self) -> None:
@@ -78,7 +78,7 @@ class Handler(StatefulService):
         super().start()
         loaded = self.repo.load(default=[])
         if loaded:
-            self.__settlements = loaded
+            self.settlements_list = loaded
 
     @property
     def settlements(self) -> list[dict[str, Any]]:
@@ -88,7 +88,7 @@ class Handler(StatefulService):
             List of settlement record dicts.
         """
         with self.state_lock:
-            return list(self.__settlements)
+            return list(self.settlements_list)
 
     def handle(self, event: Message) -> None:
         """Process a default event and emit a settlement.
@@ -109,8 +109,8 @@ class Handler(StatefulService):
                 "loss": principal,
                 "status": "settled",
             }
-            self.__settlements.append(record)
-            self.__sync()
+            self.settlements_list.append(record)
+            self.sync_store()
 
         self.emit(
             Type.SETTLEMENT_COMPLETED,
@@ -122,6 +122,6 @@ class Handler(StatefulService):
             correlation_id=event.correlation_id,
         )
 
-    def __sync(self) -> None:
+    def sync_store(self) -> None:
         """Persist the in-memory settlements to the shared store."""
-        self.repo.save(self.__settlements)
+        self.repo.save(self.settlements_list)

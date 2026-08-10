@@ -22,21 +22,22 @@ python -c "import underwrite; print(underwrite.__version__)"
 
 ## Current Status
 
-**Version**: `0.1.dev65` (pre-production alpha)
-**Tests**: 828+ across 59 test files
-**Services**: 28 nano-service implementations
+**Version**: `0.9.x` (post-hardening)
+**Tests**: 1167 across 78 test files
+**Services**: 34 wired nano-services + 4 KYC provider clients
+**CI gates**: mypy strict (0 errors), ruff format + check, bandit, pip-audit, TruffleHog, coverage ≥ 80%
 
-The project is pre-v0.1.0. The first stable release will be `v0.1.0`.
+The v0.9 release line is the hardening pass landed in production. v1.0 work is tracked in `docs/ROADMAP.md`; v1.0 deferred items include live partner-sandbox validation, video KYC, e-NACH / UPI Autopay, full RBAC, on-call runbook, and pre-built multi-arch images. A Helm chart is **not** planned.
 
 ## Pre-Release Strategy
 
 | Tag               | Focus                                   |
 |-------------------|-----------------------------------------|
-| `v0.1.0-alpha`    | Core API finalized; all ABC interfaces stable |
-| `v0.2.0-beta`     | Security fixes, observability, saga persistence |
-| `v0.3.0-beta`     | Async event bus, Prometheus metrics, config enforcement |
+| `v0.9.0`          | Hardening + real KYC wire-protocol clients; production Docker image; full CI gate suite |
+| `v1.0.0-rc.1`    | Live partner-sandbox validation, on-call runbook, multi-arch image publish |
+| `v1.0.0`          | Video KYC, e-NACH / UPI Autopay mandate collection, full RBAC |
 
-Pre-releases focus on critical bug fixes and blocking issues from the [TODO.md](../TODO.md) audit.
+Pre-releases focus on critical bug fixes and blocking issues from the v0.9 hardening audit.
 
 ## Release Workflow
 

@@ -1,4 +1,4 @@
-"""Tests for AuditHandler — append-only event ledger.
+"""Tests for Handler — append-only event ledger.
 
 Tests verify behavior through public interfaces only:
   - ledger property (returns copy of records)
@@ -12,15 +12,15 @@ from typing import Any
 
 from underwrite.local import LocalBus
 from underwrite.message import Message
-from underwrite.services.audit.handler import AuditHandler
 from underwrite.store import MemoryStore
+from underwrite.services.audit.handler import Handler as AuditHandler
 
 
-def audit() -> AuditHandler:
+def audit() -> Handler:
     return AuditHandler(service_id="audit", bus=LocalBus(), store=MemoryStore())
 
 
-def audit_capped() -> AuditHandler:
+def audit_capped() -> Handler:
     return AuditHandler(service_id="audit", max_ledger=5, bus=LocalBus(), store=MemoryStore())
 
 
@@ -138,7 +138,7 @@ class TestAuditService:
         with patch.dict("sys.modules", {"boto3": mock_boto3_mod}):
             if "underwrite.services.audit.service" in __import__("sys").modules:
                 __import__("sys").modules.pop("underwrite.services.audit.service", None)
-            from underwrite.services.audit.handler import AuditHandler as AuditSvc2
+            from underwrite.services.audit.handler import Handler as AuditSvc2
 
             svc2 = AuditSvc2(
                 service_id="audit",

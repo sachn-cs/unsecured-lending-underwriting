@@ -29,18 +29,18 @@ class Guard:
             max_handlers: Maximum number of distinct handler ids tracked
                 before the oldest handler bucket is evicted.
         """
-        self.__lock: threading.Lock = threading.Lock()
-        self.__seen: dict[str, set[str]] = {}
-        self.__order: dict[str, deque[str]] = {}
-        self.__handler_order: deque[str] = deque()
-        self.__max_ids: int = max_ids_per_handler
-        self.__max_handlers: int = max_handlers
+        self.lock: threading.Lock = threading.Lock()
+        self.seen: dict[str, set[str]] = {}
+        self.order: dict[str, deque[str]] = {}
+        self.handler_order: deque[str] = deque()
+        self.max_ids: int = max_ids_per_handler
+        self.max_handlers: int = max_handlers
 
     @property
     def total_tracked_events(self) -> int:
         """Returns the total number of event IDs tracked across all handlers."""
-        with self.__lock:
-            return sum(len(ids) for ids in self.__seen.values())
+        with self.lock:
+            return sum(len(ids) for ids in self.seen.values())
 
     def is_duplicate(self, handler_id: str, event_id: str) -> bool:
         """Checks whether an event has already been processed by a handler.
@@ -55,24 +55,24 @@ class Guard:
         Returns:
             True if this event was already seen for this handler.
         """
-        with self.__lock:
-            seen = self.__seen.get(handler_id)
+        with self.lock:
+            seen = self.seen.get(handler_id)
             if seen is None:
                 seen = set()
-                self.__seen[handler_id] = seen
-                self.__order[handler_id] = deque()
-                self.__handler_order.append(handler_id)
-                if len(self.__handler_order) > self.__max_handlers:
-                    evicted_handler = self.__handler_order.popleft()
-                    self.__seen.pop(evicted_handler, None)
-                    self.__order.pop(evicted_handler, None)
+                self.seen[handler_id] = seen
+                self.order[handler_id] = deque()
+                self.handler_order.append(handler_id)
+                if len(self.handler_order) > self.max_handlers:
+                    evicted_handler = self.handler_order.popleft()
+                    self.seen.pop(evicted_handler, None)
+                    self.order.pop(evicted_handler, None)
                     logger.warning("idempotency guard evicting oldest handler bucket {}", evicted_handler)
-            order = self.__order[handler_id]
+            order = self.order[handler_id]
             if event_id in seen:
                 return True
             seen.add(event_id)
             order.append(event_id)
-            if len(seen) > self.__max_ids:
+            if len(seen) > self.max_ids:
                 evicted = order.popleft()
                 seen.discard(evicted)
                 logger.warning("idempotency guard evicting oldest entry for {}", handler_id)

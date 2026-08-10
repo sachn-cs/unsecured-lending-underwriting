@@ -1,0 +1,47 @@
+version: 2
+
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      runtime:
+        patterns:
+          - "cryptography"
+          - "loguru"
+          - "typer"
+          - "pydantic"
+      dev:
+        patterns:
+          - "pytest*"
+          - "hypothesis"
+          - "ruff"
+          - "mypy"
+          - "bandit"
+          - "pip-audit"
+          - "testcontainers"
+          - "httpx"
+      integrations:
+        patterns:
+          - "google-cloud-storage"
+          - "opentelemetry*"
+          - "numpy"
+          - "scikit-learn"
+          - "psycopg2-binary"
+          - "uvicorn*"
+          - "fastapi"
+          - "hvac"
+          - "twilio"
+          - "boto3"
+          - "modal"
+          - "mutmut"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3

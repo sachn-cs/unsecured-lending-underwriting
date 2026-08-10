@@ -1,7 +1,7 @@
 """Concurrency tests — verify thread safety of critical components.
 
 Tests run multiple threads concurrently to expose data races in:
-- MechanismHandler state mutations
+- Handler state mutations
 - LocalBus publish/dispatch
 - Orchestrator concurrent execution
 """
@@ -13,6 +13,7 @@ import threading
 from underwrite.local import LocalBus
 from underwrite.message import Message
 from underwrite.store import MemoryStore
+from underwrite.services.audit.handler import Handler
 
 
 class TestLocalBusConcurrency:
@@ -74,13 +75,12 @@ class TestLocalBusConcurrency:
 
 
 class TestMechanismServiceConcurrency:
-    """Verify MechanismHandler thread safety under concurrent commands."""
+    """Verify Handler thread safety under concurrent commands."""
 
     def __make_mechanism(self, store):
-        from underwrite.services.mechanism.handler import MechanismHandler
-
+        
         bus = LocalBus()
-        return MechanismHandler(
+        return Handler(
             service_id="mechanism",
             bus=bus,
             store=store,

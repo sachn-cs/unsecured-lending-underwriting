@@ -16,10 +16,11 @@ from underwrite.exceptions import ProtocolError
 from underwrite.local import LocalBus
 from underwrite.message import Message
 from underwrite.runtime import Runtime, build_authz
-from underwrite.services.audit.handler import AuditHandler
-from underwrite.services.mechanism.handler import MechanismHandler
 from underwrite.services.risk.model import RiskModel
 from underwrite.store import CQRSStore, MemoryStore, PostgresStore, ReadStore, Store
+from underwrite.services.audit.handler import Handler
+from underwrite.services.audit.handler import Handler as AuditHandler
+from underwrite.services.mechanism.handler import Handler as MechanismHandler
 
 # ---------------------------------------------------------------------------
 # 1) Core.safe_store_get returns default on store error
@@ -191,7 +192,7 @@ class TestCQRSStoreHealthFallback:
 
 
 # ---------------------------------------------------------------------------
-# 10) MechanismHandler ProtocolError emits rejection event
+# 10) Handler ProtocolError emits rejection event
 # ---------------------------------------------------------------------------
 
 
@@ -216,7 +217,7 @@ class TestMechanismRejection:
 
 
 # ---------------------------------------------------------------------------
-# 11) AuditHandler.load_jsonl skips corrupted lines
+# 11) Handler.load_jsonl skips corrupted lines
 # ---------------------------------------------------------------------------
 
 

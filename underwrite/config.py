@@ -71,20 +71,18 @@ class ServiceConfig(ForbidExtra):
 
 
 class BusConfig(ForbidExtra):
-    """Configuration for the event bus backend (local, sqs, or modal)."""
+    """Configuration for the event bus backend (local or modal)."""
 
     backend: str = "local"
     rate_limit: float = Field(default=0.0, ge=0)
     max_workers: int = Field(default=0, ge=0)
     max_futures: int = Field(default=10000, ge=1)
-    sqs_queue_url: str = ""  # deprecated, kept for backward compat with old configs
-    sqs_region: str = ""
     modal_queue_name: str = "underwrite-bus"
 
     @field_validator("backend")
     @classmethod
     def check_backend(cls, v: str) -> str:
-        allowed = {"local", "sqs", "modal"}
+        allowed = {"local", "modal"}
         if v not in allowed:
             raise ValueError(f"bus.backend must be one of {allowed}, got {v!r}")
         return v

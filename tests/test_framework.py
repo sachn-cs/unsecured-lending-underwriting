@@ -56,10 +56,10 @@ class TestConfiguration:
         assert "risk" not in enabled
 
     def test_env_overrides(self, monkeypatch: Any) -> None:
-        monkeypatch.setenv("UNDERWRITE_BUS_BACKEND", "sqs")
+        monkeypatch.setenv("UNDERWRITE_BUS_BACKEND", "modal")
         monkeypatch.setenv("UNDERWRITE_LOG_LEVEL", "DEBUG")
         config: Configuration = Configuration.load()
-        assert config.bus.backend == "sqs"
+        assert config.bus.backend == "modal"
         assert config.logging.level == "DEBUG"
 
     def test_to_dict_serialises(self) -> None:

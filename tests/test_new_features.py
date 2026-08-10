@@ -138,9 +138,9 @@ class TestAsyncBusTimeout:
 
         assert bus.dlq.count >= 1, f"expected timed-out event in DLQ, got {bus.dlq.count}"
         dlq_records = bus.dlq.records
-        assert any(
-            "timed out" in rec.error for rec in dlq_records
-        ), f"DLQ record should carry the timeout error, got {[r.error for r in dlq_records]}"
+        assert any("timed out" in rec.error for rec in dlq_records), (
+            f"DLQ record should carry the timeout error, got {[r.error for r in dlq_records]}"
+        )
 
         await bus.stop()
 

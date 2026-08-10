@@ -116,25 +116,25 @@ class Collector:
         Args:
             max_metrics: Maximum metric entries before eviction.
         """
-        self.__lock: threading.Lock = threading.Lock()
-        self.__counters: dict[str, Counter] = {}
-        self.__timers: dict[str, Timer] = {}
-        self.__gauges: dict[str, Gauge] = {}
-        self.__max_metrics: int = max_metrics
+        self.lock: threading.Lock = threading.Lock()
+        self.counters: dict[str, Counter] = {}
+        self.timers: dict[str, Timer] = {}
+        self.gauges: dict[str, Gauge] = {}
+        self.max_metrics: int = max_metrics
 
-    def __evict(self) -> None:
-        total = len(self.__counters) + len(self.__timers) + len(self.__gauges)
-        if total <= self.__max_metrics:
+    def evict(self) -> None:
+        total = len(self.counters) + len(self.timers) + len(self.gauges)
+        if total <= self.max_metrics:
             return
-        target = self.__max_metrics // 3
-        for metric_map in (self.__counters, self.__timers, self.__gauges):
+        target = self.max_metrics // 3
+        for metric_map in (self.counters, self.timers, self.gauges):
             excess = len(metric_map) - target
             if excess <= 0:
                 continue
             for key in list(metric_map)[:excess]:
                 del metric_map[key]
 
-    def __key(self, name: str, tags: dict[str, str]) -> str:
+    def key(self, name: str, tags: dict[str, str]) -> str:
         parts = [name]
         for k, v in sorted(tags.items()):
             parts.append(f"{k}={v}")
@@ -149,12 +149,12 @@ class Collector:
             delta: Amount to increment (default 1).
         """
         tags = tags or {}
-        key = self.__key(name, tags)
-        with self.__lock:
-            if key not in self.__counters:
-                self.__counters[key] = Counter(name=name, tags=dict(tags))
-            self.__counters[key].value += delta
-            self.__evict()
+        key = self.key(name, tags)
+        with self.lock:
+            if key not in self.counters:
+                self.counters[key] = Counter(name=name, tags=dict(tags))
+            self.counters[key].value += delta
+            self.evict()
 
     def gauge(self, name: str, value: float, tags: dict[str, str] | None = None) -> None:
         """Sets a gauge metric to a specific value.
@@ -165,10 +165,10 @@ class Collector:
             tags: Optional key-value tags.
         """
         tags = tags or {}
-        key = self.__key(name, tags)
-        with self.__lock:
-            self.__gauges[key] = Gauge(name=name, tags=dict(tags), value=value)
-            self.__evict()
+        key = self.key(name, tags)
+        with self.lock:
+            self.gauges[key] = Gauge(name=name, tags=dict(tags), value=value)
+            self.evict()
 
     def timer(self, name: str, duration_ms: float, tags: dict[str, str] | None = None) -> None:
         """Records a timer observation.
@@ -179,18 +179,18 @@ class Collector:
             tags: Optional key-value tags.
         """
         tags = tags or {}
-        key = self.__key(name, tags)
-        with self.__lock:
-            if key not in self.__timers:
-                self.__timers[key] = Timer(name=name, tags=dict(tags))
-            t = self.__timers[key]
+        key = self.key(name, tags)
+        with self.lock:
+            if key not in self.timers:
+                self.timers[key] = Timer(name=name, tags=dict(tags))
+            t = self.timers[key]
             t.count += 1
             t.total_ms += duration_ms
             if duration_ms < t.min_ms:
                 t.min_ms = duration_ms
             if duration_ms > t.max_ms:
                 t.max_ms = duration_ms
-            self.__evict()
+            self.evict()
 
     def time(self, name: str, tags: dict[str, str] | None = None) -> TimerContext:
         """Returns a context manager that records duration on exit.
@@ -210,9 +210,9 @@ class Collector:
         Returns:
             Dict with ``"counters"``, ``"timers"``, and ``"gauges"`` keys.
         """
-        with self.__lock:
+        with self.lock:
             return {
-                "counters": {k: {"value": c.value, "tags": c.tags} for k, c in self.__counters.items()},
+                "counters": {k: {"value": c.value, "tags": c.tags} for k, c in self.counters.items()},
                 "timers": {
                     k: {
                         "count": t.count,
@@ -221,32 +221,32 @@ class Collector:
                         "max_ms": t.max_ms,
                         "tags": t.tags,
                     }
-                    for k, t in self.__timers.items()
+                    for k, t in self.timers.items()
                 },
-                "gauges": {k: {"value": g.value, "tags": g.tags} for k, g in self.__gauges.items()},
+                "gauges": {k: {"value": g.value, "tags": g.tags} for k, g in self.gauges.items()},
             }
 
     def reset(self) -> None:
         """Clears all counters, timers, and gauges."""
-        with self.__lock:
-            self.__counters.clear()
-            self.__timers.clear()
-            self.__gauges.clear()
+        with self.lock:
+            self.counters.clear()
+            self.timers.clear()
+            self.gauges.clear()
 
 
 class TimerContext:
     """Context manager that records elapsed time to a Collector."""
 
     def __init__(self, collector: Collector, name: str, tags: dict[str, str]) -> None:
-        self.__collector = collector
-        self.__name = name
-        self.__tags = tags
-        self.__start: float = 0.0
+        self.collector = collector
+        self.name = name
+        self.tags = tags
+        self.start: float = 0.0
 
     def __enter__(self) -> TimerContext:
-        self.__start = time.perf_counter()
+        self.start = time.perf_counter()
         return self
 
     def __exit__(self, *args: object) -> None:
-        elapsed = (time.perf_counter() - self.__start) * 1000.0
-        self.__collector.timer(self.__name, elapsed, self.__tags)
+        elapsed = (time.perf_counter() - self.start) * 1000.0
+        self.collector.timer(self.name, elapsed, self.tags)

@@ -8,7 +8,7 @@ from __future__ import annotations
 import os
 from collections.abc import Generator
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -62,21 +62,18 @@ def pg_store(postgres_dsn: str) -> Generator[Store, None, None]:
 
     Requires the ``postgres`` extra and ``testcontainers``.
     """
-    import uuid
+    import tempfile
+    from pathlib import Path
 
     from underwrite.store import Sqlite
 
-    table = f"test_store_{uuid.uuid4().hex[:12]}"
-    store = Sqlite(dsn=postgres_dsn, table=table)
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
+        path = f.name
+    store: Store | Sqlite = Sqlite(path=path)
     store.migrate(_empty_plan())
     yield store
     try:
-        pool = store._get_pool()
-        conn = pool.getconn()
-        with conn.cursor() as cur:
-            cur.execute(f"DROP TABLE IF EXISTS {table}")
-        conn.commit()
-        pool.putconn(conn)
+        Path(path).unlink(missing_ok=True)
     except Exception:
         pass
 
@@ -93,7 +90,7 @@ def _empty_plan() -> Any:
 @pytest.fixture
 def bus() -> EventBus:
     """Return a fresh EventBus instance."""
-    return LocalBus()
+    return cast(EventBus, LocalBus())
 
 
 # -- Config fixture ------------------------------------------------------------

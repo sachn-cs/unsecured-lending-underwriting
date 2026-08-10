@@ -71,11 +71,11 @@ class Handler(Core):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.__clock: SystemClock = SystemClock()
+        self.clock: SystemClock = SystemClock()
         self.handlers: dict[str, Any] = {
-            Type.STATEMENT_GENERATE: self.__on_statement_generate,
-            Type.COLLECTION_UPDATED: self.__on_collection_updated,
-            Type.PAYMENT_RECEIVED: self.__on_payment_received_trigger,
+            Type.STATEMENT_GENERATE: self.on_statement_generate,
+            Type.COLLECTION_UPDATED: self.on_collection_updated,
+            Type.PAYMENT_RECEIVED: self.on_payment_received_trigger,
         }
 
     def handle(self, event: Message) -> None:
@@ -83,7 +83,7 @@ class Handler(Core):
         if handler is not None:
             handler(event)
 
-    def __on_statement_generate(self, event: Message) -> None:
+    def on_statement_generate(self, event: Message) -> None:
         """Generate a statement for the given loan and period.
 
         Args:
@@ -117,11 +117,11 @@ class Handler(Core):
                 "statement_id": statement_id,
                 "loan_id": loan_id,
                 "period_start": period_start,
-                "period_end": period_end or self.__clock.iso(),
+                "period_end": period_end or self.clock.iso(),
                 "outstanding": outstanding,
                 "total_paid": total_paid,
                 "transaction_count": len(transactions),
-                "generated_at": self.__clock.iso(),
+                "generated_at": self.clock.iso(),
             }
             self.store.set(f"statement:{statement_id}", statement)
         self.emit(
@@ -135,7 +135,7 @@ class Handler(Core):
             correlation_id=event.correlation_id,
         )
 
-    def __on_collection_updated(self, event: Message) -> None:
+    def on_collection_updated(self, event: Message) -> None:
         """Record a collection update trigger for statement generation.
 
         Args:
@@ -144,14 +144,14 @@ class Handler(Core):
         loan_id = event.payload.get("loan_id", "")
         if loan_id:
             self.store.set(
-                f"stmt_trigger:{loan_id}:{self.__clock.iso()}",
+                f"stmt_trigger:{loan_id}:{self.clock.iso()}",
                 {
                     "loan_id": loan_id,
                     "trigger": "collection_update",
                 },
             )
 
-    def __on_payment_received_trigger(self, event: Message) -> None:
+    def on_payment_received_trigger(self, event: Message) -> None:
         """Record a payment received trigger for statement generation.
 
         Args:
@@ -160,7 +160,7 @@ class Handler(Core):
         loan_id = event.payload.get("loan_id", "")
         if loan_id:
             self.store.set(
-                f"stmt_trigger:{loan_id}:{self.__clock.iso()}",
+                f"stmt_trigger:{loan_id}:{self.clock.iso()}",
                 {
                     "loan_id": loan_id,
                     "trigger": "payment",

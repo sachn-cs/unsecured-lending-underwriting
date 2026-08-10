@@ -8,9 +8,11 @@ import pytest
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.risk.handler import RiskHandler
 from underwrite.services.risk.model import RiskModel
 from underwrite.store import MemoryStore
+from underwrite.services.audit.handler import Handler as AuditHandler
+from underwrite.services.risk.handler import Handler
+from underwrite.services.risk.handler import Handler as RiskHandler
 
 
 class EmitSpy:
@@ -71,8 +73,7 @@ class TestRiskServiceFaults:
 
 class TestAuditServiceFaults:
     def test_load_corrupted_jsonl_skips_bad_lines(self, tmp_path: Any) -> None:
-        from underwrite.services.audit.handler import AuditHandler
-
+        
         svc = AuditHandler(service_id="audit", bus=LocalBus(), store=MemoryStore())
         p = tmp_path / "audit.jsonl"
         p.write_text('{"event_type":"a","source":"s"}\nnot json\n{"event_type":"b","source":"s"}\n')
@@ -82,8 +83,7 @@ class TestAuditServiceFaults:
         assert svc.ledger[1]["event_type"] == "b"
 
     def test_load_nonexistent_file_clears_ledger(self, tmp_path: Any) -> None:
-        from underwrite.services.audit.handler import AuditHandler
-
+        
         svc = AuditHandler(service_id="audit", bus=LocalBus(), store=MemoryStore())
         svc.handle(Message(event_type="test", source="test", payload={"dummy": True}))
         assert len(svc.ledger) == 1

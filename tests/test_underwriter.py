@@ -1,14 +1,15 @@
-"""Tests for UnderwriterHandler — loan application approval/rejection."""
+"""Tests for Handler — loan application approval/rejection."""
 
 from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.underwriter.handler import UnderwriterHandler
 from underwrite.store import MemoryStore
+from underwrite.services.underwriter.handler import Handler
+from underwrite.services.underwriter.handler import Handler as UnderwriterHandler
 
 
-def svc(bus=None) -> UnderwriterHandler:
+def svc(bus=None) -> Handler:
     return UnderwriterHandler(service_id="underwriter", bus=bus or LocalBus(), store=MemoryStore())
 
 

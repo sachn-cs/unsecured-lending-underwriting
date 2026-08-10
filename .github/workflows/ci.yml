@@ -33,6 +33,16 @@ jobs:
         run: mypy underwrite/ tests/
       - name: Security audit
         run: bandit -r underwrite/ -c pyproject.toml
+      - name: SPDX header presence
+        run: |
+          set -euo pipefail
+          missing=$(find underwrite tests -name '*.py' -not -name '__version__.py' \
+                    -exec sh -c 'head -1 "$1" | grep -q "SPDX-License-Identifier" || echo "$1"' _ {} \;)
+          if [[ -n "${missing}" ]]; then
+            echo "Files missing SPDX-License-Identifier header:"
+            echo "${missing}"
+            exit 1
+          fi
       - name: Dependency audit
         run: pip-audit --skip-editable
       - name: Test

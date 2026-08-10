@@ -10,10 +10,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 > `__<name>__.py` files in the package are `__init__.py`, `__main__.py`, and
 > the auto-generated `__version__.py`.
 
-> **WARNING**: This is a beta project. Not production-ready. Not developer-friendly.
-> Known gaps: no real PAN/Aadhaar/CIBIL API integrations (format validation only),
-> no video KYC, no e-NACH, incomplete RBAC, no DR procedures, rough DX.
-
 ## [Unreleased]
 
 ### Added

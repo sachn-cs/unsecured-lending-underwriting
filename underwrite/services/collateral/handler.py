@@ -74,9 +74,9 @@ class Handler(StatefulService):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.__clock: SystemClock = SystemClock()
-        self.__ltv_ratio: float = 0.75
-        self.__collateral: dict[str, dict[str, Any]] = {}
+        self.clock: SystemClock = SystemClock()
+        self.ltv_ratio: float = 0.75
+        self.collateral: dict[str, dict[str, Any]] = {}
         self.repo: TypedStoreRepository[dict[str, dict[str, Any]]] = self.store_repo("collateral", dict)
 
     def start(self) -> None:
@@ -84,7 +84,7 @@ class Handler(StatefulService):
         super().start()
         loaded = self.repo.load(default={})
         if loaded:
-            self.__collateral = loaded
+            self.collateral = loaded
 
     def handle(self, event: Message) -> None:
         """Process loan origination and default events against collateral.
@@ -108,22 +108,22 @@ class Handler(StatefulService):
         """
         borrower: str = PayloadValidator().non_empty(event.payload, "borrower")
         principal: float = PayloadValidator().finite(event.payload, "principal")
-        required: float = principal * self.__ltv_ratio
+        required: float = principal * self.ltv_ratio
         with self.state_lock:
-            self.__collateral[borrower] = {
+            self.collateral[borrower] = {
                 "principal": principal,
                 "required": required,
                 "posted": 0.0,
-                "ltv": self.__ltv_ratio,
-                "created_at": self.__clock.iso(),
+                "ltv": self.ltv_ratio,
+                "created_at": self.clock.iso(),
             }
-            self.repo.save(self.__collateral)
+            self.repo.save(self.collateral)
         self.emit(
             Type.COLLATERAL_MARKED,
             {
                 "borrower": borrower,
                 "required": required,
-                "ltv_ratio": self.__ltv_ratio,
+                "ltv_ratio": self.ltv_ratio,
             },
             correlation_id=event.correlation_id,
         )
@@ -140,16 +140,16 @@ class Handler(StatefulService):
             logger.warning("dropping DEFAULT_OCCURRED with missing borrower")
             return
         with self.state_lock:
-            col = self.__collateral.pop(borrower, None)
+            col = self.collateral.pop(borrower, None)
             if col:
                 try:
-                    self.repo.save(self.__collateral)
+                    self.repo.save(self.collateral)
                 except Exception:
                     logger.exception(
                         "failed to persist collateral removal for {}, restoring in-memory state",
                         borrower,
                     )
-                    self.__collateral[borrower] = col
+                    self.collateral[borrower] = col
                     raise
         if col:
             self.emit(
@@ -173,4 +173,4 @@ class Handler(StatefulService):
 
         """
         with self.state_lock:
-            return self.__collateral.get(borrower)
+            return self.collateral.get(borrower)

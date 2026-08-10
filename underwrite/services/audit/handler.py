@@ -17,6 +17,7 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
+from underwrite.local import LocalBus
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
@@ -26,7 +27,7 @@ from underwrite.pii import PIISanitizer
 from underwrite.saga import Orchestrator
 from underwrite.services.base import Dependencies, StatefulService
 from underwrite.services.persistence import BatchedStoreRepository
-from underwrite.store import Store
+from underwrite.store import Store, InMemory, Disk, Sqlite
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
 
@@ -45,8 +46,8 @@ class Handler(StatefulService):
     def __init__(
         self,
         name: str,
-        bus: EventBus,
-        store: Store,
+        bus: EventBus | LocalBus,
+        store: Store | InMemory | Disk | Sqlite,
         max_ledger: int = 100000,
         export_url: str = "",
         identity: Keypair | None = None,

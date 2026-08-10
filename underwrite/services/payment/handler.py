@@ -33,7 +33,7 @@ from underwrite.value_objects import IdGenerator, Money
 OVERDUE_CUTOFF_DAYS: int = 30
 
 
-class PaymentHandler(StatefulService):
+class Handler(StatefulService):
     """Manages payment scheduling, receipt tracking, and delinquency detection."""
 
     def __init__(

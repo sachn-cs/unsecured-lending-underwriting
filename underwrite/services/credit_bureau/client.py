@@ -180,17 +180,17 @@ class HttpCreditBureauClient(CreditBureauClient):
                 to stamp report_date and verified_at when the upstream
                 response omits them.
         """
-        self.__cibil_api_key = cibil_api_key
-        self.__cibil_api_base = cibil_api_base.rstrip("/")
-        self.__experian_api_key = experian_api_key
-        self.__experian_api_base = experian_api_base.rstrip("/")
-        self.__equifax_api_key = equifax_api_key
-        self.__equifax_api_base = equifax_api_base.rstrip("/")
-        self.__ckyc_api_key = ckyc_api_key
-        self.__ckyc_api_base = ckyc_api_base.rstrip("/")
-        self.__timeout = timeout_seconds
-        self.__clock = clock if clock is not None else SystemClock()
-        self.__http = httpx.Client(timeout=self.__timeout)
+        self.cibil_api_key = cibil_api_key
+        self.cibil_api_base = cibil_api_base.rstrip("/")
+        self.experian_api_key = experian_api_key
+        self.experian_api_base = experian_api_base.rstrip("/")
+        self.equifax_api_key = equifax_api_key
+        self.equifax_api_base = equifax_api_base.rstrip("/")
+        self.ckyc_api_key = ckyc_api_key
+        self.ckyc_api_base = ckyc_api_base.rstrip("/")
+        self.timeout = timeout_seconds
+        self.clock = clock if clock is not None else SystemClock()
+        self.http = httpx.Client(timeout=self.timeout)
 
     def request(
         self,
@@ -225,7 +225,7 @@ class HttpCreditBureauClient(CreditBureauClient):
         try:
             if not HAS_HTTPX:
                 raise RuntimeError("httpx is required for HttpCreditBureauClient")
-            resp = self.__http.request(method, url, json=data, headers=headers)
+            resp = self.http.request(method, url, json=data, headers=headers)
         except httpx.TimeoutException as exc:
             raise CreditBureauError(f"request timed out: {exc}") from exc
         except httpx.RequestError as exc:
@@ -278,9 +278,9 @@ class HttpCreditBureauClient(CreditBureauClient):
             CreditBureauValidationError: If bureau is unsupported.
         """
         bases = {
-            "cibil": (self.__cibil_api_base, self.__cibil_api_key),
-            "experian": (self.__experian_api_base, self.__experian_api_key),
-            "equifax": (self.__equifax_api_base, self.__equifax_api_key),
+            "cibil": (self.cibil_api_base, self.cibil_api_key),
+            "experian": (self.experian_api_base, self.experian_api_key),
+            "equifax": (self.equifax_api_base, self.equifax_api_key),
         }
         entry = bases.get(bureau)
         if not entry:
@@ -350,7 +350,7 @@ class HttpCreditBureauClient(CreditBureauClient):
             tradelines=body.get("tradelines", 0),
             enquiries_last_30_days=body.get("enquiries_last_30_days", 0),
             defaults=body.get("defaults", []),
-            report_date=body.get("report_date", "") or self.__clock.iso(),
+            report_date=body.get("report_date", "") or self.clock.iso(),
         )
 
     def verify_ckyc(
@@ -369,9 +369,9 @@ class HttpCreditBureauClient(CreditBureauClient):
         """
         body = self.request(
             "POST",
-            self.__ckyc_api_base,
+            self.ckyc_api_base,
             "/verify",
-            self.__ckyc_api_key,
+            self.ckyc_api_key,
             {"ckyc_number": ckyc_number, "aadhaar": aadhaar},
         )
         return CkycResponse(
@@ -383,7 +383,7 @@ class HttpCreditBureauClient(CreditBureauClient):
             aadhaar_verified=body.get("aadhaar_verified", False),
             address=body.get("address", ""),
             status=body.get("status", "verified"),
-            verified_at=body.get("verified_at", "") or self.__clock.iso(),
+            verified_at=body.get("verified_at", "") or self.clock.iso(),
         )
 
 

@@ -18,7 +18,7 @@ from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
 
 
-class GraphHandler(Core):
+class Handler(Core):
     """Provides read-only queries against the delegation graph.
 
     Reads state from the shared store to answer path, credit-limit,

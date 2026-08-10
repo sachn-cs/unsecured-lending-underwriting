@@ -7,6 +7,7 @@ name = "underwrite"
 dynamic = ["version"]
 description = "Delegated Underwriting Protocol — nano-service platform for unsecured lending"
 readme = "README.md"
+readme-content-type = "text/markdown"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]

@@ -91,7 +91,7 @@ class SchemaRegistry:
     """Registry of event schemas keyed by event type name."""
 
     def __init__(self) -> None:
-        self.__schemas: dict[str, EventSchema] = {}
+        self.schemas: dict[str, EventSchema] = {}
 
     def register(self, event_type: str, schema: EventSchema) -> None:
         """Register a schema for *event_type*.
@@ -100,17 +100,17 @@ class SchemaRegistry:
             ValueError: If a schema for *event_type* is already registered
                 with a version >= the new schema's version.
         """
-        existing = self.__schemas.get(event_type)
+        existing = self.schemas.get(event_type)
         if existing is not None and existing.version >= schema.version:
             raise ValueError(
                 f"schema for {event_type!r} already registered at version {existing.version} >= {schema.version}"
             )
-        self.__schemas[event_type] = schema
+        self.schemas[event_type] = schema
         logger.debug("registered schema for {} v{}", event_type, schema.version)
 
     def get(self, event_type: str) -> EventSchema | None:
         """Return the registered schema for *event_type*, or ``None``."""
-        return self.__schemas.get(event_type)
+        return self.schemas.get(event_type)
 
     def validate(self, event_type: str, payload: Any) -> None:
         """Validate *payload* against the registered schema for *event_type*.
@@ -119,14 +119,14 @@ class SchemaRegistry:
             SchemaValidationError: If no schema is registered or validation
                 fails.
         """
-        schema = self.__schemas.get(event_type)
+        schema = self.schemas.get(event_type)
         if schema is None:
             logger.debug("no schema registered for {}, skipping validation", event_type)
             return
         schema.validate(payload)
 
     def __contains__(self, event_type: str) -> bool:
-        return event_type in self.__schemas
+        return event_type in self.schemas
 
 
 registry: SchemaRegistry = SchemaRegistry()

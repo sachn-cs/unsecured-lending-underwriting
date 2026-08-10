@@ -1,4 +1,4 @@
-"""Tests for QuoteHandler — loan pricing and break-even rate calculation.
+"""Tests for Handler — loan pricing and break-even rate calculation.
 
 Tests verify behavior through emitted QUOTE_CALCULATED events.
 """
@@ -9,11 +9,12 @@ import pytest
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.quote.handler import QuoteHandler
 from underwrite.store import MemoryStore
+from underwrite.services.quote.handler import Handler
+from underwrite.services.quote.handler import Handler as QuoteHandler
 
 
-def quote(bus=None) -> QuoteHandler:
+def quote(bus=None) -> Handler:
     return QuoteHandler(service_id="quote", bus=bus, store=MemoryStore())
 
 

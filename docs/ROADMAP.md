@@ -13,12 +13,12 @@ build with non-root user and healthcheck, and the docs / changelog
 reflect the hardened state. See `CHANGELOG.md` for the full
 list of fixes.
 
-- Real PAN verification client (`services/kyc/pan.py`)
-- Real Aadhaar eKYC client (`services/kyc/aadhaar.py`)
-- Real CIBIL consumer bureau pull (`services/kyc/cibil.py`)
-- Real CKYC registry search (`services/kyc/ckyc.py`)
+- Real PAN verification client (`services/providers.pypan.py`)
+- Real Aadhaar eKYC client (`services/providers.pyaadhaar.py`)
+- Real CIBIL consumer bureau pull (`services/providers.pycibil.py`)
+- Real CKYC registry search (`services/providers.pyckyc.py`)
 - Common `KycProvider` ABC + `Verdict` enum + `ProviderResult`
-  envelope (`services/kyc/base.py`)
+  envelope (`services/providers.pybase.py`)
 - Runtime auto-wires the configured providers into the
   compliance and credit-bureau services
 - Production Dockerfile (`Dockerfile`) — multi-stage, non-root,

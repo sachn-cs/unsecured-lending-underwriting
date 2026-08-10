@@ -1,7 +1,7 @@
 # Services
 
 underwrite ships **34 wired nano-services** plus **4 KYC provider clients**
-(in `underwrite/services/kyc/`). Every wired service extends `Core` (stateless)
+(in `underwrite/services/providers.py`). Every wired service extends `Core` (stateless)
 or `StatefulService` (in-memory state), is registered in `underwrite/handler.py`
 (`HANDLER_MAP`, `HANDLER_CLASSES`, `WIRING`), and has a dedicated test file
 under `tests/test_<name>.py`.
@@ -49,7 +49,7 @@ Default is sandbox / mock; live mode engages via configured credentials +
 
 | Service | Default | Live mode |
 |---|---|---|
-| `compliance` | PAN regex / Aadhaar Verhoeff / AML keywords | KYC provider clients in `services/kyc/` (PAN, Aadhaar, CIBIL, CKYC) |
+| `compliance` | PAN regex / Aadhaar Verhoeff / AML keywords | KYC provider clients in `services/providers.py` (PAN, Aadhaar, CIBIL, CKYC) |
 | `credit_bureau` | `MockCreditBureauClient` | `HttpCreditBureauClient` (httpx) against CIBIL / Experian / Equifax / CKYC endpoints |
 | `consent` | In-process consent lifecycle | Persisted via `Store` (Vault / Postgres for production keys) |
 | `dsr` | In-process DSR fulfillment | Network delivery to data principal via configured channel |

@@ -103,7 +103,7 @@ Each group is declared in `[project.optional-dependencies]` and must be installe
 
 | Dependency | Version | Used In | Purpose |
 |------------|---------|---------|---------|
-| `boto3` | >=1.33 | `underwrite/secrets.py` (`AwsSecretsBackend`); `underwrite/services/audit/service.py` (`__export_s3`) | AWS Secrets Manager read/write; S3 audit export. |
+| `boto3` | >=1.33 | `underwrite/secrets.py` (`AwsSecretsBackend`); `underwrite/services/audit.py` (`__export_s3`) | AWS Secrets Manager read/write; S3 audit export. |
 
 **Upgrade considerations**: boto3 1.33+ follows the AWS SDK for Python (v3). The `get_secret_value()` and `put_secret_value()` APIs are stable. The S3 `put_object` API used in audit export is unchanged.
 
@@ -111,6 +111,6 @@ Each group is declared in `[project.optional-dependencies]` and must be installe
 
 | Dependency | Version | Used In | Purpose |
 |------------|---------|---------|---------|
-| `google-cloud-storage` | >=2.10 | `underwrite/services/audit/service.py` (`__export_gcs`) | GCS audit export. |
+| `google-cloud-storage` | >=2.10 | `underwrite/services/audit.py` (`__export_gcs`) | GCS audit export. |
 
 **Upgrade considerations**: The `storage.Client()` and `bucket().blob().upload_from_string()` API is stable across 2.x. Authentication follows Google's `GOOGLE_APPLICATION_CREDENTIALS` env var.

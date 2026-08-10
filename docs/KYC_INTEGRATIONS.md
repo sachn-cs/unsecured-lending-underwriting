@@ -10,7 +10,7 @@ URL and load the partner credentials from the configured
 
 ```json
 {
-  "kyc_providers": {
+  "kyc_provider_config": {
     "pan_client_id": "...",
     "pan_client_secret": "...",
     "pan_api_base_url": "https://api.karza.in",
@@ -48,24 +48,34 @@ endpoints (sandbox by default):
 
 ## Common surface
 
-Every provider client extends `KycProvider` and exposes the same
-two methods:
+Every provider client extends `Provider` (in
+`underwrite.services.providers`) and exposes the same shape:
 
 - `is_configured()` — returns `True` only when the client has
   the credentials it needs to call the real upstream API
-- `verify(identifier, **kwargs)` — runs a verification and
-  returns a `ProviderResult` carrying a `Verdict` and the
-  provider's structured response
+- `verify(**kwargs)` — runs a verification and returns a
+  `ProviderResult` carrying a `Verdict` and the provider's
+  structured response. The identifier (PAN, Aadhaar number,
+  consumer_id, CKYC id) is bound at `__init__` time, not passed
+  to `verify()`.
+
+Construction uses provider-specific kwarg names so each domain
+identifier reads naturally:
 
 ```python
-from underwrite.services.kyc_providers import (
-    PanVerificationClient,
-    AadhaarEKycClient,
-    CibilBureauClient,
-    CkycSearchClient,
+from underwrite.services.providers import (
+    Aadhar,
+    Pan,
+    Cibil,
+    Ckyc,
     Verdict,
     ProviderResult,
+    ProvidersConfig,
 )
+
+# Identifier is the first positional arg of every client.
+client = Pan(pan="ABCDE1234F", client_id="...", client_secret="...")
+result = client.verify(name="John", consent="Y")
 ```
 
 `Verdict` is one of:
@@ -147,7 +157,7 @@ Wire response (after the KUA SDK decrypts the auth XML):
 
 The base client hits the UIDAI staging endpoint as a shape
 reference. Production deployments override
-`_send_kyc_request` to plug in the KUA SDK
+`send_kyc_request` to plug in the KUA SDK
 (`pyuid` / `okhota` / proprietary); the override should call
 the KUA's PKI-encrypted transport, decrypt the auth XML, and
 return the same `dict` shape.
@@ -222,15 +232,17 @@ returns `Verdict.ERROR`.
 ## Service integration
 
 The `compliance` and `credit_bureau` services consume the
-configured providers via the runtime-injected `kyc_providers`
-dict. Without a provider, both fall back to format-only
-validation (the v0.8 behaviour); with a provider, the real
-upstream call gates the service's KYC verdict.
+configured providers via the runtime-injected
+`kyc_provider_config` (`ProvidersConfig`). Without a
+provider config, both fall back to format-only validation;
+with a provider config, the real upstream call gates the
+service's KYC verdict. Handlers construct a client per call
+via `ProvidersConfig.resolve_pan(pan, secrets)`.
 
 ```python
 # Runtime auto-wiring — no application code required:
 Runtime(
-    config,  # has kyc_providers populated from Configuration
+    config,  # has kyc_provider_config populated from Configuration
 ).register("compliance")
 ```
 

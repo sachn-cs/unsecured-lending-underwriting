@@ -112,7 +112,7 @@ Underwrite is designed for **local-first, scale-up** (single process). Scaling s
 
 ### 10. How does fraud detection work?
 
-The `FraudService` (`underwrite/services/fraud/service.py`) monitors loan origination and repayment events:
+The `FraudService` (`underwrite/services/fraud.py`) monitors loan origination and repayment events:
 
 - **Wash lending detection** (`__check_wash`): Detects rapid origination→repayment cycles. 3+ consecutive cycles trigger a `WASH_FLAG` event.
 - **Velocity/burst detection** (`__check_burst`): Flags borrowers with more than 3 recent originations as `VELOCITY_FLAG`.
@@ -130,7 +130,7 @@ The **delegation graph** (`underwrite/services/mechanism/graph.py`) is the core 
 - Each user has `earned` (repayment credits) and `principal` (outstanding loans).
 - **Credit limit** = budget + earned − outgoing delegations.
 - **Default propagation**: When a borrower defaults, losses propagate up the delegation chain: borrower's earned → sponsor's earned → sponsor's delegation edge → seed's base budget.
-- Queries include path-to-seed, credit-limit, and user listing via `GraphService` (`underwrite/services/graph/service.py`).
+- Queries include path-to-seed, credit-limit, and user listing via `GraphService` (`underwrite/services/graph.py`).
 
 ---
 
@@ -148,7 +148,7 @@ When a borrower defaults (`DelegationGraph.default()` at `underwrite/services/me
 
 ### 13. What is the NPA classification system?
 
-The `NPAService` (`underwrite/services/npa/service.py`) tracks non-performing assets per RBI Master Circular guidelines:
+The `NPAService` (`underwrite/services/npa.py`) tracks non-performing assets per RBI Master Circular guidelines:
 
 | Bucket | Days Past Due |
 |--------|--------------|

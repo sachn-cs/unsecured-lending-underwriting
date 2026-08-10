@@ -305,24 +305,24 @@ sequenceDiagram
 ## Service Responsibilities
 
 ### MechanismService
-`underwrite/services/mechanism/service.py` — The protocol state machine. Owns the `DelegationGraph`, processes commands (`add_seed`, `add_user`, `originate`, `repay`, `default`, `revoke`, `quote`), and emits domain events. Uses snapshot/rollback pattern: state is serialized to store on every mutation; on write failure, in-memory state is restored.
+`underwrite/services/mechanism.py` — The protocol state machine. Owns the `DelegationGraph`, processes commands (`add_seed`, `add_user`, `originate`, `repay`, `default`, `revoke`, `quote`), and emits domain events. Uses snapshot/rollback pattern: state is serialized to store on every mutation; on write failure, in-memory state is restored.
 
 Commands arrive as service-name events — i.e. events with `event_type == "mechanism"` and a `command` field in the payload. Unknown commands are silently dropped. Protocol violations emit `mechanism.rejected`.
 
 ### AuditService
-`underwrite/services/audit/service.py` — Append-only event ledger. Subscribes to almost every domain event and maintains an ordered ledger. Configurable `max_ledger` cap with optional `export_url` for offloading. Every event that any other service emits is tracked here.
+`underwrite/services/audit.py` — Append-only event ledger. Subscribes to almost every domain event and maintains an ordered ledger. Configurable `max_ledger` cap with optional `export_url` for offloading. Every event that any other service emits is tracked here.
 
 ### RiskService
-`underwrite/services/risk/service.py` — Computes default-probability scores. Optionally integrates with sklearn `RiskModel` (controllable via `RISK_MODEL_PATH` env var). Emits `risk.scored` with the model's score, and `risk.early_warning` if `default_probability > 0.30`.
+`underwrite/services/risk/risk.py` — Computes default-probability scores. Optionally integrates with sklearn `RiskModel` (controllable via `RISK_MODEL_PATH` env var). Emits `risk.scored` with the model's score, and `risk.early_warning` if `default_probability > 0.30`.
 
 ### FraudService
-`underwrite/services/fraud/service.py` — In-memory activity tracking with batched store persistence. Maintains `OrderedDict[str, deque]` of borrower activity records (max 100K borrowers, 1000 entries per borrower). Rules:
+`underwrite/services/fraud.py` — In-memory activity tracking with batched store persistence. Maintains `OrderedDict[str, deque]` of borrower activity records (max 100K borrowers, 1000 entries per borrower). Rules:
 - **Wash lending**: 3+ alternating origination/repayment cycles → `fraud.wash.flag` with score
 - **Velocity**: 3+ originations total → `fraud.velocity.flag`
 - **Large origination**: Principal > 1,000,000 → `fraud.alert` with rule `"large_origination"`
 
 ### ComplianceService
-`underwrite/services/compliance/service.py` — Indian KYC/AML compliance. Validates PAN format with category detection (Individual/Company/Firm/Trust/HUF etc.) and Aadhaar Verhoeff check-digit verification (not just regex). AML screening uses weighted keyword matching for PEPs, sanctions, fraud flags, and terror financing. Returns one of three states:
+`underwrite/services/compliance.py` — Indian KYC/AML compliance. Validates PAN format with category detection (Individual/Company/Firm/Trust/HUF etc.) and Aadhaar Verhoeff check-digit verification (not just regex). AML screening uses weighted keyword matching for PEPs, sanctions, fraud flags, and terror financing. Returns one of three states:
 - **cleared** — low risk (score < threshold)
 - **flagged** — medium risk, needs manual review
 - **frozen** — high risk, blocked
@@ -338,17 +338,17 @@ Emits:
 Also performs consent pre-check before initiating KYC, emitting `consent.expired` if consent is needed.
 
 ### DecisionService
-`underwrite/services/decision/service.py` — Signal aggregation. Collects signals from fraud, risk, and compliance for a given entity. On `decision.evaluate`:
+`underwrite/services/decision.py` — Signal aggregation. Collects signals from fraud, risk, and compliance for a given entity. On `decision.evaluate`:
 - Any `high` severity signal → `reject`
 - 3+ `medium` signals → `escalate`
 - 1-2 `medium` signals → `review`
 - No signals → `approve`
 
 ### UnderwriterService
-`underwrite/services/underwriter/service.py` — Loan application evaluation. Rejects if `default_probability > 0.25` or `principal <= 0`.
+`underwrite/services/underwriter.py` — Loan application evaluation. Rejects if `default_probability > 0.25` or `principal <= 0`.
 
 ### FeeService
-`underwrite/services/fee/service.py` — Fee assessment with configurable schedules. Default schedules:
+`underwrite/services/fee.py` — Fee assessment with configurable schedules. Default schedules:
 
 | Fee Type | Amount | Notes |
 |---|---|---|
@@ -358,7 +358,7 @@ Also performs consent pre-check before initiating KYC, emitting `consent.expired
 | `service` | 5.0 (flat) | Assessed on `fee.assess` |
 
 ### NPAService
-`underwrite/services/npa/service.py` — RBI NPA classification. Buckets:
+`underwrite/services/npa.py` — RBI NPA classification. Buckets:
 
 | Bucket | Days Past Due |
 |---|---|
@@ -370,13 +370,13 @@ Also performs consent pre-check before initiating KYC, emitting `consent.expired
 DLG (Default Loss Guarantee) triggers at 120+ days overdue, emitting `npa.dlg.triggered`.
 
 ### CollateralService
-`underwrite/services/collateral/service.py` — LTV tracking. On origination, marks collateral at `ltv_ratio = 0.75` (75%). On default, liquidates and emits `collateral.liquidated`.
+`underwrite/services/collateral.py` — LTV tracking. On origination, marks collateral at `ltv_ratio = 0.75` (75%). On default, liquidates and emits `collateral.liquidated`.
 
 ### PaymentService
-`underwrite/services/payment/service.py` — Payment scheduling, receipt, and overdue detection. Uses `payment.schedule`, `payment.receive`, `payment.check_overdue` commands. Overdue detection uses a 30-day cutoff. Integrates with Razorpay for UPI Autopay and e-NACH mandate collection.
+`underwrite/services/payment.py` — Payment scheduling, receipt, and overdue detection. Uses `payment.schedule`, `payment.receive`, `payment.check_overdue` commands. Overdue detection uses a 30-day cutoff. Integrates with Razorpay for UPI Autopay and e-NACH mandate collection.
 
 ### PricingService
-`underwrite/services/pricing/service.py` — RBI-compliant interest rate and fee computation. Enforces per-product rate caps (home: 12%, gold: 18%, personal: 28%, micro-loans under ₹50K: 30% p.a. all-in-cost). Computes:
+`underwrite/services/pricing.py` — RBI-compliant interest rate and fee computation. Enforces per-product rate caps (home: 12%, gold: 18%, personal: 28%, micro-loans under ₹50K: 30% p.a. all-in-cost). Computes:
 - **EMI** (equated monthly installment with amortization schedule)
 - **APR** (annual percentage rate reflecting all-in-cost per RBI Master Direction)
 - **Penal interest** (capped at 24% p.a.)
@@ -385,20 +385,20 @@ DLG (Default Loss Guarantee) triggers at 120+ days overdue, emitting `npa.dlg.tr
 - **Debt-to-income ratio** and **credit score thresholds**
 
 ### KfsService
-`underwrite/services/kfs/service.py` — Key Fact Statement generation per RBI Master Direction on Digital Lending. The KFS is a standardized disclosure document that includes: loan amount, APR, repayment schedule, fees, penal interest, cooling-off period, and grievance redressal contact. The cooling-off period of 3 days allows borrowers to exit without penalty.
+`underwrite/services/kfs.py` — Key Fact Statement generation per RBI Master Direction on Digital Lending. The KFS is a standardized disclosure document that includes: loan amount, APR, repayment schedule, fees, penal interest, cooling-off period, and grievance redressal contact. The cooling-off period of 3 days allows borrowers to exit without penalty.
 
 ### ConsentService
-`underwrite/services/consent/service.py` — DPDPA 2023 consent lifecycle management. Tracks consent for each data processing purpose (KYC verification, credit bureau reporting, loan servicing, collection, communication). Supports consent recording, withdrawal, expiry, and re-consent workflows. Each consent record includes: purpose, grant timestamp, expiry timestamp, and withdrawal timestamp.
+`underwrite/services/consent.py` — DPDPA 2023 consent lifecycle management. Tracks consent for each data processing purpose (KYC verification, credit bureau reporting, loan servicing, collection, communication). Supports consent recording, withdrawal, expiry, and re-consent workflows. Each consent record includes: purpose, grant timestamp, expiry timestamp, and withdrawal timestamp.
 
 ### CreditBureauService
-`underwrite/services/credit_bureau/service.py` — Multi-bureau credit report integration (CIBIL, Experian, Equifax) and CKYC identity verification. On a credit check request:
+`underwrite/services/credit_bureau.py` — Multi-bureau credit report integration (CIBIL, Experian, Equifax) and CKYC identity verification. On a credit check request:
 1. Queries CIBIL (primary bureau) for credit score and report
 2. Optionally queries Experian and Equifax for supplementary data
 3. Performs CKYC check to verify identity against central KYC registry
 4. Emits `credit_bureau.checked` with score, report summary, and CKYC status
 
 ### DataSubjectRightsService
-`underwrite/services/dsr/service.py` — DPDPA 2023 data subject rights fulfillment. Handles DSR requests (access, correction, erasure, portability, grievance). On receipt of `dsr.request`:
+`underwrite/services/dsr.py` — DPDPA 2023 data subject rights fulfillment. Handles DSR requests (access, correction, erasure, portability, grievance). On receipt of `dsr.request`:
 - Validates the requestor's identity
 - Fulfills within the DPDPA-mandated 30-day window
 - Emits `dsr.fulfilled` or `dsr.rejected` with rationale

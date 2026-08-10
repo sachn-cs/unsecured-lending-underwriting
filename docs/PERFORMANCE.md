@@ -104,7 +104,7 @@ retries, 50ms base delay with jitter (exponential backoff).
 
 ### 1. AuditService — Export builds full ledger string in memory
 
-**File:** `underwrite/services/audit/service.py:104-107`
+**File:** `underwrite/services/audit.py:104-107`
 
 ```python
 lines: list[str] = [json.dumps(r) for r in self.__ledger]

@@ -115,20 +115,32 @@ class MyService(NanoService):
 
 ## Adding a New Service
 
-1. **Create the service directory and files:**
+1. **Create the service module:**
+
+   ```bash
+   touch underwrite/services/newservice.py
+   ```
+
+   For services with helper sub-modules, create a package instead:
 
    ```bash
    mkdir underwrite/services/newservice
-   touch underwrite/services/newservice/init.py
+   touch underwrite/services/newservice/__init__.py
+   touch underwrite/services/newservice/newservice.py
    ```
 
-2. **Write the service class** in `underwrite/services/newservice/service.py`, extending `NanoService` and implementing `handle()`.
+2. **Write the service class** in `underwrite/services/newservice.py` (or `underwrite/services/newservice/newservice.py` for packages), extending `Core` (stateless) or `StatefulService` and implementing `handle()`. Add the import to `__init__.py` if the module is a package:
+
+   ```python
+   from underwrite.services.newservice.newservice import Handler
+   __all__ = ["Handler"]
+   ```
 
 3. **Register in the service registry** (`handler.py`):
-   - Add an entry to `SERVICE_MAP`: `"newservice": "underwrite.services.newservice.service"`
-   - Add an entry to `SERVICE_CLASSES`: `"newservice": "NewService"`
-   - Add the service name to the subscriber list in `WIRING` for each `EventType` it should receive
-   - Optionally add the name to `SERVICE_NAMES` in `config.py` (required for CLI validation)
+   - Add an entry to `HANDLER_MAP`: `"newservice": "underwrite.services.newservice"` (flat) or `"underwrite.services.newservice"` (package — the `__init__.py` re-exports `Handler`).
+   - Add an entry to `HANDLER_CLASSES`: `"newservice": "Handler"`
+   - Add the service name to the subscriber list in `WIRING` for each `EventType` it should receive.
+   - Optionally add the name to `HANDLER_NAMES` (auto-derived from `HANDLER_CLASSES.keys()` in `config.py`).
 
 4. **Write tests** in `tests/` following existing patterns.
 

@@ -4,7 +4,7 @@
 
 ## Context
 
-The `underwrite` platform certifies financial events (loan origination, disbursement, default occurrence, fee assessment). Regulatory audit requires non-repudiation — the emitter must not be able to deny having emitted an event. Events are also the unit of audit for the `AuditService` (`services/audit/service.py`), which maintains an append-only ledger.
+The `underwrite` platform certifies financial events (loan origination, disbursement, default occurrence, fee assessment). Regulatory audit requires non-repudiation — the emitter must not be able to deny having emitted an event. Events are also the unit of audit for the `AuditService` (`services/audit.py`), which maintains an append-only ledger.
 
 The signing infrastructure is in `identity.py` (Identity class). Signature verification is in `authz.py` (`AccessControl.verify_signature()`). The signing scheme is defined at `services/base.py:132` where events are signed during `emit()`.
 

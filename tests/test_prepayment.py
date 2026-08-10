@@ -1,14 +1,15 @@
-"""Tests for PrepaymentHandler — foreclosure/prepayment workflow."""
+"""Tests for Handler — foreclosure/prepayment workflow."""
 
 from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.prepayment.handler import PrepaymentHandler
 from underwrite.store import MemoryStore
+from underwrite.services.prepayment.handler import Handler
+from underwrite.services.prepayment.handler import Handler as PrepaymentHandler
 
 
-def svc(bus=None) -> PrepaymentHandler:
+def svc(bus=None) -> Handler:
     return PrepaymentHandler(service_id="prepayment", bus=bus or LocalBus(), store=MemoryStore())
 
 

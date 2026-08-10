@@ -1,7 +1,7 @@
 # Directory Structure
 
 ```
-underwrite/                          # Main package (29 source modules + 28 service dirs)
+underwrite/                          # Main package (49 source modules + 34 wired service dirs + 4 KYC provider clients)
 ├── init.py                     # Public API exports (Runtime, NanoService, LocalBus, Store, etc.)
 ├── bus.py                      # Event bus: LocalBus, AsyncLocalBus, DeadLetterQueue,
 │                                   #   IdempotencyGuard, RateLimiter, CircuitBreaker (per-subscriber)
@@ -155,7 +155,7 @@ underwrite/                          # Main package (29 source modules + 28 serv
     ├── workflow/                   # Workflow orchestration: start, advance, complete
     │   ├── init.py
     │   └── service.py
-    └── (16 more service dirs)      # Each follows: init.py + service.py
+    └── (more service dirs)        # Each follows: __init__.py + handler.py
 
 tests/                              # 59 test files (828+ tests)
 ├── conftest.py                    # Shared fixtures, mock bus/store/identity

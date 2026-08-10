@@ -65,7 +65,7 @@ class LoanTypePolicy:
 
 @dataclass(frozen=True, slots=True)
 class PricingConfig:
-    """Typed configuration for PricingHandler.
+    """Typed configuration for Handler.
 
     Replaces the previous ``kwargs.pop("rate_cap", ...)`` pattern:
     callers now pass a PricingConfig (or its fields are extracted
@@ -134,7 +134,7 @@ def compute_rate_cap(principal: float, loan_type: str = "personal") -> float:
     return _policy_for(loan_type).rate_cap
 
 
-class PricingHandler(Core):
+class Handler(Core):
     """Computes loan pricing with RBI-mandated rate caps and fee disclosure."""
 
     def __init__(

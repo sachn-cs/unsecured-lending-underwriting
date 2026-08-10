@@ -14,7 +14,7 @@ import pytest
 
 from helpers import BadStr, BrokenStore, ConcreteService, RaisingStrategy
 from underwrite.bus import EventBus
-from underwrite.config import Configuration
+from underwrite.config import AuthzConfig, Configuration
 from underwrite.exceptions import ProtocolError
 from underwrite.local import LocalBus
 from underwrite.message import Message
@@ -140,26 +140,16 @@ class TestAuthzBuildFallback:
     def test_returns_none_on_malformed_policy_file(self, tmp_path: Path) -> None:
         bad_policy = tmp_path / "policy.json"
         bad_policy.write_text("{bad json")
-        config_data = {
-            "authz": {
-                "enabled": True,
-                "policy_file": str(bad_policy),
-            },
-        }
-        rt = Runtime(config=Configuration(**config_data))
-        result = build_authz(rt._Runtime__config.authz)
+        config = Configuration(authz=AuthzConfig(enabled=True, policy_file=str(bad_policy)))
+        rt = Runtime(config=config)
+        result = build_authz(rt.config.authz)
         assert result is None
 
     def test_returns_none_on_missing_policy_file(self, tmp_path: Path) -> None:
         missing = tmp_path / "nonexistent" / "policy.json"
-        config_data = {
-            "authz": {
-                "enabled": True,
-                "policy_file": str(missing),
-            },
-        }
-        rt = Runtime(config=Configuration(**config_data))
-        result = build_authz(rt._Runtime__config.authz)
+        config = Configuration(authz=AuthzConfig(enabled=True, policy_file=str(missing)))
+        rt = Runtime(config=config)
+        result = build_authz(rt.config.authz)
         assert result is not None
 
 

@@ -216,7 +216,7 @@ uv.lock                             # Dependency lockfile
 | `CHANGELOG.md` | Release changelog |
 | `CONTRIBUTING.md` | Contribution guidelines |
 | `SECURITY.md` | Security policy |
-| `TODO.md` | Known issues and planned work |
+| `todo.md` | Known issues and planned work |
 | `LICENSE` | MIT license |
 | `.env.example` | Environment variable template |
 | `.pre-commit-config.yaml` | Pre-commit hook config (ruff, mypy, bandit) |

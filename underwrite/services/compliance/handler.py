@@ -208,8 +208,8 @@ class Handler(StatefulService):
             ),
             kyc_providers=kwargs.pop("kyc_providers", {}),
         )
-        self.__aml_blocklist_path: str = config.aml_blocklist_path
-        self.__kyc_providers: dict[str, Any] = config.kyc_providers
+        self.aml_blocklist_path: str = config.aml_blocklist_path
+        self.kyc_providers: dict[str, Any] = config.kyc_providers
         deps = Dependencies(
             identity=identity,
             bus=bus,
@@ -236,12 +236,12 @@ class Handler(StatefulService):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.__blocklist: set[str] = load_blocklist(self.__aml_blocklist_path)
-        self.__kyc_records: dict[str, dict[str, Any]] = {}
+        self.blocklist: set[str] = load_blocklist(self.aml_blocklist_path)
+        self.kyc_records: dict[str, dict[str, Any]] = {}
         self.repo: TypedStoreRepository[dict[str, Any]] = self.store_repo("compliance", dict)
         loaded = self.repo.load(default={})
         if loaded:
-            self.__kyc_records = loaded.get("kyc_records", {})
+            self.kyc_records = loaded.get("kyc_records", {})
 
     def handle(self, event: Message) -> None:
         """Process KYC and compliance events.
@@ -312,7 +312,7 @@ class Handler(StatefulService):
 
         pan_verdict = "format_verified"
         pan_provider_result: dict[str, Any] = {}
-        pan_provider = self.__kyc_providers.get("pan")
+        pan_provider = self.kyc_providers.get("pan")
         if pan_provider is not None:
             from underwrite.services.kyc.base import Verdict as _V
 
@@ -352,8 +352,8 @@ class Handler(StatefulService):
         }
 
         with self.state_lock:
-            self.__kyc_records[user] = kyc_data
-            self.repo.save({"kyc_records": self.__kyc_records})
+            self.kyc_records[user] = kyc_data
+            self.repo.save({"kyc_records": self.kyc_records})
 
         self.emit(
             Type.KYC_VERIFIED,
@@ -379,7 +379,7 @@ class Handler(StatefulService):
             correlation_id=event.correlation_id,
         )
 
-        risk_score = self.__screen(name, user)
+        risk_score = self.screen(name, user)
         self.apply_aml_result(user, risk_score, event)
 
         self.emit(
@@ -412,10 +412,10 @@ class Handler(StatefulService):
                 correlation_id=event.correlation_id,
             )
             with self.state_lock:
-                if user in self.__kyc_records:
-                    self.__kyc_records[user]["aml_status"] = "frozen"
-                    self.__kyc_records[user]["aml_risk_score"] = risk_score
-                    self.repo.save({"kyc_records": self.__kyc_records})
+                if user in self.kyc_records:
+                    self.kyc_records[user]["aml_status"] = "frozen"
+                    self.kyc_records[user]["aml_risk_score"] = risk_score
+                    self.repo.save({"kyc_records": self.kyc_records})
         elif risk_score >= AML_LOW_THRESHOLD:
             self.emit(
                 Type.AML_FLAGGED.value,
@@ -428,10 +428,10 @@ class Handler(StatefulService):
                 correlation_id=event.correlation_id,
             )
             with self.state_lock:
-                if user in self.__kyc_records:
-                    self.__kyc_records[user]["aml_status"] = "flagged"
-                    self.__kyc_records[user]["aml_risk_score"] = risk_score
-                    self.repo.save({"kyc_records": self.__kyc_records})
+                if user in self.kyc_records:
+                    self.kyc_records[user]["aml_status"] = "flagged"
+                    self.kyc_records[user]["aml_risk_score"] = risk_score
+                    self.repo.save({"kyc_records": self.kyc_records})
             self.emit(
                 Type.AML_CLEARED,
                 {
@@ -450,9 +450,9 @@ class Handler(StatefulService):
                 correlation_id=event.correlation_id,
             )
             with self.state_lock:
-                if user in self.__kyc_records:
-                    self.__kyc_records[user]["aml_status"] = "clear"
-                    self.repo.save({"kyc_records": self.__kyc_records})
+                if user in self.kyc_records:
+                    self.kyc_records[user]["aml_status"] = "clear"
+                    self.repo.save({"kyc_records": self.kyc_records})
 
     def on_ckyc_verified(self, event: Message) -> None:
         """Update CKYC verification status.
@@ -464,9 +464,9 @@ class Handler(StatefulService):
         user: str = event.payload.get("user", "")
         status: str = event.payload.get("status", "")
         with self.state_lock:
-            if user in self.__kyc_records:
-                self.__kyc_records[user]["ckyc_status"] = status
-                self.repo.save({"kyc_records": self.__kyc_records})
+            if user in self.kyc_records:
+                self.kyc_records[user]["ckyc_status"] = status
+                self.repo.save({"kyc_records": self.kyc_records})
 
     def on_video_kyc_done(self, event: Message) -> None:
         """Update video KYC status.
@@ -478,9 +478,9 @@ class Handler(StatefulService):
         user: str = event.payload.get("user", "")
         status: str = event.payload.get("status", "")
         with self.state_lock:
-            if user in self.__kyc_records:
-                self.__kyc_records[user]["video_kyc_status"] = status
-                self.repo.save({"kyc_records": self.__kyc_records})
+            if user in self.kyc_records:
+                self.kyc_records[user]["video_kyc_status"] = status
+                self.repo.save({"kyc_records": self.kyc_records})
 
     @staticmethod
     def check_consent(user: str, consent_id: str) -> bool:
@@ -496,7 +496,7 @@ class Handler(StatefulService):
         """
         return bool(consent_id)
 
-    def __screen(self, name: str, user: str) -> int:
+    def screen(self, name: str, user: str) -> int:
         """Screen a user against the AML blocklist and keyword weights.
 
         Args:
@@ -511,7 +511,7 @@ class Handler(StatefulService):
         user_lower: str = user.lower().strip()
         risk_score: int = 0
 
-        if self.__blocklist and any(blocked in name_lower or blocked in user_lower for blocked in self.__blocklist):
+        if self.blocklist and any(blocked in name_lower or blocked in user_lower for blocked in self.blocklist):
             risk_score += 8
 
         text = f"{name_lower} {user_lower}"
@@ -532,7 +532,7 @@ class Handler(StatefulService):
 
         """
         with self.state_lock:
-            return self.__kyc_records.get(user)
+            return self.kyc_records.get(user)
 
     def health_check(self) -> dict[str, Any]:
         """Compliance-specific health: reports blocklist and KYC counts.
@@ -543,6 +543,6 @@ class Handler(StatefulService):
 
         """
         base = super().health_check()
-        base["aml_blocklist_entries"] = len(self.__blocklist)
-        base["kyc_records"] = len(self.__kyc_records)
+        base["aml_blocklist_entries"] = len(self.blocklist)
+        base["kyc_records"] = len(self.kyc_records)
         return base

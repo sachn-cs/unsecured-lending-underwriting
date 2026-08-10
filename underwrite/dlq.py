@@ -58,7 +58,7 @@ class Queue:
         self.sync_interval: int = max(sync_interval, 1)
         self.sync_counter: int = 0
         if store is not None:
-            self.__load_store()
+            self.load_store()
 
     @staticmethod
     def event_to_dict(event: Message) -> dict[str, Any]:
@@ -97,7 +97,7 @@ class Queue:
             timestamp=d["timestamp"],
         )
 
-    def __load_store(self) -> None:
+    def load_store(self) -> None:
         store = self.store
         if store is None:
             return
@@ -119,7 +119,7 @@ class Queue:
                     "corrupted DLQ store data (expected list, got {}), starting with empty DLQ", type(raw).__name__
                 )
 
-    def __sync_store(self) -> None:
+    def sync_store(self) -> None:
         store = self.store
         if store is None:
             return
@@ -128,7 +128,7 @@ class Queue:
         except Exception:
             logger.exception("failed to persist DLQ records to store — DLQ is now memory-only until the store recovers")
 
-    def __should_sync(self) -> bool:
+    def should_sync(self) -> bool:
         self.sync_counter += 1
         if self.sync_counter >= self.sync_interval:
             self.sync_counter = 0
@@ -152,15 +152,15 @@ class Queue:
         sanitized_event = redact_event(event)
         with self.lock:
             self.records.append(Record(event=sanitized_event, error=error, subscriber_id=subscriber_id))
-            if self.__should_sync():
-                self.__sync_store()
+            if self.should_sync():
+                self.sync_store()
 
     def clear(self) -> None:
         """Removes all dead-letter records."""
         with self.lock:
             self.records.clear()
             self.sync_counter = 0
-            self.__sync_store()
+            self.sync_store()
 
     def replay(self, bus: Any, max_count: int = 0) -> int:
         """Re-publishes dead-letter events to a bus.
@@ -184,7 +184,7 @@ class Queue:
             for _ in range(len(to_replay)):
                 self.records.popleft()
             self.sync_counter = 0
-            self.__sync_store()
+            self.sync_store()
         replayed = 0
         for record in to_replay:
             try:

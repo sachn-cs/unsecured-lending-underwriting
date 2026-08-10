@@ -1,4 +1,4 @@
-"""Tests for NPAHandler — RBI-mandated asset classification and DLG triggers.
+"""Tests for Handler — RBI-mandated asset classification and DLG triggers.
 
 Tests verify behavior through:
   - Emitted NPA_BUCKET_CHANGED and DLG_TRIGGERED events
@@ -12,54 +12,55 @@ from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.npa.handler import NPAHandler
 from underwrite.store import MemoryStore
+from underwrite.services.npa.handler import Handler
+from underwrite.services.npa.handler import Handler as NpaHandler
 
 
-def npa(bus=None) -> NPAHandler:
-    return NPAHandler(service_id="npa", bus=bus or LocalBus(), store=MemoryStore())
+def npa(bus=None) -> Handler:
+    return NpaHandler(service_id="npa", bus=bus or LocalBus(), store=MemoryStore())
 
 
 class TestBucketClassification:
     def test_standard_0_days(self) -> None:
-        assert NPAHandler.classify_overdue_days(0) == "standard"
+        assert Handler.classify_overdue_days(0) == "standard"
 
     def test_standard_30_days(self) -> None:
-        assert NPAHandler.classify_overdue_days(30) == "standard"
+        assert Handler.classify_overdue_days(30) == "standard"
 
     def test_standard_89_days(self) -> None:
-        assert NPAHandler.classify_overdue_days(89) == "standard"
+        assert Handler.classify_overdue_days(89) == "standard"
 
     def test_npa_at_boundary_90(self) -> None:
         """RBI: an asset becomes NPA on day 90+ past due."""
-        assert NPAHandler.classify_overdue_days(90) == "substandard"
+        assert Handler.classify_overdue_days(90) == "substandard"
 
     def test_substandard_91_days(self) -> None:
-        assert NPAHandler.classify_overdue_days(91) == "substandard"
+        assert Handler.classify_overdue_days(91) == "substandard"
 
     def test_substandard_179_days(self) -> None:
-        assert NPAHandler.classify_overdue_days(179) == "substandard"
+        assert Handler.classify_overdue_days(179) == "substandard"
 
     def test_doubtful_180_days(self) -> None:
-        assert NPAHandler.classify_overdue_days(180) == "doubtful"
+        assert Handler.classify_overdue_days(180) == "doubtful"
 
     def test_doubtful_181_days(self) -> None:
-        assert NPAHandler.classify_overdue_days(181) == "doubtful"
+        assert Handler.classify_overdue_days(181) == "doubtful"
 
     def test_doubtful_359_days(self) -> None:
-        assert NPAHandler.classify_overdue_days(359) == "doubtful"
+        assert Handler.classify_overdue_days(359) == "doubtful"
 
     def test_loss_360_days(self) -> None:
-        assert NPAHandler.classify_overdue_days(360) == "loss"
+        assert Handler.classify_overdue_days(360) == "loss"
 
     def test_loss_over_1000_days(self) -> None:
-        assert NPAHandler.classify_overdue_days(1000) == "loss"
+        assert Handler.classify_overdue_days(1000) == "loss"
 
     def test_negative_days_raises(self) -> None:
         import pytest
 
         with pytest.raises(ValueError, match="non-negative"):
-            NPAHandler.classify_overdue_days(-5)
+            Handler.classify_overdue_days(-5)
 
 
 class TestLoanTracking:
@@ -155,31 +156,31 @@ class TestLoanTracking:
 
 class TestSmaClassification:
     def test_sma_0_at_1_day(self) -> None:
-        assert NPAHandler.sma_classify(1) == "sma_0"
+        assert Handler.sma_classify(1) == "sma_0"
 
     def test_sma_0_at_30_days(self) -> None:
-        assert NPAHandler.sma_classify(30) == "sma_0"
+        assert Handler.sma_classify(30) == "sma_0"
 
     def test_sma_1_at_31_days(self) -> None:
-        assert NPAHandler.sma_classify(31) == "sma_1"
+        assert Handler.sma_classify(31) == "sma_1"
 
     def test_sma_1_at_60_days(self) -> None:
-        assert NPAHandler.sma_classify(60) == "sma_1"
+        assert Handler.sma_classify(60) == "sma_1"
 
     def test_sma_2_at_61_days(self) -> None:
-        assert NPAHandler.sma_classify(61) == "sma_2"
+        assert Handler.sma_classify(61) == "sma_2"
 
     def test_sma_2_at_90_days(self) -> None:
-        assert NPAHandler.sma_classify(90) == "sma_2"
+        assert Handler.sma_classify(90) == "sma_2"
 
     def test_sma_empty_for_0_days(self) -> None:
-        assert NPAHandler.sma_classify(0) == ""
+        assert Handler.sma_classify(0) == ""
 
     def test_sma_empty_for_negative_days(self) -> None:
-        assert NPAHandler.sma_classify(-1) == ""
+        assert Handler.sma_classify(-1) == ""
 
     def test_sma_empty_beyond_90_days(self) -> None:
-        assert NPAHandler.sma_classify(91) == ""
+        assert Handler.sma_classify(91) == ""
 
 
 class TestProvisioningAndIncomeSuspension:

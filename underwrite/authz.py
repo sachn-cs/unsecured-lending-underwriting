@@ -81,10 +81,10 @@ class AccessControl:
 
     def __init__(self) -> None:
         """Initializes an empty access-control evaluator."""
-        self.__lock: threading.Lock = threading.Lock()
-        self.__policies: list[Policy] = []
-        self.__trusted_keys: dict[str, str] = {}  # service_id -> public_key
-        self.__replay_window_seconds: float = DEFAULT_REPLAY_WINDOW_SECONDS
+        self.lock: threading.Lock = threading.Lock()
+        self.policies: list[Policy] = []
+        self.trusted_keys: dict[str, str] = {}  # service_id -> public_key
+        self.replay_window_seconds: float = DEFAULT_REPLAY_WINDOW_SECONDS
 
     def set_replay_window(self, seconds: float) -> None:
         """Sets the maximum age (in seconds) of a signed event for verification.
@@ -93,8 +93,8 @@ class AccessControl:
         future — are rejected. Set to ``0`` or a negative value to disable
         the window check (not recommended in production).
         """
-        with self.__lock:
-            self.__replay_window_seconds = max(0.0, float(seconds))
+        with self.lock:
+            self.replay_window_seconds = max(0.0, float(seconds))
 
     def allow(self, subject: str, resource: str) -> None:
         """Grants a subject permission to access a resource.
@@ -103,8 +103,8 @@ class AccessControl:
             subject: Service identifier or ``"*"`` (all).
             resource: Message-type or ``"*"`` (all).
         """
-        with self.__lock:
-            self.__policies.append(Policy("allow", subject, resource))
+        with self.lock:
+            self.policies.append(Policy("allow", subject, resource))
 
     def deny(self, subject: str, resource: str) -> None:
         """Denies a subject access to a resource.
@@ -113,8 +113,8 @@ class AccessControl:
             subject: Service identifier or ``"*"`` (all).
             resource: Message-type or ``"*"`` (all).
         """
-        with self.__lock:
-            self.__policies.append(Policy("deny", subject, resource))
+        with self.lock:
+            self.policies.append(Policy("deny", subject, resource))
 
     def trust(self, service_id: str, public_key: str) -> None:
         """Registers a trusted public key for a service.
@@ -123,8 +123,8 @@ class AccessControl:
             service_id: Service identifier.
             public_key: Base64-encoded Ed25519 public key.
         """
-        with self.__lock:
-            self.__trusted_keys[service_id] = public_key
+        with self.lock:
+            self.trusted_keys[service_id] = public_key
 
     def revoke_trust(self, service_id: str) -> None:
         """Removes a previously registered trusted key.
@@ -132,13 +132,13 @@ class AccessControl:
         Args:
             service_id: Service identifier whose trust to revoke.
         """
-        with self.__lock:
-            self.__trusted_keys.pop(service_id, None)
+        with self.lock:
+            self.trusted_keys.pop(service_id, None)
 
     def is_trusted(self, service_id: str) -> bool:
         """Returns True if *service_id* has a registered trusted key."""
-        with self.__lock:
-            return service_id in self.__trusted_keys
+        with self.lock:
+            return service_id in self.trusted_keys
 
     def check_publish(self, subject: str, event_type: str) -> bool:
         """Checks whether a subject may publish an event type.
@@ -150,7 +150,7 @@ class AccessControl:
         Returns:
             True if allowed, False if denied.
         """
-        return self.__check(subject, f"publish:{event_type}")
+        return self.check(subject, f"publish:{event_type}")
 
     def check_subscribe(self, subject: str, event_type: str) -> bool:
         """Checks whether a subject may subscribe to an event type.
@@ -162,14 +162,14 @@ class AccessControl:
         Returns:
             True if allowed, False if denied.
         """
-        return self.__check(subject, f"subscribe:{event_type}")
+        return self.check(subject, f"subscribe:{event_type}")
 
-    def __check(self, subject: str, resource: str) -> bool:
-        with self.__lock:
-            for p in self.__policies:
+    def check(self, subject: str, resource: str) -> bool:
+        with self.lock:
+            for p in self.policies:
                 if p.effect == "deny" and p.matches(subject, resource):
                     return False
-            for p in self.__policies:
+            for p in self.policies:
                 if p.effect == "allow" and p.matches(subject, resource):
                     return True
         return False
@@ -183,12 +183,12 @@ class AccessControl:
         replay an old captured event outside the configured replay
         window.
         """
-        with self.__lock:
-            public_key_b64 = self.__trusted_keys.get(event.source)
-            window = self.__replay_window_seconds
+        with self.lock:
+            public_key_b64 = self.trusted_keys.get(event.source)
+            window = self.replay_window_seconds
         if not public_key_b64:
             return False
-        if window > 0 and not self.__within_window(event.timestamp, window):
+        if window > 0 and not self.within_window(event.timestamp, window):
             return False
         try:
             public_bytes = base64.b64decode(public_key_b64)
@@ -203,7 +203,7 @@ class AccessControl:
             return False
 
     @staticmethod
-    def __within_window(timestamp: str, window: float) -> bool:
+    def within_window(timestamp: str, window: float) -> bool:
         try:
             ts = datetime.fromisoformat(timestamp)
         except (TypeError, ValueError):

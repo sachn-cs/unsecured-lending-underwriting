@@ -74,11 +74,11 @@ class Handler(Core):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.__id_generator: IdGenerator = IdGenerator()
-        self.__clock: SystemClock = SystemClock()
+        self.id_generator: IdGenerator = IdGenerator()
+        self.clock: SystemClock = SystemClock()
         self.handlers: dict[str, Any] = {
-            Type.ORIGINATION_CREATE: self.__on_create,
-            Type.ORIGINATION_SUBMIT: self.__on_submit,
+            Type.ORIGINATION_CREATE: self.on_create,
+            Type.ORIGINATION_SUBMIT: self.on_submit,
         }
 
     def handle(self, event: Message) -> None:
@@ -91,7 +91,7 @@ class Handler(Core):
         if handler is not None:
             handler(event)
 
-    def __on_create(self, event: Message) -> None:
+    def on_create(self, event: Message) -> None:
         """Handle an origination create request.
 
         Args:
@@ -102,12 +102,12 @@ class Handler(Core):
         if not borrower or principal <= 0:
             logger.warning("dropping ORIGINATION_CREATE with missing borrower or principal")
             return
-        application_id: str = f"app_{borrower}_{self.__id_generator.next()}"
+        application_id: str = f"app_{borrower}_{self.id_generator.next()}"
         app_record = {
             "borrower": borrower,
             "principal": principal,
             "status": "created",
-            "created_at": self.__clock.iso(),
+            "created_at": self.clock.iso(),
         }
         self.store.set(f"origination:{application_id}", app_record)
         self.emit(
@@ -120,7 +120,7 @@ class Handler(Core):
             correlation_id=event.correlation_id,
         )
 
-    def __on_submit(self, event: Message) -> None:
+    def on_submit(self, event: Message) -> None:
         """Handle an origination submit request.
 
         Args:
@@ -132,7 +132,7 @@ class Handler(Core):
             if not record or record.get("status") != "created":
                 return
             record["status"] = "submitted"
-            record["submitted_at"] = self.__clock.iso()
+            record["submitted_at"] = self.clock.iso()
             self.store.set(f"origination:{application_id}", record)
         self.emit(
             Type.ORIGINATION_SUBMITTED,

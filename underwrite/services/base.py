@@ -120,26 +120,14 @@ class Emitter:
         parent_span_id: str = ""
         if self.__tracer:
             trace_id = correlation_id or ""
-        event: Message = Message(
-            event_type=event_type,
+        signed: Message = Message.signed(
+            self.__identity,
+            type=event_type,
             source=self.__service_id,
-            source_key=self.__identity.public_key,
             payload=payload,
             correlation_id=correlation_id or "",
             trace_id=trace_id,
             parent_span_id=parent_span_id,
-        )
-        signed: Message = Message(
-            event_id=event.event_id,
-            event_type=event.event_type,
-            source=event.source,
-            source_key=event.source_key,
-            timestamp=event.timestamp,
-            payload=event.payload,
-            correlation_id=event.correlation_id,
-            trace_id=event.trace_id,
-            parent_span_id=event.parent_span_id,
-            signature=self.__identity.sign(event.canonical_sign_bytes().decode("utf-8")),
         )
         self.__bus.publish(signed)
         if self.__metrics:

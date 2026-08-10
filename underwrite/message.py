@@ -82,6 +82,49 @@ class Message:
         return canonical.encode("utf-8")
 
     @classmethod
+    def signed(
+        cls,
+        keypair: "Keypair",
+        *,
+        type: str,
+        source: str,
+        source_key: str = "",
+        payload: dict[str, Any] | None = None,
+        correlation_id: str = "",
+        trace_id: str = "",
+        parent_span_id: str = "",
+    ) -> "Message":
+        """Construct a Message and sign it with *keypair* in one step.
+
+        Returns:
+            A new Message with the signature field populated.
+        """
+        payload = payload if payload is not None else {}
+        msg = cls(
+            event_type=type,
+            source=source,
+            source_key=source_key or keypair.public_key,
+            payload=payload,
+            correlation_id=correlation_id,
+            trace_id=trace_id,
+            parent_span_id=parent_span_id,
+        )
+        signature = keypair.sign(msg.canonical_sign_bytes().decode("utf-8"))
+        # signature is already a str (hex) from Keypair.sign
+        return cls(
+            event_id=msg.event_id,
+            event_type=msg.event_type,
+            source=msg.source,
+            source_key=msg.source_key,
+            timestamp=msg.timestamp,
+            payload=msg.payload,
+            correlation_id=msg.correlation_id,
+            trace_id=msg.trace_id,
+            parent_span_id=msg.parent_span_id,
+            signature=signature,
+        )
+
+    @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Message:
         known = {f.name for f in fields(cls)}
         extra = set(data) - known

@@ -89,7 +89,7 @@ class Handler(StatefulService):
         )
         raw_ranges = config.param_ranges
         raw_defaults = config.param_defaults
-        self.__ranges: dict[str, tuple[float, float]] = (
+        self.ranges_dict: dict[str, tuple[float, float]] = (
             {
                 k: (float(v[0]), float(v[1]))
                 for k, v in raw_ranges.items()
@@ -124,7 +124,7 @@ class Handler(StatefulService):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.__params: dict[str, float] = raw_defaults.copy() if raw_defaults else DEFAULT_PARAM_DEFAULTS.copy()
+        self.params_storage: dict[str, float] = raw_defaults.copy() if raw_defaults else DEFAULT_PARAM_DEFAULTS.copy()
         self.repo: TypedStoreRepository[dict[str, float]] = self.store_repo("params", dict)
 
     def start(self) -> None:
@@ -132,7 +132,7 @@ class Handler(StatefulService):
         super().start()
         loaded = self.repo.load(default={})
         if loaded:
-            self.__params = loaded
+            self.params_storage = loaded
 
     def handle(self, event: Message) -> None:
         """Process a governance proposal to update a protocol parameter.
@@ -148,10 +148,10 @@ class Handler(StatefulService):
         p = event.payload
         param: str = PayloadValidator().non_empty(p, "param")
         value: float = PayloadValidator().finite(p, "value")
-        if param not in self.__params:
+        if param not in self.params_storage:
             logger.warning("governance proposal for unknown param {!r} ignored", param)
             return
-        lo, hi = self.__ranges[param]
+        lo, hi = self.ranges_dict[param]
         if not (lo <= value <= hi):
             logger.warning(
                 "governance proposal for {!r} value {} outside range [{}, {}]",
@@ -162,8 +162,8 @@ class Handler(StatefulService):
             )
             return
         with self.state_lock:
-            self.__params[param] = value
-            self.repo.save(self.__params)
+            self.params_storage[param] = value
+            self.repo.save(self.params_storage)
         self.emit(
             Type.GOVERNANCE_EXECUTED,
             {
@@ -181,7 +181,7 @@ class Handler(StatefulService):
             Dict of parameter name to value.
         """
         with self.state_lock:
-            return dict(self.__params)
+            return dict(self.params_storage)
 
     def health_check(self) -> dict[str, Any]:
         """Run governance-specific health checks.
@@ -192,5 +192,5 @@ class Handler(StatefulService):
         with self.state_lock:
             return {
                 **super().health_check(),
-                "param_count": len(self.__params),
+                "param_count": len(self.params_storage),
             }

@@ -261,18 +261,18 @@ class HttpRazorpayClient(RazorpayClient):
         api_base_url: str = "https://api.razorpay.com/v1",
         timeout_seconds: int = 30,
     ) -> None:
-        self.__key_id = key_id
-        self.__key_secret = key_secret
-        self.__webhook_secret = webhook_secret
-        self.__base_url = api_base_url.rstrip("/")
-        self.__timeout = timeout_seconds
-        self.__client = httpx.Client(
-            auth=(self.__key_id, self.__key_secret),
-            timeout=self.__timeout,
+        self.key_id_storage = key_id
+        self.key_secret_storage = key_secret
+        self.webhook_secret_storage = webhook_secret
+        self.base_url_storage = api_base_url.rstrip("/")
+        self.timeout_storage = timeout_seconds
+        self.http_client = httpx.Client(
+            auth=(self.key_id_storage, self.key_secret_storage),
+            timeout=self.timeout_storage,
         )
 
     def webhook_secret(self) -> str:
-        return self.__webhook_secret or ""
+        return self.webhook_secret_storage or ""
 
     def request(
         self,
@@ -293,11 +293,11 @@ class HttpRazorpayClient(RazorpayClient):
         Raises:
             RazorpayError: On API or transport errors.
         """
-        url = urljoin(self.__base_url + "/", path.lstrip("/"))
+        url = urljoin(self.base_url_storage + "/", path.lstrip("/"))
         try:
             if not HAS_HTTPX:
                 raise RuntimeError("httpx is required for HttpRazorpayClient")
-            resp = self.__client.request(method, url, json=data)
+            resp = self.http_client.request(method, url, json=data)
         except httpx.TimeoutException as exc:
             raise RazorpayError(f"request timed out: {exc}") from exc
         except httpx.RequestError as exc:
@@ -566,13 +566,13 @@ class MockRazorpayClient(RazorpayClient):
         self.refunds: list[dict[str, Any]] = []
         self.fail_on: dict[str, Exception] = {}
         self.counter: int = 0
-        self.__webhook_secret: str = "test_webhook_secret"
+        self.webhook_secret_storage: str = "test_webhook_secret"
 
     def webhook_secret(self) -> str:
-        return self.__webhook_secret
+        return self.webhook_secret_storage
 
     def set_webhook_secret(self, secret: str) -> None:
-        self.__webhook_secret = secret
+        self.webhook_secret_storage = secret
 
     def next_id(self, prefix: str) -> str:
         """Generate a unique test ID with the given prefix.

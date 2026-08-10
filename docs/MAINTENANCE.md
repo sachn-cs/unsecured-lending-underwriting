@@ -16,27 +16,21 @@
   3. Run `lint.sh && test.sh` (or `make lint test`)
   4. Tag `v{patch}.{minor}.{patch+1}`
   5. Update `CHANGELOG.md` under `### Security`
-- **Secrets**: No credentials, tokens, or private keys are committed. The `.env` file is gitignored. `Configuration.to_dict()` excludes `private_key` field; the `token` field (CD2 in TODO.md) still needs exclusion — tracked as a critical fix.
+- **Secrets**: No credentials, tokens, or private keys are committed. The `.env` file is gitignored. `Configuration.to_dict()` redacts every secret-shaped field across every config section.
 
 ## Technical Debt Management
 
-Tracked in `TODO.md` (current score: 57/100). Debt items are categorized:
+Tracked in `docs/REFACTORING_PLAN.md` and `docs/ROADMAP.md`. v0.9 hardening landed; remaining v1.0 deferrals are itemised in the Roadmap.
 
-| Priority | Label | Response |
-|----------|-------|----------|
-| Critical | CD1–CD5 | Fix before next release |
-| High | HD1–HD8 | Fix within 2 releases |
-| Medium | MD1–MD9 | Fix opportunistically |
-
-Before each release, run `ruff check underwrite/` and `mypy underwrite/` to prevent regression. Current ruff config: `select = ["E", "F", "I", "UP", "B"]`, line length 120.
+Before each release, run `ruff check underwrite/ tests/` and `mypy underwrite/ tests/` to prevent regression. Current ruff config: `select = ["E", "F", "I", "UP", "B"]`, line length 120. mypy runs against both `underwrite/` and `tests/` with strict typing — no `ignore_errors` safety net.
 
 ## Test Maintenance
 
-- **Pre-release**: Run `pytest tests/ -q` (509 tests as of v0.1.0). All tests must pass.
-- **Coverage**: Run `pytest --cov=underwrite tests/` — keep coverage stable (no drops without discussion).
+- **Pre-release**: Run `pytest tests/ -q` (1167 tests as of v0.9). All tests must pass.
+- **Coverage**: Run `pytest --cov=underwrite tests/` — keep coverage ≥ 80% (gate enforced in CI).
 - **Regression tests**: Every bug fix must include a test that fails before the fix and passes after.
 - **Mutation testing**: `mutmut run` (config in `pyproject.toml`: paths `["underwrite"]`, runner `python -m pytest tests/ -x --timeout=30`). Run before major releases.
-- **Stress/concurrency tests**: Currently missing (noted in TODO.md). Add before v0.3.0.
+- **Stress/concurrency tests**: 30+ concurrency stress tests already in `tests/test_concurrency.py`, `tests/test_concurrency_faults.py`, and the per-service fault-injection suites. Add more as needed.
 
 ## Documentation Maintenance
 

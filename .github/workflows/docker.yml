@@ -53,6 +53,7 @@ jobs:
           context: .
           file: Dockerfile
           push: false
+          platforms: linux/amd64,linux/arm64
           tags: |
             underwrite:${{ steps.meta.outputs.VERSION }}
             underwrite:sha-${{ steps.meta.outputs.GIT_SHA }}

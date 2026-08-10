@@ -29,7 +29,7 @@ from underwrite.tracer import Tracer
 from underwrite.validate import PayloadValidator
 
 
-class CollectionHandler(StatefulService):
+class Handler(StatefulService):
     """Tracks repayment schedules and flags overdue accounts.
 
     Uses the full EMI amortization schedule from

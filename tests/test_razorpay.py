@@ -1,14 +1,15 @@
-"""Tests for the RazorpayHandler."""
+"""Tests for the Handler."""
 
 from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.razorpay.handler import RazorpayHandler
 from underwrite.store import MemoryStore
+from underwrite.services.razorpay.handler import Handler
+from underwrite.services.razorpay.handler import Handler as RazorpayHandler
 
 
-def svc(bus=None) -> RazorpayHandler:
+def svc(bus=None) -> Handler:
     return RazorpayHandler(service_id="razorpay", bus=bus or LocalBus(), store=MemoryStore())
 
 

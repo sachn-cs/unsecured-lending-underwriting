@@ -2,9 +2,10 @@
 # Copyright (c) 2026 Sachin
 
 """Tests for Handler — credit bureau checks and CKYC verification."""
-from typing import cast
 
 from __future__ import annotations
+
+from typing import cast
 
 import pytest
 

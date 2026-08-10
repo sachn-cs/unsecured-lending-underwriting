@@ -24,7 +24,7 @@ from underwrite.tracer import Tracer
 from underwrite.validate import PayloadValidator
 
 
-class DisbursementHandler(StatefulService):
+class Handler(StatefulService):
     """Processes loan disbursement to borrower accounts."""
 
     def __init__(

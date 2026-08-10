@@ -72,9 +72,9 @@ class Handler(Core):
             max_concurrent=deps.max_concurrent,
         )
         self.handlers: dict[str, Any] = {
-            Type.GRAPH_PATH: self.__on_graph_path,
-            Type.GRAPH_CREDIT_LIMIT: self.__on_graph_credit_limit,
-            Type.GRAPH_USERS: self.__on_graph_users,
+            Type.GRAPH_PATH: self.on_graph_path,
+            Type.GRAPH_CREDIT_LIMIT: self.on_graph_credit_limit,
+            Type.GRAPH_USERS: self.on_graph_users,
         }
 
     def handle(self, event: Message) -> None:
@@ -87,7 +87,7 @@ class Handler(Core):
         if handler is not None:
             handler(event)
 
-    def __on_graph_path(self, event: Message) -> None:
+    def on_graph_path(self, event: Message) -> None:
         """Compute the delegation path from a user to a seed.
 
         Args:
@@ -119,7 +119,7 @@ class Handler(Core):
             correlation_id=event.correlation_id,
         )
 
-    def __on_graph_credit_limit(self, event: Message) -> None:
+    def on_graph_credit_limit(self, event: Message) -> None:
         """Compute the available credit limit for a user.
 
         Args:
@@ -152,7 +152,7 @@ class Handler(Core):
             correlation_id=event.correlation_id,
         )
 
-    def __on_graph_users(self, event: Message) -> None:
+    def on_graph_users(self, event: Message) -> None:
         """Return the sorted list of all known users.
 
         Args:

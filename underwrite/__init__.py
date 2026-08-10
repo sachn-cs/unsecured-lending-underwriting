@@ -52,7 +52,6 @@ __all__: list[str] = [
     "Type",
     "Keypair",
     "EventBus",
-    "EventBus",
     "Store",
     "InMemory",
     "Disk",

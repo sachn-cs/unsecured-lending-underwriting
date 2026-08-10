@@ -22,7 +22,7 @@ from underwrite.services.base import Core
 from underwrite.validate import PayloadValidator
 
 
-class PrepaymentHandler(Core):
+class Handler(Core):
     """Computes foreclosure quotes and processes prepayment requests."""
 
     def handlers(self) -> dict[str, Any]:

@@ -48,7 +48,7 @@ from underwrite.metrics import Collector
 from underwrite.migrate import default_plan
 from underwrite.saga import Orchestrator
 from underwrite.secrets import Manager
-from underwrite.services.kyc_providers.base import Provider
+from underwrite.services.kyc.base import Provider
 from underwrite.store import FileStore, MemoryStore, Store
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer

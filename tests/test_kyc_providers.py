@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from underwrite.services.kyc_providers.aadhaar import AadhaarEKycClient
-from underwrite.services.kyc_providers.base import Verdict
-from underwrite.services.kyc_providers.cibil import CibilBureauClient
-from underwrite.services.kyc_providers.ckyc import CkycSearchClient
-from underwrite.services.kyc_providers.factory import Config
-from underwrite.services.kyc_providers.pan import PanVerificationClient
+from underwrite.services.kyc.aadhaar import AadhaarEKycClient
+from underwrite.services.kyc.base import Verdict
+from underwrite.services.kyc.cibil import CibilBureauClient
+from underwrite.services.kyc.ckyc import CkycSearchClient
+from underwrite.services.kyc.factory import Config
+from underwrite.services.kyc.pan import PanVerificationClient
 
 
 class TestPanVerificationClient:

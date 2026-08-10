@@ -14,16 +14,16 @@ default; production deployments set ``api_base_url`` to the
 provider's live URL.
 """
 
-from underwrite.services.kyc_providers.aadhaar import AadhaarEKycClient
-from underwrite.services.kyc_providers.base import (
+from underwrite.services.kyc.aadhaar import AadhaarEKycClient
+from underwrite.services.kyc.base import (
     Provider,
     ProviderResult,
     Verdict,
 )
-from underwrite.services.kyc_providers.cibil import CibilBureauClient
-from underwrite.services.kyc_providers.ckyc import CkycSearchClient
-from underwrite.services.kyc_providers.factory import Config
-from underwrite.services.kyc_providers.pan import PanVerificationClient
+from underwrite.services.kyc.cibil import CibilBureauClient
+from underwrite.services.kyc.ckyc import CkycSearchClient
+from underwrite.services.kyc.factory import Config
+from underwrite.services.kyc.pan import PanVerificationClient
 
 __all__ = [
     "AadhaarEKycClient",

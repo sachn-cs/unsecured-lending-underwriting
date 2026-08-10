@@ -13,7 +13,7 @@ from underwrite.services.credit_bureau.client import (
     MockCreditBureauClient,
 )
 from underwrite.services.credit_bureau.handler import CreditBureauHandler
-from underwrite.services.kyc_providers.base import ProviderResult, Verdict
+from underwrite.services.kyc.base import ProviderResult, Verdict
 from underwrite.store import MemoryStore
 
 

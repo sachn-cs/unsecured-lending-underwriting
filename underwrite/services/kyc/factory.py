@@ -7,41 +7,41 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 
-from underwrite.services.kyc_providers.aadhaar import (
+from underwrite.services.kyc.aadhaar import (
     PRODUCTION_BASE_URL as AADHAAR_PRODUCTION_BASE_URL,
 )
-from underwrite.services.kyc_providers.aadhaar import (
+from underwrite.services.kyc.aadhaar import (
     SANDBOX_BASE_URL as AADHAAR_SANDBOX_BASE_URL,
 )
-from underwrite.services.kyc_providers.aadhaar import (
+from underwrite.services.kyc.aadhaar import (
     AadhaarEKycClient,
 )
-from underwrite.services.kyc_providers.base import Provider
-from underwrite.services.kyc_providers.cibil import (
+from underwrite.services.kyc.base import Provider
+from underwrite.services.kyc.cibil import (
     PRODUCTION_BASE_URL as CIBIL_PRODUCTION_BASE_URL,
 )
-from underwrite.services.kyc_providers.cibil import (
+from underwrite.services.kyc.cibil import (
     SANDBOX_BASE_URL as CIBIL_SANDBOX_BASE_URL,
 )
-from underwrite.services.kyc_providers.cibil import (
+from underwrite.services.kyc.cibil import (
     CibilBureauClient,
 )
-from underwrite.services.kyc_providers.ckyc import (
+from underwrite.services.kyc.ckyc import (
     PRODUCTION_BASE_URL as CKYC_PRODUCTION_BASE_URL,
 )
-from underwrite.services.kyc_providers.ckyc import (
+from underwrite.services.kyc.ckyc import (
     SANDBOX_BASE_URL as CKYC_SANDBOX_BASE_URL,
 )
-from underwrite.services.kyc_providers.ckyc import (
+from underwrite.services.kyc.ckyc import (
     CkycSearchClient,
 )
-from underwrite.services.kyc_providers.pan import (
+from underwrite.services.kyc.pan import (
     PRODUCTION_BASE_URL as PAN_PRODUCTION_BASE_URL,
 )
-from underwrite.services.kyc_providers.pan import (
+from underwrite.services.kyc.pan import (
     SANDBOX_BASE_URL as PAN_SANDBOX_BASE_URL,
 )
-from underwrite.services.kyc_providers.pan import (
+from underwrite.services.kyc.pan import (
     PanVerificationClient,
 )
 

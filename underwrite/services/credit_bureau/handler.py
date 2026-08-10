@@ -23,7 +23,7 @@ from underwrite.services.credit_bureau.client import (
     HttpCreditBureauClient,
     MockCreditBureauClient,
 )
-from underwrite.services.kyc_providers.base import Provider
+from underwrite.services.kyc.base import Provider
 from underwrite.services.persistence import TypedStoreRepository
 from underwrite.store import Store
 from underwrite.supervisor import Watcher
@@ -201,7 +201,7 @@ class CreditBureauHandler(StatefulService):
 
         When a ``kyc_providers`` mapping is provided, the bureau
         pull goes through the new CIBIL partner-API client
-        (``services.kyc_providers.cibil.CibilBureauClient``). The
+        (``services.kyc.cibil.CibilBureauClient``). The
         legacy ``HttpCreditBureauClient`` continues to work as a
         fallback for the generic CIBIL/Experian/Equifax endpoints.
 

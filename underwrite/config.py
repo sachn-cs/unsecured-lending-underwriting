@@ -52,7 +52,7 @@ from pydantic import BaseModel, Field, field_validator
 from underwrite.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
 from underwrite.exceptions import ConfigurationError
 from underwrite.logger import logger
-from underwrite.services.kyc_providers.factory import Config
+from underwrite.services.kyc.factory import Config
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
@@ -77,7 +77,7 @@ class BusConfig(ForbidExtra):
     rate_limit: float = Field(default=0.0, ge=0)
     max_workers: int = Field(default=0, ge=0)
     max_futures: int = Field(default=10000, ge=1)
-    sqs_queue_url: str = ""
+    sqs_queue_url: str = ""  # deprecated, kept for backward compat with old configs
     sqs_region: str = ""
     modal_queue_name: str = "underwrite-bus"
 

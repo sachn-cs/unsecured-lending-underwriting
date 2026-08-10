@@ -299,7 +299,7 @@ class ComplianceHandler(StatefulService):
         pan_provider_result: dict[str, Any] = {}
         pan_provider = self.__kyc_providers.get("pan")
         if pan_provider is not None:
-            from underwrite.services.kyc_providers.base import Verdict as _V
+            from underwrite.services.kyc.base import Verdict as _V
 
             result = pan_provider.verify(pan, name=name, consent="Y" if consent_id else "")
             pan_provider_result = {

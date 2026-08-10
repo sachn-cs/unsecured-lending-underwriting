@@ -258,12 +258,17 @@ make typecheck   # Runs mypy
 
 ### 20. Is there a roadmap?
 
-The project is in **Beta** (`Development Status :: 4 - Beta`). The TODO (`TODO.md`) and CHANGELOG (`CHANGELOG.md`) document planned and completed work. Key areas of ongoing development:
+The project is on the v0.9 release line (`Development Status :: 4 - Beta`). The active plan lives in `docs/ROADMAP.md`; historical refactor notes live in `docs/REFACTORING_PLAN.md`; `CHANGELOG.md` records every shipped change. v1.0 deferred work includes:
 
-- SQS and Modal bus backends for distributed deployment.
-- Enhanced fraud detection models and ML risk scoring integration.
-- Governance parameter evolution via on-chain proposals.
-- Collateral liquidation and settlement workflows.
-- Recovery and collections automation.
-- Additional state store backends.
-- Enhanced OTLP/metrics observability.
+- Live partner-sandbox validation for the KYC providers
+  (Karza / UIDAI KUA / CIBIL partner / CERSAI).
+- Video KYC provider integration (Digilocker, NSDL eSign).
+- e-NACH / UPI Autopay mandate collection through Razorpay.
+- Full RBAC beyond the basic policy-file allow/deny engine.
+- Pre-built multi-arch (amd64 + arm64) Docker images published
+  to GHCR.
+- Production on-call runbook (incident response, Ed25519 key
+  rotation, DLQ replay, breach notification).
+- Read-only `underwrite` role for `psql` / Vault operations.
+
+A Helm chart for Kubernetes is **not** planned.

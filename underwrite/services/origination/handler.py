@@ -25,7 +25,7 @@ from underwrite.validate import PayloadValidator
 from underwrite.value_objects import IdGenerator
 
 
-class OriginationHandler(Core):
+class Handler(Core):
     """Manages loan application lifecycle: creation, validation, submission."""
 
     def __init__(

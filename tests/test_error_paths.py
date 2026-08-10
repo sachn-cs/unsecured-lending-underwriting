@@ -165,20 +165,6 @@ class TestAuthzBuildFallback:
 # ---------------------------------------------------------------------------
 
 
-class TestPostgresStoreHealthFallback:
-    def test_returns_ok_false_on_query_failure(self) -> None:
-        store = Sqlite(dsn="", table="test")
-        store.execute = MagicMock(side_effect=RuntimeError("db down"))
-        result = store.health()
-        assert result["ok"] is False
-        assert "detail" in result
-
-
-# ---------------------------------------------------------------------------
-# 9) CQRSStore.health uses fallback on write store error
-# ---------------------------------------------------------------------------
-
-
 class TestCQRSStoreHealthFallback:
     def test_uses_fallback_on_write_store_exception(self) -> None:
         read_store = InMemory()

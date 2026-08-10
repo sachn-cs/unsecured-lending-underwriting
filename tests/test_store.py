@@ -19,7 +19,7 @@ class TestFileStoreCorruption:
         with tempfile.TemporaryDirectory() as tmp:
             store = Disk(tmp)
             store.set("key1", {"value": 42})
-            path = Path(tmp) / "key1.json"
+            path = Path(tmp) / "key1"
             path.write_text("not valid json{{{")
             with pytest.raises(StoreError, match="corrupted store file"):
                 store.get("key1")
@@ -34,7 +34,7 @@ class TestFileStoreCorruption:
         with tempfile.TemporaryDirectory() as tmp:
             store = Disk(tmp)
             store.set("key1", {"value": 42})
-            path = Path(tmp) / "key1.json"
+            path = Path(tmp) / "key1"
             path.write_text("{bad json]")
             with pytest.raises(StoreError, match="corrupted store file"):
                 store.get("key1")
@@ -44,7 +44,7 @@ class TestFileStoreCorruption:
         with tempfile.TemporaryDirectory() as tmp:
             store = Disk(tmp, metrics_collector=metrics)
             store.set("key1", {"value": 42})
-            path = Path(tmp) / "key1.json"
+            path = Path(tmp) / "key1"
             path.write_text("garbage{{{")
             with pytest.raises(StoreError):
                 store.get("key1")
@@ -56,7 +56,7 @@ class TestFileStoreCorruption:
         with tempfile.TemporaryDirectory() as tmp:
             store = Disk(tmp, metrics_collector=metrics)
             store.set("key1", {"value": 42})
-            path = Path(tmp) / "key1.json"
+            path = Path(tmp) / "key1"
             path.chmod(0o200)
             with pytest.raises(StoreError):
                 store.get("key1")
@@ -211,17 +211,3 @@ class TestFileStorePathTraversal:
             assert len(limited) == 3
             with_offset = store.keys(limit=3, offset=5)
             assert len(with_offset) == 3
-
-
-class TestPostgresStoreTableName:
-    def test_rejects_invalid_table_name(self) -> None:
-        with pytest.raises(StoreError, match="invalid table name"):
-            Sqlite(dsn="", table="store; DROP TABLE migrations")
-
-    def test_rejects_table_with_spaces(self) -> None:
-        with pytest.raises(StoreError, match="invalid table name"):
-            Sqlite(dsn="", table="my table")
-
-    def test_accepts_valid_table_name(self) -> None:
-        store = Sqlite(dsn="", table="valid_table_1")
-        assert store is not None

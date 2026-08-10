@@ -1,0 +1,14 @@
+# Default owners for everything
+*       @sachncs
+
+# Security-sensitive paths get an extra review
+/.github/    @sachncs
+/pyproject.toml   @sachncs
+/Dockerfile  @sachncs
+/.dockerignore   @sachncs
+/underwrite/keypair.py    @sachncs
+/underwrite/authz.py  @sachncs
+/underwrite/secrets.py    @sachncs
+/underwrite/message.py    @sachncs
+/underwrite/pii.py    @sachncs
+/underwrite/store.py  @sachncs

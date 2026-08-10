@@ -1,14 +1,15 @@
-"""Tests for CollectionHandler — repayment schedule tracking."""
+"""Tests for Handler — repayment schedule tracking."""
 
 from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.collection.handler import CollectionHandler
 from underwrite.store import MemoryStore
+from underwrite.services.collection.handler import Handler
+from underwrite.services.collection.handler import Handler as CollectionHandler
 
 
-def svc(bus=None) -> CollectionHandler:
+def svc(bus=None) -> Handler:
     return CollectionHandler(service_id="collection", bus=bus or LocalBus(), store=MemoryStore())
 
 

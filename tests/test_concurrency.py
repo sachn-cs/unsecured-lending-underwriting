@@ -3,16 +3,16 @@
 Tests run multiple threads concurrently to expose data races in:
 - MechanismHandler state mutations
 - LocalBus publish/dispatch
-- SagaOrchestrator concurrent execution
+- Orchestrator concurrent execution
 """
 
 from __future__ import annotations
 
 import threading
 
-from underwrite.__bus__ import LocalBus
-from underwrite.__events__ import Event
-from underwrite.__store__ import MemoryStore
+from underwrite.events import Event
+from underwrite.local import LocalBus
+from underwrite.store import MemoryStore
 
 
 class TestLocalBusConcurrency:
@@ -52,7 +52,7 @@ class TestLocalBusConcurrency:
         # No crash = success
 
     def test_circuit_breaker_thread_safety(self) -> None:
-        from underwrite.__bus__ import PerSubscriberCircuitBreaker as CircuitBreaker
+        from underwrite.bus import Breaker as CircuitBreaker
 
         cb = CircuitBreaker(failure_threshold=3, cooldown_seconds=0.01)
 

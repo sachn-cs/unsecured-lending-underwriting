@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
 
-from underwrite.__metrics__ import SystemClock
+from underwrite.metrics import SystemClock
 
 try:
     import httpx

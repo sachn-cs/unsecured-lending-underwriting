@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import MagicMock
 
-from underwrite.__runtime__ import Runtime
+from underwrite.runtime import Runtime
 
 
 class TestRuntimeOtlpTracer:
@@ -46,7 +46,7 @@ class TestRuntimeOtlpTracer:
 
 
 def config_with_otlp() -> Any:
-    from underwrite.__config__ import Configuration
+    from underwrite.config import Configuration
 
     config = Configuration.default()
     config.tracing.enabled = True
@@ -56,7 +56,7 @@ def config_with_otlp() -> Any:
 
 class TestRuntimeRestartFailingServices:
     def test_restart_no_supervisor_returns_empty(self) -> None:
-        from underwrite.__config__ import Configuration
+        from underwrite.config import Configuration
 
         config = Configuration.default()
         config.recovery.auto_restart = False
@@ -64,7 +64,7 @@ class TestRuntimeRestartFailingServices:
         assert rt.restart_failing_services() == []
 
     def test_restart_returns_empty_when_no_failures(self) -> None:
-        from underwrite.__config__ import Configuration
+        from underwrite.config import Configuration
 
         config = Configuration.default()
         rt = Runtime(config)

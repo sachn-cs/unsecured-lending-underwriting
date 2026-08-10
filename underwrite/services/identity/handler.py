@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from underwrite.__events__ import Event, EventType
-from underwrite.__identity__ import Identity
-from underwrite.__logger__ import logger
+from underwrite.events import Event, EventType
+from underwrite.identity import Identity
+from underwrite.logger import logger
 from underwrite.services import Core
 from underwrite.validate import PayloadValidator
 

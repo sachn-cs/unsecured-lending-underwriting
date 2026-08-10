@@ -9,11 +9,11 @@ from typing import Any
 
 import pytest
 
-from underwrite.__bus__ import LocalBus
-from underwrite.__events__ import Event, EventType
-from underwrite.__exceptions__ import ProtocolError
-from underwrite.__store__ import MemoryStore
+from underwrite.events import Event, EventType
+from underwrite.exceptions import ProtocolError
+from underwrite.local import LocalBus
 from underwrite.services.mechanism.handler import MechanismHandler
+from underwrite.store import MemoryStore
 
 
 def make_svc() -> MechanismHandler:

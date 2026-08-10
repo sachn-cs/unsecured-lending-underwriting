@@ -2,6 +2,6 @@
 
 from __future__ import annotations
 
-from underwrite.__cli__ import main
+from underwrite.cli import main
 
 main()

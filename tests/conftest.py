@@ -9,9 +9,9 @@ from typing import Any
 
 import pytest
 
-from underwrite.__bus__ import LocalBus
-from underwrite.__events__ import Event, EventType
-from underwrite.__store__ import MemoryStore, Store
+from underwrite.events import Event, EventType
+from underwrite.local import LocalBus
+from underwrite.store import MemoryStore, Store
 
 # -- Domain event fixture ------------------------------------------------------
 
@@ -60,7 +60,7 @@ def pg_store(postgres_dsn: str) -> Generator[Store, None, None]:
     """
     import uuid
 
-    from underwrite.__store__ import PostgresStore
+    from underwrite.store import PostgresStore
 
     table = f"test_store_{uuid.uuid4().hex[:12]}"
     store = PostgresStore(dsn=postgres_dsn, table=table)
@@ -78,7 +78,7 @@ def pg_store(postgres_dsn: str) -> Generator[Store, None, None]:
 
 
 def _empty_plan() -> Any:
-    from underwrite.__migrate__ import MigrationPlan
+    from underwrite.migrate import MigrationPlan
 
     return MigrationPlan()
 
@@ -119,7 +119,7 @@ def client() -> Any:
     Requires the ``serve`` extra.
     """
     try:
-        from underwrite.__serve__ import create_app
+        from underwrite.serve import create_app
     except ImportError:
         pytest.skip("serve extra not installed")
     try:

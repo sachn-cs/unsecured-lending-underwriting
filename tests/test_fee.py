@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from underwrite.__bus__ import LocalBus
-from underwrite.__events__ import Event, EventType
-from underwrite.__store__ import MemoryStore
+from underwrite.events import Event, EventType
+from underwrite.local import LocalBus
 from underwrite.services.fee.handler import FeeHandler
+from underwrite.store import MemoryStore
 
 
 class TestFeeService:
@@ -111,7 +111,7 @@ class TestFeeService:
         assert len(svc.store.keys("fee:fee_L9_")) == 3
 
     def test_non_finite_principal_safe(self) -> None:
-        from underwrite.__exceptions__ import ProtocolError
+        from underwrite.exceptions import ProtocolError
 
         svc = FeeHandler(service_id="fee", bus=LocalBus(), store=MemoryStore())
         with pytest.raises(ProtocolError, match="must be finite"):

@@ -10,15 +10,16 @@ from unittest.mock import MagicMock
 import pytest
 
 from tests.helpers import BadStr, BrokenStore, ConcreteService, RaisingStrategy
-from underwrite.__bus__ import EventBus, LocalBus
-from underwrite.__config__ import Configuration
-from underwrite.__events__ import Event
-from underwrite.__exceptions__ import ProtocolError
-from underwrite.__runtime__ import Runtime, build_authz
-from underwrite.__store__ import CQRSStore, MemoryStore, PostgresStore, ReadStore, Store
+from underwrite.bus import EventBus
+from underwrite.config import Configuration
+from underwrite.events import Event
+from underwrite.exceptions import ProtocolError
+from underwrite.local import LocalBus
+from underwrite.runtime import Runtime, build_authz
 from underwrite.services.audit.handler import AuditHandler
 from underwrite.services.mechanism.handler import MechanismHandler
 from underwrite.services.risk.model import RiskModel
+from underwrite.store import CQRSStore, MemoryStore, PostgresStore, ReadStore, Store
 
 # ---------------------------------------------------------------------------
 # 1) Core.safe_store_get returns default on store error

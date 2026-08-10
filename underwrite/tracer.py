@@ -7,8 +7,8 @@ execution and exported to a configurable backend (no-op by default).
 from __future__ import annotations
 
 __all__ = [
-    "ConsoleSpanExporter",
-    "OtlpSpanExporter",
+    "Console",
+    "Otlp",
     "Span",
     "SpanContext",
     "SpanExporter",
@@ -21,7 +21,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
-from underwrite.__logger__ import logger
+from underwrite.logger import logger
 
 
 @dataclass(slots=True)
@@ -168,7 +168,7 @@ class SpanContext:
         self.__tracer.end_span(self.__span, error=error)
 
 
-class ConsoleSpanExporter(SpanExporter):
+class Console(SpanExporter):
     """Exports spans to stdout for development."""
 
     def export(self, spans: list[Span]) -> None:
@@ -189,7 +189,7 @@ class ConsoleSpanExporter(SpanExporter):
             )
 
 
-class OtlpSpanExporter(SpanExporter):
+class Otlp(SpanExporter):
     """Exports spans via OpenTelemetry OTLP.
 
     Initialises the SDK once at construction time so that each

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from underwrite.__bus__ import LocalBus
-from underwrite.__events__ import Event, EventType
-from underwrite.__store__ import MemoryStore
+from underwrite.events import Event, EventType
+from underwrite.local import LocalBus
 from underwrite.services.razorpay.handler import RazorpayHandler
+from underwrite.store import MemoryStore
 
 
 def svc(bus=None) -> RazorpayHandler:
@@ -18,7 +18,7 @@ def _configure_webhook_secret(svc_inst, secret: str) -> None:
     if hasattr(client, "set_webhook_secret"):
         client.set_webhook_secret(secret)
     elif hasattr(client, "webhook_secret"):
-        from underwrite.__exceptions__ import ConfigurationError
+        from underwrite.exceptions import ConfigurationError
 
         try:
             client.webhook_secret = lambda s=secret: s

@@ -3,7 +3,7 @@
 All services and infrastructure modules import ``logger`` from this
 module instead of creating their own via ``logging.getLogger()``.
 Logging configuration (level, output, format) is managed by
-:func:`Runtime.__configure_logging` in :mod:`underwrite.__runtime__`.
+:func:`Runtime.__configure_logging` in :mod:`underwrite.runtime`.
 """
 
 from __future__ import annotations
@@ -26,8 +26,8 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
-from underwrite.__correlation__ import get_log_correlation_id
-from underwrite.__pii import PII_REDACTED
+from underwrite.correlation import get_log_correlation_id
+from underwrite.pii import PII_REDACTED
 
 if TYPE_CHECKING:
     from loguru import Record
@@ -71,7 +71,7 @@ def redact(data: object) -> object:
 
     Returns:
         A new structure with sensitive values replaced by
-        :data:`~underwrite.__pii.PII_REDACTED`.
+        :data:`~underwrite.pii.PII_REDACTED`.
     """
     if isinstance(data, str):
         parsed = parse_serialised_message(data)

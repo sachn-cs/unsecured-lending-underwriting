@@ -12,19 +12,19 @@ from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
-from underwrite.__authz__ import AccessControl
-from underwrite.__bus__ import EventBus
-from underwrite.__constants__ import DAYS_PER_YEAR, RATE_QUANTUM
-from underwrite.__events__ import Event, EventType
-from underwrite.__exceptions__ import ProtocolError
-from underwrite.__health__ import HealthRegistry
-from underwrite.__identity__ import Identity
-from underwrite.__metrics__ import MetricsCollector
-from underwrite.__saga__ import SagaOrchestrator
-from underwrite.__store__ import Store
-from underwrite.__supervisor__ import ServiceSupervisor
-from underwrite.__tracer__ import Tracer
+from underwrite.authz import AccessControl
+from underwrite.bus import EventBus
+from underwrite.constants import DAYS_PER_YEAR, RATE_QUANTUM
+from underwrite.events import Event, EventType
+from underwrite.exceptions import ProtocolError
+from underwrite.health import Checks
+from underwrite.identity import Identity
+from underwrite.metrics import Collector
+from underwrite.saga import Orchestrator
 from underwrite.services import Core
+from underwrite.store import Store
+from underwrite.supervisor import Watcher
+from underwrite.tracer import Tracer
 from underwrite.validate import PayloadValidator
 
 BASE_RATE: float = 0.08
@@ -143,12 +143,12 @@ class PricingHandler(Core):
         bus: EventBus,
         store: Store,
         identity: Identity | None = None,
-        metrics: MetricsCollector | None = None,
-        health: HealthRegistry | None = None,
+        metrics: Collector | None = None,
+        health: Checks | None = None,
         authz: AccessControl | None = None,
         tracer: Tracer | None = None,
-        saga: SagaOrchestrator | None = None,
-        supervisor: ServiceSupervisor | None = None,
+        saga: Orchestrator | None = None,
+        supervisor: Watcher | None = None,
         secrets_manager: Any | None = None,
         max_concurrent: int = 0,
         **kwargs: Any,
@@ -181,8 +181,8 @@ class PricingHandler(Core):
         self.__penal_interest_cap: float = config.penal_interest_cap
         self.handlers: dict[str, Any] = {
             EventType.PRICING_REQUEST: self.compute_pricing,
-            "pricing.penal_interest": self.compute_penal_interest,
-            "pricing.foreclosure": self.compute_foreclosure,
+            EventType.PRICING_PENAL_INTEREST.value: self.compute_penal_interest,
+            EventType.PRICING_FORECLOSURE.value: self.compute_foreclosure,
         }
 
     def handle(self, event: Event) -> None:
@@ -276,7 +276,7 @@ class PricingHandler(Core):
         penal_amount = overdue_amount * daily_penal_rate * overdue_days
 
         self.emit(
-            "pricing.penal_interest_computed",
+            EventType.PRICING_PENAL_INTEREST_COMPUTED.value,
             {
                 "borrower": borrower,
                 "overdue_amount": overdue_amount,
@@ -303,7 +303,7 @@ class PricingHandler(Core):
         total_due = outstanding_principal + foreclosure_amount
 
         self.emit(
-            "pricing.foreclosure_computed",
+            EventType.PRICING_FORECLOSURE_COMPUTED.value,
             {
                 "borrower": borrower,
                 "outstanding_principal": outstanding_principal,

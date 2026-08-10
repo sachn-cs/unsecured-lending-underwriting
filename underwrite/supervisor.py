@@ -10,10 +10,10 @@ import threading
 import time
 from typing import Any
 
-from underwrite.__logger__ import logger
+from underwrite.logger import logger
 
 
-class ServiceSupervisor:
+class Watcher:
     """Monitors service health and auto-restarts crashed services."""
 
     def __init__(self, max_restarts: int = 3, backoff_seconds: float = 1.0, cooldown_seconds: float = 30.0) -> None:
@@ -93,4 +93,4 @@ class ServiceSupervisor:
             self.__failures.clear()
 
 
-__all__ = ["ServiceSupervisor"]
+__all__ = ["Watcher"]

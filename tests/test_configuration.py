@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from underwrite.__config__ import (
+from underwrite.config import (
     AuthzConfig,
     BusConfig,
     Configuration,
@@ -17,7 +17,7 @@ from underwrite.__config__ import (
     StoreConfig,
     TracingConfig,
 )
-from underwrite.__exceptions__ import ConfigurationError
+from underwrite.exceptions import ConfigurationError
 
 
 class TestConfiguration:

@@ -1,4 +1,4 @@
-"""Tests for the shared correlation context in :mod:`underwrite.__correlation__`.
+"""Tests for the shared correlation context in :mod:`underwrite.correlation`.
 
 Covers the public surface: the default (unset) correlation id, explicit
 set/get behaviour, and per-thread isolation.
@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import threading
 
-from underwrite.__correlation__ import correlation_context, get_log_correlation_id
+from underwrite.correlation import correlation_context, get_log_correlation_id
 
 
 class TestCorrelationContext:

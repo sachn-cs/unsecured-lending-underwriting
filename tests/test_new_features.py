@@ -6,12 +6,12 @@ from typing import Any
 
 import pytest
 
-from underwrite.__async_bus__ import AsyncLocalBus
-from underwrite.__authz__ import AccessControl
-from underwrite.__bus__ import DeadLetterQueue
-from underwrite.__events__ import MAX_PAYLOAD_SIZE, Event
-from underwrite.__exceptions__ import ProtocolError
-from underwrite.__store__ import MemoryStore, Store
+from underwrite.async_bus import AsyncLocalBus
+from underwrite.authz import AccessControl
+from underwrite.bus import Queue
+from underwrite.events import MAX_PAYLOAD_SIZE, Event
+from underwrite.exceptions import ProtocolError
+from underwrite.store import MemoryStore, Store
 
 
 class TestEventPayloadSizeLimit:
@@ -67,17 +67,17 @@ class TestMemoryStoreEviction:
         assert store.get("d") == 4
 
 
-class TestDeadLetterQueuePersistence:
+class TestQueuePersistence:
     """DLQ persists and restores records via a store."""
 
     def test_persist_and_restore(self) -> None:
         store: Store = MemoryStore()
-        dlq = DeadLetterQueue(store=store, sync_interval=1)
+        dlq = Queue(store=store, sync_interval=1)
 
         event = Event(event_type="test", payload={"msg": "hello"})
         dlq.put(event, "test error", "svc1")
 
-        dlq2 = DeadLetterQueue(store=store, sync_interval=1)
+        dlq2 = Queue(store=store, sync_interval=1)
         assert dlq2.count == 1
         records = dlq2.records
         assert records[0].error == "test error"
@@ -85,19 +85,19 @@ class TestDeadLetterQueuePersistence:
 
     def test_persist_batches_by_interval(self) -> None:
         store: Store = MemoryStore()
-        dlq = DeadLetterQueue(store=store, sync_interval=5)
+        dlq = Queue(store=store, sync_interval=5)
 
         for i in range(4):
             e = Event(event_type=f"test.{i}", payload={"n": i})
             dlq.put(e, f"err{i}", "svc1")
 
-        dlq2 = DeadLetterQueue(store=store, sync_interval=1)
+        dlq2 = Queue(store=store, sync_interval=1)
         assert dlq2.count == 0  # not synced yet
 
         e = Event(event_type="test.trigger", payload={"n": 5})
         dlq.put(e, "trigger", "svc1")
 
-        dlq3 = DeadLetterQueue(store=store, sync_interval=1)
+        dlq3 = Queue(store=store, sync_interval=1)
         assert dlq3.count == 5
 
 
@@ -138,9 +138,9 @@ class TestAsyncBusTimeout:
 
         assert bus.dlq.count >= 1, f"expected timed-out event in DLQ, got {bus.dlq.count}"
         dlq_records = bus.dlq.records
-        assert any("timed out" in rec.error for rec in dlq_records), (
-            f"DLQ record should carry the timeout error, got {[r.error for r in dlq_records]}"
-        )
+        assert any(
+            "timed out" in rec.error for rec in dlq_records
+        ), f"DLQ record should carry the timeout error, got {[r.error for r in dlq_records]}"
 
         await bus.stop()
 
@@ -176,7 +176,7 @@ class TestCircuitBreakerHalfOpenTransition:
     """CircuitBreaker transitions to half-open after cooldown."""
 
     def test_half_open_after_cooldown(self) -> None:
-        from underwrite.__circuit__ import CircuitBreaker, CircuitState
+        from underwrite.circuit import CircuitBreaker, CircuitState
 
         cb = CircuitBreaker(failure_threshold=2, recovery_timeout=0.05, name="test")
 
@@ -200,7 +200,7 @@ class TestCircuitBreakerHalfOpenTransition:
         assert cb.state == CircuitState.HALF_OPEN
 
     def test_recovery_after_half_open_success(self) -> None:
-        from underwrite.__circuit__ import CircuitBreaker, CircuitState
+        from underwrite.circuit import CircuitBreaker, CircuitState
 
         cb = CircuitBreaker(failure_threshold=2, recovery_timeout=0.05, name="test")
 
@@ -224,20 +224,20 @@ class TestCircuitBreakerHalfOpenTransition:
         assert cb.state == CircuitState.CLOSED
 
 
-class TestRateLimiterDistributed:
-    """DistributedRateLimiter falls back to in-memory when no store."""
+class TestDistributedLimiter:
+    """DistributedLimiter falls back to in-memory when no store."""
 
     def test_in_memory_fallback(self) -> None:
-        from underwrite.__bus__ import DistributedRateLimiter
+        from underwrite.bus import DistributedLimiter
 
-        rl = DistributedRateLimiter(max_rate=1000.0, interval=1.0, store=None)
+        rl = DistributedLimiter(max_rate=1000.0, interval=1.0, store=None)
         assert rl.check("test") is True
 
     def test_distributed_with_store(self) -> None:
-        from underwrite.__bus__ import DistributedRateLimiter
+        from underwrite.bus import DistributedLimiter
 
         store: Store = MemoryStore()
-        rl = DistributedRateLimiter(max_rate=100.0, interval=10.0, store=store, prefix="testrl")
+        rl = DistributedLimiter(max_rate=100.0, interval=10.0, store=store, prefix="testrl")
         assert rl.check("key1") is True
         import time
 
@@ -245,26 +245,26 @@ class TestRateLimiterDistributed:
         assert rl.check("key1") is True
 
 
-class TestIdempotencyGuard:
-    """IdempotencyGuard correctly detects duplicates."""
+class TestGuard:
+    """Guard correctly detects duplicates."""
 
     def test_first_call_not_duplicate(self) -> None:
-        from underwrite.__bus__ import IdempotencyGuard
+        from underwrite.bus import Guard
 
-        guard = IdempotencyGuard()
+        guard = Guard()
         assert guard.is_duplicate("h1", "e1") is False
 
     def test_second_call_is_duplicate(self) -> None:
-        from underwrite.__bus__ import IdempotencyGuard
+        from underwrite.bus import Guard
 
-        guard = IdempotencyGuard()
+        guard = Guard()
         guard.is_duplicate("h1", "e1")
         assert guard.is_duplicate("h1", "e1") is True
 
     def test_different_handlers_independent(self) -> None:
-        from underwrite.__bus__ import IdempotencyGuard
+        from underwrite.bus import Guard
 
-        guard = IdempotencyGuard()
+        guard = Guard()
         guard.is_duplicate("h1", "e1")
         assert guard.is_duplicate("h2", "e1") is False
 

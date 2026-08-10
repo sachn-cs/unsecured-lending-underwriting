@@ -17,19 +17,19 @@ from datetime import timedelta
 from enum import Enum
 from typing import Any
 
-from underwrite.__authz__ import AccessControl
-from underwrite.__bus__ import EventBus
-from underwrite.__events__ import Event, EventType
-from underwrite.__health__ import HealthRegistry
-from underwrite.__identity__ import Identity
-from underwrite.__logger__ import logger
-from underwrite.__metrics__ import MetricsCollector, SystemClock
-from underwrite.__saga__ import SagaOrchestrator
-from underwrite.__store__ import Store
-from underwrite.__supervisor__ import ServiceSupervisor
-from underwrite.__tracer__ import Tracer
+from underwrite.authz import AccessControl
+from underwrite.bus import EventBus
+from underwrite.events import Event, EventType
+from underwrite.health import Checks
+from underwrite.identity import Identity
+from underwrite.logger import logger
+from underwrite.metrics import Collector, SystemClock
+from underwrite.saga import Orchestrator
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
+from underwrite.store import Store
+from underwrite.supervisor import Watcher
+from underwrite.tracer import Tracer
 from underwrite.validate import PayloadValidator
 
 DEFAULT_RECOVERY_RATE: float = 0.3
@@ -75,12 +75,12 @@ class RecoveryHandler(StatefulService):
         bus: EventBus,
         store: Store,
         identity: Identity | None = None,
-        metrics: MetricsCollector | None = None,
-        health: HealthRegistry | None = None,
+        metrics: Collector | None = None,
+        health: Checks | None = None,
         authz: AccessControl | None = None,
         tracer: Tracer | None = None,
-        saga: SagaOrchestrator | None = None,
-        supervisor: ServiceSupervisor | None = None,
+        saga: Orchestrator | None = None,
+        supervisor: Watcher | None = None,
         secrets_manager: Any | None = None,
         max_concurrent: int = 0,
         **kwargs: Any,
@@ -141,7 +141,7 @@ class RecoveryHandler(StatefulService):
             self.__start_recovery(event)
         elif event.event_type == EventType.PAYMENT_RECEIVED:
             self.__on_payment_received(event)
-        elif event.event_type == "recovery.offer_response":
+        elif event.event_type == EventType.RECOVERY_OFFER_RESPONSE.value:
             self.__on_offer_response(event)
 
     def __start_recovery(self, event: Event) -> None:
@@ -190,7 +190,7 @@ class RecoveryHandler(StatefulService):
             self.__sync()
 
         self.emit(
-            "recovery.offer",
+            EventType.RECOVERY_OFFER.value,
             {
                 "borrower": borrower,
                 "offer_amount": offer_amount,
@@ -242,7 +242,7 @@ class RecoveryHandler(StatefulService):
                     self.__sync()
                     logger.warning("recovery escalated for {}", borrower)
                     self.emit(
-                        "recovery.escalated",
+                        EventType.RECOVERY_ESCALATED.value,
                         {
                             "borrower": borrower,
                             "principal": recovery["principal"],
@@ -255,7 +255,7 @@ class RecoveryHandler(StatefulService):
                     self.__sync()
                     offer_amount = recovery["principal"] * self.__recovery_rate
                     self.emit(
-                        "recovery.offer",
+                        EventType.RECOVERY_OFFER.value,
                         {
                             "borrower": borrower,
                             "offer_amount": offer_amount,
@@ -312,7 +312,7 @@ class RecoveryHandler(StatefulService):
                     outstanding,
                 )
                 self.emit(
-                    "recovery.progress",
+                    EventType.RECOVERY_PROGRESS.value,
                     {
                         "borrower": borrower,
                         "recovered": recovery["recovered"],

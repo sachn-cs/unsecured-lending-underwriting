@@ -6,7 +6,7 @@ from decimal import Decimal, InvalidOperation
 
 import pytest
 
-from underwrite.__indian_format__ import (
+from underwrite.indian_format import (
     format_currency_symbol,
     format_indian_rupees,
     format_indian_words,

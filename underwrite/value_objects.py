@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import NewType
 
-from underwrite.__exceptions__ import ProtocolError
+from underwrite.exceptions import ProtocolError
 
 __all__ = [
     "ApplicationId",

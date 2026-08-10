@@ -12,16 +12,16 @@ from typing import Any
 
 import pytest
 
-from underwrite.__bus__ import LocalBus
-from underwrite.__config__ import HANDLER_NAMES, Configuration
-from underwrite.__events__ import Event
-from underwrite.__exceptions__ import (
+from underwrite.config import HANDLER_NAMES, Configuration
+from underwrite.events import Event
+from underwrite.exceptions import (
     ServiceNotFoundError,
 )
-from underwrite.__identity__ import Identity
-from underwrite.__runtime__ import Runtime
-from underwrite.__store__ import FileStore, MemoryStore
+from underwrite.identity import Identity
+from underwrite.local import LocalBus
+from underwrite.runtime import Runtime
 from underwrite.services.base import Core
+from underwrite.store import FileStore, MemoryStore
 
 # =============================================================================
 # Configuration

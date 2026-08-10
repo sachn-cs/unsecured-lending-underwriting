@@ -6,8 +6,8 @@ import traceback
 
 import pytest
 
-from underwrite.__circuit__ import CircuitBreaker, CircuitState, RetryPolicy
-from underwrite.__exceptions__ import CircuitBreakerOpenError
+from underwrite.circuit import CircuitBreaker, CircuitState, RetryPolicy
+from underwrite.exceptions import CircuitBreakerOpenError
 
 
 class TestCircuitBreaker:

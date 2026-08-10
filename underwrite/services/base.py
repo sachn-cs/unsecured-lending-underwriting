@@ -19,6 +19,7 @@ import contextlib
 import threading
 import time
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -27,29 +28,52 @@ if TYPE_CHECKING:
         TypedStoreRepository,
     )
 
-from underwrite.__authz__ import AccessControl, AuthzError
-from underwrite.__bus__ import EventBus
-from underwrite.__correlation__ import (
+from underwrite.authz import AccessControl, AuthzError
+from underwrite.bus import EventBus
+from underwrite.correlation import (
     correlation_context,
 )
-from underwrite.__correlation__ import (
+from underwrite.correlation import (
     get_log_correlation_id as get_log_correlation_id,
 )
-from underwrite.__events__ import Event
-from underwrite.__health__ import HealthRegistry
-from underwrite.__identity__ import Identity
-from underwrite.__logger__ import logger
-from underwrite.__metrics__ import MetricsCollector
-from underwrite.__saga__ import SagaOrchestrator
-from underwrite.__store__ import Store
-from underwrite.__supervisor__ import ServiceSupervisor
-from underwrite.__tracer__ import Tracer
+from underwrite.events import Event
+from underwrite.health import Checks
+from underwrite.identity import Identity
+from underwrite.logger import logger
+from underwrite.metrics import Collector
+from underwrite.saga import Orchestrator
+from underwrite.secrets import Manager
+from underwrite.store import Store
+from underwrite.supervisor import Watcher
+from underwrite.tracer import Tracer
 from underwrite.validate import PayloadValidator
 
 MAX_EXECUTOR_QUEUE_FACTOR: int = 2
 
 
-class EventEmitter:
+@dataclass
+class Dependencies:
+    """Group of optional dependencies every service handler may receive.
+
+    Use ``Core.from_dependencies(service_id, deps)`` to construct a
+    ``Core`` from a ``Dependencies`` bundle. Each field maps to a
+    constructor argument of the same name on ``Core``.
+    """
+
+    identity: Identity | None = None
+    bus: EventBus | None = None
+    store: Store | None = None
+    metrics: Collector | None = None
+    health: Checks | None = None
+    authz: AccessControl | None = None
+    tracer: Tracer | None = None
+    saga: Orchestrator | None = None
+    supervisor: Watcher | None = None
+    secrets_manager: Manager | None = None
+    max_concurrent: int = 0
+
+
+class Emitter:
     """Encapsulates the create/sign/publish sequence for outbound events.
 
     Pulled out of Core so the base class is not responsible for
@@ -63,14 +87,14 @@ class EventEmitter:
         service_id: str,
         identity: Identity,
         bus: EventBus,
-        metrics: MetricsCollector | None,
+        metrics: Collector | None,
         tracer: Tracer | None,
         authz: AccessControl | None,
     ) -> None:
         self.__service_id: str = service_id
         self.__identity: Identity = identity
         self.__bus: EventBus = bus
-        self.__metrics: MetricsCollector | None = metrics
+        self.__metrics: Collector | None = metrics
         self.__tracer: Tracer | None = tracer
         self.__authz: AccessControl | None = authz
 
@@ -143,12 +167,12 @@ class Core(ABC):
         identity: Identity | None = None,
         bus: EventBus | None = None,
         store: Store | None = None,
-        metrics: MetricsCollector | None = None,
-        health: HealthRegistry | None = None,
+        metrics: Collector | None = None,
+        health: Checks | None = None,
         authz: AccessControl | None = None,
         tracer: Tracer | None = None,
-        saga: SagaOrchestrator | None = None,
-        supervisor: ServiceSupervisor | None = None,
+        saga: Orchestrator | None = None,
+        supervisor: Watcher | None = None,
         secrets_manager: Any | None = None,
         max_concurrent: int = 0,
     ) -> None:
@@ -165,7 +189,7 @@ class Core(ABC):
             tracer: Optional distributed tracer for handler timing.
             saga: Optional saga orchestrator for multi-step transactions.
             supervisor: Optional supervisor for lifecycle management.
-            secrets_manager: Optional SecretsManager. When provided, the
+            secrets_manager: Optional Manager. When provided, the
                 service's Ed25519 private key is loaded from and persisted
                 to the configured backend so the key survives restarts.
             max_concurrent: Max concurrent handler threads
@@ -187,12 +211,12 @@ class Core(ABC):
             )
         self.__bus: EventBus = bus
         self.__store: Store = store
-        self.__metrics: MetricsCollector | None = metrics
-        self.__health: HealthRegistry | None = health
+        self.__metrics: Collector | None = metrics
+        self.__health: Checks | None = health
         self.__authz: AccessControl | None = authz
         self.__tracer: Tracer | None = tracer
-        self.__saga: SagaOrchestrator | None = saga
-        self.__supervisor: ServiceSupervisor | None = supervisor
+        self.__saga: Orchestrator | None = saga
+        self.__supervisor: Watcher | None = supervisor
         self.__secrets_manager: Any | None = secrets_manager
         self.__counter_lock: threading.Lock = threading.Lock()
         self.__subscriptions: list[str] = []
@@ -213,7 +237,7 @@ class Core(ABC):
         if self.__saga:
             self.__saga.register_emitter(self.__service_id, self)
 
-        self.__emitter: EventEmitter = EventEmitter(
+        self.__emitter: Emitter = Emitter(
             service_id=self.__service_id,
             identity=self.__identity,
             bus=self.__bus,
@@ -258,7 +282,7 @@ class Core(ABC):
         self.__store = value
 
     @property
-    def metrics_collector(self) -> MetricsCollector | None:
+    def metrics_collector(self) -> Collector | None:
         """Return the metrics collector for this service, or None if disabled."""
         return self.__metrics
 

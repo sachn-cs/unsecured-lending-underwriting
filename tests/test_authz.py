@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from underwrite.__authz__ import AccessControl
-from underwrite.__events__ import Event
-from underwrite.__exceptions__ import AuthzError
-from underwrite.__identity__ import Identity
+from underwrite.authz import AccessControl
+from underwrite.events import Event
+from underwrite.exceptions import AuthzError
+from underwrite.identity import Identity
 
 
 class TestAccessControl:

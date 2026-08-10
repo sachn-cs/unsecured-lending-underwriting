@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import pytest
 
-from underwrite.__bus__ import LocalBus
-from underwrite.__events__ import Event, EventType
-from underwrite.__store__ import MemoryStore
+from underwrite.events import Event, EventType
+from underwrite.local import LocalBus
 from underwrite.services.identity.handler import IdentityHandler
+from underwrite.store import MemoryStore
 
 
 class TestIdentityService:
@@ -82,7 +82,7 @@ class TestIdentityService:
         assert len(store.keys()) == 0
 
     def test_rejects_empty_service_id(self) -> None:
-        from underwrite.__exceptions__ import ProtocolError
+        from underwrite.exceptions import ProtocolError
 
         svc = IdentityHandler(service_id="identity", store=MemoryStore(), bus=LocalBus())
         with pytest.raises(ProtocolError):

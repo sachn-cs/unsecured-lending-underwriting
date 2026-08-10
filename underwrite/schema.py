@@ -6,7 +6,7 @@ handled, its payload can be validated against the registered schema.
 
 Usage::
 
-    from underwrite.__schema__ import registry, EventSchema
+    from underwrite.schema import registry, EventSchema
 
     registry.register("loan.originated", EventSchema(
         version=1,
@@ -31,7 +31,7 @@ __all__ = [
 
 from typing import Any
 
-from underwrite.__logger__ import logger
+from underwrite.logger import logger
 
 
 class SchemaValidationError(ValueError):

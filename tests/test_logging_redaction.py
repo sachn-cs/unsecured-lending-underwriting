@@ -1,6 +1,6 @@
 """Tests for the centralised loguru logging and PII redaction.
 
-Covers the public surface of :mod:`underwrite.__logger__`: message
+Covers the public surface of :mod:`underwrite.logger`: message
 redaction, the JSON and text formatters, and end-to-end behaviour through
 a real loguru sink.
 """
@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
-from underwrite.__logger__ import (
+from underwrite.logger import (
     SENSITIVE_LOG_FIELDS,
     JsonFormatter,
     TextFormatter,

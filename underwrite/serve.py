@@ -23,8 +23,8 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 
-from underwrite.__exceptions__ import ProtocolError
-from underwrite.__logger__ import logger
+from underwrite.exceptions import ProtocolError
+from underwrite.logger import logger
 
 __VALID_EVENT_TYPE_RE = re.compile(r"^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*$")
 __VALID_SOURCE_RE = re.compile(r"^[a-z][a-z0-9_.-]+$")

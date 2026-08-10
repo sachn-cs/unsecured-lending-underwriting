@@ -16,7 +16,7 @@ from underwrite.services.kyc_providers.aadhaar import (
 from underwrite.services.kyc_providers.aadhaar import (
     AadhaarEKycClient,
 )
-from underwrite.services.kyc_providers.base import KycProvider
+from underwrite.services.kyc_providers.base import Provider
 from underwrite.services.kyc_providers.cibil import (
     PRODUCTION_BASE_URL as CIBIL_PRODUCTION_BASE_URL,
 )
@@ -46,10 +46,10 @@ from underwrite.services.kyc_providers.pan import (
 )
 
 if TYPE_CHECKING:
-    from underwrite.__secrets__ import SecretsManager
+    from underwrite.secrets import Manager
 
 
-class KycProviderConfig(BaseModel):
+class Config(BaseModel):
     """Top-level config block for the KYC provider integrations.
 
     The block lives under ``config.kyc_providers`` in the runtime
@@ -76,7 +76,7 @@ class KycProviderConfig(BaseModel):
 
     timeout_seconds: int = Field(default=30, ge=1)
 
-    def resolve_pan(self, secrets: SecretsManager | None) -> PanVerificationClient:
+    def resolve_pan(self, secrets: Manager | None) -> PanVerificationClient:
         client_id = self.pan_client_id
         client_secret = self.pan_client_secret
         if secrets is not None:
@@ -94,7 +94,7 @@ class KycProviderConfig(BaseModel):
             timeout_seconds=self.timeout_seconds,
         )
 
-    def resolve_aadhaar(self, secrets: SecretsManager | None) -> AadhaarEKycClient:
+    def resolve_aadhaar(self, secrets: Manager | None) -> AadhaarEKycClient:
         kua_id = self.aadhaar_kua_id
         kua_license = self.aadhaar_kua_license_key
         if secrets is not None:
@@ -112,7 +112,7 @@ class KycProviderConfig(BaseModel):
             timeout_seconds=self.timeout_seconds,
         )
 
-    def resolve_cibil(self, secrets: SecretsManager | None) -> CibilBureauClient:
+    def resolve_cibil(self, secrets: Manager | None) -> CibilBureauClient:
         partner_id = self.cibil_partner_id
         partner_key = self.cibil_partner_key
         if secrets is not None:
@@ -130,7 +130,7 @@ class KycProviderConfig(BaseModel):
             timeout_seconds=self.timeout_seconds,
         )
 
-    def resolve_ckyc(self, secrets: SecretsManager | None) -> CkycSearchClient:
+    def resolve_ckyc(self, secrets: Manager | None) -> CkycSearchClient:
         sp_id = self.ckyc_search_provider_id
         sp_key = self.ckyc_search_provider_key
         if secrets is not None:
@@ -148,7 +148,7 @@ class KycProviderConfig(BaseModel):
             timeout_seconds=self.timeout_seconds,
         )
 
-    def all(self, secrets: SecretsManager | None) -> dict[str, KycProvider]:
+    def all(self, secrets: Manager | None) -> dict[str, Provider]:
         """Return a name → client map for all four providers."""
         return {
             "pan": self.resolve_pan(secrets),

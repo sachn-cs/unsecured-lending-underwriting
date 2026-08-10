@@ -15,10 +15,10 @@ from collections.abc import Callable
 from types import ModuleType
 from typing import Any
 
-from underwrite.__bus__ import DeadLetterQueue, EventBus, IdempotencyGuard, PerSubscriberCircuitBreaker
-from underwrite.__events__ import Event
-from underwrite.__logger__ import logger
-from underwrite.__store__ import Store
+from underwrite.bus import Breaker, EventBus, Guard, Queue
+from underwrite.events import Event
+from underwrite.logger import logger
+from underwrite.store import Store
 
 
 class ModalBus(EventBus):
@@ -40,9 +40,9 @@ class ModalBus(EventBus):
         self.__running: bool = False
         self.__poll_thread: threading.Thread | None = None
         self.__lock: threading.Lock = threading.Lock()
-        self.__dlq: DeadLetterQueue = DeadLetterQueue(store=store)
-        self.__idempotency: IdempotencyGuard = IdempotencyGuard()
-        self.__circuit_breaker: PerSubscriberCircuitBreaker = PerSubscriberCircuitBreaker(
+        self.__dlq: Queue = Queue(store=store)
+        self.__idempotency: Guard = Guard()
+        self.__circuit_breaker: Breaker = Breaker(
             failure_threshold=failure_threshold,
             cooldown_seconds=cooldown_seconds,
         )
@@ -94,11 +94,11 @@ class ModalBus(EventBus):
             self.__handlers.clear()
 
     @property
-    def dlq(self) -> DeadLetterQueue:
+    def dlq(self) -> Queue:
         return self.__dlq
 
     @property
-    def idempotency(self) -> IdempotencyGuard:
+    def idempotency(self) -> Guard:
         return self.__idempotency
 
     def __poll_loop(self) -> None:

@@ -10,10 +10,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from underwrite.__bus__ import LocalBus
-from underwrite.__events__ import Event
-from underwrite.__store__ import MemoryStore
+from underwrite.events import Event
+from underwrite.local import LocalBus
 from underwrite.services.audit.handler import AuditHandler
+from underwrite.store import MemoryStore
 
 
 def audit() -> AuditHandler:

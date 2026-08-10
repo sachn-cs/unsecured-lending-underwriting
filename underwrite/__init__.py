@@ -15,10 +15,10 @@ Or use the full runtime:
     rt.stop()
 """
 
-from underwrite.__bus__ import EventBus, LocalBus
-from underwrite.__config__ import Configuration
-from underwrite.__events__ import Event, EventType
-from underwrite.__exceptions__ import (
+from underwrite.bus import EventBus
+from underwrite.config import Configuration
+from underwrite.events import Event, EventType
+from underwrite.exceptions import (
     BusError,
     ConfigurationError,
     IdentityError,
@@ -30,10 +30,11 @@ from underwrite.__exceptions__ import (
     UnderwriteError,
     UnknownUserError,
 )
-from underwrite.__identity__ import Identity
-from underwrite.__runtime__ import Runtime
-from underwrite.__store__ import FileStore, MemoryStore, Store
+from underwrite.identity import Identity
+from underwrite.local import LocalBus
+from underwrite.runtime import Runtime
 from underwrite.services import Core
+from underwrite.store import FileStore, MemoryStore, Store
 
 try:
     from underwrite.__version__ import __version__ as _version

@@ -6,8 +6,8 @@ from decimal import Decimal
 
 import pytest
 
-from underwrite.__exceptions__ import ProtocolError
-from underwrite.__value_objects__ import (
+from underwrite.exceptions import ProtocolError
+from underwrite.value_objects import (
     Money,
     Rate,
     application_id,

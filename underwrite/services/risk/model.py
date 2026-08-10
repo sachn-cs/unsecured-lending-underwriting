@@ -14,7 +14,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
-from underwrite.__logger__ import logger
+from underwrite.logger import logger
 
 __all__ = [
     "HeuristicStrategy",

@@ -6,11 +6,11 @@ import os
 from abc import ABC, abstractmethod
 from typing import Any
 
-from underwrite.__logger__ import logger
-from underwrite.__metrics__ import MetricsSink
+from underwrite.logger import logger
+from underwrite.metrics import MetricsSink
 
 
-class SecretsBackend(ABC):
+class Backend(ABC):
     """Abstract secrets backend."""
 
     @abstractmethod
@@ -22,7 +22,7 @@ class SecretsBackend(ABC):
         """Stores a secret value."""
 
 
-class EnvSecretsBackend(SecretsBackend):
+class EnvSecretsBackend(Backend):
     """Reads secrets from UNDERWRITE_SECRET_<NAME> env vars (read-only)."""
 
     def __init__(self, prefix: str = "UNDERWRITE_SECRET_") -> None:
@@ -38,7 +38,7 @@ class EnvSecretsBackend(SecretsBackend):
         os.environ[env_key] = value
 
 
-class VaultSecretsBackend(SecretsBackend):
+class VaultSecretsBackend(Backend):
     """HashiCorp Vault KV v2 backend."""
 
     def __init__(
@@ -80,7 +80,7 @@ class VaultSecretsBackend(SecretsBackend):
         client.secrets.kv.v2.create_or_update_secret(path=key, secret={"value": value}, mount_point=self.__mount_point)
 
 
-class AwsSecretsBackend(SecretsBackend):
+class AwsSecretsBackend(Backend):
     """AWS Secrets Manager backend."""
 
     def __init__(self, region: str = "us-east-1", metrics_collector: MetricsSink | None = None) -> None:
@@ -115,19 +115,19 @@ class AwsSecretsBackend(SecretsBackend):
             client.create_secret(Name=key, SecretString=value)
 
 
-class SecretsManager:
+class Manager:
     """Manages secret backends and loads private keys for Identity."""
 
-    def __init__(self, backend: SecretsBackend | None = None, config: Any | None = None) -> None:
+    def __init__(self, backend: Backend | None = None, config: Any | None = None) -> None:
         self.__backend = backend or self.__build_backend(config)
 
     @property
-    def backend(self) -> SecretsBackend:
+    def backend(self) -> Backend:
         """Returns the active backend (test-accessible hook)."""
         return self.__backend
 
     @staticmethod
-    def __build_backend(config: Any) -> SecretsBackend:
+    def __build_backend(config: Any) -> Backend:
         if config is None:
             return EnvSecretsBackend()
         if config.backend == "vault":
@@ -163,9 +163,9 @@ class SecretsManager:
 
 
 __all__ = [
-    "SecretsBackend",
+    "Backend",
     "EnvSecretsBackend",
     "VaultSecretsBackend",
     "AwsSecretsBackend",
-    "SecretsManager",
+    "Manager",
 ]

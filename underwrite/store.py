@@ -25,13 +25,13 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 
-from underwrite.__circuit__ import CircuitBreaker, RetryPolicy
-from underwrite.__constants__ import RETRY_BASE_DELAY_SECONDS
-from underwrite.__exceptions__ import MigrationError, StoreError
-from underwrite.__logger__ import logger
+from underwrite.circuit import CircuitBreaker, RetryPolicy
+from underwrite.constants import RETRY_BASE_DELAY_SECONDS
+from underwrite.exceptions import MigrationError, StoreError
+from underwrite.logger import logger
 
 if TYPE_CHECKING:
-    from underwrite.__migrate__ import MigrationPlan
+    from underwrite.migrate import MigrationPlan
 
 FILE_TIMEOUT_MSG: str = "store operation timed out after %.1fs on %s"
 

@@ -9,11 +9,11 @@ from __future__ import annotations
 
 import pytest
 
-from underwrite.__bus__ import LocalBus
-from underwrite.__events__ import Event, EventType
-from underwrite.__exceptions__ import ProtocolError
-from underwrite.__store__ import MemoryStore
+from underwrite.events import Event, EventType
+from underwrite.exceptions import ProtocolError
+from underwrite.local import LocalBus
 from underwrite.services.risk.handler import RiskHandler
+from underwrite.store import MemoryStore
 
 
 def risk(bus=None) -> RiskHandler:

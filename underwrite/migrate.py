@@ -17,7 +17,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from underwrite.__exceptions__ import MigrationError
+from underwrite.exceptions import MigrationError
 
 
 @dataclass(frozen=True, slots=True)

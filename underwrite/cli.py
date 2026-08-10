@@ -19,9 +19,9 @@ from pathlib import Path
 
 import typer
 
-from underwrite.__config__ import HANDLER_NAMES, Configuration, ServiceConfig
-from underwrite.__identity__ import Identity
-from underwrite.__runtime__ import Runtime
+from underwrite.config import HANDLER_NAMES, Configuration, ServiceConfig
+from underwrite.identity import Identity
+from underwrite.runtime import Runtime
 
 app = typer.Typer(
     name="underwrite",
@@ -212,7 +212,7 @@ def serve(
     config = load_config()
     rt = Runtime(config)
 
-    from underwrite.__serve__ import create_app
+    from underwrite.serve import create_app
 
     try:
         app_fastapi = create_app(

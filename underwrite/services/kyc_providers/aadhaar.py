@@ -34,8 +34,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from underwrite.__logger__ import logger
-from underwrite.services.kyc_providers.base import KycProvider, ProviderResult, Verdict
+from underwrite.logger import logger
+from underwrite.services.kyc_providers.base import Provider, ProviderResult, Verdict
 
 PROVIDER_NAME = "aadhaar"
 
@@ -45,7 +45,7 @@ PRODUCTION_BASE_URL = "https://www.uidai.gov.in"
 E_KYC_PATH = "/eKYC/v3/auth/"
 
 
-class AadhaarEKycClient(KycProvider):
+class AadhaarEKycClient(Provider):
     """Aadhaar eKYC against a UIDAI-licensed KUA.
 
     Args:

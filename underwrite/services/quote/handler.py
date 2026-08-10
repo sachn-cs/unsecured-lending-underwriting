@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from underwrite.__events__ import Event, EventType
+from underwrite.events import Event, EventType
 from underwrite.services import Core
 from underwrite.validate import PayloadValidator
 

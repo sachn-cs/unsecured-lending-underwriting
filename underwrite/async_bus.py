@@ -17,9 +17,9 @@ import uuid
 from collections.abc import Callable
 from typing import Any
 
-from underwrite.__bus__ import AsyncEventBus, DeadLetterQueue, Event, IdempotencyGuard
-from underwrite.__logger__ import logger
-from underwrite.__store__ import Store
+from underwrite.bus import AsyncEventBus, Event, Guard, Queue
+from underwrite.logger import logger
+from underwrite.store import Store
 
 HANDLER_TIMEOUT: float = 30.0  # max seconds per async handler
 
@@ -53,16 +53,16 @@ class AsyncLocalBus(AsyncEventBus):
         self.__running: bool = False
         self.__stop_event: asyncio.Event = asyncio.Event()
         self.__semaphore: asyncio.Semaphore | None = asyncio.Semaphore(max_workers) if max_workers > 0 else None
-        self.__dlq: DeadLetterQueue = DeadLetterQueue(store=store)
-        self.__idempotency: IdempotencyGuard = IdempotencyGuard()
+        self.__dlq: Queue = Queue(store=store)
+        self.__idempotency: Guard = Guard()
         self.__handler_timeout: float = handler_timeout
 
     @property
-    def dlq(self) -> DeadLetterQueue:
+    def dlq(self) -> Queue:
         return self.__dlq
 
     @property
-    def idempotency(self) -> IdempotencyGuard:
+    def idempotency(self) -> Guard:
         return self.__idempotency
 
     def is_stopped(self) -> bool:

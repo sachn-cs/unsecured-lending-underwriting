@@ -12,7 +12,7 @@ from __future__ import annotations
 import calendar
 from datetime import date, timedelta
 
-from underwrite.__logger__ import logger
+from underwrite.logger import logger
 
 
 def fixed_holidays(start_year: int = 2025, end_year: int = 2027) -> set[tuple[int, int, int]]:

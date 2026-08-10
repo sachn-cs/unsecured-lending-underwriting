@@ -8,10 +8,10 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from underwrite.__bus__ import LocalBus
-from underwrite.__events__ import Event, EventType
-from underwrite.__store__ import MemoryStore
+from underwrite.events import Event, EventType
+from underwrite.local import LocalBus
 from underwrite.services.notification.handler import NotificationHandler
+from underwrite.store import MemoryStore
 
 
 def notify(bus=None) -> NotificationHandler:

@@ -6,7 +6,7 @@ instantiating the full Runtime.
 
 from __future__ import annotations
 
-from underwrite.__events__ import EventType
+from underwrite.events import EventType
 
 __all__ = [
     "HANDLER_CLASSES",
@@ -191,17 +191,17 @@ WIRING: dict[str, list[str]] = {
     EventType.CKYC_VERIFIED.value: ["audit", "compliance", "notification", "workflow"],
     EventType.CKYC_REJECTED.value: ["audit", "compliance", "notification", "workflow"],
     # Compliance — video KYC, AML risk levels
-    "aml.flagged": ["audit", "compliance", "notification", "decision"],
-    "kyc.video_initiated": ["audit", "compliance", "notification"],
-    "kyc.video_verified": ["audit", "compliance", "workflow"],
+    EventType.AML_FLAGGED.value: ["audit", "compliance", "notification", "decision"],
+    EventType.KYC_VIDEO_INITIATED.value: ["audit", "compliance", "notification"],
+    EventType.KYC_VIDEO_VERIFIED.value: ["audit", "compliance", "workflow"],
     # Pricing — penal interest, foreclosure
-    "pricing.penal_interest": ["audit", "pricing"],
-    "pricing.penal_interest_computed": ["audit", "fee", "collection", "statement"],
-    "pricing.foreclosure": ["audit", "pricing"],
-    "pricing.foreclosure_computed": ["audit", "prepayment", "settlement"],
+    EventType.PRICING_PENAL_INTEREST.value: ["audit", "pricing"],
+    EventType.PRICING_PENAL_INTEREST_COMPUTED.value: ["audit", "fee", "collection", "statement"],
+    EventType.PRICING_FORECLOSURE.value: ["audit", "pricing"],
+    EventType.PRICING_FORECLOSURE_COMPUTED.value: ["audit", "prepayment", "settlement"],
     # Recovery — progress events
-    "recovery.offer": ["audit", "communication", "notification"],
-    "recovery.offer_response": ["audit", "recovery"],
-    "recovery.escalated": ["audit", "notification", "collection"],
-    "recovery.progress": ["audit", "collection", "statement"],
+    EventType.RECOVERY_OFFER.value: ["audit", "communication", "notification"],
+    EventType.RECOVERY_OFFER_RESPONSE.value: ["audit", "recovery"],
+    EventType.RECOVERY_ESCALATED.value: ["audit", "notification", "collection"],
+    EventType.RECOVERY_PROGRESS.value: ["audit", "collection", "statement"],
 }

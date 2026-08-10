@@ -33,7 +33,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from underwrite.services import Core
 
-from underwrite.__logger__ import logger
+from underwrite.logger import logger
 
 PLUGIN_ENTRYPOINT_GROUP: str = "underwrite.services"
 PLUGIN_ALLOW_ALL: str = "*"

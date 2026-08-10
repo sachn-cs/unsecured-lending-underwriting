@@ -12,8 +12,8 @@ from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import urljoin
 
-from underwrite.__constants__ import DAYS_PER_YEAR, SECONDS_PER_DAY
-from underwrite.__logger__ import logger
+from underwrite.constants import DAYS_PER_YEAR, SECONDS_PER_DAY
+from underwrite.logger import logger
 
 try:
     import httpx

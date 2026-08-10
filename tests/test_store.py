@@ -9,9 +9,9 @@ from typing import Any
 import pytest
 
 from tests.helpers import MockReadStore, MockStore
-from underwrite.__exceptions__ import StoreError
-from underwrite.__metrics__ import MetricsCollector
-from underwrite.__store__ import CQRSStore, FileStore, MemoryStore, PostgresStore, Store
+from underwrite.exceptions import StoreError
+from underwrite.metrics import Collector
+from underwrite.store import CQRSStore, FileStore, MemoryStore, PostgresStore, Store
 
 
 class TestFileStoreCorruption:
@@ -40,7 +40,7 @@ class TestFileStoreCorruption:
                 store.get("key1")
 
     def test_corruption_increments_metric(self) -> None:
-        metrics = MetricsCollector()
+        metrics = Collector()
         with tempfile.TemporaryDirectory() as tmp:
             store = FileStore(tmp, metrics_collector=metrics)
             store.set("key1", {"value": 42})
@@ -52,7 +52,7 @@ class TestFileStoreCorruption:
         assert any(k.startswith("store.corruption") for k in snapshot["counters"])
 
     def test_io_error_increments_metric(self) -> None:
-        metrics = MetricsCollector()
+        metrics = Collector()
         with tempfile.TemporaryDirectory() as tmp:
             store = FileStore(tmp, metrics_collector=metrics)
             store.set("key1", {"value": 42})

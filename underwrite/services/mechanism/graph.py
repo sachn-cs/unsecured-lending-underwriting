@@ -10,8 +10,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from underwrite.__exceptions__ import InfeasibleOperationError, ProtocolError
-from underwrite.__logger__ import logger
+from underwrite.exceptions import InfeasibleOperationError, ProtocolError
+from underwrite.logger import logger
 
 
 class DelegationGraph:

@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 __all__ = [
+    "Collector",
     "Counter",
     "Gauge",
-    "MetricsCollector",
     "MetricsSink",
     "Timer",
     "TimerContext",
@@ -22,7 +22,7 @@ class MetricsSink(Protocol):
 
     Any object with an ``increment`` method satisfies this protocol,
     enabling dependency-inverted wiring of optional metrics
-    collectors without coupling to :class:`MetricsCollector`.
+    collectors without coupling to :class:`Collector`.
     """
 
     def increment(self, name: str, tags: dict[str, str] | None = None, delta: int = 1) -> None: ...
@@ -100,7 +100,7 @@ class Timer:
     max_ms: float = 0.0
 
 
-class MetricsCollector:
+class Collector:
     """Thread-safe in-memory metrics collector.
 
     Evicts oldest entries when *max_metrics* is exceeded to prevent
@@ -232,9 +232,9 @@ class MetricsCollector:
 
 
 class TimerContext:
-    """Context manager that records elapsed time to a MetricsCollector."""
+    """Context manager that records elapsed time to a Collector."""
 
-    def __init__(self, collector: MetricsCollector, name: str, tags: dict[str, str]) -> None:
+    def __init__(self, collector: Collector, name: str, tags: dict[str, str]) -> None:
         self.__collector = collector
         self.__name = name
         self.__tags = tags

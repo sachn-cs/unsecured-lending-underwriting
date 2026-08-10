@@ -8,7 +8,7 @@ from underwrite.services.kyc_providers.aadhaar import AadhaarEKycClient
 from underwrite.services.kyc_providers.base import Verdict
 from underwrite.services.kyc_providers.cibil import CibilBureauClient
 from underwrite.services.kyc_providers.ckyc import CkycSearchClient
-from underwrite.services.kyc_providers.factory import KycProviderConfig
+from underwrite.services.kyc_providers.factory import Config
 from underwrite.services.kyc_providers.pan import PanVerificationClient
 
 
@@ -207,14 +207,14 @@ class TestCkycSearchClient:
 
 class TestKycProviderConfig:
     def test_default_factory_resolves_all_four(self) -> None:
-        config = KycProviderConfig()
+        config = Config()
         providers = config.all(secrets=None)
         assert set(providers) == {"pan", "aadhaar", "cibil", "ckyc"}
         for name, p in providers.items():
             assert p.is_configured() is False, name
 
     def test_factory_pulls_from_secrets(self) -> None:
-        config = KycProviderConfig()
+        config = Config()
         secrets = MagicMock()
         secrets.get.side_effect = lambda k: {
             "underwrite/pan/client_id": "pan-id",

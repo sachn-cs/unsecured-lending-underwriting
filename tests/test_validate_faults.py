@@ -6,7 +6,7 @@ import math
 
 import pytest
 
-from underwrite.__exceptions__ import ProtocolError
+from underwrite.exceptions import ProtocolError
 from underwrite.validate import PayloadValidator
 
 

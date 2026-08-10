@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-from underwrite.__logger__ import logger
+from underwrite.logger import logger
 
 
 class RuleCategory(str, Enum):

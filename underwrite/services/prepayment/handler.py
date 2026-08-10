@@ -12,12 +12,12 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
-from underwrite.__amortization__ import (
+from underwrite.amortization import (
     calculate_foreclosure,
     generate_schedule,
 )
-from underwrite.__events__ import Event, EventType
-from underwrite.__logger__ import logger
+from underwrite.events import Event, EventType
+from underwrite.logger import logger
 from underwrite.services.base import Core
 from underwrite.validate import PayloadValidator
 

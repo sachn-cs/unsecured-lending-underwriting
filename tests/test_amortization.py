@@ -7,7 +7,7 @@ from decimal import Decimal
 
 import pytest
 
-from underwrite.__amortization__ import (
+from underwrite.amortization import (
     AmortizationSchedule,
     EMIScheduleEntry,
     ForeclosureQuote,

@@ -12,6 +12,17 @@ from __future__ import annotations
 
 __all__ = [
     "Runtime",
+    "build_authz",
+    "build_event_bus",
+    "build_kyc_providers",
+    "build_read_store",
+    "build_secrets",
+    "build_store",
+    "build_supervisor",
+    "build_tracer",
+    "register_subsystem_health",
+    "run_migrations",
+    "start_metrics_export",
 ]
 
 import dataclasses
@@ -20,36 +31,207 @@ import re
 import sys
 import threading
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from underwrite.__authz__ import AccessControl
-from underwrite.__bus__ import EventBus, LocalBus
-from underwrite.__config__ import Configuration
-from underwrite.__events__ import Event
-from underwrite.__exceptions__ import ServiceNotFoundError
-from underwrite.__handler_registry__ import HANDLER_CLASSES, HANDLER_MAP, WIRING
-from underwrite.__health__ import HealthRegistry
-from underwrite.__identity__ import Identity
-from underwrite.__logger__ import JsonFormatter, TextFormatter, logger, loguru_sink_format
-from underwrite.__metrics__ import MetricsCollector
-from underwrite.__metrics_exporter__ import MetricsExporter
-from underwrite.__migrate__ import default_plan
-from underwrite.__saga__ import SagaOrchestrator
-from underwrite.__secrets__ import SecretsManager
-from underwrite.__store__ import FileStore, MemoryStore, Store
-from underwrite.__supervisor__ import ServiceSupervisor
-from underwrite.__tracer__ import Tracer
-from underwrite.services import Core
-from underwrite.services.kyc_providers.base import KycProvider
+from underwrite.authz import AccessControl
+from underwrite.bus import EventBus
+from underwrite.config import Configuration
+from underwrite.events import Event
+from underwrite.exceptions import ServiceNotFoundError
+from underwrite.exporter import Exporter
+from underwrite.handler import HANDLER_CLASSES, HANDLER_MAP, WIRING
+from underwrite.health import Checks
+from underwrite.identity import Identity
+from underwrite.local import LocalBus
+from underwrite.logger import JsonFormatter, TextFormatter, logger, loguru_sink_format
+from underwrite.metrics import Collector
+from underwrite.migrate import default_plan
+from underwrite.saga import Orchestrator
+from underwrite.secrets import Manager
+from underwrite.services.kyc_providers.base import Provider
+from underwrite.store import FileStore, MemoryStore, Store
+from underwrite.supervisor import Watcher
+from underwrite.tracer import Tracer
 
-_VALID_SOURCE_RE = re.compile(r"^[a-z][a-z0-9_.-]+$")
+if TYPE_CHECKING:
+    from underwrite.services.base import Core
+
+
+def build_secrets(config: Configuration) -> Manager | None:
+    cfg = config.secrets
+    if cfg.backend == "none":
+        return None
+    return Manager(config=cfg)
+
+
+def build_supervisor(config: Configuration) -> Watcher | None:
+    cfg = config.recovery
+    if not cfg.auto_restart:
+        return None
+    return Watcher(
+        max_restarts=cfg.max_restarts,
+        backoff_seconds=cfg.backoff_seconds,
+    )
+
+
+def build_kyc_providers(config: Configuration, secrets: Manager | None) -> dict[str, Provider]:
+    """Resolve the configured KYC provider clients.
+
+    Returns a dict mapping the provider name (``pan`` /
+    ``aadhaar`` / ``cibil`` / ``ckyc``) to the configured
+    client instance. When ``kyc_providers`` is not in the
+    configuration, returns an empty dict; the compliance and
+    credit_bureau services then fall back to format-only
+    validation.
+    """
+    kp = getattr(config, "kyc_providers", None)
+    if kp is None:
+        return {}
+    return kp.all(secrets) if kp is not None else {}
+
+
+def build_tracer(config: Configuration) -> Tracer | None:
+    if not config.tracing.enabled:
+        return None
+    from underwrite.tracer import Console, Otlp, SpanExporter
+
+    exporter: SpanExporter | None = None
+    if config.tracing.exporter == "console":
+        exporter = Console()
+    elif config.tracing.exporter == "otlp":
+        exporter = Otlp(service_name="underwrite")
+    return Tracer(service_id="runtime", exporter=exporter)
+
+
+def build_store(config: Configuration) -> Store:
+    cfg = config.store
+    if cfg.backend == "filesystem":
+        return FileStore(config.data_dir)
+    elif cfg.backend == "memory":
+        return MemoryStore()
+    logger.warning("unrecognized store backend {!r}, falling back to FileStore", cfg.backend)
+    return FileStore(config.data_dir)
+
+
+def build_read_store(config: Configuration) -> Store | None:
+    cfg = config.store
+    if not cfg.read_backend:
+        return None
+    if cfg.read_backend == "filesystem":
+        return FileStore(config.data_dir)
+    logger.warning("unrecognized read store backend {!r}, falling back to MemoryStore", cfg.read_backend)
+    return MemoryStore()
+
+
+def start_metrics_export(metrics_collector: Collector | None, config: Configuration) -> Exporter | None:
+    if not metrics_collector or config.metrics.export_interval <= 0:
+        return None
+    if config.tracing.exporter != "otlp":
+        return None
+
+    def on_snapshot(snap: dict) -> None:
+        if not any([snap.get("counters"), snap.get("timers"), snap.get("gauges")]):
+            return
+        logger.debug(
+            "exporting {} counters, {} timers, {} gauges",
+            len(snap.get("counters", {})),
+            len(snap.get("timers", {})),
+            len(snap.get("gauges", {})),
+        )
+
+    exporter = Exporter(
+        metrics=metrics_collector,
+        interval_seconds=float(config.metrics.export_interval),
+        on_snapshot=on_snapshot,
+    )
+    exporter.start()
+    return exporter
+
+
+def register_subsystem_health(runtime: Runtime) -> None:
+    bus = runtime.bus
+
+    def __bus_health() -> dict:
+        subs = 0
+        getter = getattr(bus, "subscriber_count", None)
+        if callable(getter):
+            try:
+                subs = int(getter())
+            except (TypeError, ValueError, AttributeError):
+                logger.exception("bus subscriber_count failed")
+        dlq = 0
+        dlq_obj = getattr(bus, "dlq", None)
+        if dlq_obj is not None:
+            dlq = int(getattr(dlq_obj, "count", 0))
+        stopped = bool(getattr(bus, "is_stopped", lambda: False)())
+        return {
+            "ok": not stopped,
+            "subscribers": subs,
+            "dlq_count": dlq,
+        }
+
+    runtime.health.register("bus", __bus_health)
+    runtime.health.register("store", lambda: runtime.store.health())
+    read_store = runtime.read_store
+    if read_store is not None:
+        runtime.health.register("read_store", lambda: read_store.health())
+    runtime.health.register(
+        "services",
+        lambda: {
+            "ok": True,
+            "running": [sid for sid, svc in runtime.services.items() if svc.is_running],
+        },
+    )
+    if runtime.metrics:
+
+        def _metrics_health() -> dict:
+            return {"ok": True}
+
+        runtime.health.register("metrics", _metrics_health)
+    tracer = runtime.tracer
+    if tracer is not None:
+        runtime.health.register("tracer", lambda: {"ok": True, "spans": len(tracer.spans)})
+    if runtime.saga:
+        runtime.health.register("saga", lambda: {"ok": True})
+    if hasattr(bus, "dlq") and bus.dlq:
+        runtime.health.register(
+            "dlq",
+            lambda: {
+                "ok": True,
+                "dead_letter_count": bus.dlq.count,
+            },
+        )
+    if runtime.supervisor:
+        sup = runtime.supervisor
+        runtime.health.register("supervisor", lambda: sup.health())
+
+
+def run_migrations(store: Store, config: Configuration) -> None:
+    if config.migration.auto_migrate:
+        plan = default_plan()
+        store.migrate(plan)
+
+
+def build_event_bus(bus_config: Any, store: Store) -> EventBus:
+    """Construct the configured EventBus backend."""
+    backend = bus_config.backend
+    if backend == "modal":
+        from underwrite.modal import ModalBus
+
+        return ModalBus(
+            queue_name=bus_config.modal_queue_name,
+            store=store,
+        )
+    return LocalBus(
+        rate_limit=bus_config.rate_limit,
+        max_workers=bus_config.max_workers,
+        max_futures=bus_config.max_futures,
+        store=store,
+    )
 
 
 def build_authz(authz_config: Any) -> AccessControl | None:
-    """Build an AccessControl from AuthzConfig. Extracted so tests
-    can exercise the policy-loading code without needing a full
-    Runtime instance.
-    """
+    """Build an AccessControl from AuthzConfig."""
     if not authz_config.enabled:
         return None
     acl = AccessControl()
@@ -74,36 +256,6 @@ def build_authz(authz_config: Any) -> AccessControl | None:
     return acl
 
 
-def build_event_bus(bus_config: Any, store: Store) -> EventBus:
-    """Construct the configured EventBus backend.
-
-    Extracted from Runtime so the bus selection logic is testable
-    without standing up the full Runtime composition root.
-    """
-    backend = bus_config.backend
-    if backend == "sqs":
-        from underwrite.__bus_sqs__ import SqsBus
-
-        return SqsBus(
-            queue_url=bus_config.sqs_queue_url,
-            region=bus_config.sqs_region,
-            store=store,
-        )
-    if backend == "modal":
-        from underwrite.__bus_modal__ import ModalBus
-
-        return ModalBus(
-            queue_name=bus_config.modal_queue_name,
-            store=store,
-        )
-    return LocalBus(
-        rate_limit=bus_config.rate_limit,
-        max_workers=bus_config.max_workers,
-        max_futures=bus_config.max_futures,
-        store=store,
-    )
-
-
 class Runtime:
     """Manages lifecycle of all nano services with health, metrics, authz, migration, tracing, and saga."""
 
@@ -111,14 +263,14 @@ class Runtime:
     __read_store: Store | None
     __services: dict[str, Core]
     __bus: EventBus
-    __health: HealthRegistry
+    __health: Checks
     __tracer: Tracer | None
-    __secrets: SecretsManager | None
-    __saga: SagaOrchestrator | None
-    __metrics: MetricsCollector | None
+    __secrets: Manager | None
+    __saga: Orchestrator | None
+    __metrics: Collector | None
     __authz: AccessControl | None
-    __supervisor: ServiceSupervisor | None
-    __metrics_exporter: MetricsExporter | None
+    __supervisor: Watcher | None
+    __metrics_exporter: Exporter | None
     __runtime_identity: Identity | None
     __publisher_identities: dict[str, Identity]
     __publisher_lock: threading.Lock
@@ -135,8 +287,8 @@ class Runtime:
         """
         self.__config: Configuration = config or Configuration.load()
         self.__configure_logging()
-        self.__store = self.__build_store()
-        self.__read_store = self.__build_read_store()
+        self.__store = build_store(self.__config)
+        self.__read_store = build_read_store(self.__config)
         self.__services = {}
         self.__lock: threading.RLock = threading.RLock()
         self.__runtime_identity = None
@@ -144,7 +296,7 @@ class Runtime:
         self.__publisher_lock = threading.Lock()
         if readonly:
             self.__bus = LocalBus(store=self.__store)
-            self.__health = HealthRegistry()
+            self.__health = Checks()
             self.__tracer = None
             self.__secrets = None
             self.__saga = None
@@ -152,24 +304,24 @@ class Runtime:
             self.__authz = None
             self.__supervisor = None
             self.__metrics_exporter = None
-            self.__register_subsystem_health()
+            register_subsystem_health(self)
             return
         self.__runtime_identity = None
-        self.__secrets = self.__build_secrets()
+        self.__secrets = build_secrets(self.__config)
         self.__runtime_identity = Identity.create("runtime", secrets_manager=self.__secrets)
-        self.__kyc_providers: dict[str, KycProvider] = self.__build_kyc_providers()
-        self.__tracer: Tracer | None = self.__build_tracer()
-        self.__bus = self.__build_bus()
-        self.__saga = SagaOrchestrator(store=self.__store) if self.__config.saga.enabled else None
-        self.__health = HealthRegistry()
-        self.__metrics = MetricsCollector() if self.__config.metrics.enabled else None
-        self.__authz = self.__build_authz()
+        self.__kyc_providers = build_kyc_providers(self.__config, self.__secrets)
+        self.__tracer = build_tracer(self.__config)
+        self.__bus = build_event_bus(self.__config.bus, self.__store)
+        self.__saga = Orchestrator(store=self.__store) if self.__config.saga.enabled else None
+        self.__health = Checks()
+        self.__metrics = Collector() if self.__config.metrics.enabled else None
+        self.__authz = build_authz(self.__config.authz)
         if self.__authz is not None and self.__runtime_identity is not None:
             self.__authz.trust(self.__runtime_identity.service_id, self.__runtime_identity.public_key)
-        self.__supervisor = self.__build_supervisor()
+        self.__supervisor = build_supervisor(self.__config)
         self.__metrics_exporter = None
 
-        self.__register_subsystem_health()
+        register_subsystem_health(self)
 
     def __configure_logging(self) -> None:
         cfg = self.__config.logging
@@ -177,168 +329,6 @@ class Runtime:
         formatter = JsonFormatter() if cfg.log_format == "json" else TextFormatter()
         logger.remove()
         logger.add(sink, level=cfg.level, format=loguru_sink_format(formatter), colorize=False)
-
-    def __build_secrets(self) -> SecretsManager | None:
-        cfg = self.__config.secrets
-        if cfg.backend == "none":
-            return None
-        return SecretsManager(config=cfg)
-
-    def __build_supervisor(self) -> ServiceSupervisor | None:
-        cfg = self.__config.recovery
-        if not cfg.auto_restart:
-            return None
-        return ServiceSupervisor(
-            max_restarts=cfg.max_restarts,
-            backoff_seconds=cfg.backoff_seconds,
-        )
-
-    def __build_kyc_providers(self) -> dict[str, KycProvider]:
-        """Resolve the configured KYC provider clients.
-
-        Returns a dict mapping the provider name (``pan`` /
-        ``aadhaar`` / ``cibil`` / ``ckyc``) to the configured
-        client instance. When ``kyc_providers`` is not in the
-        configuration, returns an empty dict; the compliance and
-        credit_bureau services then fall back to format-only
-        validation.
-        """
-        kp = getattr(self.__config, "kyc_providers", None)
-        if kp is None:
-            return {}
-        return kp.all(self.__secrets)
-
-    def __build_tracer(self) -> Tracer | None:
-        if not self.__config.tracing.enabled:
-            return None
-        from underwrite.__tracer__ import ConsoleSpanExporter, OtlpSpanExporter, SpanExporter
-
-        exporter: SpanExporter | None = None
-        if self.__config.tracing.exporter == "console":
-            exporter = ConsoleSpanExporter()
-        elif self.__config.tracing.exporter == "otlp":
-            exporter = OtlpSpanExporter(service_name="underwrite")
-        return Tracer(service_id="runtime", exporter=exporter)
-
-    def __build_bus(self) -> EventBus:
-        return build_event_bus(self.__config.bus, self.__store)
-
-    def __build_store(self) -> Store:
-        cfg = self.__config.store
-        if cfg.backend == "filesystem":
-            return FileStore(self.__config.data_dir)
-        elif cfg.backend == "memory":
-            return MemoryStore()
-        elif cfg.backend == "postgres":
-            from underwrite.__store__ import PostgresStore
-
-            return PostgresStore(dsn=cfg.dsn, pool_size=cfg.pool_size)
-        logger.warning("unrecognized store backend {!r}, falling back to FileStore", cfg.backend)
-        return FileStore(self.__config.data_dir)
-
-    def __build_read_store(self) -> Store | None:
-        cfg = self.__config.store
-        if not cfg.read_backend:
-            return None
-        if cfg.read_backend == "filesystem":
-            from underwrite.__store__ import FileStore
-
-            return FileStore(self.__config.data_dir)
-        elif cfg.read_backend == "postgres":
-            from underwrite.__store__ import PostgresStore
-
-            return PostgresStore(dsn=cfg.read_dsn or cfg.dsn, pool_size=cfg.pool_size)
-        if cfg.read_backend != "memory":
-            logger.warning("unrecognized read store backend {!r}, falling back to MemoryStore", cfg.read_backend)
-        return MemoryStore()
-
-    def __build_authz(self) -> AccessControl | None:
-        return build_authz(self.__config.authz)
-
-    def __start_metrics_export(self) -> None:
-        if not self.__metrics or self.__config.metrics.export_interval <= 0:
-            return
-        if self.__config.tracing.exporter != "otlp":
-            return
-
-        def on_snapshot(snap: dict) -> None:
-            if not any([snap.get("counters"), snap.get("timers"), snap.get("gauges")]):
-                return
-            logger.debug(
-                "exporting {} counters, {} timers, {} gauges",
-                len(snap.get("counters", {})),
-                len(snap.get("timers", {})),
-                len(snap.get("gauges", {})),
-            )
-
-        self.__metrics_exporter = MetricsExporter(
-            metrics=self.__metrics,
-            interval_seconds=float(self.__config.metrics.export_interval),
-            on_snapshot=on_snapshot,
-        )
-        self.__metrics_exporter.start()
-
-    def __register_subsystem_health(self) -> None:
-        bus = self.__bus
-
-        def __bus_health() -> dict:
-            subs = 0
-            getter = getattr(bus, "subscriber_count", None)
-            if callable(getter):
-                try:
-                    subs = int(getter())
-                except (TypeError, ValueError, AttributeError):
-                    logger.exception("bus subscriber_count failed")
-            dlq = 0
-            dlq_obj = getattr(bus, "dlq", None)
-            if dlq_obj is not None:
-                dlq = int(getattr(dlq_obj, "count", 0))
-            stopped = bool(getattr(bus, "is_stopped", lambda: False)())
-            return {
-                "ok": not stopped,
-                "subscribers": subs,
-                "dlq_count": dlq,
-            }
-
-        self.__health.register("bus", __bus_health)
-        self.__health.register("store", lambda: self.__store.health())
-        read_store = self.__read_store
-        if read_store is not None:
-            self.__health.register("read_store", lambda: read_store.health())
-        self.__health.register(
-            "services",
-            lambda: {
-                "ok": True,
-                "running": [sid for sid, svc in self.__services.items() if svc.is_running],
-            },
-        )
-        if self.__metrics:
-
-            def _metrics_health() -> dict:
-                return {"ok": True}
-
-            self.__health.register("metrics", _metrics_health)
-        tracer = self.__tracer
-        if tracer is not None:
-            self.__health.register("tracer", lambda: {"ok": True, "spans": len(tracer.spans)})
-        if self.__saga:
-            self.__health.register("saga", lambda: {"ok": True})
-        if hasattr(self.__bus, "dlq") and self.__bus.dlq:
-            self.__health.register(
-                "dlq",
-                lambda: {
-                    "ok": True,
-                    "dead_letter_count": self.__bus.dlq.count,
-                },
-            )
-        if self.__supervisor:
-            sup = self.__supervisor
-            self.__health.register("supervisor", lambda: sup.health())
-
-    def __run_migrations(self) -> None:
-        if self.__config.migration.auto_migrate:
-            plan = default_plan()
-            self.__store.migrate(plan)
 
     @property
     def bus(self) -> EventBus:
@@ -351,18 +341,23 @@ class Runtime:
         return self.__store
 
     @property
+    def read_store(self) -> Store | None:
+        """Returns the read-only store for CQRS reads, or ``None`` if not configured."""
+        return self.__read_store
+
+    @property
     def services(self) -> dict[str, Core]:
         """Returns a snapshot of registered services keyed by name."""
         with self.__lock:
             return dict(self.__services)
 
     @property
-    def health(self) -> HealthRegistry:
+    def health(self) -> Checks:
         """Returns the health check registry."""
         return self.__health
 
     @property
-    def metrics(self) -> MetricsCollector | None:
+    def metrics(self) -> Collector | None:
         """Returns the metrics collector, or ``None`` if disabled."""
         return self.__metrics
 
@@ -377,17 +372,17 @@ class Runtime:
         return self.__tracer
 
     @property
-    def saga(self) -> SagaOrchestrator | None:
+    def saga(self) -> Orchestrator | None:
         """Returns the saga orchestrator, or ``None`` if sagas are disabled."""
         return self.__saga
 
     @property
-    def supervisor(self) -> ServiceSupervisor | None:
+    def supervisor(self) -> Watcher | None:
         """Returns the service supervisor, or ``None`` if auto-recovery is disabled."""
         return self.__supervisor
 
     @property
-    def secrets(self) -> SecretsManager | None:
+    def secrets(self) -> Manager | None:
         """Returns the secrets manager, or ``None`` if secrets are disabled."""
         return self.__secrets
 
@@ -401,7 +396,7 @@ class Runtime:
             raise ServiceNotFoundError(f"no class mapping for service: {service_name}")
         module = importlib.import_module(module_path)
         cls = getattr(module, class_name, None)
-        if cls is None or not (isinstance(cls, type) and issubclass(cls, Core)):
+        if cls is None or not (isinstance(cls, type) and issubclass(cls, object)):
             raise ServiceNotFoundError(f"class {class_name} not found in {module_path}")
         extra: dict[str, Any] = {}
         if service_name == "fee":
@@ -491,8 +486,8 @@ class Runtime:
         if service_names is None:
             service_names = self.__config.enabled_services()
         self.__service_names = list(service_names)
-        self.__run_migrations()
-        self.__start_metrics_export()
+        run_migrations(self.__store, self.__config)
+        self.__metrics_exporter = start_metrics_export(self.__metrics, self.__config)
         with self.__lock:
             registered: list[str] = [n for n in service_names if n not in self.__services]
         for name in registered:
@@ -607,7 +602,7 @@ class Runtime:
 
         The runtime looks up or lazily creates an Ed25519 identity for
         the requested service id (persisted through the runtime
-        ``SecretsManager`` when one is configured) and signs the event
+        ``Manager`` when one is configured) and signs the event
         with that identity so downstream subscribers can attribute the
         event to the requested source rather than to the runtime.
 
@@ -688,9 +683,12 @@ class Runtime:
     def replay_saga(self, saga_id: str) -> bool:
         """Replays an incomplete saga for crash recovery.
 
-        Delegates to ``SagaOrchestrator.replay_saga``.
+        Delegates to ``Orchestrator.replay_saga``.
         """
         if self.__saga is None:
             logger.warning("replay_saga: sagas are disabled")
             return False
         return self.__saga.replay_saga(saga_id)
+
+
+_VALID_SOURCE_RE = re.compile(r"^[a-z][a-z0-9_.-]+$")

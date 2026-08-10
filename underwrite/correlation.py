@@ -1,7 +1,7 @@
 """Thread-local correlation context shared across modules.
 
 The correlation id for the current execution context lives here so that
-logging (``underwrite.__logger__``) and the service layer
+logging (``underwrite.logger``) and the service layer
 (``underwrite.services.base``) can read and set it without importing each
 other.
 

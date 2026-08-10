@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from underwrite.__bus__ import LocalBus
-from underwrite.__events__ import Event, EventType
-from underwrite.__store__ import MemoryStore
+from underwrite.events import Event, EventType
+from underwrite.local import LocalBus
 from underwrite.services.pricing.handler import (
     HOME_LOAN_CAP,
     MICRO_LOAN_CAP,
@@ -14,6 +13,7 @@ from underwrite.services.pricing.handler import (
     PricingHandler,
     compute_rate_cap,
 )
+from underwrite.store import MemoryStore
 
 
 def svc(**kwargs) -> PricingHandler:
@@ -69,7 +69,7 @@ class TestPricing:
 
     def test_rate_capped_at_all_in_cost_limit(self) -> None:
         """Over-cap requests are now rejected (RBI rule) rather than silently clamped."""
-        from underwrite.__exceptions__ import ProtocolError
+        from underwrite.exceptions import ProtocolError
 
         bus = LocalBus()
         received: list = []
@@ -87,7 +87,7 @@ class TestPricing:
 
     def test_micro_loan_rate_capped_by_principal(self) -> None:
         """Small principal → micro cap; over-cap request rejected."""
-        from underwrite.__exceptions__ import ProtocolError
+        from underwrite.exceptions import ProtocolError
 
         bus = LocalBus()
         received: list = []
@@ -221,7 +221,7 @@ class TestPricing:
 
     def test_rate_cap_applied_flag(self) -> None:
         """Over-cap requests are now rejected outright, so the flag is no longer used."""
-        from underwrite.__exceptions__ import ProtocolError
+        from underwrite.exceptions import ProtocolError
 
         bus = LocalBus()
         received: list = []

@@ -20,7 +20,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
-from underwrite.__exceptions__ import IdentityError
+from underwrite.exceptions import IdentityError
 
 
 class PrivateKeyBackend(Protocol):
@@ -62,7 +62,7 @@ class Identity:
         Args:
             service_id: Unique name for this service.
             private_key_pem: Optional PEM-encoded private key.
-            secrets_manager: Optional SecretsManager. When provided, the
+            secrets_manager: Optional Manager. When provided, the
                 private key is loaded from the configured backend on
                 startup and any newly generated key is persisted, so
                 the same key survives process restarts.

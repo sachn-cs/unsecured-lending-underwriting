@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from underwrite.__schema__ import EventSchema, SchemaRegistry, SchemaValidationError
+from underwrite.schema import EventSchema, SchemaRegistry, SchemaValidationError
 
 
 class TestEventSchema:

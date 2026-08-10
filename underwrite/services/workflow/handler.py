@@ -9,17 +9,17 @@ from __future__ import annotations
 
 from typing import Any
 
-from underwrite.__authz__ import AccessControl
-from underwrite.__bus__ import EventBus
-from underwrite.__events__ import Event, EventType
-from underwrite.__health__ import HealthRegistry
-from underwrite.__identity__ import Identity
-from underwrite.__metrics__ import MetricsCollector, SystemClock
-from underwrite.__saga__ import SagaOrchestrator
-from underwrite.__store__ import Store
-from underwrite.__supervisor__ import ServiceSupervisor
-from underwrite.__tracer__ import Tracer
+from underwrite.authz import AccessControl
+from underwrite.bus import EventBus
+from underwrite.events import Event, EventType
+from underwrite.health import Checks
+from underwrite.identity import Identity
+from underwrite.metrics import Collector, SystemClock
+from underwrite.saga import Orchestrator
 from underwrite.services.base import StatefulService
+from underwrite.store import Store
+from underwrite.supervisor import Watcher
+from underwrite.tracer import Tracer
 
 STAGES: dict[str, list[str]] = {
     "origination": [
@@ -50,12 +50,12 @@ class WorkflowHandler(StatefulService):
         bus: EventBus,
         store: Store,
         identity: Identity | None = None,
-        metrics: MetricsCollector | None = None,
-        health: HealthRegistry | None = None,
+        metrics: Collector | None = None,
+        health: Checks | None = None,
         authz: AccessControl | None = None,
         tracer: Tracer | None = None,
-        saga: SagaOrchestrator | None = None,
-        supervisor: ServiceSupervisor | None = None,
+        saga: Orchestrator | None = None,
+        supervisor: Watcher | None = None,
         secrets_manager: Any | None = None,
         max_concurrent: int = 0,
     ) -> None:

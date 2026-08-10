@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from underwrite.__tracer__ import ConsoleSpanExporter, Span, SpanExporter, Tracer
+from underwrite.tracer import Console, Span, SpanExporter, Tracer
 
 
 class TestTracer:
@@ -101,7 +101,7 @@ class TestTracer:
 
 class TestConsoleSpanExporter:
     def test_export_does_not_raise(self) -> None:
-        exporter = ConsoleSpanExporter()
+        exporter = Console()
         span = Span(trace_id="t", span_id="s", parent_span_id="p", service_id="svc", operation="op", start_ms=0.0)
         span.end_ms = 1.0
         exporter.export([span])

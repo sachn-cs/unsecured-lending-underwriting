@@ -6,7 +6,7 @@ from datetime import date
 
 import pytest
 
-from underwrite.__calendar_india__ import (
+from underwrite.calendar import (
     add_business_days,
     adjust_due_date,
     count_business_days,

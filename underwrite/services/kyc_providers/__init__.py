@@ -1,10 +1,10 @@
 """KYC provider integrations — PAN, Aadhaar (eKYC), CIBIL, CKYC.
 
-Each provider client implements the same ``KycProvider`` ABC and
+Each provider client implements the same ``Provider`` ABC and
 returns a ``ProviderResult`` carrying a ``Verdict`` enum plus the
 provider's structured response. Clients are configured through the
 runtime ``Configuration`` and authenticate with provider-specific
-secrets held in the configured ``SecretsManager``.
+secrets held in the configured ``Manager``.
 
 Production deployments must register the provider credentials via
 the secrets backend (Vault, AWS Secrets Manager, or env var) and
@@ -16,21 +16,21 @@ provider's live URL.
 
 from underwrite.services.kyc_providers.aadhaar import AadhaarEKycClient
 from underwrite.services.kyc_providers.base import (
-    KycProvider,
+    Provider,
     ProviderResult,
     Verdict,
 )
 from underwrite.services.kyc_providers.cibil import CibilBureauClient
 from underwrite.services.kyc_providers.ckyc import CkycSearchClient
-from underwrite.services.kyc_providers.factory import KycProviderConfig
+from underwrite.services.kyc_providers.factory import Config
 from underwrite.services.kyc_providers.pan import PanVerificationClient
 
 __all__ = [
     "AadhaarEKycClient",
     "CibilBureauClient",
     "CkycSearchClient",
-    "KycProvider",
-    "KycProviderConfig",
+    "Provider",
+    "Config",
     "PanVerificationClient",
     "ProviderResult",
     "Verdict",

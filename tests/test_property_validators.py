@@ -16,12 +16,12 @@ import pytest
 from hypothesis import HealthCheck, assume, given, settings
 from hypothesis import strategies as st
 
-from underwrite.__amortization__ import (
+from underwrite.amortization import (
     calculate_emi,
     generate_schedule,
     project_outstanding,
 )
-from underwrite.__exceptions__ import ProtocolError
+from underwrite.exceptions import ProtocolError
 from underwrite.services.pricing.handler import compute_rate_cap
 from underwrite.validate import PayloadValidator
 

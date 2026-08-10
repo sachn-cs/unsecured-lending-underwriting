@@ -8,17 +8,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from underwrite.__authz__ import AccessControl
-from underwrite.__bus__ import EventBus
-from underwrite.__events__ import Event, EventType
-from underwrite.__health__ import HealthRegistry
-from underwrite.__identity__ import Identity
-from underwrite.__logger__ import logger
-from underwrite.__metrics__ import MetricsCollector
-from underwrite.__saga__ import SagaOrchestrator
-from underwrite.__store__ import Store
-from underwrite.__supervisor__ import ServiceSupervisor
-from underwrite.__tracer__ import Tracer
+from underwrite.authz import AccessControl
+from underwrite.bus import EventBus
+from underwrite.events import Event, EventType
+from underwrite.health import Checks
+from underwrite.identity import Identity
+from underwrite.logger import logger
+from underwrite.metrics import Collector
+from underwrite.saga import Orchestrator
 from underwrite.services.base import StatefulService
 from underwrite.services.credit_bureau.client import (
     CreditBureauClient,
@@ -26,8 +23,11 @@ from underwrite.services.credit_bureau.client import (
     HttpCreditBureauClient,
     MockCreditBureauClient,
 )
-from underwrite.services.kyc_providers.base import KycProvider
+from underwrite.services.kyc_providers.base import Provider
 from underwrite.services.persistence import TypedStoreRepository
+from underwrite.store import Store
+from underwrite.supervisor import Watcher
+from underwrite.tracer import Tracer
 
 
 class CreditBureauHandler(StatefulService):
@@ -44,14 +44,14 @@ class CreditBureauHandler(StatefulService):
         store: Store,
         cibil_api_key: str = "",
         allow_mock: bool = False,
-        kyc_providers: dict[str, KycProvider] | None = None,
+        kyc_providers: dict[str, Provider] | None = None,
         identity: Identity | None = None,
-        metrics: MetricsCollector | None = None,
-        health: HealthRegistry | None = None,
+        metrics: Collector | None = None,
+        health: Checks | None = None,
         authz: AccessControl | None = None,
         tracer: Tracer | None = None,
-        saga: SagaOrchestrator | None = None,
-        supervisor: ServiceSupervisor | None = None,
+        saga: Orchestrator | None = None,
+        supervisor: Watcher | None = None,
         secrets_manager: Any | None = None,
         max_concurrent: int = 0,
     ) -> None:
@@ -63,7 +63,7 @@ class CreditBureauHandler(StatefulService):
             store: State persistence backend.
             cibil_api_key: CIBIL API key (enables HttpCreditBureauClient).
             allow_mock: Permit MockCreditBureauClient when no API key.
-            kyc_providers: Optional map of bureau-name -> KycProvider
+            kyc_providers: Optional map of bureau-name -> Provider
                 instance. When present the bureau pull routes through
                 the configured partner-API client; otherwise the
                 legacy HttpCreditBureauClient is used.
@@ -92,7 +92,7 @@ class CreditBureauHandler(StatefulService):
             secrets_manager=secrets_manager,
             max_concurrent=max_concurrent,
         )
-        self.__kyc_providers: dict[str, KycProvider] = dict(kyc_providers or {})
+        self.__kyc_providers: dict[str, Provider] = dict(kyc_providers or {})
         self.__client: CreditBureauClient = self.build_client(
             cibil_api_key=cibil_api_key,
             allow_mock=allow_mock,

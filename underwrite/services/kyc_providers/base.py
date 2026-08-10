@@ -51,7 +51,7 @@ class ProviderResult:
         return self.verdict == Verdict.VERIFIED
 
 
-class KycProvider:
+class Provider:
     """Abstract KYC provider client.
 
     All KYC integrations implement the same surface so a deployment

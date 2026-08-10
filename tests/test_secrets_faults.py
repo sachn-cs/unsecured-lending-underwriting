@@ -1,5 +1,5 @@
 """Tests for secrets backends — EnvSecretsBackend, VaultSecretsBackend,
-AwsSecretsBackend, and SecretsManager factory."""
+AwsSecretsBackend, and Manager factory."""
 
 from __future__ import annotations
 
@@ -9,12 +9,12 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from underwrite.__metrics__ import MetricsCollector
-from underwrite.__secrets__ import (
+from underwrite.metrics import Collector
+from underwrite.secrets import (
     AwsSecretsBackend,
+    Backend,
     EnvSecretsBackend,
-    SecretsBackend,
-    SecretsManager,
+    Manager,
     VaultSecretsBackend,
 )
 
@@ -265,7 +265,7 @@ class TestAwsSecretsBackend:
                 backend.get("k")
 
     def test_client_error_increments_metric(self) -> None:
-        metrics = MetricsCollector()
+        metrics = Collector()
 
         class FakeClientError(Exception):
             pass
@@ -290,45 +290,45 @@ class TestAwsSecretsBackend:
 
 
 class TestSecretsManager:
-    """Tests for SecretsManager — factory and delegating methods."""
+    """Tests for Manager — factory and delegating methods."""
 
     def test_load_private_key_delegates_to_backend(self) -> None:
-        mock_backend = Mock(spec=SecretsBackend)
+        mock_backend = Mock(spec=Backend)
         mock_backend.get.return_value = "pem-data"
-        mgr = SecretsManager(backend=mock_backend)
+        mgr = Manager(backend=mock_backend)
         result = mgr.load_private_key("my-service")
         assert result == "pem-data"
         mock_backend.get.assert_called_once_with("underwrite/my-service/private_key")
 
     def test_store_private_key_delegates_to_backend(self) -> None:
-        mock_backend = Mock(spec=SecretsBackend)
-        mgr = SecretsManager(backend=mock_backend)
+        mock_backend = Mock(spec=Backend)
+        mgr = Manager(backend=mock_backend)
         mgr.store_private_key("my-service", "pem-data")
         mock_backend.set.assert_called_once_with("underwrite/my-service/private_key", "pem-data")
 
     def test_build_backend_none_config_returns_env(self) -> None:
-        mgr = SecretsManager(config=None)
+        mgr = Manager(config=None)
         assert isinstance(mgr.backend, EnvSecretsBackend)
 
     def test_build_backend_vault_config(self) -> None:
         cfg = SimpleNamespace(backend="vault", url="http://vault:8200", token="tok")
-        mgr = SecretsManager(config=cfg)
+        mgr = Manager(config=cfg)
         backend = mgr.backend
         assert isinstance(backend, VaultSecretsBackend)
 
     def test_build_backend_aws_config(self) -> None:
         cfg = SimpleNamespace(backend="aws", region="eu-central-1")
-        mgr = SecretsManager(config=cfg)
+        mgr = Manager(config=cfg)
         backend = mgr.backend
         assert isinstance(backend, AwsSecretsBackend)
 
     def test_build_backend_unknown_backend_falls_back_to_env(self) -> None:
         cfg = SimpleNamespace(backend="unknown")
-        mgr = SecretsManager(config=cfg)
+        mgr = Manager(config=cfg)
         backend = mgr.backend
         assert isinstance(backend, EnvSecretsBackend)
 
     def test_backend_provided_directly_is_used(self) -> None:
-        mock_backend = Mock(spec=SecretsBackend)
-        mgr = SecretsManager(backend=mock_backend, config=SimpleNamespace(backend="vault"))
+        mock_backend = Mock(spec=Backend)
+        mgr = Manager(backend=mock_backend, config=SimpleNamespace(backend="vault"))
         assert mgr.backend is mock_backend

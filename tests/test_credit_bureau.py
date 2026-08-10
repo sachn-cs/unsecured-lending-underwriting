@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from underwrite.__bus__ import LocalBus
-from underwrite.__events__ import Event, EventType
-from underwrite.__store__ import MemoryStore
+from underwrite.events import Event, EventType
+from underwrite.local import LocalBus
 from underwrite.services.credit_bureau.client import (
     CkycResponse,
     CreditReport,
@@ -15,6 +14,7 @@ from underwrite.services.credit_bureau.client import (
 )
 from underwrite.services.credit_bureau.handler import CreditBureauHandler
 from underwrite.services.kyc_providers.base import ProviderResult, Verdict
+from underwrite.store import MemoryStore
 
 
 class CibilProviderStub:

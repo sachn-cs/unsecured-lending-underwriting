@@ -14,8 +14,8 @@ from dataclasses import dataclass, field, fields
 from datetime import datetime, timezone
 from typing import Any
 
-from underwrite.__constants__ import MAX_PAYLOAD_KEYS
-from underwrite.__logger__ import logger
+from underwrite.constants import MAX_PAYLOAD_KEYS
+from underwrite.logger import logger
 
 MAX_PAYLOAD_SIZE: int = 1_000_000
 
@@ -46,7 +46,7 @@ class Event:
     def __post_init__(self) -> None:
         payload_size: int = 0
         if len(self.payload) > MAX_PAYLOAD_KEYS:
-            from underwrite.__exceptions__ import ProtocolError
+            from underwrite.exceptions import ProtocolError
 
             raise ProtocolError(f"event payload has too many keys ({len(self.payload)} > {MAX_PAYLOAD_KEYS})")
         try:
@@ -57,7 +57,7 @@ class Event:
         except (TypeError, ValueError):
             payload_size = MAX_PAYLOAD_SIZE + 1
         if payload_size > MAX_PAYLOAD_SIZE:
-            from underwrite.__exceptions__ import ProtocolError
+            from underwrite.exceptions import ProtocolError
 
             raise ProtocolError(f"event payload exceeds MAX_PAYLOAD_SIZE ({payload_size} > {MAX_PAYLOAD_SIZE})")
 
@@ -252,3 +252,15 @@ class EventType(str, enum.Enum):
     CKYC_REJECTED = "ckyc.rejected"
 
     DUPLICATE_DROPPED = "idempotency.duplicate_dropped"
+
+    AML_FLAGGED = "aml.flagged"
+    KYC_VIDEO_INITIATED = "kyc.video_initiated"
+    KYC_VIDEO_VERIFIED = "kyc.video_verified"
+    PRICING_PENAL_INTEREST = "pricing.penal_interest"
+    PRICING_PENAL_INTEREST_COMPUTED = "pricing.penal_interest_computed"
+    PRICING_FORECLOSURE = "pricing.foreclosure"
+    PRICING_FORECLOSURE_COMPUTED = "pricing.foreclosure_computed"
+    RECOVERY_OFFER = "recovery.offer"
+    RECOVERY_OFFER_RESPONSE = "recovery.offer_response"
+    RECOVERY_ESCALATED = "recovery.escalated"
+    RECOVERY_PROGRESS = "recovery.progress"

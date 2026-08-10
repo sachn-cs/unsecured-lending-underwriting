@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import pytest
 
-from underwrite.__bus__ import LocalBus
-from underwrite.__events__ import Event, EventType
-from underwrite.__store__ import MemoryStore
+from underwrite.events import Event, EventType
+from underwrite.local import LocalBus
 from underwrite.services.collateral.handler import CollateralHandler
+from underwrite.store import MemoryStore
 
 
 def collateral(bus=None) -> CollateralHandler:
@@ -128,7 +128,7 @@ class TestCollateralService:
 
     def test_origination_without_borrower_is_rejected(self) -> None:
         svc = collateral()
-        from underwrite.__exceptions__ import ProtocolError
+        from underwrite.exceptions import ProtocolError
 
         with pytest.raises(ProtocolError):
             svc.handle(Event(event_type=EventType.LOAN_ORIGINATED, source="test", payload={}))

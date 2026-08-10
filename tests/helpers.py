@@ -7,9 +7,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from underwrite.__events__ import Event
-from underwrite.__store__ import ReadStore, Store
+from underwrite.events import Event
 from underwrite.services.base import Core
+from underwrite.store import ReadStore, Store
 
 
 class BrokenStore:

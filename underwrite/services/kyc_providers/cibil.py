@@ -34,8 +34,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from underwrite.__logger__ import logger
-from underwrite.services.kyc_providers.base import KycProvider, ProviderResult, Verdict
+from underwrite.logger import logger
+from underwrite.services.kyc_providers.base import Provider, ProviderResult, Verdict
 
 PROVIDER_NAME = "cibil"
 
@@ -45,7 +45,7 @@ PRODUCTION_BASE_URL = "https://api.cibil.com"
 SCORE_PATH = "/v2/cibil/score"
 
 
-class CibilBureauClient(KycProvider):
+class CibilBureauClient(Provider):
     """CIBIL consumer bureau pull.
 
     Args:

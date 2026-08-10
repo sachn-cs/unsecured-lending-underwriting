@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from underwrite.__bus__ import LocalBus
-from underwrite.__events__ import Event, EventType
-from underwrite.__store__ import MemoryStore
+from underwrite.events import Event, EventType
+from underwrite.local import LocalBus
 from underwrite.services.payment.handler import PaymentHandler
+from underwrite.store import MemoryStore
 
 
 class TestPaymentService:

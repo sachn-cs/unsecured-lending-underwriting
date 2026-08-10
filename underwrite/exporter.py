@@ -1,7 +1,7 @@
 """Periodic metrics export loop.
 
 Lifecycle helper that runs a background thread snapshotting a
-MetricsCollector at a configurable interval. Extracted from
+Collector at a configurable interval. Extracted from
 Runtime so the composition root does not own thread management
 and snapshotting logic.
 """
@@ -11,12 +11,12 @@ from __future__ import annotations
 import threading
 from collections.abc import Callable
 
-from underwrite.__logger__ import logger
-from underwrite.__metrics__ import MetricsCollector
+from underwrite.logger import logger
+from underwrite.metrics import Collector
 
 
-class MetricsExporter:
-    """Periodically snapshots a MetricsCollector on a background thread.
+class Exporter:
+    """Periodically snapshots a Collector on a background thread.
 
     start() launches a daemon thread that calls snapshot() every
     *interval_seconds* and forwards the result to *on_snapshot*.
@@ -31,13 +31,13 @@ class MetricsExporter:
 
     def __init__(
         self,
-        metrics: MetricsCollector,
+        metrics: Collector,
         interval_seconds: float,
         on_snapshot: Callable[[dict], None] | None = None,
     ) -> None:
         if interval_seconds <= 0:
             raise ValueError("interval_seconds must be > 0")
-        self.__metrics: MetricsCollector = metrics
+        self.__metrics: Collector = metrics
         self.__interval_seconds: float = interval_seconds
         self.__on_snapshot: Callable[[dict], None] | None = on_snapshot
         self.__stop_event: threading.Event = threading.Event()

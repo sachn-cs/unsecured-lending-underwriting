@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from underwrite.__cli__ import load_config
-from underwrite.__config__ import Configuration
+from underwrite.cli import load_config
+from underwrite.config import Configuration
 
 
 class TestCLILoadConfig:
@@ -22,7 +22,7 @@ class TestCLILoadConfig:
 class TestCLIIdentityEdgeCases:
     def test_identity_import_guard_does_not_crash(self) -> None:
         try:
-            from underwrite.__identity__ import Identity
+            from underwrite.identity import Identity
         except ImportError:
             pytest.skip("cryptography not installed")
         ident = Identity.create("test-service")

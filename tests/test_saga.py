@@ -7,14 +7,14 @@ import tempfile
 import pytest
 
 from tests.helpers import FakeEmitter
-from underwrite.__exceptions__ import ProtocolError
-from underwrite.__saga__ import Saga, SagaOrchestrator, SagaStep
-from underwrite.__store__ import FileStore, MemoryStore
+from underwrite.exceptions import ProtocolError
+from underwrite.saga import Orchestrator, Saga, SagaStep
+from underwrite.store import FileStore, MemoryStore
 
 
 class TestSagaOrchestrator:
     def test_start_saga_returns_id(self) -> None:
-        so = SagaOrchestrator()
+        so = Orchestrator()
         sid = so.start_saga(
             "test",
             [
@@ -25,12 +25,12 @@ class TestSagaOrchestrator:
         assert isinstance(sid, str)
 
     def test_start_saga_rejects_empty_steps(self) -> None:
-        so = SagaOrchestrator()
+        so = Orchestrator()
         with pytest.raises(ProtocolError, match="must have at least one step"):
             so.start_saga("test", [])
 
     def test_execute_step_without_emitter_returns_false(self) -> None:
-        so = SagaOrchestrator()
+        so = Orchestrator()
         sid = so.start_saga(
             "test",
             [
@@ -41,7 +41,7 @@ class TestSagaOrchestrator:
         assert ok is False
 
     def test_execute_all_completes_saga(self) -> None:
-        so = SagaOrchestrator()
+        so = Orchestrator()
         emitter = FakeEmitter()
         so.register_emitter("test", emitter)
         sid = so.start_saga(
@@ -58,7 +58,7 @@ class TestSagaOrchestrator:
         assert len(emitter.emitted) == 1
 
     def test_rollback_on_step_failure(self) -> None:
-        so = SagaOrchestrator()
+        so = Orchestrator()
         emitter = FakeEmitter(fail_on={"event.b"})
         so.register_emitter("test", emitter)
         sid = so.start_saga(
@@ -77,7 +77,7 @@ class TestSagaOrchestrator:
         assert len(emitter.emitted) == 2  # forward event.a + compensation comp.a
 
     def test_rollback_skips_step_without_compensation(self) -> None:
-        so = SagaOrchestrator()
+        so = Orchestrator()
         emitter = FakeEmitter(fail_on={"event.b"})
         so.register_emitter("test", emitter)
         sid = so.start_saga(
@@ -95,11 +95,11 @@ class TestSagaOrchestrator:
         assert [ev[0] for ev in emitter.emitted] == ["event.a"]
 
     def test_get_saga_returns_none_for_unknown(self) -> None:
-        so = SagaOrchestrator()
+        so = Orchestrator()
         assert so.get_saga("nonexistent") is None
 
     def test_register_emitter_is_thread_safe(self) -> None:
-        so = SagaOrchestrator()
+        so = Orchestrator()
         results: list[str] = []
 
         def register_emitter(name: str) -> None:
@@ -119,7 +119,7 @@ class TestSagaOrchestrator:
         assert "saga-b" in results
 
     def test_compensation_failure_accumulates_errors_under_lock(self) -> None:
-        so = SagaOrchestrator()
+        so = Orchestrator()
         emitter = FakeEmitter(fail_on={"event.b"}, fail_compensation=True)
         so.register_emitter("test", emitter)
         sid = so.start_saga(
@@ -138,7 +138,7 @@ class TestSagaOrchestrator:
         assert "step event.b failed" in saga.error
 
     def test_execute_step_stores_traceback(self) -> None:
-        so = SagaOrchestrator()
+        so = Orchestrator()
         emitter = FakeEmitter(fail_on={"event.fail"})
         so.register_emitter("test", emitter)
         sid = so.start_saga(
@@ -156,7 +156,7 @@ class TestSagaOrchestrator:
         assert "execute_step" in saga.error
 
     def test_lock_held_during_all_compensation_steps(self) -> None:
-        so = SagaOrchestrator()
+        so = Orchestrator()
         emitter = FakeEmitter(fail_on={"event.b"})
         so.register_emitter("test", emitter)
         sid = so.start_saga(
@@ -178,7 +178,7 @@ class TestSagaOrchestrator:
 class TestSagaPersistence:
     def test_saga_persisted_to_store_on_start(self) -> None:
         store = MemoryStore()
-        so = SagaOrchestrator(store=store)
+        so = Orchestrator(store=store)
         sid = so.start_saga(
             "test",
             [
@@ -192,14 +192,14 @@ class TestSagaPersistence:
 
     def test_saga_loads_from_store_on_init(self) -> None:
         store = MemoryStore()
-        inner = SagaOrchestrator(store=store)
+        inner = Orchestrator(store=store)
         sid = inner.start_saga(
             "restore-test",
             [
                 SagaStep("s1", "event.a", {"k": "v"}, "comp.a", {"k": "v"}),
             ],
         )
-        inner2 = SagaOrchestrator(store=store)
+        inner2 = Orchestrator(store=store)
         loaded = inner2.get_saga(sid)
         assert loaded is not None
         assert loaded.name == "restore-test"
@@ -207,7 +207,7 @@ class TestSagaPersistence:
 
     def test_saga_persists_completed_steps(self) -> None:
         store = MemoryStore()
-        so = SagaOrchestrator(store=store)
+        so = Orchestrator(store=store)
         emitter = FakeEmitter()
         so.register_emitter("test", emitter)
         sid = so.start_saga(
@@ -224,7 +224,7 @@ class TestSagaPersistence:
 
     def test_saga_persists_rolled_back_status(self) -> None:
         store = MemoryStore()
-        so = SagaOrchestrator(store=store)
+        so = Orchestrator(store=store)
         emitter = FakeEmitter(fail_on={"event.b"})
         so.register_emitter("test", emitter)
         sid = so.start_saga(
@@ -245,11 +245,11 @@ class TestSagaCorruptLoad:
     def test_corrupt_record_does_not_drop_others(self) -> None:
         """A single corrupted saga record must not drop every other
         in-flight saga on startup."""
-        from underwrite.__store__ import MemoryStore
+        from underwrite.store import MemoryStore
 
         store = MemoryStore()
         # Persist a valid saga
-        orch1 = SagaOrchestrator(store=store)
+        orch1 = Orchestrator(store=store)
         orch1.register_emitter("a", FakeEmitter())
         sid1 = orch1.start_saga(
             "valid",
@@ -266,7 +266,7 @@ class TestSagaCorruptLoad:
         # Inject a corrupt record at a different key
         store.set("saga:corrupt", {"this": "is", "not": "a valid saga"})
         # New orchestrator should skip the corrupt record but load the valid one
-        orch2 = SagaOrchestrator(store=store)
+        orch2 = Orchestrator(store=store)
         assert orch2.get_saga(sid1) is not None
 
 
@@ -348,7 +348,7 @@ class TestSagaValidation:
                 "started_at": "2024-01-01T00:00:00",
             },
         )
-        so = SagaOrchestrator(store=store)
+        so = Orchestrator(store=store)
         assert so.get_saga("bad") is None
 
 
@@ -357,7 +357,7 @@ class TestSagaFileStorePersistence:
         emitter = FakeEmitter()
         with tempfile.TemporaryDirectory() as tmpdir:
             store = FileStore(data_dir=tmpdir)
-            so1 = SagaOrchestrator(store=store)
+            so1 = Orchestrator(store=store)
             so1.register_emitter("loan", emitter)
             sid = so1.start_saga(
                 "loan",
@@ -370,7 +370,7 @@ class TestSagaFileStorePersistence:
             assert saga1 is not None
             assert saga1.status == "completed"
 
-            so2 = SagaOrchestrator(store=store)
+            so2 = Orchestrator(store=store)
             saga2 = so2.get_saga(sid)
             assert saga2 is not None
             assert saga2.status == "completed"
@@ -381,7 +381,7 @@ class TestSagaFileStorePersistence:
         emitter = FakeEmitter()
         with tempfile.TemporaryDirectory() as tmpdir:
             store = FileStore(data_dir=tmpdir)
-            so1 = SagaOrchestrator(store=store)
+            so1 = Orchestrator(store=store)
             sid = so1.start_saga(
                 "multi",
                 [
@@ -393,7 +393,7 @@ class TestSagaFileStorePersistence:
             so1.execute_step(sid, 0)
             assert len(emitter.emitted) == 1
 
-            so2 = SagaOrchestrator(store=store)
+            so2 = Orchestrator(store=store)
             so2.register_emitter("multi", emitter)
             result = so2.replay_saga(sid)
             assert result is True

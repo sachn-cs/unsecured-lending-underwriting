@@ -19,9 +19,9 @@ from datetime import datetime, timezone
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
-from underwrite.__events__ import Event
-from underwrite.__exceptions__ import AuthzError
-from underwrite.__logger__ import logger
+from underwrite.events import Event
+from underwrite.exceptions import AuthzError
+from underwrite.logger import logger
 
 DEFAULT_REPLAY_WINDOW_SECONDS: float = 300.0
 

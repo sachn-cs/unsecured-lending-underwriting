@@ -49,10 +49,10 @@ from typing import Any, TypeVar
 
 from pydantic import BaseModel, Field, field_validator
 
-from underwrite.__constants__ import SECONDS_PER_DAY, SECONDS_PER_HOUR
-from underwrite.__exceptions__ import ConfigurationError
-from underwrite.__logger__ import logger
-from underwrite.services.kyc_providers.factory import KycProviderConfig
+from underwrite.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
+from underwrite.exceptions import ConfigurationError
+from underwrite.logger import logger
+from underwrite.services.kyc_providers.factory import Config
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
@@ -424,7 +424,7 @@ class Configuration(ForbidExtra):
     razorpay: RazorpayConfig = Field(default_factory=RazorpayConfig)
     credit_bureau: CreditBureauConfig = Field(default_factory=CreditBureauConfig)
     underwriting: UnderwritingConfig = Field(default_factory=UnderwritingConfig)
-    kyc_providers: KycProviderConfig = Field(default_factory=KycProviderConfig)
+    kyc_providers: Config = Field(default_factory=Config)
 
     @classmethod
     def default(cls) -> Configuration:
@@ -625,7 +625,7 @@ class Configuration(ForbidExtra):
             "razorpay": (RazorpayConfig, "razorpay"),
             "credit_bureau": (CreditBureauConfig, "credit_bureau"),
             "underwriting": (UnderwritingConfig, "underwriting"),
-            "kyc_providers": (KycProviderConfig, "kyc_providers"),
+            "kyc_providers": (Config, "kyc_providers"),
         }
         for section_name, (model_cls, attr) in overlay_map.items():
             if section_name in data:
@@ -716,7 +716,7 @@ def build_service_names() -> list[str]:
     duplicate the list which drifted out of sync. This helper
     produces the same ordering as the registry.
     """
-    from underwrite.__handler_registry__ import HANDLER_CLASSES
+    from underwrite.handler import HANDLER_CLASSES
 
     return list(HANDLER_CLASSES.keys())
 

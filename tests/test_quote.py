@@ -7,10 +7,10 @@ from __future__ import annotations
 
 import pytest
 
-from underwrite.__bus__ import LocalBus
-from underwrite.__events__ import Event, EventType
-from underwrite.__store__ import MemoryStore
+from underwrite.events import Event, EventType
+from underwrite.local import LocalBus
 from underwrite.services.quote.handler import QuoteHandler
+from underwrite.store import MemoryStore
 
 
 def quote(bus=None) -> QuoteHandler:
@@ -56,7 +56,7 @@ class TestProtocolPremium:
         bus.subscribe(EventType.QUOTE_CALCULATED, lambda e: received.append(e))
         svc = quote(bus=bus)
         bus.start()
-        from underwrite.__exceptions__ import ProtocolError
+        from underwrite.exceptions import ProtocolError
 
         with pytest.raises(ProtocolError):
             emit_quote(svc, principal=10000, term=0, protocol_rate=0.10)

@@ -14,19 +14,19 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from underwrite.__authz__ import AccessControl
-from underwrite.__bus__ import EventBus
-from underwrite.__events__ import Event, EventType
-from underwrite.__health__ import HealthRegistry
-from underwrite.__identity__ import Identity
-from underwrite.__logger__ import logger
-from underwrite.__metrics__ import MetricsCollector
-from underwrite.__saga__ import SagaOrchestrator
-from underwrite.__store__ import Store
-from underwrite.__supervisor__ import ServiceSupervisor
-from underwrite.__tracer__ import Tracer
+from underwrite.authz import AccessControl
+from underwrite.bus import EventBus
+from underwrite.events import Event, EventType
+from underwrite.health import Checks
+from underwrite.identity import Identity
+from underwrite.logger import logger
+from underwrite.metrics import Collector
+from underwrite.saga import Orchestrator
 from underwrite.services.base import StatefulService
 from underwrite.services.persistence import TypedStoreRepository
+from underwrite.store import Store
+from underwrite.supervisor import Watcher
+from underwrite.tracer import Tracer
 
 PAN_PATTERN: str = r"^[A-Z]{5}[0-9]{4}[A-Z]$"
 PAN_CATEGORIES: dict[str, str] = {
@@ -177,12 +177,12 @@ class ComplianceHandler(StatefulService):
         bus: EventBus,
         store: Store,
         identity: Identity | None = None,
-        metrics: MetricsCollector | None = None,
-        health: HealthRegistry | None = None,
+        metrics: Collector | None = None,
+        health: Checks | None = None,
         authz: AccessControl | None = None,
         tracer: Tracer | None = None,
-        saga: SagaOrchestrator | None = None,
-        supervisor: ServiceSupervisor | None = None,
+        saga: Orchestrator | None = None,
+        supervisor: Watcher | None = None,
         secrets_manager: Any | None = None,
         max_concurrent: int = 0,
         **kwargs: Any,
@@ -194,7 +194,7 @@ class ComplianceHandler(StatefulService):
                 ``kyc_providers``. Falls back to ``AML_BLOCKLIST_PATH``
                 env var or ``aml_blocklist.json``. ``kyc_providers``
                 is a dict mapping ``pan`` / ``aadhaar`` / ``cibil`` /
-                ``ckyc`` to a ``KycProvider`` instance; when present,
+                ``ckyc`` to a ``Provider`` instance; when present,
                 real upstream verifications are run; when missing
                 the service falls back to format-only validation.
         """
@@ -240,7 +240,7 @@ class ComplianceHandler(StatefulService):
             self.on_user_added(event)
         elif event.event_type == EventType.CKYC_VERIFIED:
             self.on_ckyc_verified(event)
-        elif event.event_type == "kyc.video_verified":
+        elif event.event_type == EventType.KYC_VIDEO_VERIFIED.value:
             self.on_video_kyc_done(event)
 
     def on_user_added(self, event: Event) -> None:
@@ -368,7 +368,7 @@ class ComplianceHandler(StatefulService):
         self.apply_aml_result(user, risk_score, event)
 
         self.emit(
-            "kyc.video_initiated",
+            EventType.KYC_VIDEO_INITIATED.value,
             {
                 "user": user,
                 "video_kyc_status": "pending",
@@ -403,7 +403,7 @@ class ComplianceHandler(StatefulService):
                     self.repo.save({"kyc_records": self.__kyc_records})
         elif risk_score >= AML_LOW_THRESHOLD:
             self.emit(
-                "aml.flagged",
+                EventType.AML_FLAGGED.value,
                 {
                     "user": user,
                     "aml_status": "flagged",

@@ -6,11 +6,11 @@ from typing import Any
 
 import pytest
 
-from underwrite.__bus__ import LocalBus
-from underwrite.__events__ import Event, EventType
-from underwrite.__store__ import MemoryStore
+from underwrite.events import Event, EventType
+from underwrite.local import LocalBus
 from underwrite.services.risk.handler import RiskHandler
 from underwrite.services.risk.model import RiskModel
+from underwrite.store import MemoryStore
 
 
 class EmitSpy:
@@ -93,7 +93,7 @@ class TestAuditServiceFaults:
 
 class TestValidationFaults:
     def test_require_finite_exception_chains_original_error(self) -> None:
-        from underwrite.__exceptions__ import ProtocolError
+        from underwrite.exceptions import ProtocolError
         from underwrite.validate import PayloadValidator
 
         with pytest.raises(ProtocolError) as exc_info:
@@ -102,7 +102,7 @@ class TestValidationFaults:
         assert isinstance(exc_info.value.__cause__, ValueError | TypeError)
 
     def test_require_finite_preserves_value_type_in_chain(self) -> None:
-        from underwrite.__exceptions__ import ProtocolError
+        from underwrite.exceptions import ProtocolError
         from underwrite.validate import PayloadValidator
 
         with pytest.raises(ProtocolError) as exc_info:

@@ -16,7 +16,7 @@ import re
 from decimal import Decimal
 from typing import Any
 
-from underwrite.__exceptions__ import ProtocolError
+from underwrite.exceptions import ProtocolError
 
 RE_SAFETY_UNSAFE_PATTERN: re.Pattern[str] = re.compile(r"\(\s*(?:[^()]*\[[^]]*\])*[^()]*[+*{]\s*\)\s*[+*{]}")
 

@@ -9,14 +9,15 @@ from __future__ import annotations
 import threading
 from typing import Any
 
-from underwrite.__bus__ import Event, LocalBus
-from underwrite.__circuit__ import CircuitBreaker
-from underwrite.__health__ import HealthRegistry
-from underwrite.__metrics__ import MetricsCollector
-from underwrite.__saga__ import SagaOrchestrator, SagaStep
-from underwrite.__store__ import FileStore, MemoryStore
-from underwrite.__tracer__ import Tracer
+from underwrite.bus import Event
+from underwrite.circuit import CircuitBreaker
+from underwrite.health import Checks
+from underwrite.local import LocalBus
+from underwrite.metrics import Collector
+from underwrite.saga import Orchestrator, SagaStep
 from underwrite.services.mechanism.handler import MechanismHandler
+from underwrite.store import FileStore, MemoryStore
+from underwrite.tracer import Tracer
 
 NUM_THREADS: int = 10
 OPS_PER_THREAD: int = 100
@@ -165,7 +166,7 @@ class TestCircuitBreakerConcurrency:
 
 class TestMetricsConcurrency:
     def test_concurrent_increment_gauge_timer(self) -> None:
-        mc = MetricsCollector(max_metrics=50000)
+        mc = Collector(max_metrics=50000)
         errors: list[Exception] = []
 
         def ops(tid: int) -> None:
@@ -217,7 +218,7 @@ class TestTracerConcurrency:
 
 class TestSagaConcurrency:
     def test_concurrent_execute_all(self) -> None:
-        orchestrator = SagaOrchestrator()
+        orchestrator = Orchestrator()
         errors: list[Exception] = []
         emitted: list[str] = []
         emit_lock = threading.Lock()
@@ -251,7 +252,7 @@ class TestSagaConcurrency:
 
 class TestHealthConcurrency:
     def test_concurrent_register_and_status(self) -> None:
-        hr = HealthRegistry()
+        hr = Checks()
         errors: list[Exception] = []
 
         def register_and_check() -> None:

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 __all__ = [
     "HealthCheck",
-    "HealthRegistry",
+    "Checks",
 ]
 
 import concurrent.futures
@@ -18,12 +18,12 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
 
-from underwrite.__logger__ import logger
+from underwrite.logger import logger
 
 HealthCheck = Callable[[], dict[str, Any]]
 
 
-class HealthRegistry:
+class Checks:
     """Thread-safe registry of health checks."""
 
     def __init__(

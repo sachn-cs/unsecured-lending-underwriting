@@ -15,8 +15,8 @@ from __future__ import annotations
 import threading
 from typing import Any, Generic, TypeVar
 
-from underwrite.__logger__ import logger
-from underwrite.__store__ import Store
+from underwrite.logger import logger
+from underwrite.store import Store
 
 T = TypeVar("T")
 

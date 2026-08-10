@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from underwrite.__exceptions__ import MigrationError
-from underwrite.__migrate__ import Migration, MigrationPlan, default_plan
+from underwrite.exceptions import MigrationError
+from underwrite.migrate import Migration, MigrationPlan, default_plan
 
 
 class TestMigrationPlan:

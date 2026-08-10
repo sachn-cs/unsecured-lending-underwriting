@@ -152,7 +152,7 @@ class AsyncLocalBus(AsyncEventBus):
             return
         if self.async_semaphore is not None:
 
-            async def bounded(h, e):
+            async def run_bounded_handler(h, e):
                 async with self.async_semaphore:
                     await self.safe_dispatch(h, e)
 

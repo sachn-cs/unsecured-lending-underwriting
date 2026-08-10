@@ -91,7 +91,7 @@ class Emitter:
         self,
         name: str,
         identity: Keypair,
-        bus: EventBus,
+        bus: EventBus | LocalBus,
         metrics: Collector | None,
         tracer: Tracer | None,
         authz: AccessControl | None,

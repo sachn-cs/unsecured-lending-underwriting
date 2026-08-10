@@ -19,7 +19,7 @@ import threading
 from typing import Any, Generic, TypeVar
 
 from underwrite.logger import logger
-from underwrite.store import Store
+from underwrite.store import Disk, InMemory, Sqlite, Store
 
 T = TypeVar("T")
 
@@ -32,7 +32,7 @@ class StoreRepository(Generic[T]):
     concurrency control (use the service's own lock).
     """
 
-    def __init__(self, store: Store, key: str) -> None:
+    def __init__(self, store: Store | InMemory | Disk | Sqlite, key: str) -> None:
         """Initialize the repository.
 
         Args:
@@ -91,7 +91,7 @@ class TypedStoreRepository(StoreRepository[T]):
 
     def __init__(
         self,
-        store: Store,
+        store: Store | InMemory | Disk | Sqlite,
         key: str,
         expected_type: type[T] | tuple[type[T], ...],
     ) -> None:
@@ -135,7 +135,7 @@ class BatchedStoreRepository(TypedStoreRepository[T]):
 
     def __init__(
         self,
-        store: Store,
+        store: Store | InMemory | Disk | Sqlite,
         key: str,
         expected_type: type | tuple[type, ...],
         sync_interval: int = 10,

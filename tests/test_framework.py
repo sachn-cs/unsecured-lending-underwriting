@@ -421,17 +421,17 @@ class TestRuntime:
         assert "mechanism" in svc_names
         assert "audit" in svc_names
 
-    def test_kyc_providers_round_trip(self) -> None:
+    def test_kyc_provider_config_round_trip(self) -> None:
         config: Configuration = Configuration.default()
-        config.kyc_providers.pan_client_id = "pan-id"
-        config.kyc_providers.pan_client_secret = "pan-secret"
-        config.kyc_providers.pan_api_base_url = "https://api.karza.in"
+        config.kyc_provider_config.pan_client_id = "pan-id"
+        config.kyc_provider_config.pan_client_secret = "pan-secret"
+        config.kyc_provider_config.pan_api_base_url = "https://api.karza.in"
         # Secret-shaped fields are redacted (popped) on to_dict
         # (save path); non-sensitive URL fields survive.
         d: dict = config.to_dict()
-        assert "pan_client_id" not in d["kyc_providers"]
-        assert "pan_client_secret" not in d["kyc_providers"]
-        assert d["kyc_providers"]["pan_api_base_url"] == "https://api.karza.in"
+        assert "pan_client_id" not in d["kyc_provider_config"]
+        assert "pan_client_secret" not in d["kyc_provider_config"]
+        assert d["kyc_provider_config"]["pan_api_base_url"] == "https://api.karza.in"
 
     def test_dlq_health_check_registered(self) -> None:
         rt: Runtime = Runtime()

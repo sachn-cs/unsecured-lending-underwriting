@@ -19,7 +19,7 @@ from underwrite.services.credit_bureau.client import (
 )
 from underwrite.services.credit_bureau.handler import Handler
 from underwrite.services.credit_bureau.handler import Handler as CreditBureauHandler
-from underwrite.services.kyc.base import Provider, ProviderResult, Verdict
+from underwrite.services.providers import Provider, ProviderResult, ProvidersConfig, Verdict
 from underwrite.store import InMemory
 
 
@@ -30,7 +30,6 @@ class CibilProviderStub(Provider):
 
     def verify(
         self,
-        identifier: str,
         *,
         name: str = "",
         dob: str = "",
@@ -51,6 +50,30 @@ class CibilProviderStub(Provider):
                 "defaults": ["LATE_PAYMENT"],
             },
         )
+
+
+def _cibil_config() -> ProvidersConfig:
+    """Build a ProvidersConfig wired with stub credentials."""
+    return ProvidersConfig(
+        cibil_partner_id="stub",
+        cibil_partner_key="stub",
+    )
+
+
+class _StubCibilConfig(ProvidersConfig):
+    """ProvidersConfig subclass whose resolve_cibil returns a stub.
+
+    Pydantic models don't permit attribute monkey-patching, so tests
+    that need to inject a fake Cibil provider extend the config and
+    override the resolver instead.
+    """
+
+    def __init__(self, stub: CibilProviderStub, **kwargs: object) -> None:
+        super().__init__(**kwargs)
+        self._stub = stub
+
+    def resolve_cibil(self, consumer_id: str, secrets: object = None) -> CibilProviderStub:  # type: ignore[override]
+        return self._stub
 
 
 def svc(**kw) -> Handler:
@@ -302,8 +325,12 @@ class TestCibilProviderIntegration:
         bus = LocalBus()
         received: list = []
         bus.subscribe(Type.CREDIT_BUREAU_CHECKED, lambda e: received.append(e))
-        provider = CibilProviderStub()
-        s = Handler(name="credit_bureau", bus=bus, kyc_providers={"cibil": provider}, allow_mock=True, store=InMemory())
+        config = _StubCibilConfig(
+            stub=CibilProviderStub(),
+            cibil_partner_id="stub",
+            cibil_partner_key="stub",
+        )
+        s = Handler(name="credit_bureau", bus=bus, kyc_provider_config=config, allow_mock=True, store=InMemory())
         bus.start()
         s.handle(
             Message(
@@ -322,10 +349,15 @@ class TestCibilProviderIntegration:
         assert report.defaults == ["LATE_PAYMENT"]
 
     def test_check_bureau_persists_and_reloads_credit_report_fields(self) -> None:
+        config = _StubCibilConfig(
+            stub=CibilProviderStub(),
+            cibil_partner_id="stub",
+            cibil_partner_key="stub",
+        )
         s = Handler(
             name="credit_bureau",
             bus=LocalBus(),
-            kyc_providers={"cibil": CibilProviderStub()},
+            kyc_provider_config=config,
             store=InMemory(),
             allow_mock=True,
         )
@@ -339,7 +371,7 @@ class TestCibilProviderIntegration:
         reloaded = Handler(
             name="credit_bureau",
             bus=LocalBus(),
-            kyc_providers={"cibil": CibilProviderStub()},
+            kyc_provider_config=config,
             store=s.store,
             allow_mock=True,
         )

@@ -17,7 +17,7 @@ __all__ = [
     "Runtime",
     "build_authz",
     "build_event_bus",
-    "build_kyc_providers",
+    "build_kyc_provider_config",
     "build_read_store",
     "build_secrets",
     "build_store",
@@ -51,7 +51,7 @@ from underwrite.metrics import Collector
 from underwrite.migrate import default_plan
 from underwrite.saga import Orchestrator
 from underwrite.secrets import Manager
-from underwrite.services.kyc.base import Provider
+from underwrite.services.providers import ProvidersConfig
 from underwrite.store import Store
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
@@ -77,20 +77,20 @@ def build_supervisor(config: Configuration) -> Watcher | None:
     )
 
 
-def build_kyc_providers(config: Configuration, secrets: Manager | None) -> dict[str, Provider]:
-    """Resolve the configured KYC provider clients.
+def build_kyc_provider_config(config: Configuration, secrets: Manager | None) -> ProvidersConfig:
+    """Resolve the configured KYC provider configuration.
 
-    Returns a dict mapping the provider name (``pan`` /
-    ``aadhaar`` / ``cibil`` / ``ckyc``) to the configured
-    client instance. When ``kyc_providers`` is not in the
-    configuration, returns an empty dict; the compliance and
-    credit_bureau services then fall back to format-only
-    validation.
+    Returns the ``ProvidersConfig`` from the runtime configuration
+    so that the compliance and credit_bureau services can construct
+    per-call client instances bound to the supplied identifier.
+    Returns a default ``ProvidersConfig`` when the configuration
+    block is absent; in that case provider clients will report
+    ``ERROR`` until credentials are wired in.
     """
-    kp = getattr(config, "kyc_providers", None)
+    kp = getattr(config, "kyc_provider_config", None)
     if kp is None:
-        return {}
-    return kp.all(secrets) if kp is not None else {}
+        return ProvidersConfig()
+    return kp
 
 
 def build_tracer(config: Configuration) -> Tracer | None:
@@ -313,7 +313,7 @@ class Runtime:
         self.runtime_identity = None
         self.secrets = build_secrets(self.config)
         self.runtime_identity = Keypair.create("runtime", secrets_manager=self.secrets)
-        self.kyc_providers = build_kyc_providers(self.config, self.secrets)
+        self.kyc_provider_config = build_kyc_provider_config(self.config, self.secrets)
         self.tracer = build_tracer(self.config)
         self.bus = cast(EventBus | LocalBus, build_event_bus(self.config.bus, self.store))
         self.saga = Orchestrator(store=self.store) if self.config.saga.enabled else None
@@ -375,9 +375,9 @@ class Runtime:
             extra["webhook_secret"] = rconf.webhook_secret
             extra["api_base_url"] = rconf.api_base_url
         elif service_name == "compliance":
-            extra["kyc_providers"] = self.kyc_providers
+            extra["kyc_provider_config"] = self.kyc_provider_config
         elif service_name == "credit_bureau":
-            extra["kyc_providers"] = self.kyc_providers
+            extra["kyc_provider_config"] = self.kyc_provider_config
         elif service_name == "consent":
             cconf = self.config.dpdpa.consent
             extra["required_purposes"] = list(cconf.required_purposes)

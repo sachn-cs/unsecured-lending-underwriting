@@ -55,7 +55,7 @@ from pydantic import BaseModel, Field, field_validator
 from underwrite.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
 from underwrite.exceptions import ConfigurationError
 from underwrite.logger import logger
-from underwrite.services.kyc.factory import Config
+from underwrite.services.providers import ProvidersConfig
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
@@ -425,7 +425,7 @@ class Configuration(ForbidExtra):
     razorpay: RazorpayConfig = Field(default_factory=RazorpayConfig)
     credit_bureau: CreditBureauConfig = Field(default_factory=CreditBureauConfig)
     underwriting: UnderwritingConfig = Field(default_factory=UnderwritingConfig)
-    kyc_providers: Config = Field(default_factory=Config)
+    kyc_provider_config: ProvidersConfig = Field(default_factory=ProvidersConfig)
 
     @classmethod
     def default(cls) -> Configuration:
@@ -551,7 +551,7 @@ class Configuration(ForbidExtra):
             "razorpay",
             "credit_bureau",
             "underwriting",
-            "kyc_providers",
+            "kyc_provider_config",
         }
         unknown = set(data.keys()) - known_keys
         if unknown:
@@ -626,7 +626,7 @@ class Configuration(ForbidExtra):
             "razorpay": (RazorpayConfig, "razorpay"),
             "credit_bureau": (CreditBureauConfig, "credit_bureau"),
             "underwriting": (UnderwritingConfig, "underwriting"),
-            "kyc_providers": (Config, "kyc_providers"),
+            "kyc_provider_config": (ProvidersConfig, "kyc_provider_config"),
         }
         for section_name, (model_cls, attr) in overlay_map.items():
             if section_name in data:

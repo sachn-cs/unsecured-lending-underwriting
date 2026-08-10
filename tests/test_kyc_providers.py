@@ -7,33 +7,35 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from underwrite.services.kyc.aadhaar import AadhaarEKycClient
-from underwrite.services.kyc.base import Verdict
-from underwrite.services.kyc.cibil import CibilBureauClient
-from underwrite.services.kyc.ckyc import CkycSearchClient
-from underwrite.services.kyc.factory import Config
-from underwrite.services.kyc.pan import PanVerificationClient
+from underwrite.services.providers import (
+    Aadhar,
+    Cibil,
+    Ckyc,
+    Pan,
+    ProvidersConfig,
+    Verdict,
+)
 
 
-class TestPanVerificationClient:
+class TestPan:
     def test_unconfigured_returns_error(self) -> None:
-        client = PanVerificationClient()
-        result = client.verify("ABCDE1234F", name="John", consent="Y")
+        client = Pan(pan="ABCDE1234F")
+        result = client.verify(name="John", consent="Y")
         assert result.verdict == Verdict.ERROR
         assert "not configured" in result.error
 
     def test_malformed_pan_returns_mismatch(self) -> None:
-        client = PanVerificationClient(client_id="id", client_secret="secret")
-        result = client.verify("NOT-A-PAN", consent="Y")
+        client = Pan(pan="NOT-A-PAN", client_id="id", client_secret="secret")
+        result = client.verify(consent="Y")
         assert result.verdict == Verdict.MISMATCH
 
     def test_missing_consent_returns_rejected(self) -> None:
-        client = PanVerificationClient(client_id="id", client_secret="secret")
-        result = client.verify("ABCDE1234F", consent="")
+        client = Pan(pan="ABCDE1234F", client_id="id", client_secret="secret")
+        result = client.verify(consent="")
         assert result.verdict == Verdict.REJECTED
 
     def test_uppercases_and_signs(self) -> None:
-        client = PanVerificationClient(client_id="id", client_secret="secret")
+        client = Pan(pan="abcde1234f", client_id="id", client_secret="secret")
         with patch.object(
             client,
             "http_post",
@@ -47,53 +49,53 @@ class TestPanVerificationClient:
                 "aadhaar_seeding_status": "Y",
             },
         ):
-            result = client.verify("abcde1234f", name="John", consent="Y")
+            result = client.verify(name="John", consent="Y")
         assert result.verdict == Verdict.VERIFIED
         assert result.reference == "req-1"
         assert result.details["pan"] == "ABCDE1234F"
         assert result.details["first_name"] == "JOHN"
 
     def test_invalid_status_returns_rejected(self) -> None:
-        client = PanVerificationClient(client_id="id", client_secret="secret")
+        client = Pan(pan="ABCDE1234F", client_id="id", client_secret="secret")
         with patch.object(
             client,
             "http_post",
             return_value={"status": "DEACTIVATED"},
         ):
-            result = client.verify("ABCDE1234F", consent="Y")
+            result = client.verify(consent="Y")
         assert result.verdict == Verdict.REJECTED
 
     def test_transport_error_returns_error(self) -> None:
-        client = PanVerificationClient(client_id="id", client_secret="secret")
+        client = Pan(pan="ABCDE1234F", client_id="id", client_secret="secret")
         with patch.object(
             client,
             "http_post",
             side_effect=RuntimeError("network down"),
         ):
-            result = client.verify("ABCDE1234F", consent="Y")
+            result = client.verify(consent="Y")
         assert result.verdict == Verdict.ERROR
         assert "network down" in result.error
 
 
-class TestAadhaarEKycClient:
+class TestAadhar:
     def test_unconfigured_returns_error(self) -> None:
-        client = AadhaarEKycClient()
-        result = client.verify("123456789012", otp="1234", consent="Y")
+        client = Aadhar(number="123456789012")
+        result = client.verify(otp="1234", consent="Y")
         assert result.verdict == Verdict.ERROR
         assert "not configured" in result.error
 
     def test_malformed_aadhaar_returns_mismatch(self) -> None:
-        client = AadhaarEKycClient(kua_id="k", kua_license_key="l")
-        result = client.verify("123", otp="1234", consent="Y")
+        client = Aadhar(number="123", kua_id="k", kua_license_key="l")
+        result = client.verify(otp="1234", consent="Y")
         assert result.verdict == Verdict.MISMATCH
 
     def test_missing_otp_returns_error(self) -> None:
-        client = AadhaarEKycClient(kua_id="k", kua_license_key="l")
-        result = client.verify("123456789012", otp="", consent="Y")
+        client = Aadhar(number="123456789012", kua_id="k", kua_license_key="l")
+        result = client.verify(otp="", consent="Y")
         assert result.verdict == Verdict.ERROR
 
     def test_authenticated_response(self) -> None:
-        client = AadhaarEKycClient(kua_id="k", kua_license_key="l")
+        client = Aadhar(number="123456789012", kua_id="k", kua_license_key="l")
         with patch.object(
             client,
             "send_kyc_request",
@@ -106,37 +108,37 @@ class TestAadhaarEKycClient:
                 "address": {"pin": "560001"},
             },
         ):
-            result = client.verify("123456789012", otp="1234", consent="Y")
+            result = client.verify(otp="1234", consent="Y")
         assert result.verdict == Verdict.VERIFIED
         assert result.reference == "ref-1"
         assert result.details["name"] == "John"
 
     def test_failed_response(self) -> None:
-        client = AadhaarEKycClient(kua_id="k", kua_license_key="l")
+        client = Aadhar(number="123456789012", kua_id="k", kua_license_key="l")
         with patch.object(
             client,
             "send_kyc_request",
             return_value={"status": "N", "message": "bad otp"},
         ):
-            result = client.verify("123456789012", otp="1234", consent="Y")
+            result = client.verify(otp="1234", consent="Y")
         assert result.verdict == Verdict.MISMATCH
         assert result.error == "bad otp"
 
 
-class TestCibilBureauClient:
+class TestCibil:
     def test_unconfigured_returns_error(self) -> None:
-        client = CibilBureauClient()
-        result = client.verify("C-1", name="John", pan="ABCDE1234F", consent="Y")
+        client = Cibil(consumer_id="C-1")
+        result = client.verify(name="John", pan="ABCDE1234F", consent="Y")
         assert result.verdict == Verdict.ERROR
         assert "not configured" in result.error
 
     def test_missing_consent_returns_rejected(self) -> None:
-        client = CibilBureauClient(partner_id="p", partner_key="k")
-        result = client.verify("C-1", name="John", pan="ABCDE1234F", consent="")
+        client = Cibil(consumer_id="C-1", partner_id="p", partner_key="k")
+        result = client.verify(name="John", pan="ABCDE1234F", consent="")
         assert result.verdict == Verdict.REJECTED
 
     def test_pull_with_score(self) -> None:
-        client = CibilBureauClient(partner_id="p", partner_key="k")
+        client = Cibil(consumer_id="C-1", partner_id="p", partner_key="k")
         with patch.object(
             client,
             "request_score",
@@ -149,35 +151,35 @@ class TestCibilBureauClient:
                 "defaults": [],
             },
         ):
-            result = client.verify("C-1", name="John", pan="ABCDE1234F", consent="Y")
+            result = client.verify(name="John", pan="ABCDE1234F", consent="Y")
         assert result.verdict == Verdict.VERIFIED
         assert result.details["score"] == 750
         assert result.details["score_band"] == "Excellent"
 
     def test_no_score_returns_not_found(self) -> None:
-        client = CibilBureauClient(partner_id="p", partner_key="k")
+        client = Cibil(consumer_id="C-1", partner_id="p", partner_key="k")
         with patch.object(
             client,
             "request_score",
             return_value={"request_id": "req-1", "message": "no record"},
         ):
-            result = client.verify("C-1", name="John", pan="ABCDE1234F", consent="Y")
+            result = client.verify(name="John", pan="ABCDE1234F", consent="Y")
         assert result.verdict == Verdict.NOT_FOUND
 
 
-class TestCkycSearchClient:
+class TestCkyc:
     def test_unconfigured_returns_error(self) -> None:
-        client = CkycSearchClient()
-        result = client.verify("CKYC123", consent="Y")
+        client = Ckyc(identifier="CKYC123")
+        result = client.verify(consent="Y")
         assert result.verdict == Verdict.ERROR
 
     def test_invalid_identifier_type(self) -> None:
-        client = CkycSearchClient(search_provider_id="p", search_provider_key="k")
-        result = client.verify("X", identifier_type="phone", consent="Y")
+        client = Ckyc(identifier="X", search_provider_id="p", search_provider_key="k")
+        result = client.verify(identifier_type="phone", consent="Y")
         assert result.verdict == Verdict.ERROR
 
     def test_hit(self) -> None:
-        client = CkycSearchClient(search_provider_id="p", search_provider_key="k")
+        client = Ckyc(identifier="110000001234", search_provider_id="p", search_provider_key="k")
         with patch.object(
             client,
             "request_search",
@@ -193,31 +195,31 @@ class TestCkycSearchClient:
                 "kyc_status": "VERIFIED",
             },
         ):
-            result = client.verify("110000001234", consent="Y")
+            result = client.verify(consent="Y")
         assert result.verdict == Verdict.VERIFIED
         assert result.details["ckyc_number"] == "110000001234"
 
     def test_miss(self) -> None:
-        client = CkycSearchClient(search_provider_id="p", search_provider_key="k")
+        client = Ckyc(identifier="110000001234", search_provider_id="p", search_provider_key="k")
         with patch.object(
             client,
             "request_search",
             return_value={"request_id": "req-1", "kyc_status": "NOT_FOUND"},
         ):
-            result = client.verify("110000001234", consent="Y")
+            result = client.verify(consent="Y")
         assert result.verdict == Verdict.NOT_FOUND
 
 
-class TestKycProviderConfig:
-    def test_default_factory_resolves_all_four(self) -> None:
-        config = Config()
-        providers = config.all(secrets=None)
-        assert set(providers) == {"pan", "aadhaar", "cibil", "ckyc"}
-        for name, p in providers.items():
-            assert p.is_configured() is False, name
+class TestProvidersConfig:
+    def test_default_resolves_unconfigured_clients(self) -> None:
+        config = ProvidersConfig()
+        assert config.resolve_pan("ABCDE1234F").is_configured() is False
+        assert config.resolve_aadhaar("123456789012").is_configured() is False
+        assert config.resolve_cibil("C-1").is_configured() is False
+        assert config.resolve_ckyc("CKYC123").is_configured() is False
 
-    def test_factory_pulls_from_secrets(self) -> None:
-        config = Config()
+    def test_pulls_from_secrets(self) -> None:
+        config = ProvidersConfig()
         secrets = MagicMock()
         secrets.get.side_effect = lambda k: {
             "underwrite/pan/client_id": "pan-id",
@@ -229,8 +231,7 @@ class TestKycProviderConfig:
             "underwrite/ckyc/search_provider_id": "ckyc-id",
             "underwrite/ckyc/search_provider_key": "ckyc-key",
         }.get(k, "")
-        providers = config.all(secrets=secrets)
-        assert providers["pan"].is_configured() is True
-        assert providers["aadhaar"].is_configured() is True
-        assert providers["cibil"].is_configured() is True
-        assert providers["ckyc"].is_configured() is True
+        assert config.resolve_pan("ABCDE1234F", secrets).is_configured() is True
+        assert config.resolve_aadhaar("123456789012", secrets).is_configured() is True
+        assert config.resolve_cibil("C-1", secrets).is_configured() is True
+        assert config.resolve_ckyc("CKYC123", secrets).is_configured() is True

@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 import os
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +28,7 @@ from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
 from underwrite.services.base import Dependencies, StatefulService
 from underwrite.services.persistence import TypedStoreRepository
+from underwrite.services.providers import ProvidersConfig, Verdict
 from underwrite.store import Disk, InMemory, Sqlite, Store
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
@@ -169,7 +170,7 @@ class ComplianceConfig:
     """
 
     aml_blocklist_path: str = ""
-    kyc_providers: dict[str, Any] = field(default_factory=dict)
+    kyc_provider_config: ProvidersConfig | None = None
 
 
 class Handler(StatefulService):
@@ -195,22 +196,22 @@ class Handler(StatefulService):
 
         Args:
             **kwargs: May include ``aml_blocklist_path`` and
-                ``kyc_providers``. Falls back to ``AML_BLOCKLIST_PATH``
-                env var or ``aml_blocklist.json``. ``kyc_providers``
-                is a dict mapping ``pan`` / ``aadhaar`` / ``cibil`` /
-                ``ckyc`` to a ``Provider`` instance; when present,
-                real upstream verifications are run; when missing
-                the service falls back to format-only validation.
+                ``kyc_provider_config``. Falls back to ``AML_BLOCKLIST_PATH``
+                env var or ``aml_blocklist.json``. ``kyc_provider_config``
+                is a ``ProvidersConfig`` carrying the configured
+                credentials per provider; when present, real upstream
+                verifications are run; when missing the service falls
+                back to format-only validation.
         """
         config = ComplianceConfig(
             aml_blocklist_path=kwargs.pop(
                 "aml_blocklist_path",
                 os.environ.get("AML_BLOCKLIST_PATH", BLOCKLIST_PATH),
             ),
-            kyc_providers=kwargs.pop("kyc_providers", {}),
+            kyc_provider_config=kwargs.pop("kyc_provider_config", None),
         )
         self.aml_blocklist_path: str = config.aml_blocklist_path
-        self.kyc_providers: dict[str, Any] = config.kyc_providers
+        self.kyc_provider_config: ProvidersConfig | None = config.kyc_provider_config
         deps = Dependencies(
             identity=identity,
             bus=bus,
@@ -313,18 +314,16 @@ class Handler(StatefulService):
 
         pan_verdict = "format_verified"
         pan_provider_result: dict[str, Any] = {}
-        pan_provider = self.kyc_providers.get("pan")
-        if pan_provider is not None:
-            from underwrite.services.kyc.base import Verdict as _V
-
-            result = pan_provider.verify(pan, name=name, consent="Y" if consent_id else "")
+        if self.kyc_provider_config is not None:
+            pan_provider = self.kyc_provider_config.resolve_pan(pan, self.secrets_manager)
+            result = pan_provider.verify(name=name, consent="Y" if consent_id else "")
             pan_provider_result = {
                 "pan_provider_reference": result.reference,
                 "pan_provider_status": result.verdict.value,
             }
-            if result.verdict == _V.VERIFIED:
+            if result.verdict == Verdict.VERIFIED:
                 pan_verdict = "verified"
-            elif result.verdict in (_V.REJECTED, _V.NOT_FOUND, _V.MISMATCH):
+            elif result.verdict in (Verdict.REJECTED, Verdict.NOT_FOUND, Verdict.MISMATCH):
                 self.emit(
                     Type.KYC_REJECTED,
                     {

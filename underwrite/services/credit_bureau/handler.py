@@ -27,8 +27,8 @@ from underwrite.services.credit_bureau.client import (
     HttpCreditBureauClient,
     MockCreditBureauClient,
 )
-from underwrite.services.kyc.base import Provider
 from underwrite.services.persistence import TypedStoreRepository
+from underwrite.services.providers import ProvidersConfig
 from underwrite.store import Disk, InMemory, Sqlite, Store
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
@@ -48,7 +48,7 @@ class Handler(StatefulService):
         store: Store | InMemory | Disk | Sqlite,
         cibil_api_key: str = "",
         allow_mock: bool = False,
-        kyc_providers: dict[str, Provider] | None = None,
+        kyc_provider_config: ProvidersConfig | None = None,
         identity: Keypair | None = None,
         metrics: Collector | None = None,
         health: Checks | None = None,
@@ -67,10 +67,10 @@ class Handler(StatefulService):
             store: State persistence backend.
             cibil_api_key: CIBIL API key (enables HttpCreditBureauClient).
             allow_mock: Permit MockCreditBureauClient when no API key.
-            kyc_providers: Optional map of bureau-name -> Provider
-                instance. When present the bureau pull routes through
-                the configured partner-API client; otherwise the
-                legacy HttpCreditBureauClient is used.
+            kyc_provider_config: Optional ``ProvidersConfig`` carrying
+                the configured CIBIL credentials. When present the
+                bureau pull routes through the partner-API client;
+                otherwise the legacy ``HttpCreditBureauClient`` is used.
             identity: Ed25519 identity for signing events.
             metrics: Optional metrics collector.
             health: Optional health registry.
@@ -108,7 +108,7 @@ class Handler(StatefulService):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.kyc_provider_dict: dict[str, Provider] = dict(kyc_providers or {})
+        self.kyc_provider_config: ProvidersConfig | None = kyc_provider_config
         self.bureau_client: CreditBureauClient = self.build_client(
             cibil_api_key=cibil_api_key,
             allow_mock=allow_mock,
@@ -215,11 +215,11 @@ class Handler(StatefulService):
     def check_bureau(self, event: Message) -> None:
         """Fetch a credit report and emit the result.
 
-        When a ``kyc_providers`` mapping is provided, the bureau
-        pull goes through the new CIBIL partner-API client
-        (``services.kyc.cibil.CibilBureauClient``). The
-        legacy ``HttpCreditBureauClient`` continues to work as a
-        fallback for the generic CIBIL/Experian/Equifax endpoints.
+        When ``kyc_provider_config`` is provided, the bureau pull
+        goes through the CIBIL partner-API client
+        (``underwrite.services.providers.Cibil``). The legacy
+        ``HttpCreditBureauClient`` continues to work as a fallback
+        for the generic CIBIL/Experian/Equifax endpoints.
 
         Args:
             event: The CREDIT_BUREAU_CHECK event with pan and
@@ -231,12 +231,11 @@ class Handler(StatefulService):
         if not pan:
             logger.warning("credit_bureau.check missing pan")
             return
-        kyc_providers = self.kyc_provider_dict
-        cibil_provider = kyc_providers.get("cibil") if kyc_providers else None
-        if cibil_provider is not None and bureau == "cibil":
+        if self.kyc_provider_config is not None and bureau == "cibil":
+            consumer_id: str = event.payload.get("consumer_id", pan)
+            cibil_provider = self.kyc_provider_config.resolve_cibil(consumer_id, self.secrets_manager)
             try:
                 result = cibil_provider.verify(
-                    event.payload.get("consumer_id", pan),
                     name=event.payload.get("name", ""),
                     dob=event.payload.get("dob", ""),
                     pan=pan,

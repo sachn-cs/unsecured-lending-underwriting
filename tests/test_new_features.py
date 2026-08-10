@@ -37,28 +37,28 @@ class TestMemoryStoreEviction:
     """InMemory evicts oldest entries when max_entries is exceeded."""
 
     def test_unbounded_store_grows(self) -> None:
-        store: Store = InMemory(max_entries=0)
+        store: Store | InMemory = InMemory(max_entries=0)
         for i in range(1000):
             store.set(f"key:{i}", i)
         assert store.get("key:0") == 0
         assert store.get("key:999") == 999
 
     def test_bounded_store_evicts_oldest(self) -> None:
-        store: Store = InMemory(max_entries=10)
+        store: Store | InMemory = InMemory(max_entries=10)
         for i in range(20):
             store.set(f"key:{i}", i)
         assert store.get("key:0") is None
         assert store.get("key:10") == 10
 
     def test_bounded_store_keeps_recent(self) -> None:
-        store: Store = InMemory(max_entries=5)
+        store: Store | InMemory = InMemory(max_entries=5)
         for i in range(5):
             store.set(f"key:{i}", i)
         assert store.get("key:0") == 0
         assert store.get("key:4") == 4
 
     def test_update_existing_key_does_not_evict(self) -> None:
-        store: Store = InMemory(max_entries=3)
+        store: Store | InMemory = InMemory(max_entries=3)
         store.set("a", 1)
         store.set("b", 2)
         store.set("c", 3)
@@ -74,7 +74,7 @@ class TestQueuePersistence:
     """DLQ persists and restores records via a store."""
 
     def test_persist_and_restore(self) -> None:
-        store: Store = InMemory()
+        store: Store | InMemory = InMemory()
         dlq = Queue(store=store, sync_interval=1)
 
         event = Message(event_type="test", payload={"msg": "hello"})
@@ -87,7 +87,7 @@ class TestQueuePersistence:
         assert records[0].event.event_type == "test"
 
     def test_persist_batches_by_interval(self) -> None:
-        store: Store = InMemory()
+        store: Store | InMemory = InMemory()
         dlq = Queue(store=store, sync_interval=5)
 
         for i in range(4):
@@ -239,7 +239,7 @@ class TestDistributedLimiter:
     def test_distributed_with_store(self) -> None:
         from underwrite.bus import DistributedLimiter
 
-        store: Store = InMemory()
+        store: Store | InMemory = InMemory()
         rl = DistributedLimiter(max_rate=100.0, interval=10.0, store=store, prefix="testrl")
         assert rl.check("key1") is True
         import time

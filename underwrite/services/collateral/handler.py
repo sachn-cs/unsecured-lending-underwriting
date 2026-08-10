@@ -20,7 +20,7 @@ from underwrite.tracer import Tracer
 from underwrite.validate import PayloadValidator
 
 
-class CollateralHandler(StatefulService):
+class Handler(StatefulService):
     """Tracks posted collateral against active loans and triggers liquidation on default."""
 
     def __init__(

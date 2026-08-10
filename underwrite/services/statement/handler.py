@@ -24,7 +24,7 @@ from underwrite.tracer import Tracer
 from underwrite.validate import PayloadValidator
 
 
-class StatementHandler(Core):
+class Handler(Core):
     """Generates account statements showing loan activity and current status."""
 
     def __init__(

@@ -24,7 +24,7 @@ from underwrite.validate import PayloadValidator
 from underwrite.value_objects import IdGenerator
 
 
-class DocumentHandler(StatefulService):
+class Handler(StatefulService):
     """Generates loan document references after approval."""
 
     def __init__(

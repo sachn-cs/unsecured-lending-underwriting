@@ -26,7 +26,7 @@ from underwrite.services.compliance.handler import (
 from underwrite.store import MemoryStore
 
 
-def compliance(bus=None) -> Handler:
+def compliance(bus=None) -> ComplianceHandler:
     svc = ComplianceHandler(service_id="compliance", bus=bus, store=MemoryStore())
     svc.repo.save({})
     return svc
@@ -233,7 +233,7 @@ class TestComplianceService:
                 bus = LocalBus()
                 frozen: list[Message] = []
                 bus.subscribe(Type.AML_FROZEN, lambda e: frozen.append(e))
-                svc = Handler(
+                svc = ComplianceHandler(
                     service_id="compliance", bus=bus, aml_blocklist_path=bl_path, store=MemoryStore()
                 )
                 bus.start()

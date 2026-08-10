@@ -40,7 +40,7 @@ DOUBTFUL_PROVISIONING_RATE_DEFAULT: float = 0.25
 LOSS_PROVISIONING_RATE_DEFAULT: float = 1.0
 
 
-class NPAHandler(StatefulService):
+class Handler(StatefulService):
     """Tracks days-past-due and transitions accounts through SMA/NPA buckets.
 
     SMA (Special Mention Account) buckets per RBI:

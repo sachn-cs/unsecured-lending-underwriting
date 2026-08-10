@@ -76,7 +76,10 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
 # deploy time without a copy on first write.
 RUN groupadd --system --gid 1001 underwrite && \
     useradd --system --uid 1001 --gid 1001 --no-create-home --shell /sbin/nologin underwrite && \
-    mkdir -p /data && chown underwrite:underwrite /data
+    mkdir -p /data && chown underwrite:underwrite /data && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -89,7 +92,7 @@ COPY --from=builder --chown=underwrite:underwrite /usr/local/bin/underwrite /usr
 # A healthcheck that pings the FastAPI liveness endpoint. The
 # underwrite process binds 0.0.0.0:8080 by default.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/healthz').status == 200 else 1)" || exit 1
+    CMD curl -sf http://127.0.0.1:8080/healthz || exit 1
 
 EXPOSE 8080
 

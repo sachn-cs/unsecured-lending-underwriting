@@ -16,7 +16,7 @@
 
 ## Features
 
-- **31 nano-services** — KYC / AML (PAN + Aadhaar Verhoeff), CIBIL / Experian / Equifax credit bureau, CKYC registry, RBI rate-capped pricing, KFS generation, DPDPA consent + DSR, Razorpay PG, risk scoring, fraud detection, collections, recovery, notifications, governance
+- **34 wired nano-services + 4 KYC provider clients** — KYC / AML (PAN + Aadhaar Verhoeff), CIBIL / Experian / Equifax credit bureau, CKYC registry, RBI rate-capped pricing, KFS generation, DPDPA consent + DSR, Razorpay PG, risk scoring, fraud detection, collections, recovery, notifications, governance
 - **Event-driven** — Typed events with Ed25519 signatures, saga orchestration, dead-letter queues, circuit breakers
 - **Pluggable backends** — Memory / filesystem / Postgres stores; local / SQS / Modal event bus; console / OTLP tracing
 - **1167 tests** — Rate limiting, idempotency guards, PII redaction, Prometheus metrics
@@ -128,7 +128,7 @@ underwrite
 Commands:
   init [PATH]              Create default config
   run <service>...         Start one or more services
-  list                     List all 31 nano-services
+  list                     List all 34 wired nano-services
   identity <service>       Generate Ed25519 keypair
   health                   System health status
   dlq [--replay] [--max N] Show or replay dead-letter queue
@@ -209,7 +209,7 @@ underwrite/
 │   ├── keypair.py                # Ed25519 key management
 │   ├── message.py                # 105+ event types (`Type` enum, `Message` envelope)
 │   ├── pii.py                    # PII redaction (Aadhaar, PAN, etc.)
-│   └── services/                  # 31 nano-services
+│   └── services/                  # 34 wired nano-services + 4 KYC provider clients
 │       ├── base.py                # NanoService ABC
 │       ├── mechanism/             # Delegation state machine (core)
 │       ├── compliance/            # KYC/AML — PAN category, Aadhaar Verhoeff, risk score
@@ -301,7 +301,7 @@ git tag vX.Y.Z && git push origin vX.Y.Z
 
 ## Roadmap
 
-- **v0.8.x** — Current beta: 31 nano-services, 1167 tests, Ed25519 event provenance, RBI/DPDPA-aligned defaults.
+- **v0.8.x** — Current beta: 34 wired nano-services + 4 KYC provider clients, 1167 tests, Ed25519 event provenance, RBI/DPDPA-aligned defaults.
 - **v0.9.0** — Planned: real PAN (NSDL/ITD) and Aadhaar (UIDAI) integrations; CKYC live lookup; CIBIL production keys.
 - **v1.0.0** — Planned: video KYC; e-NACH / UPI Autopay mandate collection; full RBAC; documented DR procedures; Docker images + Helm charts.
 

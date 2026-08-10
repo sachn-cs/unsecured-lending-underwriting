@@ -31,7 +31,7 @@ class Handler(Core):
     def handlers(self) -> dict[str, Any]:
         """Return event type to handler mapping."""
         return {
-            Type.PREPAYMENT_REQUEST: self.__on_prepayment_request,
+            Type.PREPAYMENT_REQUEST: self.on_prepayment_request,
         }
 
     def handle(self, event: Message) -> None:
@@ -44,7 +44,7 @@ class Handler(Core):
         if handler is not None:
             handler(event)
 
-    def __on_prepayment_request(self, event: Message) -> None:
+    def on_prepayment_request(self, event: Message) -> None:
         """Compute a foreclosure quote for a prepayment request.
 
         Args:

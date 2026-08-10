@@ -48,82 +48,82 @@ class AsyncLocalBus(AsyncEventBus):
         store: Store | None = None,
         handler_timeout: float = HANDLER_TIMEOUT,
     ) -> None:
-        self.__queue: asyncio.Queue[Message] = asyncio.Queue(maxsize=maxsize)
-        self.__subscribers: dict[str, list[Callable[[Message], Any]]] = {}
-        self.__subscription_ids: dict[str, tuple[str, Callable[[Message], Any]]] = {}
-        self.__subscription_lock: asyncio.Lock = asyncio.Lock()
-        self.__task: asyncio.Task[None] | None = None
-        self.__running: bool = False
-        self.__stop_event: asyncio.Event = asyncio.Event()
-        self.__semaphore: asyncio.Semaphore | None = asyncio.Semaphore(max_workers) if max_workers > 0 else None
-        self.__dlq: Queue = Queue(store=store)
-        self.__idempotency: Guard = Guard()
-        self.__handler_timeout: float = handler_timeout
+        self.async_queue: asyncio.Queue[Message] = asyncio.Queue(maxsize=maxsize)
+        self.async_subscribers: dict[str, list[Callable[[Message], Any]]] = {}
+        self.async_subscription_ids: dict[str, tuple[str, Callable[[Message], Any]]] = {}
+        self.async_subscription_lock: asyncio.Lock = asyncio.Lock()
+        self.async_task: asyncio.Task[None] | None = None
+        self.async_running: bool = False
+        self.async_stop_event: asyncio.Event = asyncio.Event()
+        self.async_semaphore: asyncio.Semaphore | None = asyncio.Semaphore(max_workers) if max_workers > 0 else None
+        self.bus_dlq: Queue = Queue(store=store)
+        self.bus_idempotency: Guard = Guard()
+        self.async_handler_timeout: float = handler_timeout
 
     @property
     def dlq(self) -> Queue:
-        return self.__dlq
+        return self.bus_dlq
 
     @property
     def idempotency(self) -> Guard:
-        return self.__idempotency
+        return self.bus_idempotency
 
     def is_stopped(self) -> bool:
-        return not self.__running
+        return not self.async_running
 
     async def start(self) -> None:
-        if self.__running:
+        if self.async_running:
             return
-        self.__running = True
-        self.__stop_event.clear()
-        self.__task = asyncio.create_task(self.__dispatch_loop())
+        self.async_running = True
+        self.async_stop_event.clear()
+        self.async_task = asyncio.create_task(self.async_dispatch_loop())
         logger.info("AsyncEventBus started")
 
     async def stop(self) -> None:
-        self.__running = False
-        self.__stop_event.set()
+        self.async_running = False
+        self.async_stop_event.set()
         # Drain any remaining events from the queue
         drained = 0
-        while not self.__queue.empty():
+        while not self.async_queue.empty():
             try:
-                event = self.__queue.get_nowait()
+                event = self.async_queue.get_nowait()
                 await self.__dispatch(event)
                 drained += 1
             except asyncio.QueueEmpty:
                 break
-        if self.__task is not None:
-            self.__task.cancel()
+        if self.async_task is not None:
+            self.async_task.cancel()
             try:
-                await self.__task
+                await self.async_task
             except asyncio.CancelledError:
                 pass
-            self.__task = None
+            self.async_task = None
         logger.info("AsyncEventBus stopped (drained {} events)", drained)
 
     async def publish(self, event: Message) -> str:
-        await self.__queue.put(event)
+        await self.async_queue.put(event)
         return event.event_id
 
     async def subscribe(self, event_type: str, handler: Callable[[Message], Any]) -> str:
         sid = str(uuid.uuid4())
-        async with self.__subscription_lock:
-            self.__subscribers.setdefault(event_type, []).append(handler)
-            self.__subscription_ids[sid] = (event_type, handler)
+        async with self.async_subscription_lock:
+            self.async_subscribers.setdefault(event_type, []).append(handler)
+            self.async_subscription_ids[sid] = (event_type, handler)
         return sid
 
     async def unsubscribe(self, subscription_id: str) -> None:
-        async with self.__subscription_lock:
-            meta = self.__subscription_ids.pop(subscription_id, None)
+        async with self.async_subscription_lock:
+            meta = self.async_subscription_ids.pop(subscription_id, None)
             if meta is not None:
                 event_type, handler = meta
-                handlers = self.__subscribers.get(event_type, [])
+                handlers = self.async_subscribers.get(event_type, [])
                 if handler in handlers:
                     handlers.remove(handler)
 
-    async def __dispatch_loop(self) -> None:
-        while self.__running:
-            getter = asyncio.create_task(self.__queue.get())
-            stopper = asyncio.create_task(self.__stop_event.wait())
+    async def async_dispatch_loop(self) -> None:
+        while self.async_running:
+            getter = asyncio.create_task(self.async_queue.get())
+            stopper = asyncio.create_task(self.async_stop_event.wait())
             try:
                 done, pending = await asyncio.wait({getter, stopper}, return_when=asyncio.FIRST_COMPLETED)
             except asyncio.CancelledError:
@@ -144,16 +144,16 @@ class AsyncLocalBus(AsyncEventBus):
                 logger.exception("dispatch loop: unexpected error processing {}", event.event_id)
 
     async def __dispatch(self, event: Message) -> None:
-        async with self.__subscription_lock:
-            handlers = list(self.__subscribers.get(event.event_type, []))
-            wild_handlers = list(self.__subscribers.get("*", []))
+        async with self.async_subscription_lock:
+            handlers = list(self.async_subscribers.get(event.event_type, []))
+            wild_handlers = list(self.async_subscribers.get("*", []))
         handlers = handlers + wild_handlers
         if not handlers:
             return
-        if self.__semaphore is not None:
+        if self.async_semaphore is not None:
 
             async def __bounded(h, e):
-                async with self.__semaphore:
+                async with self.async_semaphore:
                     await self.__safe_dispatch(h, e)
 
             coros = [__bounded(h, event) for h in handlers]
@@ -162,12 +162,12 @@ class AsyncLocalBus(AsyncEventBus):
         try:
             results = await asyncio.wait_for(
                 asyncio.gather(*coros, return_exceptions=True),
-                timeout=self.__handler_timeout * 2,
+                timeout=self.async_handler_timeout * 2,
             )
         except asyncio.TimeoutError:
             logger.warning(
                 "aggregate dispatch timeout after {:.1f}s for event {}; cancelling pending handlers",
-                self.__handler_timeout * 2,
+                self.async_handler_timeout * 2,
                 event.event_id,
             )
             return
@@ -179,11 +179,11 @@ class AsyncLocalBus(AsyncEventBus):
         try:
             result = handler(event)
             if inspect.isawaitable(result):
-                await asyncio.wait_for(result, timeout=self.__handler_timeout)
+                await asyncio.wait_for(result, timeout=self.async_handler_timeout)
         except asyncio.TimeoutError:
-            msg = f"handler timed out after {self.__handler_timeout}s"
+            msg = f"handler timed out after {self.async_handler_timeout}s"
             logger.warning("async handler timed out for {}: {}", event.event_id, handler.__name__)
-            self.__dlq.put(event, msg, handler.__name__)
+            self.bus_dlq.put(event, msg, handler.__name__)
         except Exception as exc:
             logger.exception("async handler failed for {}", event.event_id)
-            self.__dlq.put(event, f"{type(exc).__name__}: {exc}", handler.__name__)
+            self.bus_dlq.put(event, f"{type(exc).__name__}: {exc}", handler.__name__)

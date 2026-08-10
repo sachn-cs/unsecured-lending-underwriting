@@ -21,7 +21,7 @@ from underwrite.tracer import Tracer
 from underwrite.validate import PayloadValidator
 
 
-class FraudHandler(StatefulService):
+class Handler(StatefulService):
     """Detects wash lending, burst origination patterns, and configurable fraud rules."""
 
     MAX_BORROWERS: int = 100000
@@ -217,4 +217,4 @@ class FraudHandler(StatefulService):
         Returns:
             Restored dict of deques.
         """
-        return {k: deque(v, maxlen=FraudHandler.ACTIVITY_DEQUE_MAXLEN) for k, v in raw.items() if isinstance(v, list)}
+        return {k: deque(v, maxlen=Handler.ACTIVITY_DEQUE_MAXLEN) for k, v in raw.items() if isinstance(v, list)}

@@ -66,3 +66,6 @@ underwrite/__version__.py
 instance/
 .python-version
 var/
+
+# Agent tooling
+AGENTS.md

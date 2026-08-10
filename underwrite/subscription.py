@@ -23,8 +23,8 @@ class Registry:
     """
 
     def __init__(self) -> None:
-        self.__lock: threading.RLock = threading.RLock()
-        self.__handlers: dict[str, list[tuple[str, Callable[[Message], None]]]] = {}
+        self.lock: threading.RLock = threading.RLock()
+        self.handlers: dict[str, list[tuple[str, Callable[[Message], None]]]] = {}
 
     def subscribe(self, event_type: str, handler: Callable[[Message], None]) -> str:
         """Register a handler for a given event type.
@@ -37,8 +37,8 @@ class Registry:
             Subscription ID for use with ``unsubscribe``.
         """
         sid = str(uuid.uuid4())
-        with self.__lock:
-            self.__handlers.setdefault(event_type, []).append((sid, handler))
+        with self.lock:
+            self.handlers.setdefault(event_type, []).append((sid, handler))
         return sid
 
     def unsubscribe(self, subscription_id: str) -> None:
@@ -47,10 +47,10 @@ class Registry:
         Args:
             subscription_id: The ID returned by ``subscribe``.
         """
-        with self.__lock:
-            for event_type in list(self.__handlers):
-                self.__handlers[event_type] = [
-                    (sid, h) for sid, h in self.__handlers[event_type] if sid != subscription_id
+        with self.lock:
+            for event_type in list(self.handlers):
+                self.handlers[event_type] = [
+                    (sid, h) for sid, h in self.handlers[event_type] if sid != subscription_id
                 ]
 
     def handlers_for(self, event_type: str) -> list[tuple[str, Callable[[Message], None]]]:
@@ -58,8 +58,8 @@ class Registry:
 
         Combines the specific-type bucket with the wildcard (``"*"``) bucket.
         """
-        with self.__lock:
-            return list(self.__handlers.get(event_type, [])) + list(self.__handlers.get("*", []))
+        with self.lock:
+            return list(self.handlers.get(event_type, [])) + list(self.handlers.get("*", []))
 
     def count(self, event_type: str | None = None) -> int:
         """Return the number of registered subscribers.
@@ -68,15 +68,15 @@ class Registry:
             event_type: If provided, count only subscribers to that event type;
                 pass ``"*"`` for the wildcard bucket, or ``None`` for the total.
         """
-        with self.__lock:
+        with self.lock:
             if event_type is None:
-                return sum(len(handlers) for handlers in self.__handlers.values())
-            return len(self.__handlers.get(event_type, ()))
+                return sum(len(handlers) for handlers in self.handlers.values())
+            return len(self.handlers.get(event_type, ()))
 
     def clear(self) -> None:
         """Remove all subscriptions."""
-        with self.__lock:
-            self.__handlers.clear()
+        with self.lock:
+            self.handlers.clear()
 
 
 class Dispatcher:
@@ -89,11 +89,11 @@ class Dispatcher:
     """
 
     def __init__(self, max_workers: int, max_futures: int) -> None:
-        self.__executor: concurrent.futures.ThreadPoolExecutor | None = (
+        self.executor: concurrent.futures.ThreadPoolExecutor | None = (
             concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) if max_workers > 0 else None
         )
-        self.__futures: list[concurrent.futures.Future] = []
-        self.__MAX_FUTURES: int = max_futures
+        self.futures: list[concurrent.futures.Future] = []
+        self.MAX_FUTURES: int = max_futures
 
     def submit(self, fn: Callable[..., Any], *args: Any) -> concurrent.futures.Future | None:
         """Submit work to the executor pool.
@@ -101,29 +101,29 @@ class Dispatcher:
         Returns:
             The submitted Future, or None if no executor was configured.
         """
-        if self.__executor is None:
+        if self.executor is None:
             return None
-        future = self.__executor.submit(fn, *args)
-        future.add_done_callback(self.__handle_future)
-        self.__futures.append(future)
-        self.__trim_futures()
+        future = self.executor.submit(fn, *args)
+        future.add_done_callback(self.handle_future)
+        self.futures.append(future)
+        self.trim_futures()
         return future
 
     def has_executor(self) -> bool:
-        return self.__executor is not None
+        return self.executor is not None
 
     def shutdown(self, timeout_seconds: float = 5.0) -> None:
         """Wait for outstanding futures and shut the executor down."""
-        if self.__executor is not None:
+        if self.executor is not None:
             done, not_done = concurrent.futures.wait(
-                self.__futures, timeout=timeout_seconds, return_when=concurrent.futures.ALL_COMPLETED
+                self.futures, timeout=timeout_seconds, return_when=concurrent.futures.ALL_COMPLETED
             )
             if not_done:
                 logger.warning("{} future(s) did not complete within stop timeout", len(not_done))
-            self.__executor.shutdown(wait=True)
-        self.__futures.clear()
+            self.executor.shutdown(wait=True)
+        self.futures.clear()
 
-    def __handle_future(self, f: concurrent.futures.Future) -> None:
+    def handle_future(self, f: concurrent.futures.Future) -> None:
         try:
             exc = f.exception(timeout=0)
         except concurrent.futures.TimeoutError:
@@ -131,10 +131,10 @@ class Dispatcher:
         if exc is not None:
             logger.warning("future {} raised: {}", f, exc)
 
-    def __trim_futures(self) -> None:
-        if len(self.__futures) < self.__MAX_FUTURES:
+    def trim_futures(self) -> None:
+        if len(self.futures) < self.MAX_FUTURES:
             return
-        done = [f for f in self.__futures if f.done()]
+        done = [f for f in self.futures if f.done()]
         for f in done:
             try:
                 exc = f.exception(timeout=0)
@@ -142,4 +142,4 @@ class Dispatcher:
                 continue
             if exc is not None:
                 logger.warning("future {} raised: {}", f, exc)
-        self.__futures = [f for f in self.__futures if not f.done()]
+        self.futures = [f for f in self.futures if not f.done()]

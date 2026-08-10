@@ -77,8 +77,8 @@ class Handler(StatefulService):
             response_time_days=kwargs.pop("response_time_days", DEFAULT_DSR_RESPONSE_DAYS),
             grievance_response_days=kwargs.pop("grievance_response_days", DEFAULT_GRIEVANCE_RESPONSE_DAYS),
         )
-        self.__response_days: int = config.response_time_days
-        self.__grievance_days: int = config.grievance_response_days
+        self.response_days: int = config.response_time_days
+        self.grievance_days: int = config.grievance_response_days
         deps = Dependencies(
             identity=identity,
             bus=bus,
@@ -105,9 +105,9 @@ class Handler(StatefulService):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.__requests: dict[str, dict[str, Any]] = {}
-        self.__grievances: dict[str, dict[str, Any]] = {}
-        self.__id_generator: IdGenerator = IdGenerator()
+        self.requests: dict[str, dict[str, Any]] = {}
+        self.grievances: dict[str, dict[str, Any]] = {}
+        self.id_generator: IdGenerator = IdGenerator()
         self.repo: TypedStoreRepository[dict[str, Any]] = self.store_repo("dsr", dict)
 
     def start(self) -> None:
@@ -115,8 +115,8 @@ class Handler(StatefulService):
         super().start()
         loaded = self.repo.load(default={})
         if loaded:
-            self.__requests = loaded.get("requests", {})
-            self.__grievances = loaded.get("grievances", {})
+            self.requests = loaded.get("requests", {})
+            self.grievances = loaded.get("grievances", {})
 
     def handle(self, event: Message) -> None:
         """Process DSR and grievance events.
@@ -141,22 +141,22 @@ class Handler(StatefulService):
         if not user_id or request_type not in ("access", "correction", "erasure"):
             logger.warning("dsr.request missing or invalid fields")
             return
-        request_id = f"dsr_{user_id}_{self.__id_generator.next()}"
+        request_id = f"dsr_{user_id}_{self.id_generator.next()}"
         now = datetime.now(timezone.utc)
         with self.state_lock:
-            self.__requests[request_id] = {
+            self.requests[request_id] = {
                 "request_id": request_id,
                 "user_id": user_id,
                 "request_type": request_type,
                 "status": "pending",
                 "requested_at": now.isoformat(),
-                "due_by": (now + timedelta(days=self.__response_days)).isoformat(),
+                "due_by": (now + timedelta(days=self.response_days)).isoformat(),
                 "details": event.payload.get("details", ""),
             }
             self.repo.save(
                 {
-                    "requests": self.__requests,
-                    "grievances": self.__grievances,
+                    "requests": self.requests,
+                    "grievances": self.grievances,
                 }
             )
             self.emit(
@@ -181,22 +181,22 @@ class Handler(StatefulService):
         if not user_id or not subject:
             logger.warning("grievance.logged missing user_id or subject")
             return
-        grievance_id = f"gr_{user_id}_{self.__id_generator.next()}"
+        grievance_id = f"gr_{user_id}_{self.id_generator.next()}"
         now = datetime.now(timezone.utc)
         with self.state_lock:
-            self.__grievances[grievance_id] = {
+            self.grievances[grievance_id] = {
                 "grievance_id": grievance_id,
                 "user_id": user_id,
                 "subject": subject,
                 "description": event.payload.get("description", ""),
                 "status": "open",
                 "logged_at": now.isoformat(),
-                "due_by": (now + timedelta(days=self.__grievance_days)).isoformat(),
+                "due_by": (now + timedelta(days=self.grievance_days)).isoformat(),
             }
             self.repo.save(
                 {
-                    "requests": self.__requests,
-                    "grievances": self.__grievances,
+                    "requests": self.requests,
+                    "grievances": self.grievances,
                 }
             )
 
@@ -207,14 +207,14 @@ class Handler(StatefulService):
             request_id: The request identifier.
         """
         with self.state_lock:
-            req = self.__requests.get(request_id)
+            req = self.requests.get(request_id)
             if req and req.get("status") == "pending":
                 req["status"] = "fulfilled"
                 req["fulfilled_at"] = datetime.now(timezone.utc).isoformat()
                 self.repo.save(
                     {
-                        "requests": self.__requests,
-                        "grievances": self.__grievances,
+                        "requests": self.requests,
+                        "grievances": self.grievances,
                     }
                 )
                 self.emit(
@@ -234,15 +234,15 @@ class Handler(StatefulService):
             reason: Reason for rejection.
         """
         with self.state_lock:
-            req = self.__requests.get(request_id)
+            req = self.requests.get(request_id)
             if req and req.get("status") == "pending":
                 req["status"] = "rejected"
                 req["rejected_at"] = datetime.now(timezone.utc).isoformat()
                 req["rejection_reason"] = reason
                 self.repo.save(
                     {
-                        "requests": self.__requests,
-                        "grievances": self.__grievances,
+                        "requests": self.requests,
+                        "grievances": self.grievances,
                     }
                 )
                 self.emit(
@@ -263,15 +263,15 @@ class Handler(StatefulService):
             resolution: Resolution description.
         """
         with self.state_lock:
-            gr = self.__grievances.get(grievance_id)
+            gr = self.grievances.get(grievance_id)
             if gr and gr.get("status") == "open":
                 gr["status"] = "resolved"
                 gr["resolution"] = resolution
                 gr["resolved_at"] = datetime.now(timezone.utc).isoformat()
                 self.repo.save(
                     {
-                        "requests": self.__requests,
-                        "grievances": self.__grievances,
+                        "requests": self.requests,
+                        "grievances": self.grievances,
                     }
                 )
                 self.emit(
@@ -293,7 +293,7 @@ class Handler(StatefulService):
             List of request records.
         """
         with self.state_lock:
-            return [r for r in self.__requests.values() if r.get("user_id") == user_id]
+            return [r for r in self.requests.values() if r.get("user_id") == user_id]
 
     def get_grievances(self, user_id: str) -> list[dict[str, Any]]:
         """Return all grievances for a user.
@@ -305,4 +305,4 @@ class Handler(StatefulService):
             List of grievance records.
         """
         with self.state_lock:
-            return [g for g in self.__grievances.values() if g.get("user_id") == user_id]
+            return [g for g in self.grievances.values() if g.get("user_id") == user_id]

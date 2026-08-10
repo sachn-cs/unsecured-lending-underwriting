@@ -88,12 +88,12 @@ class Handler(StatefulService):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.__clock: SystemClock = SystemClock()
+        self.clock: SystemClock = SystemClock()
         self.handlers: dict[str, Any] = {
-            Type.WORKFLOW_START: self.__on_workflow_start,
-            Type.WORKFLOW_ADVANCE: self.__on_workflow_advance,
-            Type.ORIGINATION_SUBMITTED: self.__on_origination_submitted,
-            Type.UNDERWRITER_APPROVED: self.__on_underwriter_approved,
+            Type.WORKFLOW_START: self.on_workflow_start,
+            Type.WORKFLOW_ADVANCE: self.on_workflow_advance,
+            Type.ORIGINATION_SUBMITTED: self.on_origination_submitted,
+            Type.UNDERWRITER_APPROVED: self.on_underwriter_approved,
         }
 
     def handle(self, event: Message) -> None:
@@ -101,30 +101,30 @@ class Handler(StatefulService):
         if handler is not None:
             handler(event)
 
-    def __on_workflow_start(self, event: Message) -> None:
+    def on_workflow_start(self, event: Message) -> None:
         """Start a new workflow instance.
 
         Args:
             event: The WORKFLOW_START event.
         """
-        self.__start_workflow(
+        self.start_workflow(
             event.payload.get("type", ""),
             event.payload.get("entity_id", ""),
             event.correlation_id,
         )
 
-    def __on_workflow_advance(self, event: Message) -> None:
+    def on_workflow_advance(self, event: Message) -> None:
         """Advance a workflow to the next stage.
 
         Args:
             event: The WORKFLOW_ADVANCE event.
         """
-        self.__advance_workflow(
+        self.advance_workflow(
             event.payload.get("entity_id", ""),
             event.correlation_id,
         )
 
-    def __on_origination_submitted(self, event: Message) -> None:
+    def on_origination_submitted(self, event: Message) -> None:
         """Start an origination workflow when an application is submitted.
 
         Args:
@@ -132,9 +132,9 @@ class Handler(StatefulService):
         """
         entity_id = event.payload.get("application_id", "")
         if entity_id and not self.store.get(f"workflow:{entity_id}"):
-            self.__start_workflow("origination", entity_id, event.correlation_id)
+            self.start_workflow("origination", entity_id, event.correlation_id)
 
-    def __on_underwriter_approved(self, event: Message) -> None:
+    def on_underwriter_approved(self, event: Message) -> None:
         """Advance the workflow when underwriter approves.
 
         Args:
@@ -142,9 +142,9 @@ class Handler(StatefulService):
         """
         entity_id = event.payload.get("application_id", "")
         if entity_id:
-            self.__advance_workflow(entity_id, event.correlation_id)
+            self.advance_workflow(entity_id, event.correlation_id)
 
-    def __start_workflow(self, workflow_type: str, entity_id: str, correlation_id: str = "") -> None:
+    def start_workflow(self, workflow_type: str, entity_id: str, correlation_id: str = "") -> None:
         """Start a new workflow in the store and emit WORKFLOW_STARTED.
 
         Args:
@@ -164,7 +164,7 @@ class Handler(StatefulService):
                 "stages": stages,
                 "stage_index": 0,
                 "status": "active",
-                "started_at": self.__clock.iso(),
+                "started_at": self.clock.iso(),
             },
         )
         self.emit(
@@ -177,7 +177,7 @@ class Handler(StatefulService):
             correlation_id=correlation_id,
         )
 
-    def __advance_workflow(self, entity_id: str, correlation_id: str = "") -> None:
+    def advance_workflow(self, entity_id: str, correlation_id: str = "") -> None:
         """Advance a workflow to the next stage or complete it.
 
         Args:
@@ -193,7 +193,7 @@ class Handler(StatefulService):
             next_idx: int = record["stage_index"] + 1
             if next_idx >= len(record["stages"]):
                 record["status"] = "completed"
-                record["completed_at"] = self.__clock.iso()
+                record["completed_at"] = self.clock.iso()
                 self.store.set(f"workflow:{entity_id}", record)
             else:
                 record["stage_index"] = next_idx

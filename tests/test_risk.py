@@ -1,4 +1,4 @@
-"""Tests for RiskHandler — ML scoring and early-warning signals.
+"""Tests for Handler — ML scoring and early-warning signals.
 
 Tests verify behavior through emitted events:
   - RISK_EARLY_WARNING on default_probability > 0.3
@@ -12,11 +12,12 @@ import pytest
 from underwrite.exceptions import ProtocolError
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.risk.handler import RiskHandler
 from underwrite.store import MemoryStore
+from underwrite.services.risk.handler import Handler
+from underwrite.services.risk.handler import Handler as RiskHandler
 
 
-def risk(bus=None) -> RiskHandler:
+def risk(bus=None) -> Handler:
     return RiskHandler(service_id="risk", bus=bus or LocalBus(), store=MemoryStore())
 
 

@@ -80,7 +80,7 @@ class TestEventBusConcurrency:
 class TestMechanismServiceConcurrency:
     """Verify Handler thread safety under concurrent commands."""
 
-    def __make_mechanism(self, store):
+    def make_mechanism(self, store):
         bus = LocalBus()
         return MechanismHandler(
             name="mechanism",
@@ -90,7 +90,7 @@ class TestMechanismServiceConcurrency:
 
     def test_concurrent_add_seed(self) -> None:
         store = InMemory()
-        mech = self.__make_mechanism(store)
+        mech = self.make_mechanism(store)
         errors: list[Exception] = []
 
         def add_seed(i: int) -> None:
@@ -118,7 +118,7 @@ class TestMechanismServiceConcurrency:
 
     def test_concurrent_add_user_and_originate(self) -> None:
         store = InMemory()
-        mech = self.__make_mechanism(store)
+        mech = self.make_mechanism(store)
         # Set up a seed first
         seed_ev = Message(
             event_type="mechanism",
@@ -154,7 +154,7 @@ class TestMechanismServiceConcurrency:
 
     def test_credit_limit_does_not_race(self) -> None:
         store = InMemory()
-        mech = self.__make_mechanism(store)
+        mech = self.make_mechanism(store)
         # Set up seed + user
         mech.handle(
             Message(

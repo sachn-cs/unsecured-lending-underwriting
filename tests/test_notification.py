@@ -23,7 +23,7 @@ def notify(bus=None) -> Handler:
 
 
 class TestNotificationService:
-    def __assert_forwards(self, event_type: str, payload: dict) -> None:
+    def assert_forwards(self, event_type: str, payload: dict) -> None:
         bus = LocalBus()
         received: list[Message] = []
         bus.subscribe(Type.NOTIFICATION_SENT, lambda e: received.append(e))
@@ -35,22 +35,22 @@ class TestNotificationService:
         assert received[0].payload["payload"] == payload
 
     def test_forwards_fraud_alert(self) -> None:
-        self.__assert_forwards(Type.FRAUD_ALERT, {"borrower": "alice"})
+        self.assert_forwards(Type.FRAUD_ALERT, {"borrower": "alice"})
 
     def test_forwards_wash_flag(self) -> None:
-        self.__assert_forwards(Type.WASH_FLAG, {"borrower": "bob", "cycles": 5})
+        self.assert_forwards(Type.WASH_FLAG, {"borrower": "bob", "cycles": 5})
 
     def test_forwards_velocity_flag(self) -> None:
-        self.__assert_forwards(Type.VELOCITY_FLAG, {"borrower": "carol"})
+        self.assert_forwards(Type.VELOCITY_FLAG, {"borrower": "carol"})
 
     def test_forwards_early_warning(self) -> None:
-        self.__assert_forwards(Type.RISK_EARLY_WARNING, {"borrower": "dave", "dp": 0.35})
+        self.assert_forwards(Type.RISK_EARLY_WARNING, {"borrower": "dave", "dp": 0.35})
 
     def test_forwards_npa_bucket_changed(self) -> None:
-        self.__assert_forwards(Type.NPA_BUCKET_CHANGED, {"borrower": "eve", "bucket": "substandard"})
+        self.assert_forwards(Type.NPA_BUCKET_CHANGED, {"borrower": "eve", "bucket": "substandard"})
 
     def test_forwards_dlg_triggered(self) -> None:
-        self.__assert_forwards(Type.DLG_TRIGGERED, {"loan_id": "frank", "amount": 10000})
+        self.assert_forwards(Type.DLG_TRIGGERED, {"loan_id": "frank", "amount": 10000})
 
     def test_ignores_non_alert_events(self) -> None:
         bus = LocalBus()

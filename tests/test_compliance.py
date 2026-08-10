@@ -75,7 +75,7 @@ class TestPanCategory:
 
 
 class TestComplianceService:
-    def __assert_kyc_result(self, payload: dict, *, expect_kyc: bool, expect_reason: str = "") -> list[Message]:
+    def assert_kyc_result(self, payload: dict, *, expect_kyc: bool, expect_reason: str = "") -> list[Message]:
         bus = LocalBus()
         all_events: list[Message] = []
         bus.subscribe("*", lambda e: all_events.append(e))
@@ -97,7 +97,7 @@ class TestComplianceService:
         return all_events
 
     def test_verified_with_valid_pan_and_aadhaar(self) -> None:
-        events = self.__assert_kyc_result(
+        events = self.assert_kyc_result(
             {"user": "alice", "pan": "ABCPE1234F", "aadhaar": "123456789012"},
             expect_kyc=True,
         )
@@ -106,69 +106,69 @@ class TestComplianceService:
         assert "kyc.video_initiated" in types
 
     def test_rejected_with_invalid_pan(self) -> None:
-        self.__assert_kyc_result(
+        self.assert_kyc_result(
             {"user": "carol", "pan": "INVALID", "aadhaar": "123456789012"},
             expect_kyc=False,
             expect_reason="invalid_pan_format",
         )
 
     def test_rejected_with_invalid_aadhaar_checksum(self) -> None:
-        self.__assert_kyc_result(
+        self.assert_kyc_result(
             {"user": "dave", "pan": "ABCDE1234F", "aadhaar": "123456789011"},
             expect_kyc=False,
             expect_reason="invalid_aadhaar_checksum",
         )
 
     def test_rejected_missing_aadhaar_field(self) -> None:
-        self.__assert_kyc_result(
+        self.assert_kyc_result(
             {"user": "eve", "pan": "ABCDE1234F"},
             expect_kyc=False,
             expect_reason="invalid_aadhaar_checksum",
         )
 
     def test_rejected_missing_pan_field(self) -> None:
-        self.__assert_kyc_result(
+        self.assert_kyc_result(
             {"user": "frank", "aadhaar": "123456789012"},
             expect_kyc=False,
             expect_reason="invalid_pan_format",
         )
 
     def test_rejected_empty_pan(self) -> None:
-        self.__assert_kyc_result(
+        self.assert_kyc_result(
             {"user": "grace", "pan": "", "aadhaar": "123456789012"},
             expect_kyc=False,
             expect_reason="invalid_pan_format",
         )
 
     def test_accepted_lowercase_pan_upper_normalized(self) -> None:
-        self.__assert_kyc_result(
+        self.assert_kyc_result(
             {"user": "heidi", "pan": "abcpe1234f", "aadhaar": "123456789012"},
             expect_kyc=True,
         )
 
     def test_rejected_aadhaar_too_short(self) -> None:
-        self.__assert_kyc_result(
+        self.assert_kyc_result(
             {"user": "jack", "pan": "ABCDE1234F", "aadhaar": "12345678"},
             expect_kyc=False,
             expect_reason="invalid_aadhaar_checksum",
         )
 
     def test_rejected_aadhaar_too_long(self) -> None:
-        self.__assert_kyc_result(
+        self.assert_kyc_result(
             {"user": "karen", "pan": "ABCDE1234F", "aadhaar": "1234567890123"},
             expect_kyc=False,
             expect_reason="invalid_aadhaar_checksum",
         )
 
     def test_rejected_aadhaar_with_spaces(self) -> None:
-        self.__assert_kyc_result(
+        self.assert_kyc_result(
             {"user": "leo", "pan": "ABCDE1234F", "aadhaar": "1234 5678 9012"},
             expect_kyc=False,
             expect_reason="invalid_aadhaar_checksum",
         )
 
     def test_rejected_aadhaar_all_zeros(self) -> None:
-        self.__assert_kyc_result(
+        self.assert_kyc_result(
             {"user": "neo", "pan": "ABCDE1234F", "aadhaar": "000000000000"},
             expect_kyc=False,
             expect_reason="invalid_aadhaar_checksum",

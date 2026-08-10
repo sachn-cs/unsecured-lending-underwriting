@@ -30,7 +30,7 @@ from underwrite.logger import logger
 from underwrite.message import Message, Type
 from underwrite.metrics import Collector, SystemClock
 from underwrite.saga import Orchestrator
-from underwrite.services.base import Core
+from underwrite.services.base import Core, Dependencies
 from underwrite.store import Store
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
@@ -114,8 +114,7 @@ class Handler(Core):
         **kwargs: Any,
     ) -> None:
         """Initialize the KFS service with configurable cooling-off period."""
-        super().__init__(
-            name=name,
+        deps = Dependencies(
             identity=identity,
             bus=bus,
             store=store,
@@ -127,6 +126,19 @@ class Handler(Core):
             supervisor=supervisor,
             secrets_manager=secrets_manager,
             max_concurrent=max_concurrent,
+        )
+        super().__init__(
+            name=name,
+            bus=deps.bus,
+            store=deps.store,
+            metrics=deps.metrics,
+            health=deps.health,
+            authz=deps.authz,
+            tracer=deps.tracer,
+            saga=deps.saga,
+            supervisor=deps.supervisor,
+            secrets_manager=deps.secrets_manager,
+            max_concurrent=deps.max_concurrent,
         )
         self.__clock: SystemClock = SystemClock()
         self.__cooling_off_days: int = kwargs.get("cooling_off_days", DEFAULT_COOLING_OFF_DAYS)

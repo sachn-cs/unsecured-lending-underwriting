@@ -5,7 +5,7 @@ from __future__ import annotations
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
 from underwrite.message import Message, Type
-from underwrite.services import Core
+from underwrite.services.base import Core
 from underwrite.validate import PayloadValidator
 
 

@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from underwrite.constants import MAX_PAYLOAD_KEYS
+from underwrite.keypair import Keypair
 from underwrite.logger import logger
 
 MAX_PAYLOAD_SIZE: int = 1_000_000

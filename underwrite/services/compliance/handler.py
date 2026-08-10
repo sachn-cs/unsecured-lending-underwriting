@@ -22,7 +22,7 @@ from underwrite.logger import logger
 from underwrite.message import Message, Type
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
-from underwrite.services.base import StatefulService
+from underwrite.services.base import Dependencies, StatefulService
 from underwrite.services.persistence import TypedStoreRepository
 from underwrite.store import Store
 from underwrite.supervisor import Watcher
@@ -207,8 +207,7 @@ class Handler(StatefulService):
         )
         self.__aml_blocklist_path: str = config.aml_blocklist_path
         self.__kyc_providers: dict[str, Any] = config.kyc_providers
-        super().__init__(
-            name=name,
+        deps = Dependencies(
             identity=identity,
             bus=bus,
             store=store,
@@ -220,6 +219,19 @@ class Handler(StatefulService):
             supervisor=supervisor,
             secrets_manager=secrets_manager,
             max_concurrent=max_concurrent,
+        )
+        super().__init__(
+            name=name,
+            bus=deps.bus,
+            store=deps.store,
+            metrics=deps.metrics,
+            health=deps.health,
+            authz=deps.authz,
+            tracer=deps.tracer,
+            saga=deps.saga,
+            supervisor=deps.supervisor,
+            secrets_manager=deps.secrets_manager,
+            max_concurrent=deps.max_concurrent,
         )
         self.__blocklist: set[str] = load_blocklist(self.__aml_blocklist_path)
         self.__kyc_records: dict[str, dict[str, Any]] = {}

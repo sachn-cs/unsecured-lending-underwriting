@@ -27,7 +27,7 @@ from underwrite.logger import logger
 from underwrite.message import Message, Type
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
-from underwrite.services.base import StatefulService
+from underwrite.services.base import Dependencies, StatefulService
 from underwrite.services.persistence import BatchedStoreRepository
 from underwrite.services.razorpay.client import (
     HttpRazorpayClient,
@@ -101,8 +101,7 @@ class Handler(StatefulService):
             api_base_url=kwargs.pop("api_base_url", DEFAULT_RAZORPAY_API_BASE_URL),
             timeout_seconds=kwargs.pop("timeout_seconds", 30),
         )
-        super().__init__(
-            name=name,
+        deps = Dependencies(
             identity=identity,
             bus=bus,
             store=store,
@@ -114,6 +113,19 @@ class Handler(StatefulService):
             supervisor=supervisor,
             secrets_manager=secrets_manager,
             max_concurrent=max_concurrent,
+        )
+        super().__init__(
+            name=name,
+            bus=deps.bus,
+            store=deps.store,
+            metrics=deps.metrics,
+            health=deps.health,
+            authz=deps.authz,
+            tracer=deps.tracer,
+            saga=deps.saga,
+            supervisor=deps.supervisor,
+            secrets_manager=deps.secrets_manager,
+            max_concurrent=deps.max_concurrent,
         )
         self.__client: RazorpayClient = self.build_client(
             key_id=config.key_id,

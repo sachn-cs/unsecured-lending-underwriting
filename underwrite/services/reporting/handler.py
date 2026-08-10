@@ -15,7 +15,7 @@ from underwrite.keypair import Keypair
 from underwrite.message import Message, Type
 from underwrite.metrics import Collector, SystemClock
 from underwrite.saga import Orchestrator
-from underwrite.services.base import StatefulService
+from underwrite.services.base import Dependencies, StatefulService
 from underwrite.services.persistence import TypedStoreRepository
 from underwrite.store import Store
 from underwrite.supervisor import Watcher
@@ -48,8 +48,7 @@ class Handler(StatefulService):
         **kwargs: Any,
     ) -> None:
         """Initialize the reporting service with empty counters."""
-        super().__init__(
-            name=name,
+        deps = Dependencies(
             identity=identity,
             bus=bus,
             store=store,
@@ -61,6 +60,19 @@ class Handler(StatefulService):
             supervisor=supervisor,
             secrets_manager=secrets_manager,
             max_concurrent=max_concurrent,
+        )
+        super().__init__(
+            name=name,
+            bus=deps.bus,
+            store=deps.store,
+            metrics=deps.metrics,
+            health=deps.health,
+            authz=deps.authz,
+            tracer=deps.tracer,
+            saga=deps.saga,
+            supervisor=deps.supervisor,
+            secrets_manager=deps.secrets_manager,
+            max_concurrent=deps.max_concurrent,
         )
         self.__clock: SystemClock = SystemClock()
         self.__originations: int = 0

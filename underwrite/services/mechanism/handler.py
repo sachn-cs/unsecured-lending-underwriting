@@ -19,7 +19,7 @@ from underwrite.logger import logger
 from underwrite.message import Message, Type
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
-from underwrite.services.base import Core
+from underwrite.services.base import Core, Dependencies
 from underwrite.services.mechanism.graph import DelegationGraph
 from underwrite.store import Store
 from underwrite.supervisor import Watcher
@@ -59,8 +59,7 @@ class Handler(Core):
         **kwargs: Any,
     ) -> None:
         """Initialize the mechanism service and load persisted state."""
-        super().__init__(
-            name=name,
+        deps = Dependencies(
             identity=identity,
             bus=bus,
             store=store,
@@ -72,6 +71,19 @@ class Handler(Core):
             supervisor=supervisor,
             secrets_manager=secrets_manager,
             max_concurrent=max_concurrent,
+        )
+        super().__init__(
+            name=name,
+            bus=deps.bus,
+            store=deps.store,
+            metrics=deps.metrics,
+            health=deps.health,
+            authz=deps.authz,
+            tracer=deps.tracer,
+            saga=deps.saga,
+            supervisor=deps.supervisor,
+            secrets_manager=deps.secrets_manager,
+            max_concurrent=deps.max_concurrent,
         )
         self.__graph: DelegationGraph = DelegationGraph()
         self.__command_handlers: dict[str, CommandHandler] = {

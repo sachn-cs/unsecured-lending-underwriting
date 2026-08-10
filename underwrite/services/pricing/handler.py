@@ -21,7 +21,7 @@ from underwrite.keypair import Keypair
 from underwrite.message import Message, Type
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
-from underwrite.services import Core
+from underwrite.services.base import Core, Dependencies
 from underwrite.store import Store
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
@@ -163,8 +163,7 @@ class Handler(Core):
             rate_cap=kwargs.get("rate_cap", DEFAULT_LOAN_CAP),
             penal_interest_cap=kwargs.get("penal_interest_cap", PENAL_INTEREST_CAP),
         )
-        super().__init__(
-            name=name,
+        deps = Dependencies(
             identity=identity,
             bus=bus,
             store=store,
@@ -176,6 +175,19 @@ class Handler(Core):
             supervisor=supervisor,
             secrets_manager=secrets_manager,
             max_concurrent=max_concurrent,
+        )
+        super().__init__(
+            name=name,
+            bus=deps.bus,
+            store=deps.store,
+            metrics=deps.metrics,
+            health=deps.health,
+            authz=deps.authz,
+            tracer=deps.tracer,
+            saga=deps.saga,
+            supervisor=deps.supervisor,
+            secrets_manager=deps.secrets_manager,
+            max_concurrent=deps.max_concurrent,
         )
         self.__rate_cap: float = config.rate_cap
         self.__penal_interest_cap: float = config.penal_interest_cap

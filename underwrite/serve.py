@@ -209,7 +209,7 @@ def create_app(
     )
     async def v1_metrics_endpoint():
         try:
-            from underwrite.exporter import metrics_as_text
+            from underwrite.exporter import prometheus_text
 
             return PlainTextResponse(
                 prometheus_text(runtime),
@@ -287,7 +287,7 @@ def create_app(
     )
     async def metrics_endpoint():
         try:
-            from underwrite.exporter import metrics_as_text
+            from underwrite.exporter import prometheus_text
 
             return PlainTextResponse(
                 prometheus_text(runtime),

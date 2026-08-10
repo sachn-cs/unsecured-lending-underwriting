@@ -32,7 +32,7 @@ DEFAULT_GRIEVANCE_RESPONSE_DAYS: int = 15
 
 @dataclass(frozen=True, slots=True)
 class DsrConfig:
-    """Typed configuration for DataSubjectRightsHandler.
+    """Typed configuration for Handler.
 
     Replaces the previous ``kwargs.pop("response_time_days", ...)``
     pattern: callers now pass a DsrConfig (or its fields are
@@ -44,7 +44,7 @@ class DsrConfig:
     grievance_response_days: int = DEFAULT_GRIEVANCE_RESPONSE_DAYS
 
 
-class DataSubjectRightsHandler(StatefulService):
+class Handler(StatefulService):
     """Handles DSR requests and grievance redressal per DPDPA 2023.
 
     Supports:

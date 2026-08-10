@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Tests for validate.py — all 12 shared validation helpers."""
 
 from __future__ import annotations

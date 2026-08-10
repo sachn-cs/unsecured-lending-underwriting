@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Tests for new stub services: underwriter, pricing, document, disbursement, collection, settlement."""
 
 from __future__ import annotations

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Tests for Indian number formatting utilities."""
 
 from __future__ import annotations

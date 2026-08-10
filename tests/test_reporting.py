@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Tests for Handler — regulatory report generation.
 
 Tests verify behavior through the public generate_report() method.

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Exhaustive tests for Handler — the core state machine.
 
 Covers every state transition, every edge case, and all invariants.

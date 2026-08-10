@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Tests for Runtime — OTLP tracer, logging config, import errors, wiring."""
 
 from __future__ import annotations

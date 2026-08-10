@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Tests for Handler — credit bureau checks and CKYC verification."""
 
 from __future__ import annotations

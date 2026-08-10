@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Tests for KFS service — Key Fact Statement generation."""
 
 from __future__ import annotations

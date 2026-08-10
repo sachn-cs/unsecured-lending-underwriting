@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Integration tests — end-to-end bus → service → store → bus pipeline.
 
 Tests verify that real services react correctly when wired through the

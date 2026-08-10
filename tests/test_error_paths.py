@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Error-path tests for narrowed exception blocks — graceful degradation checks."""
 
 from __future__ import annotations

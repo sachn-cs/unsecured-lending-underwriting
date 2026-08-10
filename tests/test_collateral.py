@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Tests for Handler — LTV tracking and liquidation.
 
 Tests verify behavior through public interfaces only:

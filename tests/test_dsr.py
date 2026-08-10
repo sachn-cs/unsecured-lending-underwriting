@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Tests for Handler — DPDPA-compliant DSR and grievance handling."""
 
 from __future__ import annotations

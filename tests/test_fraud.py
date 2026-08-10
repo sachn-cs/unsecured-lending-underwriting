@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Tests for Handler — wash lending, burst detection, large origination alerts.
 
 Tests verify behavior through emitted events only:

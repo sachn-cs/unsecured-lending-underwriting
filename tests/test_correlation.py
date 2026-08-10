@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Tests for the shared correlation context in :mod:`underwrite.correlation`.
 
 Covers the public surface: the default (unset) correlation id, explicit

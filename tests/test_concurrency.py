@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Concurrency tests — verify thread safety of critical components.
 
 Tests run multiple threads concurrently to expose data races in:

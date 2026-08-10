@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Property-based tests for validate.py and __amortization__.py using hypothesis.
 
 AGENTS.md § Testing: "Property-Based Testing — Where appropriate,

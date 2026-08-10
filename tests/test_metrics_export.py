@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Tests for Prometheus prometheus text formatting."""
 
 from __future__ import annotations

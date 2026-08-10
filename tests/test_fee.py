@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Exhaustive tests for Handler."""
 
 from __future__ import annotations

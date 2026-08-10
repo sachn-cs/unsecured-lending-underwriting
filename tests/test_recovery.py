@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Tests for Handler — multi-stage post-default recovery orchestration.
 
 Tests verify the full recovery workflow with store-backed persistence:

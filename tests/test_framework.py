@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Exhaustive tests for the underwrite framework.
 
 Covers: Configuration, Keypair, Message, EventBus, Store, Core, Runtime.

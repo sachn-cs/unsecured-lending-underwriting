@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Tests for Handler — dispatch alerts to configured channels.
 
 Tests verify behavior through emitted NOTIFICATION_SENT events and

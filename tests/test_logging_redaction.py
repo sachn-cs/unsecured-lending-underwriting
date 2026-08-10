@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Tests for the centralised loguru logging and PII redaction.
 
 Covers the public surface of :mod:`underwrite.logger`: message

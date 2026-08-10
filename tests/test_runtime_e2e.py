@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """End-to-end tests — full event flow through Runtime.
 
 Tests verify the complete pipeline: Runtime.publish() → bus → dispatch

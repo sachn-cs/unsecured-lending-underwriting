@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Tests for Handler — read-only delegation graph queries.
 
 Tests verify behavior through emitted events only:

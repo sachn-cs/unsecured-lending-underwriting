@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Tests for Handler — RBI-mandated asset classification and DLG triggers.
 
 Tests verify behavior through:

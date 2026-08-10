@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Tests for CLI error-handling paths — missing config, crypto guard, migrate."""
 
 from __future__ import annotations

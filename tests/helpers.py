@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Shared test helpers — reusable classes and factories.
 
 These are imported by test files and used directly (not as pytest fixtures).

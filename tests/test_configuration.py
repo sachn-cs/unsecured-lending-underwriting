@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Tests for Configuration — loading, unknown-key rejection, defaults."""
 
 from __future__ import annotations

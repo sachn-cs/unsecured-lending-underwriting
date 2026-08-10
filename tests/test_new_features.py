@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Tests for recently added features — payload limits, store eviction, async bus timeout, etc."""
 
 from __future__ import annotations

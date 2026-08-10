@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Tests for secrets backends — EnvSecretsBackend, VaultSecretsBackend,
 AwsSecretsBackend, and Manager factory."""
 

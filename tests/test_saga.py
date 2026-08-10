@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Tests for Saga orchestration — execution, rollback, and persistence."""
 
 from __future__ import annotations

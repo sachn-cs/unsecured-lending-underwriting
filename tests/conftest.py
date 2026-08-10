@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Shared fixtures for the underwrite test suite."""
 
 from __future__ import annotations

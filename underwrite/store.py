@@ -155,7 +155,7 @@ class Disk:
             self.executor.shutdown(wait=wait)
             self.executor = None
 
-    def __timeout(self, fn: Any, *args: Any, **kwargs: Any) -> Any:
+    def timeout(self, fn: Any, *args: Any, **kwargs: Any) -> Any:
         if self.executor is None:
             return fn(*args, **kwargs)
         fut = self.executor.submit(fn, *args, **kwargs)
@@ -164,14 +164,14 @@ class Disk:
         except concurrent.futures.TimeoutError:
             raise TimeoutError(FILE_TIMEOUT_MSG % (self.operation_timeout, fn.__name__)) from None
 
-    def __circuit_call(self, fn: Any, *args: Any, **kwargs: Any) -> Any:
+    def circuit_call(self, fn: Any, *args: Any, **kwargs: Any) -> Any:
         if self.circuit is None:
             return fn(*args, **kwargs)
         return self.circuit.call(fn, *args, **kwargs)
 
     def get(self, key: str) -> Any | None:
         def _read() -> Any | None:
-            path = self.__path(key)
+            path = self.path(key)
             if not path.exists():
                 return None
             try:
@@ -189,13 +189,13 @@ class Disk:
                 raise StoreError(f"corrupted store file for {key!r}: {exc}") from None
 
         try:
-            return self.__timeout(_read) if self.executor else self.__circuit_call(_read)
+            return self.timeout(_read) if self.executor else self.circuit_call(_read)
         except TimeoutError:
             return None
 
     def set(self, key: str, value: Any) -> None:
         def _write() -> None:
-            path = self.__path(key)
+            path = self.path(key)
             tmp = path.with_suffix(path.suffix + ".tmp")
             try:
                 with open(tmp, "w") as f:
@@ -210,24 +210,24 @@ class Disk:
                 logger.exception("failed to write store key {}", key)
 
         if self.executor:
-            self.__timeout(_write)
+            self.timeout(_write)
         else:
-            self.__circuit_call(_write)
+            self.circuit_call(_write)
 
     def delete(self, key: str) -> bool:
         def _delete() -> bool:
-            path = self.__path(key)
+            path = self.path(key)
             if path.exists():
                 path.unlink()
                 return True
             return False
 
         if self.executor:
-            return bool(self.__timeout(_delete))
-        return bool(self.__circuit_call(_delete))
+            return bool(self.timeout(_delete))
+        return bool(self.circuit_call(_delete))
 
     def exists(self, key: str) -> bool:
-        return self.__path(key).exists()
+        return self.path(key).exists()
 
     def keys(self, pattern: str | None = None, limit: int = 0, offset: int = 0) -> list[str]:
         def _list() -> list[str]:
@@ -240,7 +240,7 @@ class Disk:
                     out.append(name)
             return out
 
-        result = self.__timeout(_list) if self.executor else self.__circuit_call(_list)
+        result = self.timeout(_list) if self.executor else self.circuit_call(_list)
         result.sort()
         if offset > 0:
             result = result[offset:]
@@ -248,7 +248,7 @@ class Disk:
             result = result[:limit]
         return result
 
-    def __path(self, key: str) -> Path:
+    def path(self, key: str) -> Path:
         if not key or ".." in key or key.startswith("/") or key.startswith("\\"):
             raise StoreError(f"invalid store key: {key!r}")
         safe = key.replace("/", "_").replace("\\", "_")

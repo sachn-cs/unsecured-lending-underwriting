@@ -78,9 +78,9 @@ class Handler(Core):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.__model: RiskModel | None = None
+        self.model: RiskModel | None = None
         model_path: str = os.environ.get("RISK_MODEL_PATH", "")
-        self.__model = RiskModel(model_path) if model_path else RiskModel()
+        self.model = RiskModel(model_path) if model_path else RiskModel()
 
     def set_model(self, model: Any) -> None:
         """Inject a model instance for testing or runtime override.
@@ -89,7 +89,7 @@ class Handler(Core):
             model: A risk-model-like object with a ``predict(principal, term)``
                 method.
         """
-        self.__model = model
+        self.model = model
 
     def handle(self, event: Message) -> None:
         """Score new loans and emit early-warning signals.
@@ -109,11 +109,11 @@ class Handler(Core):
                     },
                     correlation_id=event.correlation_id,
                 )
-            if self.__model:
+            if self.model:
                 try:
                     principal: float = PayloadValidator().finite(event.payload, "principal")
                     term: float = PayloadValidator().finite(event.payload, "term", 1.0)
-                    score: float = self.__model.predict(principal, term)
+                    score: float = self.model.predict(principal, term)
                 except Exception as exc:
                     logger.exception("risk scoring failed for {}: {}", borrower, exc)
                     if self.metrics_collector:
@@ -142,5 +142,5 @@ class Handler(Core):
         """
         return {
             **super().health_check(),
-            "model_present": self.__model is not None,
+            "model_present": self.model is not None,
         }

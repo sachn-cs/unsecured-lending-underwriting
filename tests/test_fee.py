@@ -1,4 +1,4 @@
-"""Exhaustive tests for FeeHandler."""
+"""Exhaustive tests for Handler."""
 
 from __future__ import annotations
 
@@ -6,8 +6,9 @@ import pytest
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.fee.handler import FeeHandler
 from underwrite.store import MemoryStore
+from underwrite.services.fee.handler import Handler
+from underwrite.services.fee.handler import Handler as FeeHandler
 
 
 class TestFeeService:
@@ -145,7 +146,7 @@ class TestFeeService:
 
 class TestIndianFeeService:
     def test_penal_interest_assessed(self) -> None:
-        svc = FeeHandler(
+        svc = Handler(
             service_id="fee",
             penal_interest_daily_rate=0.05,
             max_penal_interest_per_loan=1000.0,
@@ -174,7 +175,7 @@ class TestIndianFeeService:
         assert rec["amount"] == 150.0
 
     def test_penal_interest_capped(self) -> None:
-        svc = FeeHandler(
+        svc = Handler(
             service_id="fee",
             penal_interest_daily_rate=5.0,
             max_penal_interest_per_loan=500.0,

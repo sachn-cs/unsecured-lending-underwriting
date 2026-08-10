@@ -71,8 +71,8 @@ class Handler(StatefulService):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.__documents: dict[str, list[dict[str, Any]]] = {}
-        self.__id_generator: IdGenerator = IdGenerator()
+        self.documents: dict[str, list[dict[str, Any]]] = {}
+        self.id_generator: IdGenerator = IdGenerator()
         self.repo: TypedStoreRepository[dict[str, list[dict[str, Any]]]] = self.store_repo("documents", dict)
 
     def start(self) -> None:
@@ -80,7 +80,7 @@ class Handler(StatefulService):
         super().start()
         loaded = self.repo.load(default={})
         if loaded:
-            self.__documents = loaded
+            self.documents = loaded
 
     def handle(self, event: Message) -> None:
         """Generate a document record on underwriter approval.
@@ -93,7 +93,7 @@ class Handler(StatefulService):
         p = event.payload
         borrower: str = PayloadValidator().non_empty(p, "borrower")
         principal: float = PayloadValidator().finite(p, "principal")
-        doc_id: str = self.__id_generator.next()
+        doc_id: str = self.id_generator.next()
 
         record = {
             "doc_id": doc_id,
@@ -102,8 +102,8 @@ class Handler(StatefulService):
             "status": "generated",
         }
         with self.state_lock:
-            self.__documents.setdefault(borrower, []).append(record)
-            self.repo.save(self.__documents)
+            self.documents.setdefault(borrower, []).append(record)
+            self.repo.save(self.documents)
 
         self.emit(
             Type.DOCUMENT_GENERATED,
@@ -125,4 +125,4 @@ class Handler(StatefulService):
             List of document records for the borrower.
         """
         with self.state_lock:
-            return list(self.__documents.get(borrower, []))
+            return list(self.documents.get(borrower, []))

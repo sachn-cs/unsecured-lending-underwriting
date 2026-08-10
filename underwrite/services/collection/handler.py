@@ -88,12 +88,12 @@ class Handler(StatefulService):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.__clock: SystemClock = SystemClock()
-        self.__loans: dict[str, dict[str, Any]] = {}
+        self.clock: SystemClock = SystemClock()
+        self.loans: dict[str, dict[str, Any]] = {}
         self.repo: TypedStoreRepository[dict[str, dict[str, Any]]] = self.store_repo("loans", dict)
         loaded = self.repo.load(default={})
         if loaded:
-            self.__loans = loaded
+            self.loans = loaded
 
     def handle(self, event: Message) -> None:
         """Process loan origination and repayment events.
@@ -118,7 +118,7 @@ class Handler(StatefulService):
 
         with self.state_lock:
             if annual_rate > 0 and term > 0:
-                sched = self.__build_schedule(principal, annual_rate, term, start_date_str)
+                sched = self.build_schedule(principal, annual_rate, term, start_date_str)
                 monthly = float(sched.emi)
             else:
                 monthly = principal / term if term > 0 else 0.0
@@ -129,12 +129,12 @@ class Handler(StatefulService):
                 "monthly": monthly,
                 "paid": 0.0,
                 "status": "active",
-                "created_at": self.__clock.iso(),
+                "created_at": self.clock.iso(),
             }
             if annual_rate > 0:
                 loan_record["schedule"] = sched.to_dict()
-            self.__loans[borrower] = loan_record
-            self.repo.save(self.__loans)
+            self.loans[borrower] = loan_record
+            self.repo.save(self.loans)
 
         self.emit(
             Type.COLLECTION_UPDATED,
@@ -157,12 +157,12 @@ class Handler(StatefulService):
         delta: float = PayloadValidator().finite(p, "delta_earned")
         emit_data: dict[str, Any] | None = None
         with self.state_lock:
-            loan = self.__loans.get(borrower)
+            loan = self.loans.get(borrower)
             if loan:
                 loan["paid"] += delta
                 if loan["paid"] >= loan["principal"]:
                     loan["status"] = "closed"
-                self.repo.save(self.__loans)
+                self.repo.save(self.loans)
                 emit_data = {
                     "borrower": borrower,
                     "paid": round(loan["paid"], 2),
@@ -187,10 +187,10 @@ class Handler(StatefulService):
 
         """
         with self.state_lock:
-            return self.__loans.get(borrower)
+            return self.loans.get(borrower)
 
     @staticmethod
-    def __build_schedule(
+    def build_schedule(
         principal: float,
         annual_rate: float,
         term: int,

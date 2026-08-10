@@ -156,7 +156,7 @@ def pan_category(pan: str) -> str:
 
 @dataclass(frozen=True, slots=True)
 class ComplianceConfig:
-    """Typed configuration for ComplianceHandler.
+    """Typed configuration for Handler.
 
     Replaces the previous ``kwargs.pop("aml_blocklist_path", ...)``
     pattern: callers now pass a ComplianceConfig (or its fields are
@@ -168,7 +168,7 @@ class ComplianceConfig:
     kyc_providers: dict[str, Any] = field(default_factory=dict)
 
 
-class ComplianceHandler(StatefulService):
+class Handler(StatefulService):
     """RBI-compliant KYC/AML verification with risk scoring and AML screening."""
 
     def __init__(

@@ -283,7 +283,7 @@ class Sqlite:
 
     def _init_schema(self) -> None:
         with self._connect() as conn:
-            conn.execute("CREATE TABLE IF NOT EXISTS store (" "  key TEXT PRIMARY KEY," "  value BLOB NOT NULL" ")")
+            conn.execute("CREATE TABLE IF NOT EXISTS store (  key TEXT PRIMARY KEY,  value BLOB NOT NULL)")
             conn.commit()
 
     @contextmanager

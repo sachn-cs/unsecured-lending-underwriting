@@ -23,7 +23,7 @@ from typing import Any, Protocol
 from underwrite.exceptions import ProtocolError
 from underwrite.logger import logger
 from underwrite.message import Message
-from underwrite.store import InMemory, Store
+from underwrite.store import InMemory, Store, StoreBackend
 
 
 class Emitter(Protocol):
@@ -135,7 +135,7 @@ class Orchestrator:
         self.__saga_locks: dict[str, threading.RLock] = {}
         self.__sagas: dict[str, Saga] = {}
         self.__emitters: dict[str, Emitter] = {}
-        self.__store: Store = store or InMemory()
+        self.__store: StoreBackend = store or InMemory()
         self.__compensation_executor: concurrent.futures.ThreadPoolExecutor | None = None
         self.__load_sagas()
 

@@ -153,13 +153,16 @@ def dlq(
     """Shows dead-letter queue info, or replays dead-letter events."""
     config = load_config()
     runtime = Runtime(config, readonly=True)
-    dq = runtime.bus.dlq
+    from underwrite.dlq import Queue as _DLQQueue
+
+    dq: _DLQQueue = runtime.bus.dlq
     if replay:
         replayed = dq.replay(runtime.bus, max_count=max_count)
         typer.echo(f"Replayed {replayed} dead-letter event(s)")
         return
     typer.echo(f"Dead-letter queue: {dq.count} entries")
-    for r in dq.records[:20]:
+    records = list(dq.records)
+    for r in records[:20]:
         typer.echo(
             f"  [{r.timestamp:.1f}] {r.subscriber_id}: {r.event.event_type} — {r.error[:60]}",
         )

@@ -7,6 +7,7 @@ from collections import deque
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
+from underwrite.bus import EventBus
 from underwrite.circuit import Breaker
 from underwrite.dlq import Queue
 from underwrite.idempotency import Guard
@@ -20,10 +21,13 @@ if TYPE_CHECKING:
     pass
 
 
-# To avoid a circular import between bus.py and local.py, declare LocalBus
-# without an explicit base and patch __bases__ after bus.py has loaded.
-# This is the standard pattern for breaking such cycles (used in many stdlib
-# modules, e.g. typing.io).
+# LocalBus implements EventBus structurally (Protocol) — no inheritance
+# to avoid the circular import and the deallocator mismatch that
+# prevents ``__bases__`` patching.
+if TYPE_CHECKING:
+    pass
+
+
 class LocalBus:
     """Thread-safe in-process event bus with async dispatch and idempotency."""
 
@@ -181,3 +185,9 @@ class LocalBus:
             logger.exception("subscriber {} failed on {} ({}), sent to DLQ", sid, event.event_type, exc)
             self.__dlq.put(event, f"{type(exc).__name__}: {exc}", sid)
             self.__circuit_breaker.record_failure(sid)
+
+
+# Register LocalBus as a virtual subclass of EventBus (avoids the
+# deallocator-mismatch error from __bases__ assignment; ABC.register
+# is the standard pattern for breaking the abstract-base / concrete cycle).
+EventBus.register(LocalBus)

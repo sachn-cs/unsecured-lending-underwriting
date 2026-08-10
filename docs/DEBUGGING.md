@@ -45,6 +45,7 @@ To clear the DLQ programmatically:
 
 ```python
 from underwrite.__bus__ import DeadLetterQueue
+
 dlq = DeadLetterQueue()
 dlq.clear()
 ```
@@ -138,10 +139,7 @@ rt.bus.start()
 rt.start(["fee"])
 
 svc = rt.get("fee")
-svc.handle(
-    Event(event_type="fee.assess", source="debug",
-          payload={"loan_id": "DBG1", "fee_type": "late_payment"})
-)
+svc.handle(Event(event_type="fee.assess", source="debug", payload={"loan_id": "DBG1", "fee_type": "late_payment"}))
 print("Keys:", svc.store.keys("fee:"))
 rt.stop()
 ```
@@ -203,6 +201,7 @@ Subscribe a wildcard handler to capture all events:
 
 ```python
 from underwrite.__bus__ import LocalBus
+
 bus = LocalBus()
 all_events: list = []
 bus.subscribe("*", lambda e: all_events.append(e))
@@ -270,6 +269,7 @@ Check circuit state:
 
 ```python
 from underwrite.__circuit__ import CircuitBreaker
+
 cb = CircuitBreaker()
 print(cb.state)  # CircuitState.CLOSED / OPEN / HALF_OPEN
 ```
@@ -285,7 +285,7 @@ Sagas coordinate multi-step distributed transactions. Inspect saga state:
 ```python
 orchestrator = rt.saga
 saga = orchestrator.get_saga("saga-id-here")
-print(f"Status: {saga.status}")          # started / completed / compensating / rolled_back
+print(f"Status: {saga.status}")  # started / completed / compensating / rolled_back
 print(f"Steps: {len(saga.steps)}")
 print(f"Completed: {saga.completed_steps}")
 print(f"Error: {saga.error}")

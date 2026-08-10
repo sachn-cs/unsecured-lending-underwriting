@@ -59,9 +59,12 @@ two methods:
 
 ```python
 from underwrite.services.kyc_providers import (
-    PanVerificationClient, AadhaarEKycClient,
-    CibilBureauClient, CkycSearchClient,
-    Verdict, ProviderResult,
+    PanVerificationClient,
+    AadhaarEKycClient,
+    CibilBureauClient,
+    CkycSearchClient,
+    Verdict,
+    ProviderResult,
 )
 ```
 

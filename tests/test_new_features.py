@@ -116,7 +116,7 @@ class TestCryptoGuardrail:
 
 
 class TestAsyncBusTimeout:
-    """AsyncLocalBus enforces per-handler timeout."""
+    """AsyncEventBus enforces per-handler timeout."""
 
     @pytest.mark.asyncio
     async def test_handler_timeout_sends_to_dlq(self) -> None:

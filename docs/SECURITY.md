@@ -30,8 +30,8 @@ with a `ValueError`.
 
 ```python
 acl = AccessControl()
-acl.allow("audit", "*")        # audit service may subscribe to all events
-acl.deny(  "foreign_svc", "*") # foreign_svc is blocked
+acl.allow("audit", "*")  # audit service may subscribe to all events
+acl.deny("foreign_svc", "*")  # foreign_svc is blocked
 ```
 
 ### Policy Evaluation
@@ -72,10 +72,7 @@ of any trusted key cannot re-stamp events under another service id.
 The signing bytes are produced by `Event.canonical_sign_bytes()`:
 
 ```python
-to_sign = (
-    f"{event.event_id}|{event.timestamp}|{event.event_type}"
-    f"|{event.source}|{payload_str}"
-)
+to_sign = f"{event.event_id}|{event.timestamp}|{event.event_type}|{event.source}|{payload_str}"
 signature = identity.sign(to_sign)
 ```
 

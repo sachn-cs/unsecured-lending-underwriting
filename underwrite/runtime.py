@@ -49,7 +49,7 @@ from underwrite.migrate import default_plan
 from underwrite.saga import Orchestrator
 from underwrite.secrets import Manager
 from underwrite.services.kyc.base import Provider
-from underwrite.store import Disk, InMemory, Store
+from underwrite.store import Store
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
 
@@ -106,11 +106,11 @@ def build_tracer(config: Configuration) -> Tracer | None:
 def build_store(config: Configuration) -> Store:
     cfg = config.store
     if cfg.backend == "filesystem":
-        return Disk(config.data_dir)
+        return Store(type=Store.DISK, data_dir=config.data_dir)
     elif cfg.backend == "memory":
-        return InMemory()
+        return Store(type=Store.MEMORY)
     logger.warning("unrecognized store backend {!r}, falling back to Disk", cfg.backend)
-    return Disk(config.data_dir)
+    return Store(type=Store.DISK, data_dir=config.data_dir)
 
 
 def build_read_store(config: Configuration) -> Store | None:
@@ -118,9 +118,9 @@ def build_read_store(config: Configuration) -> Store | None:
     if not cfg.read_backend:
         return None
     if cfg.read_backend == "filesystem":
-        return Disk(config.data_dir)
+        return Store(type=Store.DISK, data_dir=config.data_dir)
     logger.warning("unrecognized read store backend {!r}, falling back to InMemory", cfg.read_backend)
-    return InMemory()
+    return Store(type=Store.MEMORY)
 
 
 def start_metrics_export(metrics_collector: Collector | None, config: Configuration) -> Exporter | None:
@@ -222,12 +222,13 @@ def build_event_bus(bus_config: Any, store: Store) -> EventBus:
             queue_name=bus_config.modal_queue_name,
             store=store,
         )
-    return LocalBus(
+    bus = LocalBus(
         rate_limit=bus_config.rate_limit,
         max_workers=bus_config.max_workers,
         max_futures=bus_config.max_futures,
         store=store,
     )
+    return bus  # type: ignore[return-value]
 
 
 def build_authz(authz_config: Any) -> AccessControl | None:
@@ -295,7 +296,7 @@ class Runtime:
         self.__publisher_identities = {}
         self.__publisher_lock = threading.Lock()
         if readonly:
-            self.__bus = LocalBus(store=self.__store)
+            self.__bus = LocalBus(store=self.__store)  # type: ignore[assignment]
             self.__health = Checks()
             self.__tracer = None
             self.__secrets = None

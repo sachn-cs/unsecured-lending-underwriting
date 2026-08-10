@@ -142,12 +142,10 @@ class Store(ABC):
     """Abstract key-value store.  Thread-safe."""
 
     @abstractmethod
-    def get(self, key: str) -> Any | None:
-        ...
+    def get(self, key: str) -> Any | None: ...
 
     @abstractmethod
-    def set(self, key: str, value: Any) -> None:
-        ...
+    def set(self, key: str, value: Any) -> None: ...
 ```
 
 Key ABCs in the codebase:
@@ -230,13 +228,7 @@ from underwrite.__exceptions__ import (
 )
 from underwrite.services import NanoService
 
-__all__: list[str] = [
-    "Runtime",
-    "Configuration",
-    "NanoService",
-    "Event",
-    ...
-]
+__all__: list[str] = ["Runtime", "Configuration", "NanoService", "Event", ...]
 ```
 
 ## Dataclass Usage
@@ -265,6 +257,7 @@ When `from __future__ import annotations` is used (preferred), place it immediat
 
 ```python
 """Persistence abstraction for state and log storage."""
+
 from __future__ import annotations
 ```
 

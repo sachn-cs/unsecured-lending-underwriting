@@ -11,7 +11,7 @@ import pytest
 from tests.helpers import MockReadStore, MockStore
 from underwrite.exceptions import StoreError
 from underwrite.metrics import Collector
-from underwrite.store import CQRSStore, Disk, InMemory, Sqlite, Store
+from underwrite.store import CQRSStore, Disk, InMemory, Store
 
 
 class TestFileStoreCorruption:

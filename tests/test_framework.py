@@ -12,6 +12,7 @@ from typing import Any
 
 import pytest
 
+from underwrite.bus import EventBus
 from underwrite.config import HANDLER_NAMES, Configuration
 from underwrite.exceptions import (
     ServiceNotFoundError,
@@ -123,13 +124,13 @@ class TestEvent:
 
 
 # =============================================================================
-# EventBus (LocalBus)
+# EventBus (EventBus)
 # =============================================================================
 
 
-class TestLocalBus:
+class TestEventBus:
     def test_publish_and_deliver(self) -> None:
-        bus: LocalBus = LocalBus()
+        bus: EventBus = LocalBus()
         received: list[Message] = []
 
         def handler(event: Message) -> None:
@@ -143,7 +144,7 @@ class TestLocalBus:
         assert received[0].event_type == "test.event"
 
     def test_wildcard_subscriber(self) -> None:
-        bus: LocalBus = LocalBus()
+        bus: EventBus = LocalBus()
         received: list[Message] = []
 
         def handler(event: Message) -> None:
@@ -157,7 +158,7 @@ class TestLocalBus:
         assert len(received) == 2
 
     def test_unsubscribe(self) -> None:
-        bus: LocalBus = LocalBus()
+        bus: EventBus = LocalBus()
         received: list[Message] = []
 
         def handler(event: Message) -> None:
@@ -171,7 +172,7 @@ class TestLocalBus:
         assert len(received) == 0
 
     def test_handler_exception_does_not_crash(self) -> None:
-        bus: LocalBus = LocalBus()
+        bus: EventBus = LocalBus()
 
         def failing(event: Message) -> None:
             raise ValueError("oops")
@@ -189,7 +190,7 @@ class TestLocalBus:
         assert ok == ["test"]
 
     def test_stop_clears_handlers(self) -> None:
-        bus: LocalBus = LocalBus()
+        bus: EventBus = LocalBus()
         received: list[Message] = []
 
         def handler(event: Message) -> None:
@@ -311,7 +312,7 @@ class TestCore:
         assert len(sig) > 0
 
     def test_emit_publishes_event(self) -> None:
-        bus: LocalBus = LocalBus()
+        bus: EventBus = LocalBus()
         received: list[Message] = []
 
         def handler(event: Message) -> None:
@@ -331,7 +332,7 @@ class TestCore:
         assert event.signature != ""
 
     def test_subscribe_receives_events(self) -> None:
-        bus: LocalBus = LocalBus()
+        bus: EventBus = LocalBus()
         svc: ServiceHelper = ServiceHelper(name="subscriber", bus=bus, store=InMemory())
         svc.subscribe("incoming")
         bus.start()
@@ -342,7 +343,7 @@ class TestCore:
         assert svc.handled[0].event_type == "incoming"
 
     def test_stop_unsubscribes(self) -> None:
-        bus: LocalBus = LocalBus()
+        bus: EventBus = LocalBus()
         svc: ServiceHelper = ServiceHelper(name="stoppable", bus=bus, store=InMemory())
         svc.subscribe("incoming")
         svc.start()
@@ -353,7 +354,7 @@ class TestCore:
         assert len(svc.handled) == 0
 
     def test_dispatched_event_triggers_response(self) -> None:
-        bus: LocalBus = LocalBus()
+        bus: EventBus = LocalBus()
         received: list[Message] = []
 
         def handler(event: Message) -> None:

@@ -9,6 +9,7 @@ from typing import Any
 
 import pytest
 
+from underwrite.bus import EventBus
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.store import InMemory, Store
@@ -87,8 +88,8 @@ def _empty_plan() -> Any:
 
 
 @pytest.fixture
-def bus() -> LocalBus:
-    """Return a fresh LocalBus instance."""
+def bus() -> EventBus:
+    """Return a fresh EventBus instance."""
     return LocalBus()
 
 

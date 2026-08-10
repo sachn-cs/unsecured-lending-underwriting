@@ -15,7 +15,7 @@ from underwrite.message import Message
 class Registry:
     """Tracks (subscription_id, handler) tuples keyed by event type.
 
-    Pulled out of LocalBus so the bus is not responsible for both
+    Pulled out of EventBus so the bus is not responsible for both
     managing subscribers and dispatching events.
     """
 
@@ -79,7 +79,7 @@ class Registry:
 class Dispatcher:
     """Owns the thread-pool executor and pending-future bookkeeping for async dispatch.
 
-    Pulled out of LocalBus so the bus is not responsible for both
+    Pulled out of EventBus so the bus is not responsible for both
     subscriber bookkeeping and async-executor lifecycle. Provides
     submit-and-trim, future-completion observation, and graceful
     shutdown of the underlying executor.

@@ -14,10 +14,10 @@ config = Configuration.load("underwrite.json")
 rt = Runtime(config)
 
 # Lifecycle
-rt.start(["mechanism", "audit", "risk"])   # starts bus, registers & wires services
-rt.stop()                                    # stops all services, bus, metrics loop
-rt.get("mechanism")                          # → NanoService | None
-rt.services                                  # → dict[str, NanoService]
+rt.start(["mechanism", "audit", "risk"])  # starts bus, registers & wires services
+rt.stop()  # stops all services, bus, metrics loop
+rt.get("mechanism")  # → NanoService | None
+rt.services  # → dict[str, NanoService]
 
 # Event publishing
 rt.publish(event_type="loan.originated", payload={...}, correlation_id="...")
@@ -27,7 +27,7 @@ rt.publish(event_type="loan.originated", payload={...}, correlation_id="...")
 await rt.async_publish(event_type="...", payload={...})
 
 # Crash recovery
-rt.replay_saga("saga-uuid")                  # → bool
+rt.replay_saga("saga-uuid")  # → bool
 
 # Runtime as context manager
 with Runtime(config) as rt:
@@ -53,31 +53,31 @@ Properties: `bus`, `store`, `health`, `metrics`, `authz`, `tracer`, `saga`, `sup
 from underwrite.__config__ import Configuration
 
 # Loading
-config = Configuration.load()                       # auto-discover: underwrite.json → config.{env}.json
+config = Configuration.load()  # auto-discover: underwrite.json → config.{env}.json
 config = Configuration.load("path/to/config.json")
 
 # Default
-default = Configuration.default()                   # store backend = "filesystem", all services disabled
+default = Configuration.default()  # store backend = "filesystem", all services disabled
 
 # Save
 config.save("underwrite.json")
 
 # Access
-config.bus.backend                                  # "local" | "sqs" | "modal"
-config.store.backend                                # "memory" | "filesystem" | "postgres"
-config.store.dsn                                    # postgres DSN
-config.services["risk"].enabled                     # bool
-config.services["mechanism"].priority               # int
-config.logging.level                                # "DEBUG" | "INFO" | "WARNING" | "ERROR" | "CRITICAL"
-config.logging.log_format                           # "text" | "json"
-config.authz.enabled                                # bool
-config.metrics.enabled                              # bool
-config.tracing.enabled                              # bool
-config.saga.enabled                                 # bool
-config.data_dir                                     # "./data"
-config.fee.schedules                                # {"late_payment": 25.0, ...}
-config.governance.param_defaults                    # {"protocol_rate": 0.10, ...}
-config.audit.max_ledger                             # 100000
+config.bus.backend  # "local" | "sqs" | "modal"
+config.store.backend  # "memory" | "filesystem" | "postgres"
+config.store.dsn  # postgres DSN
+config.services["risk"].enabled  # bool
+config.services["mechanism"].priority  # int
+config.logging.level  # "DEBUG" | "INFO" | "WARNING" | "ERROR" | "CRITICAL"
+config.logging.log_format  # "text" | "json"
+config.authz.enabled  # bool
+config.metrics.enabled  # bool
+config.tracing.enabled  # bool
+config.saga.enabled  # bool
+config.data_dir  # "./data"
+config.fee.schedules  # {"late_payment": 25.0, ...}
+config.governance.param_defaults  # {"protocol_rate": 0.10, ...}
+config.audit.max_ledger  # 100000
 
 # Env overrides
 # All config keys can be set via UNDERWRITE_* env vars:
@@ -93,6 +93,7 @@ config.audit.max_ledger                             # 100000
 ```python
 from underwrite.services import NanoService
 
+
 class MyService(NanoService):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -101,28 +102,29 @@ class MyService(NanoService):
     def handle(self, event: Event) -> None:
         self.emit("response.event", {"key": "value"})
 
+
 # Lifecycle
-svc.start()      # begins processing events
-svc.stop()       # stops, unsubscribes all handlers
+svc.start()  # begins processing events
+svc.stop()  # stops, unsubscribes all handlers
 
 # Event emission
 svc.emit(event_type="my.event", payload={...}, correlation_id="...")
 # → Event (auto-signed, published to bus)
 
 # Subscriptions
-svc.subscribe("some.event.type")     # register handler
+svc.subscribe("some.event.type")  # register handler
 
 # State
-svc.store                             # → Store
-svc.service_id                        # → str
-svc.is_running                        # → bool
-svc.bus                               # → EventBus
-svc.metrics_collector                 # → MetricsCollector | None
-svc.state_lock                        # → threading.RLock
-svc.validator                         # → PayloadValidator
-svc.safe_store_get(key, default)      # → Any | None
-svc.safe_store_set(key, value)        # → bool
-svc.sign_event(payload_str)           # → str (signature)
+svc.store  # → Store
+svc.service_id  # → str
+svc.is_running  # → bool
+svc.bus  # → EventBus
+svc.metrics_collector  # → MetricsCollector | None
+svc.state_lock  # → threading.RLock
+svc.validator  # → PayloadValidator
+svc.safe_store_get(key, default)  # → Any | None
+svc.safe_store_set(key, value)  # → bool
+svc.sign_event(payload_str)  # → str (signature)
 ```
 
 All 28 services extend `NanoService`. Stateful services extend `StatefulService` which adds a `state_lock` and `store_repo()` / `batched_repo()` factory helpers for typed persistence.
@@ -141,126 +143,126 @@ event = Event(
 )
 
 # Event fields (frozen dataclass)
-event.event_id          # "uuid-string"
-event.event_type        # "loan.originated"
-event.source            # "mechanism"
-event.source_key        # base64 Ed25519 public key
-event.timestamp         # ISO-8601 UTC
-event.payload           # dict
-event.correlation_id    # uuid string
-event.signature         # Ed25519 signature
-event.trace_id          # distributed tracing ID
-event.parent_span_id    # parent span for nesting
+event.event_id  # "uuid-string"
+event.event_type  # "loan.originated"
+event.source  # "mechanism"
+event.source_key  # base64 Ed25519 public key
+event.timestamp  # ISO-8601 UTC
+event.payload  # dict
+event.correlation_id  # uuid string
+event.signature  # Ed25519 signature
+event.trace_id  # distributed tracing ID
+event.parent_span_id  # parent span for nesting
 
 # Event type enum
-EventType.SEED_ADDED                    # "seed.added"
-EventType.USER_ADDED                    # "user.added"
-EventType.LOAN_ORIGINATED               # "loan.originated"
-EventType.REPAID                        # "repaid"
-EventType.DEFAULT_OCCURRED              # "default.occurred"
-EventType.REVOKED                       # "revoked"
-EventType.QUOTE                         # "quote"
-EventType.QUOTE_CALCULATED              # "quote.calculated"
-EventType.PRICING_REQUEST               # "pricing.request"
-EventType.PRICING_COMPUTED              # "pricing.computed"
-EventType.PENAL_INTEREST_ASSESSED       # "penal_interest.assessed"
-EventType.FORECLOSURE_COMPUTED          # "foreclosure.computed"
-EventType.PREPAYMENT_REQUEST            # "prepayment.request"
-EventType.PREPAYMENT_PROCESSED          # "prepayment.processed"
-EventType.KYC_VERIFIED                  # "kyc.verified"
-EventType.KYC_REJECTED                  # "kyc.rejected"
-EventType.AML_CLEARED                   # "aml.cleared"
-EventType.AML_FROZEN                    # "aml.frozen"
-EventType.CKYC_VERIFY                   # "ckyc.verify"
-EventType.CKYC_VERIFIED                 # "ckyc.verified"
-EventType.CKYC_REJECTED                 # "ckyc.rejected"
-EventType.CREDIT_BUREAU_CHECK           # "credit_bureau.check"
-EventType.CREDIT_BUREAU_CHECKED         # "credit_bureau.checked"
-EventType.CREDIT_BUREAU_CHECK_FAILED    # "credit_bureau.check_failed"
-EventType.CONSENT_RECORDED              # "consent.recorded"
-EventType.CONSENT_WITHDRAWN             # "consent.withdrawn"
-EventType.CONSENT_EXPIRED               # "consent.expired"
-EventType.DSR_REQUEST                   # "dsr.request"
-EventType.DSR_REQUESTED                 # "dsr.requested"
-EventType.DSR_FULFILLED                 # "dsr.fulfilled"
-EventType.DSR_REJECTED                  # "dsr.rejected"
-EventType.KFS_GENERATE                  # "kfs.generate"
-EventType.KFS_GENERATED                 # "kfs.generated"
-EventType.BREACH_DETECTED               # "breach.detected"
-EventType.BREACH_NOTIFIED               # "breach.notified"
-EventType.BREACH_CLOSED                 # "breach.closed"
-EventType.GRIEVANCE_LOGGED              # "grievance.logged"
-EventType.GRIEVANCE_RESOLVED            # "grievance.resolved"
-EventType.DATA_PURGED                   # "data.purged"
-EventType.DATA_ARCHIVED                 # "data.archived"
-EventType.PROVISIONING_COMPUTED         # "provisioning.computed"
-EventType.SMA_CLASSIFIED                # "sma.classified"
+EventType.SEED_ADDED  # "seed.added"
+EventType.USER_ADDED  # "user.added"
+EventType.LOAN_ORIGINATED  # "loan.originated"
+EventType.REPAID  # "repaid"
+EventType.DEFAULT_OCCURRED  # "default.occurred"
+EventType.REVOKED  # "revoked"
+EventType.QUOTE  # "quote"
+EventType.QUOTE_CALCULATED  # "quote.calculated"
+EventType.PRICING_REQUEST  # "pricing.request"
+EventType.PRICING_COMPUTED  # "pricing.computed"
+EventType.PENAL_INTEREST_ASSESSED  # "penal_interest.assessed"
+EventType.FORECLOSURE_COMPUTED  # "foreclosure.computed"
+EventType.PREPAYMENT_REQUEST  # "prepayment.request"
+EventType.PREPAYMENT_PROCESSED  # "prepayment.processed"
+EventType.KYC_VERIFIED  # "kyc.verified"
+EventType.KYC_REJECTED  # "kyc.rejected"
+EventType.AML_CLEARED  # "aml.cleared"
+EventType.AML_FROZEN  # "aml.frozen"
+EventType.CKYC_VERIFY  # "ckyc.verify"
+EventType.CKYC_VERIFIED  # "ckyc.verified"
+EventType.CKYC_REJECTED  # "ckyc.rejected"
+EventType.CREDIT_BUREAU_CHECK  # "credit_bureau.check"
+EventType.CREDIT_BUREAU_CHECKED  # "credit_bureau.checked"
+EventType.CREDIT_BUREAU_CHECK_FAILED  # "credit_bureau.check_failed"
+EventType.CONSENT_RECORDED  # "consent.recorded"
+EventType.CONSENT_WITHDRAWN  # "consent.withdrawn"
+EventType.CONSENT_EXPIRED  # "consent.expired"
+EventType.DSR_REQUEST  # "dsr.request"
+EventType.DSR_REQUESTED  # "dsr.requested"
+EventType.DSR_FULFILLED  # "dsr.fulfilled"
+EventType.DSR_REJECTED  # "dsr.rejected"
+EventType.KFS_GENERATE  # "kfs.generate"
+EventType.KFS_GENERATED  # "kfs.generated"
+EventType.BREACH_DETECTED  # "breach.detected"
+EventType.BREACH_NOTIFIED  # "breach.notified"
+EventType.BREACH_CLOSED  # "breach.closed"
+EventType.GRIEVANCE_LOGGED  # "grievance.logged"
+EventType.GRIEVANCE_RESOLVED  # "grievance.resolved"
+EventType.DATA_PURGED  # "data.purged"
+EventType.DATA_ARCHIVED  # "data.archived"
+EventType.PROVISIONING_COMPUTED  # "provisioning.computed"
+EventType.SMA_CLASSIFIED  # "sma.classified"
 EventType.INCOME_RECOGNITION_SUSPENDED  # "income_recognition.suspended"
-EventType.RAZORPAY_ORDER_CREATE         # "razorpay.order.create"
-EventType.RAZORPAY_ORDER_CREATED        # "razorpay.order.created"
-EventType.RAZORPAY_PAYMENT_CAPTURED     # "razorpay.payment.captured"
-EventType.RAZORPAY_PAYMENT_FAILED       # "razorpay.payment.failed"
-EventType.RAZORPAY_PAYMENT_REFUNDED     # "razorpay.payment.refunded"
-EventType.RAZORPAY_SUBSCRIBE            # "razorpay.subscribe"
-EventType.RAZORPAY_SUBSCRIPTION_CREATED # "razorpay.subscription.created"
-EventType.RAZORPAY_SUBSCRIPTION_CHARGED # "razorpay.subscription.charged"
+EventType.RAZORPAY_ORDER_CREATE  # "razorpay.order.create"
+EventType.RAZORPAY_ORDER_CREATED  # "razorpay.order.created"
+EventType.RAZORPAY_PAYMENT_CAPTURED  # "razorpay.payment.captured"
+EventType.RAZORPAY_PAYMENT_FAILED  # "razorpay.payment.failed"
+EventType.RAZORPAY_PAYMENT_REFUNDED  # "razorpay.payment.refunded"
+EventType.RAZORPAY_SUBSCRIBE  # "razorpay.subscribe"
+EventType.RAZORPAY_SUBSCRIPTION_CREATED  # "razorpay.subscription.created"
+EventType.RAZORPAY_SUBSCRIPTION_CHARGED  # "razorpay.subscription.charged"
 EventType.RAZORPAY_SUBSCRIPTION_FAILED  # "razorpay.subscription.failed"
-EventType.RAZORPAY_MANDATE_ACTIVE       # "razorpay.mandate.active"
-EventType.RAZORPAY_MANDATE_INACTIVE     # "razorpay.mandate.inactive"
-EventType.RAZORPAY_WEBHOOK_RECEIVED     # "razorpay.webhook.received"
-EventType.FRAUD_ALERT                   # "fraud.alert"
-EventType.WASH_FLAG                     # "fraud.wash.flag"
-EventType.VELOCITY_FLAG                 # "fraud.velocity.flag"
-EventType.RISK_SCORED                   # "risk.scored"
-EventType.RISK_EARLY_WARNING            # "risk.early_warning"
-EventType.NPA_BUCKET_CHANGED            # "npa.bucket.changed"
-EventType.DLG_TRIGGERED                 # "npa.dlg.triggered"
-EventType.COLLATERAL_MARKED             # "collateral.marked"
-EventType.COLLATERAL_LIQUIDATED         # "collateral.liquidated"
-EventType.GOVERNANCE_PROPOSAL           # "governance.proposal"
-EventType.GOVERNANCE_EXECUTED           # "governance.executed"
-EventType.RECOVERY_STARTED              # "recovery.started"
-EventType.RECOVERY_COMPLETED            # "recovery.completed"
-EventType.IDENTITY_REGISTERED           # "identity.registered"
-EventType.IDENTITY_ROTATED              # "identity.rotated"
-EventType.NOTIFICATION_SENT             # "notification.sent"
-EventType.REPORT_GENERATED              # "report.generated"
-EventType.UNDERWRITER_APPROVED          # "underwriter.approved"
-EventType.UNDERWRITER_REJECTED          # "underwriter.rejected"
-EventType.UNDERWRITER_ESCALATED         # "underwriter.escalated"
-EventType.UNDERWRITER_CONDITIONAL_APPROVED # "underwriter.conditional_approved"
-EventType.UNDERWRITER_REVIEW            # "underwriter.review"
-EventType.UNDERWRITE_REQUEST            # "underwrite.request"
-EventType.UNDERWRITE_RULE_VIOLATED      # "underwrite.rule.violated"
-EventType.DOCUMENT_GENERATED            # "document.generated"
-EventType.DISBURSEMENT_PROCESSED        # "disbursement.processed"
-EventType.COLLECTION_UPDATED            # "collection.updated"
-EventType.SETTLEMENT_COMPLETED          # "settlement.completed"
-EventType.ORIGINATION_CREATED           # "origination.created"
-EventType.ORIGINATION_SUBMITTED         # "origination.submitted"
-EventType.SERVICING_STARTED             # "servicing.started"
-EventType.PAYMENT_RECEIVED              # "payment.received"
-EventType.PAYMENT_DUE                   # "payment.due"
-EventType.PAYMENT_OVERDUE               # "payment.overdue"
-EventType.FEE_ASSESSED                  # "fee.assessed"
-EventType.STATEMENT_GENERATED           # "statement.generated"
-EventType.COMMUNICATION_SENT            # "communication.sent"
-EventType.WORKFLOW_STARTED              # "workflow.started"
-EventType.WORKFLOW_COMPLETED            # "workflow.completed"
-EventType.DECISION_MADE                 # "decision.made"
-EventType.SAGA_STARTED                  # "saga.started"
-EventType.SAGA_COMPLETED                # "saga.completed"
-EventType.SAGA_ROLLED_BACK              # "saga.rolled_back"
-EventType.SAGA_COMPENSATE               # "saga.compensate"
-EventType.DUPLICATE_DROPPED             # "idempotency.duplicate_dropped"
-EventType.UNDERWRITE_REQUEST            # "underwrite.request"
-EventType.MECHANISM_REJECTED            # "mechanism.rejected"
-EventType.GRAPH_PATH                    # "graph_path"
-EventType.GRAPH_PATH_RESULT             # "graph_path_result"
-EventType.GRAPH_CREDIT_LIMIT            # "graph_credit_limit"
-EventType.GRAPH_CREDIT_LIMIT_RESULT     # "graph_credit_limit_result"
-EventType.GRAPH_USERS                   # "graph_users"
-EventType.GRAPH_USERS_RESULT            # "graph_users_result"
+EventType.RAZORPAY_MANDATE_ACTIVE  # "razorpay.mandate.active"
+EventType.RAZORPAY_MANDATE_INACTIVE  # "razorpay.mandate.inactive"
+EventType.RAZORPAY_WEBHOOK_RECEIVED  # "razorpay.webhook.received"
+EventType.FRAUD_ALERT  # "fraud.alert"
+EventType.WASH_FLAG  # "fraud.wash.flag"
+EventType.VELOCITY_FLAG  # "fraud.velocity.flag"
+EventType.RISK_SCORED  # "risk.scored"
+EventType.RISK_EARLY_WARNING  # "risk.early_warning"
+EventType.NPA_BUCKET_CHANGED  # "npa.bucket.changed"
+EventType.DLG_TRIGGERED  # "npa.dlg.triggered"
+EventType.COLLATERAL_MARKED  # "collateral.marked"
+EventType.COLLATERAL_LIQUIDATED  # "collateral.liquidated"
+EventType.GOVERNANCE_PROPOSAL  # "governance.proposal"
+EventType.GOVERNANCE_EXECUTED  # "governance.executed"
+EventType.RECOVERY_STARTED  # "recovery.started"
+EventType.RECOVERY_COMPLETED  # "recovery.completed"
+EventType.IDENTITY_REGISTERED  # "identity.registered"
+EventType.IDENTITY_ROTATED  # "identity.rotated"
+EventType.NOTIFICATION_SENT  # "notification.sent"
+EventType.REPORT_GENERATED  # "report.generated"
+EventType.UNDERWRITER_APPROVED  # "underwriter.approved"
+EventType.UNDERWRITER_REJECTED  # "underwriter.rejected"
+EventType.UNDERWRITER_ESCALATED  # "underwriter.escalated"
+EventType.UNDERWRITER_CONDITIONAL_APPROVED  # "underwriter.conditional_approved"
+EventType.UNDERWRITER_REVIEW  # "underwriter.review"
+EventType.UNDERWRITE_REQUEST  # "underwrite.request"
+EventType.UNDERWRITE_RULE_VIOLATED  # "underwrite.rule.violated"
+EventType.DOCUMENT_GENERATED  # "document.generated"
+EventType.DISBURSEMENT_PROCESSED  # "disbursement.processed"
+EventType.COLLECTION_UPDATED  # "collection.updated"
+EventType.SETTLEMENT_COMPLETED  # "settlement.completed"
+EventType.ORIGINATION_CREATED  # "origination.created"
+EventType.ORIGINATION_SUBMITTED  # "origination.submitted"
+EventType.SERVICING_STARTED  # "servicing.started"
+EventType.PAYMENT_RECEIVED  # "payment.received"
+EventType.PAYMENT_DUE  # "payment.due"
+EventType.PAYMENT_OVERDUE  # "payment.overdue"
+EventType.FEE_ASSESSED  # "fee.assessed"
+EventType.STATEMENT_GENERATED  # "statement.generated"
+EventType.COMMUNICATION_SENT  # "communication.sent"
+EventType.WORKFLOW_STARTED  # "workflow.started"
+EventType.WORKFLOW_COMPLETED  # "workflow.completed"
+EventType.DECISION_MADE  # "decision.made"
+EventType.SAGA_STARTED  # "saga.started"
+EventType.SAGA_COMPLETED  # "saga.completed"
+EventType.SAGA_ROLLED_BACK  # "saga.rolled_back"
+EventType.SAGA_COMPENSATE  # "saga.compensate"
+EventType.DUPLICATE_DROPPED  # "idempotency.duplicate_dropped"
+EventType.UNDERWRITE_REQUEST  # "underwrite.request"
+EventType.MECHANISM_REJECTED  # "mechanism.rejected"
+EventType.GRAPH_PATH  # "graph_path"
+EventType.GRAPH_PATH_RESULT  # "graph_path_result"
+EventType.GRAPH_CREDIT_LIMIT  # "graph_credit_limit"
+EventType.GRAPH_CREDIT_LIMIT_RESULT  # "graph_credit_limit_result"
+EventType.GRAPH_USERS  # "graph_users"
+EventType.GRAPH_USERS_RESULT  # "graph_users_result"
 # + `*` commands (identity.register, identity.rotate, fee.assess, etc.)
 # Full 105+ type registry in underwrite/__events__.py:62
 ```
@@ -273,25 +275,25 @@ Convention: events ending in `.past_tense` (e.g. `loan.originated`) are **notifi
 from underwrite import Store, MemoryStore, FileStore
 
 # Abstract interface
-store.get("key")                       # → Any | None
-store.set("key", value)                # → None
-store.delete("key")                    # → bool (True if existed)
-store.exists("key")                    # → bool
-store.keys(pattern="substring")        # → list[str]
+store.get("key")  # → Any | None
+store.set("key", value)  # → None
+store.delete("key")  # → bool (True if existed)
+store.exists("key")  # → bool
+store.keys(pattern="substring")  # → list[str]
 store.keys(pattern="prefix:*", limit=100, offset=0)
 
 # Concrete implementations
-MemoryStore(max_entries=10000)         # in-memory, LRU eviction
-FileStore(data_dir="./data")           # JSON files, atomic writes, fsync
+MemoryStore(max_entries=10000)  # in-memory, LRU eviction
+FileStore(data_dir="./data")  # JSON files, atomic writes, fsync
 PostgresStore(dsn="...", table="store", pool_size=5)
-CQRSStore(write_store, read_store)     # read/write separation
+CQRSStore(write_store, read_store)  # read/write separation
 
 # Store features
 file_store = FileStore(
     data_dir="./data",
-    operation_timeout=5.0,             # timeout per I/O op
-    use_circuit_breaker=True,          # 3 fails → open 30s
-    fsync=True,                        # safe but slower
+    operation_timeout=5.0,  # timeout per I/O op
+    use_circuit_breaker=True,  # 3 fails → open 30s
+    fsync=True,  # safe but slower
 )
 ```
 
@@ -307,11 +309,11 @@ identity = Identity.create("mechanism", private_key_pem="...")
 
 # Sign & Verify
 sig = identity.sign("payload-string")
-ok  = identity.verify("payload-string", sig)     # → bool
+ok = identity.verify("payload-string", sig)  # → bool
 
 # Persist
-pem = identity.to_pem()                            # PEM-encoded private key
-identity.persist(secrets_manager)                  # store through backend
+pem = identity.to_pem()  # PEM-encoded private key
+identity.persist(secrets_manager)  # store through backend
 ```
 
 ### AccessControl
@@ -322,13 +324,13 @@ from underwrite.__authz__ import AccessControl
 acl = AccessControl()
 
 # Policy rules
-acl.allow("mechanism", "publish:loan.*")           # allow wildcard
-acl.deny("fraud", "publish:governance.*")          # deny wildcard
-acl.trust("mechanism", base64_public_key)          # register trusted key
+acl.allow("mechanism", "publish:loan.*")  # allow wildcard
+acl.deny("fraud", "publish:governance.*")  # deny wildcard
+acl.trust("mechanism", base64_public_key)  # register trusted key
 
 # Checks
 acl.check_publish("mechanism", "loan.originated")  # → bool
-acl.check_subscribe("audit", "loan.originated")    # → bool
+acl.check_subscribe("audit", "loan.originated")  # → bool
 
 # Assertions (raises AuthzError)
 acl.assert_publish("mechanism", "loan.originated")
@@ -336,7 +338,7 @@ acl.assert_subscribe("audit", "loan.originated")
 acl.assert_verified(event)
 
 # Trust management
-acl.revoke_trust("mechanism")                      # remove trusted key
+acl.revoke_trust("mechanism")  # remove trusted key
 ```
 
 Default policy when no file is loaded: `allow("*", "*")` (all services, all resources). Load from JSON policy file:
@@ -457,20 +459,20 @@ mc.reset()         # clear all metrics
 
 ```python
 from underwrite.__exceptions__ import (
-    UnderwriteError,          # base
-    ConfigurationError,       # invalid config
-    ServiceNotFoundError,     # unknown service name
-    IdentityError,            # key management failure
-    BusError,                 # event bus failure
-    StoreError,               # store persistence failure
-    ProtocolError,            # protocol violation
-    UnknownUserError,         # missing graph user
+    UnderwriteError,  # base
+    ConfigurationError,  # invalid config
+    ServiceNotFoundError,  # unknown service name
+    IdentityError,  # key management failure
+    BusError,  # event bus failure
+    StoreError,  # store persistence failure
+    ProtocolError,  # protocol violation
+    UnknownUserError,  # missing graph user
     InvariantViolationError,  # state invariant broken
-    InfeasibleOperationError, # e.g. insufficient credit
-    AuthzError,               # access control denial
-    RateLimitError,           # rate limit exceeded
-    MigrationError,           # schema migration failure
-    SagaError,                # saga step failure
+    InfeasibleOperationError,  # e.g. insufficient credit
+    AuthzError,  # access control denial
+    RateLimitError,  # rate limit exceeded
+    MigrationError,  # schema migration failure
+    SagaError,  # saga step failure
     CircuitBreakerOpenError,  # circuit is open
 )
 ```

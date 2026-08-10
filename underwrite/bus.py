@@ -1,7 +1,7 @@
 """Abstract event bus — `EventBus` (sync) and `AsyncEventBus` (async) interfaces.
 
 Concrete implementations live in dedicated modules:
-- `underwrite.local` — in-process (`LocalBus`, `AsyncLocalBus`)
+- `underwrite.local` — in-process (`EventBus`, `AsyncEventBus`)
 - `underwrite.modal` — Modal queue (`ModalBus`)
 
 The supporting classes are also re-exported here for backward compatibility

@@ -30,7 +30,6 @@ from underwrite.exceptions import (
     UnknownUserError,
 )
 from underwrite.keypair import Keypair
-from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.runtime import Runtime
 from underwrite.services import Core
@@ -53,7 +52,7 @@ __all__: list[str] = [
     "Type",
     "Keypair",
     "EventBus",
-    "LocalBus",
+    "EventBus",
     "Store",
     "InMemory",
     "Disk",

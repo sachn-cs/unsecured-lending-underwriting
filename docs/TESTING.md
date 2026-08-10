@@ -87,6 +87,7 @@ class FailAfterCountStore(MemoryStore):
         self._maybe_fail()
         return super().set(key, value)
 
+
 class InjectingBus(LocalBus):
     def publish(self, event):
         raise RuntimeError("injected publish failure")
@@ -190,10 +191,7 @@ def test_fee_assess_emits_fee_assessed():
     bus.subscribe(EventType.FEE_ASSESSED, lambda e: received.append(e))
     svc = FeeService(service_id="fee", bus=bus)
     bus.start()
-    svc.handle(
-        Event(event_type="fee.assess", source="test",
-              payload={"loan_id": "L2", "fee_type": "service"})
-    )
+    svc.handle(Event(event_type="fee.assess", source="test", payload={"loan_id": "L2", "fee_type": "service"}))
     assert len(received) == 1
     assert received[0].payload["fee_type"] == "service"
     assert received[0].payload["amount"] == 5.0
@@ -206,10 +204,7 @@ Assert the service ignores bad payloads (no store mutations):
 ```python
 def test_rejects_empty_loan_id():
     svc = FeeService(service_id="fee")
-    svc.handle(
-        Event(event_type="fee.assess", source="test",
-              payload={"loan_id": "", "fee_type": "late_payment"})
-    )
+    svc.handle(Event(event_type="fee.assess", source="test", payload={"loan_id": "", "fee_type": "late_payment"}))
     assert len(svc.store.keys("fee:")) == 0
 ```
 
@@ -218,15 +213,9 @@ def test_rejects_empty_loan_id():
 ```python
 def test_submit_transitions_to_submitted():
     svc = OriginationService(service_id="origination")
-    svc.handle(
-        Event(event_type="origination.create", source="test",
-              payload={"borrower": "carol", "principal": 10000})
-    )
+    svc.handle(Event(event_type="origination.create", source="test", payload={"borrower": "carol", "principal": 10000}))
     app_id = svc.store.keys("origination:app_carol_")[0].replace("origination:", "")
-    svc.handle(
-        Event(event_type="origination.submit", source="test",
-              payload={"application_id": app_id})
-    )
+    svc.handle(Event(event_type="origination.submit", source="test", payload={"application_id": app_id}))
     rec = svc.store.get(f"origination:{app_id}")
     assert rec["status"] == "submitted"
     assert "submitted_at" in rec
@@ -242,9 +231,12 @@ def test_correlation_id_preserved():
     svc = OriginationService(service_id="origination", bus=bus)
     bus.start()
     svc.handle(
-        Event(event_type="origination.create", source="test",
-              payload={"borrower": "f", "principal": 100},
-              correlation_id="corr-1")
+        Event(
+            event_type="origination.create",
+            source="test",
+            payload={"borrower": "f", "principal": 100},
+            correlation_id="corr-1",
+        )
     )
     emitted = [e for e in received if e.source == "origination"]
     assert emitted[0].correlation_id == "corr-1"
@@ -256,7 +248,7 @@ def test_correlation_id_preserved():
 def test_health_check():
     svc = OriginationService(service_id="origination")
     h = svc.health_check()
-    assert h["ok"] is False          # not started
+    assert h["ok"] is False  # not started
     svc.start()
     h = svc.health_check()
     assert h["ok"] is True
@@ -273,10 +265,7 @@ Fault injection tests live in `tests/test_*_faults.py`. Use `fail_store` or `inj
 def test_store_failure_on_event(fail_store):
     svc = FeeService(service_id="fee", store=fail_store)
     # First set() works, second fails → service should not crash
-    svc.handle(
-        Event(event_type="fee.assess", source="test",
-              payload={"loan_id": "L1", "fee_type": "late_payment"})
-    )
+    svc.handle(Event(event_type="fee.assess", source="test", payload={"loan_id": "L1", "fee_type": "late_payment"}))
     # Event was handled; store error is logged, service continues
 ```
 
@@ -323,8 +312,11 @@ def test_full_flow():
     rt.start(["mechanism"])
     svc = rt.get("mechanism")
     svc.handle(
-        Event(event_type="mechanism", source="test",
-              payload={"command": "add_seed", "user": "bank", "base_budget": 100000})
+        Event(
+            event_type="mechanism",
+            source="test",
+            payload={"command": "add_seed", "user": "bank", "base_budget": 100000},
+        )
     )
     state = rt.store.get("protocol:state")
     assert state is not None

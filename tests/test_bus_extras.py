@@ -6,9 +6,10 @@ import time
 
 import pytest
 
-from underwrite.bus import DistributedLimiter, Guard, Limiter
+from underwrite.async_bus import AsyncLocalBus
+from underwrite.bus import DistributedLimiter, Guard, Limiter, Queue
 from underwrite.exceptions import RateLimitError
-from underwrite.local import LocalBus, Queue
+from underwrite.local import LocalBus
 from underwrite.message import Message
 from underwrite.store import InMemory
 
@@ -70,13 +71,11 @@ class TestQueue:
         assert remaining == ["e2", "e3", "e4"]
 
 
-class TestAsyncLocalBusShutdown:
+class TestAsyncEventBusShutdown:
     def test_stop_event_wakes_dispatch_loop(self) -> None:
         """Stopping the bus must wake the dispatch loop immediately,
         not after a 1-second timeout-based wakeup."""
         import asyncio
-
-        from underwrite.async_bus import AsyncLocalBus
 
         async def run() -> None:
             bus = AsyncLocalBus()
@@ -150,7 +149,7 @@ class TestLimiter:
         rl.assert_allowed("k")
 
 
-class TestLocalBusDLQ:
+class TestEventBusDLQ:
     def test_failed_handler_goes_to_dlq(self) -> None:
         bus = LocalBus()
         bus.subscribe("test.fail", lambda e: (_ for _ in ()).throw(RuntimeError("fail")))

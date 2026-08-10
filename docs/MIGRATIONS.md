@@ -18,7 +18,7 @@ A single schema migration:
 class Migration:
     version: int
     description: str
-    statements: list[str]        # SQL statements (for SQL stores)
+    statements: list[str]  # SQL statements (for SQL stores)
     fn: Callable[[Any], None] | None  # callable (for any store)
 ```
 
@@ -145,17 +145,19 @@ from underwrite.__migrate__ import Migration, MigrationPlan, default_plan
 
 plan = default_plan()
 
-plan.add(Migration(
-    version=4,
-    description="Interest rate cache",
-    statements=[
-        "CREATE TABLE IF NOT EXISTS rate_cache ("
-        "  borrower TEXT PRIMARY KEY,"
-        "  rate FLOAT NOT NULL,"
-        "  computed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()"
-        ")",
-    ],
-))
+plan.add(
+    Migration(
+        version=4,
+        description="Interest rate cache",
+        statements=[
+            "CREATE TABLE IF NOT EXISTS rate_cache ("
+            "  borrower TEXT PRIMARY KEY,"
+            "  rate FLOAT NOT NULL,"
+            "  computed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()"
+            ")",
+        ],
+    )
+)
 ```
 
 Then apply it:

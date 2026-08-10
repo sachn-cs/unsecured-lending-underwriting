@@ -1,7 +1,7 @@
 """Async-native event bus — ``asyncio.Queue``-based ``AsyncEventBus``.
 
 Provides a non-blocking, async-first alternative to the synchronous
-``LocalBus`` for high-throughput event pipelines where handlers should
+``EventBus`` for high-throughput event pipelines where handlers should
 not block publishers.
 """
 
@@ -74,7 +74,7 @@ class AsyncLocalBus(AsyncEventBus):
         self.__running = True
         self.__stop_event.clear()
         self.__task = asyncio.create_task(self.__dispatch_loop())
-        logger.info("AsyncLocalBus started")
+        logger.info("AsyncEventBus started")
 
     async def stop(self) -> None:
         self.__running = False
@@ -95,7 +95,7 @@ class AsyncLocalBus(AsyncEventBus):
             except asyncio.CancelledError:
                 pass
             self.__task = None
-        logger.info("AsyncLocalBus stopped (drained {} events)", drained)
+        logger.info("AsyncEventBus stopped (drained {} events)", drained)
 
     async def publish(self, event: Message) -> str:
         await self.__queue.put(event)

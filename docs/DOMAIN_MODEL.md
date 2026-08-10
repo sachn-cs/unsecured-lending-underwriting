@@ -238,14 +238,14 @@ Full registry in `underwrite/__events__.py`. Includes:
 ```python
 @dataclass(frozen=True, slots=True)
 class Event:
-    event_id: str        # uuid4
-    event_type: str      # e.g. "loan.originated"
-    source: str          # service_id of emitter
-    source_key: str      # Ed25519 public key
-    timestamp: str       # ISO-8601 UTC
-    payload: dict        # max 1000 keys, 1 MB serialized
+    event_id: str  # uuid4
+    event_type: str  # e.g. "loan.originated"
+    source: str  # service_id of emitter
+    source_key: str  # Ed25519 public key
+    timestamp: str  # ISO-8601 UTC
+    payload: dict  # max 1000 keys, 1 MB serialized
     correlation_id: str  # uuid4 chain
-    signature: str       # Ed25519 sig over event_id:timestamp:event_type:payload
+    signature: str  # Ed25519 sig over event_id:timestamp:event_type:payload
     trace_id: str
     parent_span_id: str
 ```

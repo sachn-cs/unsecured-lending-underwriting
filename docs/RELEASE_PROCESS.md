@@ -11,8 +11,8 @@ underwrite uses **Semantic Versioning** via `setuptools-scm`. Version numbers ar
 The version is auto-generated at build time and written to `underwrite/__version__.py`:
 
 ```python
-__version__ = version = '0.1.dev65+gad81577c8.d20260608'
-__version_tuple__ = version_tuple = (0, 1, 'dev65', 'gad81577c8.d20260608')
+__version__ = version = "0.1.dev65+gad81577c8.d20260608"
+__version_tuple__ = version_tuple = (0, 1, "dev65", "gad81577c8.d20260608")
 ```
 
 To inspect the current version:

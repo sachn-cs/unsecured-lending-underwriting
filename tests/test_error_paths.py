@@ -19,7 +19,7 @@ from underwrite.runtime import Runtime, build_authz
 from underwrite.services.audit.handler import Handler as AuditHandler
 from underwrite.services.mechanism.handler import Handler as MechanismHandler
 from underwrite.services.risk.model import RiskModel
-from underwrite.store import CQRSStore, InMemory, ReadStore, Sqlite, Store
+from underwrite.store import CQRSStore, InMemory, ReadStore, Store
 
 # ---------------------------------------------------------------------------
 # 1) Core.safe_store_get returns default on store error

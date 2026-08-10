@@ -172,7 +172,7 @@ class Core(ABC):
                 gets an auto-generated `id` (BSON-style) and `created_at`
                 timestamp at construction.
             identity: Ed25519 identity for signing events. Created if omitted.
-            bus: Message bus for pub/sub. Uses LocalBus if omitted.
+            bus: Message bus for pub/sub. Uses EventBus if omitted.
             store: State persistence backend. Uses InMemory if omitted.
             metrics: Optional metrics collector for instrumentation.
             health: Optional health registry for liveness checks.
@@ -198,12 +198,11 @@ class Core(ABC):
         self.__identity: Keypair = identity
         if bus is None:
             raise ValueError(
-                f"{type(self).__name__}({name!r}) requires bus; " "construct one with Runtime as the composition root."
+                f"{type(self).__name__}({name!r}) requires bus; construct one with Runtime as the composition root."
             )
         if store is None:
             raise ValueError(
-                f"{type(self).__name__}({name!r}) requires store; "
-                "construct one with Runtime as the composition root."
+                f"{type(self).__name__}({name!r}) requires store; construct one with Runtime as the composition root."
             )
         self.__bus: EventBus = bus
         self.__store: Store = store

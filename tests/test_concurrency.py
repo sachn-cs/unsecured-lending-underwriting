@@ -2,7 +2,7 @@
 
 Tests run multiple threads concurrently to expose data races in:
 - Handler state mutations
-- LocalBus publish/dispatch
+- EventBus publish/dispatch
 - Orchestrator concurrent execution
 """
 
@@ -16,8 +16,8 @@ from underwrite.services.mechanism.handler import Handler as MechanismHandler
 from underwrite.store import InMemory
 
 
-class TestLocalBusConcurrency:
-    """Verify LocalBus thread safety under concurrent publish."""
+class TestEventBusConcurrency:
+    """Verify EventBus thread safety under concurrent publish."""
 
     def test_concurrent_publish_does_not_crash(self) -> None:
         bus = LocalBus(max_workers=4)

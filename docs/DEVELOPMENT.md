@@ -99,6 +99,7 @@ from underwrite.__events__ import Event, EventType
 from underwrite.__logger__ import logger
 from underwrite.services.base import NanoService
 
+
 class MyService(NanoService):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -106,8 +107,7 @@ class MyService(NanoService):
     def handle(self, event: Event) -> None:
         if event.event_type == EventType.SOME_EVENT:
             result = do_work(event.payload)
-            self.emit("my.event.processed", {"result": result},
-                      correlation_id=event.correlation_id)
+            self.emit("my.event.processed", {"result": result}, correlation_id=event.correlation_id)
 
     def health_check(self) -> dict:
         return {**super().health_check(), "my_metric": 42}

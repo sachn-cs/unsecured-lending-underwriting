@@ -74,62 +74,90 @@ from underwrite.__runtime__ import Runtime
 
 config = load_config()
 with Runtime(config) as rt:
-    rt.start([
-        "mechanism", "audit", "risk", "fraud",
-        "compliance", "consent", "credit_bureau",
-        "kfs", "pricing", "origination",
-        "underwriter", "decision",
-    ])
+    rt.start(
+        [
+            "mechanism",
+            "audit",
+            "risk",
+            "fraud",
+            "compliance",
+            "consent",
+            "credit_bureau",
+            "kfs",
+            "pricing",
+            "origination",
+            "underwriter",
+            "decision",
+        ]
+    )
 
     # Step 1: Bank seeds capital
-    rt.publish("mechanism", {
-        "command": "add_seed",
-        "user": "hdfc-bank",
-        "base_budget": 10_000_000.0,
-    })
+    rt.publish(
+        "mechanism",
+        {
+            "command": "add_seed",
+            "user": "hdfc-bank",
+            "base_budget": 10_000_000.0,
+        },
+    )
 
     # Step 2: Add borrower with PAN + Aadhaar
-    rt.publish("mechanism", {
-        "command": "add_user",
-        "sponsor": "hdfc-bank",
-        "user": "priya-sharma",
-        "delegation_amount": 500000.0,
-    })
+    rt.publish(
+        "mechanism",
+        {
+            "command": "add_user",
+            "sponsor": "hdfc-bank",
+            "user": "priya-sharma",
+            "delegation_amount": 500000.0,
+        },
+    )
 
     # Step 3: Record DPDPA consent for KYC
-    rt.publish("consent", {
-        "command": "record",
-        "user": "priya-sharma",
-        "purpose": "kyc_verification",
-    })
+    rt.publish(
+        "consent",
+        {
+            "command": "record",
+            "user": "priya-sharma",
+            "purpose": "kyc_verification",
+        },
+    )
 
     # Step 4: Initiate KYC + AML check
     # Compliance service validates PAN format + category,
     # Aadhaar Verhoeff checksum, AML risk scoring, CKYC trigger
-    rt.publish("compliance", {
-        "command": "kyc_check",
-        "user": "priya-sharma",
-        "pan": "ABCDE1234F",
-        "aadhaar": "123456789012",  # Verhoeff-valid
-    })
+    rt.publish(
+        "compliance",
+        {
+            "command": "kyc_check",
+            "user": "priya-sharma",
+            "pan": "ABCDE1234F",
+            "aadhaar": "123456789012",  # Verhoeff-valid
+        },
+    )
 
     # Step 5: Request credit bureau check (CIBIL + CKYC)
-    rt.publish("credit_bureau", {
-        "command": "check",
-        "user": "priya-sharma",
-        "pan": "ABCDE1234F",
-    })
+    rt.publish(
+        "credit_bureau",
+        {
+            "command": "check",
+            "user": "priya-sharma",
+            "pan": "ABCDE1234F",
+        },
+    )
 
     # Step 6: Request pricing (RBI rate caps applied)
-    rt.publish("pricing", {
-        "command": "compute",
-        "user": "priya-sharma",
-        "loan_type": "personal",
-        "principal": 300000.0,
-        "tenure_months": 24,
-        "credit_score": 720,
-        "monthly_income": 80000.0,
-    })
+    rt.publish(
+        "pricing",
+        {
+            "command": "compute",
+            "user": "priya-sharma",
+            "loan_type": "personal",
+            "principal": 300000.0,
+            "tenure_months": 24,
+            "credit_score": 720,
+            "monthly_income": 80000.0,
+        },
+    )
     # Pricing emits pricing.computed with:
     #   annual_rate: 0.28 (capped)
     #   apr: 0.289 (incl. fees, GST)
@@ -140,23 +168,29 @@ with Runtime(config) as rt:
     #   all_in_cost: 400576.80
 
     # Step 7: Generate KFS (Key Fact Statement)
-    rt.publish("kfs", {
-        "command": "generate",
-        "user": "priya-sharma",
-        "loan_type": "personal",
-        "principal": 300000.0,
-    })
+    rt.publish(
+        "kfs",
+        {
+            "command": "generate",
+            "user": "priya-sharma",
+            "loan_type": "personal",
+            "principal": 300000.0,
+        },
+    )
 
     # Step 8: Originate loan
-    rt.publish("mechanism", {
-        "command": "originate",
-        "user": "priya-sharma",
-        "principal": 300000.0,
-        "term": 24,
-        "default_probability": 0.12,
-        "protocol_rate": 0.28,
-        "max_delegation_rate": 0.05,
-    })
+    rt.publish(
+        "mechanism",
+        {
+            "command": "originate",
+            "user": "priya-sharma",
+            "principal": 300000.0,
+            "term": 24,
+            "default_probability": 0.12,
+            "protocol_rate": 0.28,
+            "max_delegation_rate": 0.05,
+        },
+    )
 
     # Step 9: Check health
     print(rt.health())

@@ -159,8 +159,7 @@ Tracer(service_id="runtime", exporter=ConsoleSpanExporter())
 trace span:
 
 ```python
-with self.__tracer.trace(f"handle.{event.event_type}",
-                          trace_id=..., parent_span_id=..., tags=...):
+with self.__tracer.trace(f"handle.{event.event_type}", trace_id=..., parent_span_id=..., tags=...):
     self.handle(event)
 ```
 

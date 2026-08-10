@@ -48,12 +48,12 @@ def moveable_holidays(start_year: int = 2025, end_year: int = 2030) -> set[tuple
     weekend rules only (with a logged warning at module import time).
     """
     data = _load_holidays()
-    moveable = data["moveable"]
+    moveable: dict[str, list[dict[str, int]]] = data["moveable"]  # type: ignore[assignment]
     holidays: set[tuple[int, int, int]] = set()
     for year in range(start_year, end_year + 1):
         key = str(year)
         if key in moveable:
-            for entry in moveable[key]:
+            for entry in moveable.get(key, []):
                 holidays.add((year, entry["month"], entry["day"]))
     return holidays
 

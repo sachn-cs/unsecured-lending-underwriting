@@ -21,7 +21,7 @@ The build system uses `setuptools` with `setuptools-scm` for versioning. No `ver
 Version strings are derived from git tags by `setuptools-scm`. The resolved version is written to `underwrite/__version__.py` at build time:
 
 ```python
-__version__ = version = '0.1.dev65+gad81577c8.d20260608'
+__version__ = version = "0.1.dev65+gad81577c8.d20260608"
 ```
 
 This file is git-ignored and regenerated on every build.

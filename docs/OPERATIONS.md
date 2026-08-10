@@ -129,6 +129,7 @@ Or programmatically:
 
 ```python
 from underwrite.__circuit__ import CircuitBreaker, CircuitState
+
 cb = CircuitBreaker(failure_threshold=3, recovery_timeout=15.0)
 # cb.state → CircuitState.CLOSED / OPEN / HALF_OPEN
 ```
@@ -393,6 +394,7 @@ Sagas that were interrupted by a crash can be replayed:
 
 ```python
 from underwrite.__runtime__ import Runtime
+
 rt = Runtime()
 success = rt.replay_saga("saga-id-here")
 ```

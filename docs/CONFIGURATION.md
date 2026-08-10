@@ -288,8 +288,8 @@ alphabetical listing.
 ## 5. Serialization
 
 ```python
-config.to_dict()      # → dict (strips secrets.token and identity.private_key)
-config.save("path")   # → JSON file (creates parent directories)
+config.to_dict()  # → dict (strips secrets.token and identity.private_key)
+config.save("path")  # → JSON file (creates parent directories)
 ```
 
 `to_dict()` excludes `None` values and redacts sensitive fields (`token`,

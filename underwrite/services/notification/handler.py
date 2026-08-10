@@ -20,7 +20,7 @@ from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
 
 
-class NotificationHandler(Core):
+class Handler(Core):
     """Sends notifications for fraud alerts, NPA events, and early warnings.
 
     Dispatches via configurable channels (SES/SendGrid for email,

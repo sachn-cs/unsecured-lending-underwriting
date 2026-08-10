@@ -31,7 +31,7 @@ jobs:
       - name: Security audit
         run: bandit -r underwrite/ -c pyproject.toml
       - name: Dependency audit
-        run: pip-audit
+        run: pip-audit --skip-editable
       - name: Test
         run: python -m pytest tests/ -v --tb=short --cov=underwrite --cov-report=term --cov-fail-under=80
 

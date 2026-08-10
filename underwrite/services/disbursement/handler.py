@@ -71,12 +71,12 @@ class Handler(StatefulService):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.__clock: SystemClock = SystemClock()
-        self.__disbursements: dict[str, dict[str, Any]] = {}
+        self.clock: SystemClock = SystemClock()
+        self.disbursements: dict[str, dict[str, Any]] = {}
         self.repo: TypedStoreRepository[dict[str, dict[str, Any]]] = self.store_repo("disbursements", dict)
         loaded = self.repo.load(default={})
         if loaded:
-            self.__disbursements = loaded
+            self.disbursements = loaded
 
     def handle(self, event: Message) -> None:
         """Process document.generated events to trigger disbursement.
@@ -92,18 +92,18 @@ class Handler(StatefulService):
         doc_id: str = p.get("doc_id", "")
 
         with self.state_lock:
-            if borrower in self.__disbursements:
+            if borrower in self.disbursements:
                 logger.warning("duplicate disbursement attempted for {}, skipping", borrower)
                 return
             record = {
                 "borrower": borrower,
                 "principal": principal,
                 "doc_id": doc_id,
-                "disbursed_at": self.__clock.iso(),
+                "disbursed_at": self.clock.iso(),
                 "status": "disbursed",
             }
-            self.__disbursements[borrower] = record
-            self.repo.save(self.__disbursements)
+            self.disbursements[borrower] = record
+            self.repo.save(self.disbursements)
 
         self.emit(
             Type.DISBURSEMENT_PROCESSED,
@@ -125,4 +125,4 @@ class Handler(StatefulService):
             Disbursement record dict or None if not yet disbursed.
         """
         with self.state_lock:
-            return self.__disbursements.get(borrower)
+            return self.disbursements.get(borrower)

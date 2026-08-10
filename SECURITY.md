@@ -10,7 +10,9 @@ Do **not** create a public GitHub issue for security vulnerabilities.
 
 | Version | Supported          |
 |---------|--------------------|
-| 0.1.x   | :white_check_mark: |
+| 0.9.x   | :white_check_mark: |
+| 0.8.x   | :white_check_mark: |
+| < 0.8   | :x:                |
 
 ## Disclosure Policy
 

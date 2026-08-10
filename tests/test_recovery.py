@@ -13,8 +13,8 @@ from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.recovery.handler import Handler
-from underwrite.services.recovery.handler import Handler as RecoveryHandler
+from underwrite.services.recovery import Handler
+from underwrite.services.recovery import Handler as RecoveryHandler
 from underwrite.store import InMemory
 
 

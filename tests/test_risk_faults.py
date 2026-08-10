@@ -11,7 +11,7 @@ import pytest
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.audit.handler import Handler as AuditHandler
+from underwrite.services.audit import Handler as AuditHandler
 from underwrite.services.risk.handler import Handler as RiskHandler
 from underwrite.services.risk.model import RiskModel
 from underwrite.store import InMemory

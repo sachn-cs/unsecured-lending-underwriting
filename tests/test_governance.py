@@ -13,8 +13,8 @@ from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.governance.handler import Handler
-from underwrite.services.governance.handler import Handler as GovHandler
+from underwrite.services.governance import Handler
+from underwrite.services.governance import Handler as GovHandler
 from underwrite.store import InMemory
 
 

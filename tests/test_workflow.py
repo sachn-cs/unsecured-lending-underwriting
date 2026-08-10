@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.workflow.handler import Handler as WorkflowHandler
+from underwrite.services.workflow import Handler as WorkflowHandler
 from underwrite.store import InMemory
 
 

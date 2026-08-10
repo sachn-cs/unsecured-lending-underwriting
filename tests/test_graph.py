@@ -16,8 +16,8 @@ from typing import Any
 
 from underwrite.local import LocalBus
 from underwrite.message import Message
-from underwrite.services.graph.handler import Handler
-from underwrite.services.graph.handler import Handler as GraphHandler
+from underwrite.services.graph import Handler
+from underwrite.services.graph import Handler as GraphHandler
 from underwrite.store import InMemory
 
 

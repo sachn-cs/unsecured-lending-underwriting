@@ -15,7 +15,7 @@ from typing import Any
 
 from underwrite.local import LocalBus
 from underwrite.message import Message
-from underwrite.services.audit.handler import Handler as AuditHandler
+from underwrite.services.audit import Handler as AuditHandler
 from underwrite.store import InMemory
 
 
@@ -141,7 +141,7 @@ class TestAuditService:
         with patch.dict("sys.modules", {"boto3": mock_boto3_mod}):
             if "underwrite.services.audit.service" in __import__("sys").modules:
                 __import__("sys").modules.pop("underwrite.services.audit.service", None)
-            from underwrite.services.audit.handler import Handler as AuditSvc2
+            from underwrite.services.audit import Handler as AuditSvc2
 
             svc2 = AuditSvc2(
                 name="audit",

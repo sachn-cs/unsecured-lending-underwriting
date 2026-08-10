@@ -12,8 +12,8 @@ import pytest
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.quote.handler import Handler
-from underwrite.services.quote.handler import Handler as QuoteHandler
+from underwrite.services.quote import Handler
+from underwrite.services.quote import Handler as QuoteHandler
 from underwrite.store import InMemory
 
 

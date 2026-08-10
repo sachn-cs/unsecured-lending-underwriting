@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.origination.handler import Handler as OriginationHandler
+from underwrite.services.origination import Handler as OriginationHandler
 from underwrite.store import InMemory
 
 

@@ -9,8 +9,8 @@ import pytest
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.fee.handler import Handler
-from underwrite.services.fee.handler import Handler as FeeHandler
+from underwrite.services.fee import Handler
+from underwrite.services.fee import Handler as FeeHandler
 from underwrite.store import InMemory
 
 

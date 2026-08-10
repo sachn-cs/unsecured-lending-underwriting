@@ -10,8 +10,8 @@ from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.reporting.handler import Handler
-from underwrite.services.reporting.handler import Handler as ReportingHandler
+from underwrite.services.reporting import Handler
+from underwrite.services.reporting import Handler as ReportingHandler
 from underwrite.store import InMemory
 
 

@@ -7,8 +7,8 @@ from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.consent.handler import Handler
-from underwrite.services.consent.handler import Handler as ConsentHandler
+from underwrite.services.consent import Handler
+from underwrite.services.consent import Handler as ConsentHandler
 from underwrite.store import InMemory
 
 

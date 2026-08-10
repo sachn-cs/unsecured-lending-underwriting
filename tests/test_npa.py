@@ -15,8 +15,8 @@ from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.npa.handler import Handler
-from underwrite.services.npa.handler import Handler as NpaHandler
+from underwrite.services.npa import Handler
+from underwrite.services.npa import Handler as NpaHandler
 from underwrite.store import InMemory
 
 

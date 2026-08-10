@@ -13,8 +13,8 @@ from unittest.mock import patch
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.notification.handler import Handler
-from underwrite.services.notification.handler import Handler as NotificationHandler
+from underwrite.services.notification import Handler
+from underwrite.services.notification import Handler as NotificationHandler
 from underwrite.store import InMemory
 
 

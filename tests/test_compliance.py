@@ -21,10 +21,10 @@ from unittest.mock import patch
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.compliance.handler import (
+from underwrite.services.compliance import (
     Handler as ComplianceHandler,
 )
-from underwrite.services.compliance.handler import (
+from underwrite.services.compliance import (
     pan_category,
     verify_aadhaar_checksum,
 )

@@ -14,7 +14,7 @@ from typing import Any, cast
 from underwrite.config import Configuration
 from underwrite.message import Message, Type
 from underwrite.runtime import Runtime
-from underwrite.services.audit.handler import Handler as AuditHandler
+from underwrite.services.audit import Handler as AuditHandler
 
 
 def memory_runtime(enable_metrics: bool = True) -> Runtime:

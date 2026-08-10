@@ -15,8 +15,8 @@ import pytest
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.collateral.handler import Handler
-from underwrite.services.collateral.handler import Handler as CollateralHandler
+from underwrite.services.collateral import Handler
+from underwrite.services.collateral import Handler as CollateralHandler
 from underwrite.store import InMemory
 
 

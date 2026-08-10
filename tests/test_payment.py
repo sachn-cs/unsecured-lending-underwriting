@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.payment.handler import Handler as PaymentHandler
+from underwrite.services.payment import Handler as PaymentHandler
 from underwrite.store import InMemory
 
 

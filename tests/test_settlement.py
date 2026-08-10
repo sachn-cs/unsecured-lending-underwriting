@@ -9,8 +9,8 @@ import pytest
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.settlement.handler import Handler
-from underwrite.services.settlement.handler import Handler as SettlementHandler
+from underwrite.services.settlement import Handler
+from underwrite.services.settlement import Handler as SettlementHandler
 from underwrite.store import InMemory
 
 

@@ -14,7 +14,7 @@ import pytest
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.identity.handler import Handler as IdentityHandler
+from underwrite.services.identity import Handler as IdentityHandler
 from underwrite.store import InMemory
 
 

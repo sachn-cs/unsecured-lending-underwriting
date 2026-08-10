@@ -25,7 +25,7 @@ from underwrite.amortization import (
     project_outstanding,
 )
 from underwrite.exceptions import ProtocolError
-from underwrite.services.pricing.handler import compute_rate_cap
+from underwrite.services.pricing import compute_rate_cap
 from underwrite.validate import PayloadValidator
 
 finite_float = st.floats(min_value=-1e9, max_value=1e9, allow_nan=False, allow_infinity=False)

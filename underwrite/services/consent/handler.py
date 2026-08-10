@@ -82,8 +82,8 @@ class Handler(StatefulService):
             required_purposes=kwargs.pop("required_purposes", []),
             consent_validity_days=kwargs.pop("consent_validity_days", DEFAULT_CONSENT_VALIDITY_DAYS),
         )
-        self.__required_purposes: list[str] = config.required_purposes
-        self.__consent_validity_days: int = config.consent_validity_days
+        self.required_purposes: list[str] = config.required_purposes
+        self.consent_validity_days: int = config.consent_validity_days
         deps = Dependencies(
             identity=identity,
             bus=bus,
@@ -110,8 +110,8 @@ class Handler(StatefulService):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.__clock: SystemClock = SystemClock()
-        self.__records: dict[str, dict[str, Any]] = {}
+        self.clock: SystemClock = SystemClock()
+        self.records: dict[str, dict[str, Any]] = {}
         self.repo: TypedStoreRepository[dict[str, dict[str, Any]]] = self.store_repo("consent", dict)
 
     def start(self) -> None:
@@ -119,7 +119,7 @@ class Handler(StatefulService):
         super().start()
         loaded = self.repo.load(default={})
         if loaded:
-            self.__records = loaded
+            self.records = loaded
 
     def handle(self, event: Message) -> None:
         """Process consent recording and withdrawal events.
@@ -147,10 +147,10 @@ class Handler(StatefulService):
             logger.warning("consent.recorded missing user_id or purpose")
             return
         key = f"{user_id}:{purpose}"
-        now = self.__clock.utc_now()
-        expires = now + timedelta(days=self.__consent_validity_days)
+        now = self.clock.utc_now()
+        expires = now + timedelta(days=self.consent_validity_days)
         with self.state_lock:
-            self.__records[key] = {
+            self.records[key] = {
                 "user_id": user_id,
                 "purpose": purpose,
                 "status": "active",
@@ -159,7 +159,7 @@ class Handler(StatefulService):
                 "ip_address": event.payload.get("ip_address", ""),
                 "user_agent": event.payload.get("user_agent", ""),
             }
-            self.repo.save(self.__records)
+            self.repo.save(self.records)
 
     def withdraw_consent(self, event: Message) -> None:
         """Withdraw consent for a user, optionally for a specific purpose.
@@ -177,16 +177,16 @@ class Handler(StatefulService):
         with self.state_lock:
             if purpose:
                 key = f"{user_id}:{purpose}"
-                record = self.__records.get(key)
+                record = self.records.get(key)
                 if record and record.get("status") == "active":
                     record["status"] = "withdrawn"
-                    record["withdrawn_at"] = self.__clock.iso()
+                    record["withdrawn_at"] = self.clock.iso()
             else:
-                for key, record in self.__records.items():
+                for key, record in self.records.items():
                     if key.startswith(f"{user_id}:") and record.get("status") == "active":
                         record["status"] = "withdrawn"
-                        record["withdrawn_at"] = self.__clock.iso()
-            self.repo.save(self.__records)
+                        record["withdrawn_at"] = self.clock.iso()
+            self.repo.save(self.records)
 
     def get_consent(self, user_id: str, purpose: str) -> dict[str, Any] | None:
         """Return the consent record for a user/purpose pair.
@@ -200,7 +200,7 @@ class Handler(StatefulService):
 
         """
         with self.state_lock:
-            return self.__records.get(f"{user_id}:{purpose}")
+            return self.records.get(f"{user_id}:{purpose}")
 
     def has_active_consent(self, user_id: str, purpose: str) -> bool:
         """Check if a user has active, non-expired consent for a purpose.
@@ -214,7 +214,7 @@ class Handler(StatefulService):
 
         """
         with self.state_lock:
-            record = self.__records.get(f"{user_id}:{purpose}")
+            record = self.records.get(f"{user_id}:{purpose}")
             if not record:
                 return False
             if record.get("status") != "active":
@@ -223,7 +223,7 @@ class Handler(StatefulService):
             if expires_str:
                 try:
                     expires = datetime.fromisoformat(expires_str)
-                    if expires < self.__clock.utc_now():
+                    if expires < self.clock.utc_now():
                         return False
                 except (ValueError, TypeError):
                     logger.warning(
@@ -245,9 +245,9 @@ class Handler(StatefulService):
 
         """
         with self.state_lock:
-            if not self.__records:
+            if not self.records:
                 return []
-            return [v for k, v in self.__records.items() if k.startswith(f"{user_id}:")]
+            return [v for k, v in self.records.items() if k.startswith(f"{user_id}:")]
 
     def check_missing_purposes(self, user_id: str) -> list[str]:
         """Return required purposes for which the user lacks active consent.
@@ -262,4 +262,4 @@ class Handler(StatefulService):
         active = set(
             r["purpose"] for r in self.get_user_consents(user_id) if self.has_active_consent(user_id, r["purpose"])
         )
-        return [p for p in self.__required_purposes if p not in active]
+        return [p for p in self.required_purposes if p not in active]

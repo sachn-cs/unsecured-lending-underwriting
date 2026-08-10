@@ -1,7 +1,7 @@
 site_name: underwrite
 site_description: Delegated Underwriting Protocol — nano-service platform for unsecured lending
 repo_url: https://github.com/sachncs/underwrite
-edit_uri: edit/main/docs/
+edit_uri: edit/master/docs/
 
 theme:
   name: material

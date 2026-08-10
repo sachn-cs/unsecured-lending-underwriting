@@ -1,11 +1,12 @@
-"""Exhaustive tests for ServicingHandler."""
+"""Exhaustive tests for Handler."""
 
 from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.servicing.handler import ServicingHandler
 from underwrite.store import MemoryStore
+from underwrite.services.servicing.handler import Handler
+from underwrite.services.servicing.handler import Handler as ServicingHandler
 
 
 class TestServicingService:

@@ -34,7 +34,7 @@ import re
 import sys
 import threading
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
@@ -293,13 +293,13 @@ class Runtime:
         self.configure_logging()
         self.store = build_store(self.config)
         self.read_store = build_read_store(self.config)
-        self.services = {}
+        self.services: dict[str, Core] = {}
         self.lock: threading.RLock = threading.RLock()
         self.runtime_identity = None
-        self.publisher_identities = {}
+        self.publisher_identities: dict[str, Keypair] = {}
         self.publisher_lock = threading.Lock()
         if readonly:
-            self.bus = LocalBus(store=self.store)  # type: ignore[assignment]
+            self.bus = cast(EventBus | LocalBus, LocalBus(store=self.store))
             self.health = Checks()
             self.tracer = None
             self.secrets = None
@@ -315,7 +315,7 @@ class Runtime:
         self.runtime_identity = Keypair.create("runtime", secrets_manager=self.secrets)
         self.kyc_providers = build_kyc_providers(self.config, self.secrets)
         self.tracer = build_tracer(self.config)
-        self.bus = build_event_bus(self.config.bus, self.store)
+        self.bus = cast(EventBus | LocalBus, build_event_bus(self.config.bus, self.store))
         self.saga = Orchestrator(store=self.store) if self.config.saga.enabled else None
         self.health = Checks()
         self.metrics = Collector() if self.config.metrics.enabled else None
@@ -336,11 +336,6 @@ class Runtime:
 
 
 
-
-    def services(self) -> dict[str, Core]:
-        """Returns a snapshot of registered services keyed by name."""
-        with self.lock:
-            return dict(self.services)
 
 
 
@@ -450,7 +445,7 @@ class Runtime:
             service_names = self.config.enabled_services()
         self.service_names = list(service_names)
         run_migrations(self.store, self.config)
-        self.metrics_exporter = start_metrics_export(self.metrics, self.config)
+        self.metrics_exporter = start_metrics_export(self.metrics, self.config)  # type: ignore[assignment]
         with self.lock:
             registered: list[str] = [n for n in service_names if n not in self.services]
         for name in registered:

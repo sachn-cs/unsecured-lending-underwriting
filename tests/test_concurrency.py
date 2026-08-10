@@ -15,7 +15,7 @@ import threading
 
 from underwrite.local import LocalBus
 from underwrite.message import Message
-from underwrite.services.mechanism.handler import Handler as MechanismHandler
+from underwrite.services.mechanism import Handler as MechanismHandler
 from underwrite.store import InMemory
 
 

@@ -19,7 +19,7 @@ from underwrite.local import LocalBus
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator, SagaStep
 from underwrite.services.audit import Handler
-from underwrite.services.mechanism.handler import Handler as MechanismHandler
+from underwrite.services.mechanism import Handler as MechanismHandler
 from underwrite.store import Disk, InMemory
 from underwrite.tracer import Tracer
 

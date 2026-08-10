@@ -12,7 +12,7 @@ from underwrite.services.disbursement import Handler as DisbursementHandler
 from underwrite.services.document import Handler as DocumentHandler
 from underwrite.services.pricing import Handler as PricingHandler
 from underwrite.services.settlement import Handler as SettlementHandler
-from underwrite.services.underwriter.handler import Handler as UnderwriterHandler
+from underwrite.services.underwriter import Handler as UnderwriterHandler
 from underwrite.store import InMemory
 
 

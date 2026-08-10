@@ -7,8 +7,8 @@ from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.underwriter.handler import Handler
-from underwrite.services.underwriter.handler import Handler as UnderwriterHandler
+from underwrite.services.underwriter import Handler
+from underwrite.services.underwriter import Handler as UnderwriterHandler
 from underwrite.store import InMemory
 
 

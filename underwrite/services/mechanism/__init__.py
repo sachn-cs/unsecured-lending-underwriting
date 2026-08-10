@@ -4,5 +4,6 @@
 """Mechanism design service — incentive and delegation logic."""
 
 from underwrite.services.mechanism.graph import DelegationGraph
+from underwrite.services.mechanism.mechanism import Handler
 
 __all__ = ["DelegationGraph", "Handler"]

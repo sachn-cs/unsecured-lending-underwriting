@@ -19,10 +19,10 @@ __all__ = [
 
 # Maps service name -> (module_path, class_name)
 HANDLER_MAP: dict[str, str] = {
-    "mechanism": "underwrite.services.mechanism.handler",
+    "mechanism": "underwrite.services.mechanism",
     "audit": "underwrite.services.audit",
     "quote": "underwrite.services.quote",
-    "risk": "underwrite.services.risk.handler",
+    "risk": "underwrite.services.risk",
     "fraud": "underwrite.services.fraud",
     "compliance": "underwrite.services.compliance",
     "npa": "underwrite.services.npa",
@@ -33,7 +33,7 @@ HANDLER_MAP: dict[str, str] = {
     "identity": "underwrite.services.identity",
     "notification": "underwrite.services.notification",
     "reporting": "underwrite.services.reporting",
-    "underwriter": "underwrite.services.underwriter.handler",
+    "underwriter": "underwrite.services.underwriter",
     "pricing": "underwrite.services.pricing",
     "document": "underwrite.services.document",
     "disbursement": "underwrite.services.disbursement",
@@ -49,10 +49,10 @@ HANDLER_MAP: dict[str, str] = {
     "statement": "underwrite.services.statement",
     "prepayment": "underwrite.services.prepayment",
     "kfs": "underwrite.services.kfs",
-    "razorpay": "underwrite.services.razorpay.handler",
+    "razorpay": "underwrite.services.razorpay",
     "consent": "underwrite.services.consent",
     "dsr": "underwrite.services.dsr",
-    "credit_bureau": "underwrite.services.credit_bureau.handler",
+    "credit_bureau": "underwrite.services.credit_bureau",
 }
 
 HANDLER_CLASSES: dict[str, str] = {

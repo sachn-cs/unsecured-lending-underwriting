@@ -15,8 +15,8 @@ import pytest
 from underwrite.exceptions import ProtocolError
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.risk.handler import Handler
-from underwrite.services.risk.handler import Handler as RiskHandler
+from underwrite.services.risk import Handler
+from underwrite.services.risk import Handler as RiskHandler
 from underwrite.store import InMemory
 
 

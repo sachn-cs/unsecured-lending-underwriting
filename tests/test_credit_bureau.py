@@ -11,14 +11,14 @@ import pytest
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
+from underwrite.services.credit_bureau import Handler
+from underwrite.services.credit_bureau import Handler as CreditBureauHandler
 from underwrite.services.credit_bureau.client import (
     CkycResponse,
     CreditReport,
     HttpCreditBureauClient,
     MockCreditBureauClient,
 )
-from underwrite.services.credit_bureau.handler import Handler
-from underwrite.services.credit_bureau.handler import Handler as CreditBureauHandler
 from underwrite.services.providers import Provider, ProviderResult, ProvidersConfig, Verdict
 from underwrite.store import InMemory
 

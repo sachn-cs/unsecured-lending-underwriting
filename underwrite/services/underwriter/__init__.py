@@ -13,6 +13,7 @@ from underwrite.services.underwriter.engine import (
     RuleSeverity,
     UnderwritingDecision,
 )
+from underwrite.services.underwriter.underwriter import Handler
 
 __all__ = [
     "DecisionOutcome",

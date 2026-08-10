@@ -20,7 +20,7 @@ from underwrite.local import LocalBus
 from underwrite.message import Message
 from underwrite.runtime import Runtime, build_authz
 from underwrite.services.audit import Handler as AuditHandler
-from underwrite.services.mechanism.handler import Handler as MechanismHandler
+from underwrite.services.mechanism import Handler as MechanismHandler
 from underwrite.services.risk.model import RiskModel, RiskScoringStrategy
 from underwrite.store import CQRSStore, InMemory, ReadStore, Store
 

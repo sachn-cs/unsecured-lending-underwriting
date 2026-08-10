@@ -7,8 +7,8 @@ from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.razorpay.handler import Handler
-from underwrite.services.razorpay.handler import Handler as RazorpayHandler
+from underwrite.services.razorpay import Handler
+from underwrite.services.razorpay import Handler as RazorpayHandler
 from underwrite.store import InMemory
 
 

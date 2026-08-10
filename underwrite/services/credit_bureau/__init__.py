@@ -3,4 +3,6 @@
 
 """Credit bureau integration service — CIBIL, Experian, Equifax."""
 
+from underwrite.services.credit_bureau.credit_bureau import Handler
+
 __all__ = ["Handler"]

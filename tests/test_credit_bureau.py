@@ -2,6 +2,7 @@
 # Copyright (c) 2026 Sachin
 
 """Tests for Handler — credit bureau checks and CKYC verification."""
+from typing import cast
 
 from __future__ import annotations
 
@@ -21,7 +22,7 @@ from underwrite.services.kyc.base import ProviderResult, Verdict
 from underwrite.store import InMemory
 
 
-class CibilProviderStub:
+class CibilProviderStub(Provider):
     """Minimal CIBIL provider stub returning a fixed bureau pull."""
 
     name = "cibil"
@@ -65,7 +66,7 @@ class TestCreditBureauCheck:
         bus.subscribe(Type.CREDIT_BUREAU_CHECKED, lambda e: received.append(e))
         s = svc(bus=bus)
         s.set_client(MockCreditBureauClient())
-        s.client.add_report(
+        cast(MockCreditBureauClient, s.client).add_report(
             "ABCDE1234F", CreditReport(bureau="cibil", pan="ABCDE1234F", name="A", dob="1990-01-01", score=750)
         )
         bus.start()
@@ -107,7 +108,7 @@ class TestCreditBureauCheck:
     def test_get_report_after_check(self) -> None:
         s = svc()
         s.set_client(MockCreditBureauClient())
-        s.client.add_report(
+        cast(MockCreditBureauClient, s.client).add_report(
             "ABCDE1234F", CreditReport(bureau="cibil", pan="ABCDE1234F", name="Test", dob="1990-06-15", score=720)
         )
         s.handle(
@@ -129,8 +130,8 @@ class TestCreditBureauCheck:
     def test_multiple_bureau_checks(self) -> None:
         s = svc()
         s.set_client(MockCreditBureauClient())
-        s.client.add_report("PAN1", CreditReport(bureau="cibil", pan="PAN1", name="A", dob="1990-01-01", score=750))
-        s.client.add_report("PAN2", CreditReport(bureau="experian", pan="PAN2", name="B", dob="1991-02-02", score=680))
+        cast(MockCreditBureauClient, s.client).add_report("PAN1", CreditReport(bureau="cibil", pan="PAN1", name="A", dob="1990-01-01", score=750))
+        cast(MockCreditBureauClient, s.client).add_report("PAN2", CreditReport(bureau="experian", pan="PAN2", name="B", dob="1991-02-02", score=680))
         s.handle(
             Message(event_type=Type.CREDIT_BUREAU_CHECK, source="test", payload={"pan": "PAN1", "bureau": "cibil"})
         )
@@ -348,7 +349,7 @@ class TestHealthCheck:
     def test_health_returns_counts(self) -> None:
         s = svc()
         s.set_client(MockCreditBureauClient())
-        s.client.add_report("PAN1", CreditReport(bureau="cibil", pan="PAN1", name="A", dob="1990-01-01", score=750))
+        cast(MockCreditBureauClient, s.client).add_report("PAN1", CreditReport(bureau="cibil", pan="PAN1", name="A", dob="1990-01-01", score=750))
         s.handle(
             Message(event_type=Type.CREDIT_BUREAU_CHECK, source="test", payload={"pan": "PAN1", "bureau": "cibil"})
         )

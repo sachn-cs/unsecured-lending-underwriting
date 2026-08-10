@@ -39,10 +39,10 @@ class Checks:
             timeout: Max seconds per health check. If a check takes
                 longer, it is considered failed (prevents hang-ups).
         """
-        self.__lock: threading.Lock = threading.Lock()
-        self.__checks: dict[str, HealthCheck] = {}
-        self.__timeout: float = timeout
-        self.__executor: concurrent.futures.ThreadPoolExecutor = concurrent.futures.ThreadPoolExecutor(
+        self.lock: threading.Lock = threading.Lock()
+        self.checks: dict[str, HealthCheck] = {}
+        self.timeout: float = timeout
+        self.executor: concurrent.futures.ThreadPoolExecutor = concurrent.futures.ThreadPoolExecutor(
             max_workers=4,
             thread_name_prefix="health",
         )
@@ -54,8 +54,8 @@ class Checks:
             name: Unique check name.
             check: Callable returning ``{"ok": bool, ...}``.
         """
-        with self.__lock:
-            self.__checks[name] = check
+        with self.lock:
+            self.checks[name] = check
 
     def unregister(self, name: str) -> None:
         """Removes a previously registered health check.
@@ -63,8 +63,8 @@ class Checks:
         Args:
             name: The check name to remove.
         """
-        with self.__lock:
-            self.__checks.pop(name, None)
+        with self.lock:
+            self.checks.pop(name, None)
 
     def status(self) -> dict[str, Any]:
         """Aggregates all registered health checks into a single report.
@@ -76,17 +76,17 @@ class Checks:
         """
         results: dict[str, Any] = {}
         overall: bool = True
-        with self.__lock:
-            checks_snapshot = dict(self.__checks)
+        with self.lock:
+            checks_snapshot = dict(self.checks)
         for name, check in checks_snapshot.items():
             try:
-                fut = self.__executor.submit(check)
-                result = fut.result(timeout=self.__timeout)
+                fut = self.executor.submit(check)
+                result = fut.result(timeout=self.timeout)
             except concurrent.futures.TimeoutError:
-                logger.warning("health check {} timed out after {:.1f}s", name, self.__timeout)
+                logger.warning("health check {} timed out after {:.1f}s", name, self.timeout)
                 result = {
                     "ok": False,
-                    "detail": f"timed out after {self.__timeout}s",
+                    "detail": f"timed out after {self.timeout}s",
                 }
             except Exception as exc:
                 logger.exception("health check {} failed", name)
@@ -103,4 +103,4 @@ class Checks:
 
     def shutdown(self) -> None:
         """Shuts down the health check thread pool."""
-        self.__executor.shutdown(wait=True)
+        self.executor.shutdown(wait=True)

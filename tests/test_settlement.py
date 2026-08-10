@@ -1,4 +1,4 @@
-"""Tests for SettlementHandler — loss recognition and final accounting."""
+"""Tests for Handler — loss recognition and final accounting."""
 
 from __future__ import annotations
 
@@ -6,11 +6,12 @@ import pytest
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.settlement.handler import SettlementHandler
 from underwrite.store import MemoryStore
+from underwrite.services.settlement.handler import Handler
+from underwrite.services.settlement.handler import Handler as SettlementHandler
 
 
-def svc(bus=None) -> SettlementHandler:
+def svc(bus=None) -> Handler:
     return SettlementHandler(service_id="settlement", bus=bus or LocalBus(), store=MemoryStore())
 
 

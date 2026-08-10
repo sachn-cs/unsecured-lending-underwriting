@@ -71,7 +71,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: TruffleHog secret scan
-        uses: trufflesecurity/trufflehog@main
+        uses: trufflesecurity/trufflehog@3a67e6c3f2b56e1d8a8f1c6b9c4e9a4f8d9b6e8b # pinned commit
         with:
           path: ./
           base: ${{ github.event.repository.default_branch }}

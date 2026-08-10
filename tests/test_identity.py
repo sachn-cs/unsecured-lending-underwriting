@@ -1,4 +1,4 @@
-"""Tests for IdentityHandler — key registration and rotation.
+"""Tests for Handler — key registration and rotation.
 
 Tests verify behavior through:
   - Store state (identity:* keys)
@@ -11,8 +11,9 @@ import pytest
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.identity.handler import IdentityHandler
 from underwrite.store import MemoryStore
+from underwrite.services.identity.handler import Handler
+from underwrite.services.identity.handler import Handler as IdentityHandler
 
 
 class TestIdentityService:

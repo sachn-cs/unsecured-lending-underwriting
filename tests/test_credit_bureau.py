@@ -9,6 +9,7 @@ from __future__ import annotations
 import pytest
 
 from underwrite.local import LocalBus
+from underwrite.services.kyc.base import Provider
 from underwrite.message import Message, Type
 from underwrite.services.credit_bureau.client import (
     CkycResponse,

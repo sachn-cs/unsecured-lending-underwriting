@@ -133,7 +133,7 @@ class TestEvent:
 
 class TestEventBus:
     def test_publish_and_deliver(self) -> None:
-        bus: EventBus = LocalBus()
+        bus: EventBus | LocalBus = LocalBus()
         received: list[Message] = []
 
         def handler(event: Message) -> None:
@@ -147,7 +147,7 @@ class TestEventBus:
         assert received[0].event_type == "test.event"
 
     def test_wildcard_subscriber(self) -> None:
-        bus: EventBus = LocalBus()
+        bus: EventBus | LocalBus = LocalBus()
         received: list[Message] = []
 
         def handler(event: Message) -> None:
@@ -161,7 +161,7 @@ class TestEventBus:
         assert len(received) == 2
 
     def test_unsubscribe(self) -> None:
-        bus: EventBus = LocalBus()
+        bus: EventBus | LocalBus = LocalBus()
         received: list[Message] = []
 
         def handler(event: Message) -> None:
@@ -175,7 +175,7 @@ class TestEventBus:
         assert len(received) == 0
 
     def test_handler_exception_does_not_crash(self) -> None:
-        bus: EventBus = LocalBus()
+        bus: EventBus | LocalBus = LocalBus()
 
         def failing(event: Message) -> None:
             raise ValueError("oops")
@@ -193,7 +193,7 @@ class TestEventBus:
         assert ok == ["test"]
 
     def test_stop_clears_handlers(self) -> None:
-        bus: EventBus = LocalBus()
+        bus: EventBus | LocalBus = LocalBus()
         received: list[Message] = []
 
         def handler(event: Message) -> None:
@@ -315,7 +315,7 @@ class TestCore:
         assert len(sig) > 0
 
     def test_emit_publishes_event(self) -> None:
-        bus: EventBus = LocalBus()
+        bus: EventBus | LocalBus = LocalBus()
         received: list[Message] = []
 
         def handler(event: Message) -> None:
@@ -335,7 +335,7 @@ class TestCore:
         assert event.signature != ""
 
     def test_subscribe_receives_events(self) -> None:
-        bus: EventBus = LocalBus()
+        bus: EventBus | LocalBus = LocalBus()
         svc: ServiceHelper = ServiceHelper(name="subscriber", bus=bus, store=InMemory())
         svc.subscribe("incoming")
         bus.start()
@@ -346,7 +346,7 @@ class TestCore:
         assert svc.handled[0].event_type == "incoming"
 
     def test_stop_unsubscribes(self) -> None:
-        bus: EventBus = LocalBus()
+        bus: EventBus | LocalBus = LocalBus()
         svc: ServiceHelper = ServiceHelper(name="stoppable", bus=bus, store=InMemory())
         svc.subscribe("incoming")
         svc.start()
@@ -357,7 +357,7 @@ class TestCore:
         assert len(svc.handled) == 0
 
     def test_dispatched_event_triggers_response(self) -> None:
-        bus: EventBus = LocalBus()
+        bus: EventBus | LocalBus = LocalBus()
         received: list[Message] = []
 
         def handler(event: Message) -> None:

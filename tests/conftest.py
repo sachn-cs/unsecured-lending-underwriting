@@ -15,7 +15,7 @@ import pytest
 from underwrite.bus import EventBus
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.store import InMemory, Store
+from underwrite.store import InMemory, Sqlite, Store
 
 # -- Domain event fixture ------------------------------------------------------
 
@@ -57,7 +57,7 @@ def postgres_dsn() -> Generator[str, None, None]:
 
 
 @pytest.fixture
-def pg_store(postgres_dsn: str) -> Generator[Store, None, None]:
+def pg_store(postgres_dsn: str) -> Generator[Store | Sqlite, None, None]:
     """Return a Sqlite backed by a temporary table.
 
     Requires the ``postgres`` extra and ``testcontainers``.

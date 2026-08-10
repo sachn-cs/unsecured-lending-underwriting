@@ -25,11 +25,11 @@ from underwrite.services.compliance.handler import (
     pan_category,
     verify_aadhaar_checksum,
 )
-from underwrite.store import MemoryStore
+from underwrite.store import InMemory
 
 
 def compliance(bus=None) -> ComplianceHandler:
-    svc = ComplianceHandler(name="compliance", bus=bus, store=MemoryStore())
+    svc = ComplianceHandler(name="compliance", bus=bus, store=InMemory())
     svc.repo.save({})
     return svc
 
@@ -235,7 +235,7 @@ class TestComplianceService:
                 bus = LocalBus()
                 frozen: list[Message] = []
                 bus.subscribe(Type.AML_FROZEN, lambda e: frozen.append(e))
-                svc = ComplianceHandler(name="compliance", bus=bus, aml_blocklist_path=bl_path, store=MemoryStore())
+                svc = ComplianceHandler(name="compliance", bus=bus, aml_blocklist_path=bl_path, store=InMemory())
                 bus.start()
                 svc.handle(
                     Message(

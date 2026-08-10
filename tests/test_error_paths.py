@@ -19,7 +19,7 @@ from underwrite.runtime import Runtime, build_authz
 from underwrite.services.audit.handler import Handler as AuditHandler
 from underwrite.services.mechanism.handler import Handler as MechanismHandler
 from underwrite.services.risk.model import RiskModel
-from underwrite.store import CQRSStore, MemoryStore, PostgresStore, ReadStore, Store
+from underwrite.store import CQRSStore, InMemory, Sqlite, ReadStore, Store
 
 # ---------------------------------------------------------------------------
 # 1) Core.safe_store_get returns default on store error
@@ -28,14 +28,14 @@ from underwrite.store import CQRSStore, MemoryStore, PostgresStore, ReadStore, S
 
 class TestSafeStoreGet:
     def test_returns_default_on_exception(self) -> None:
-        svc = ConcreteService(name="test_svc_get", bus=LocalBus(), store=MemoryStore())
+        svc = ConcreteService(name="test_svc_get", bus=LocalBus(), store=InMemory())
         svc.store = BrokenStore()
         result = svc.safe_store_get("some_key", default="fallback")
         assert result == "fallback"
 
     def test_returns_store_result_for_missing_key(self) -> None:
-        svc = ConcreteService(name="test_svc_get_missing", bus=LocalBus(), store=MemoryStore())
-        svc.store = MemoryStore()
+        svc = ConcreteService(name="test_svc_get_missing", bus=LocalBus(), store=InMemory())
+        svc.store = InMemory()
         result = svc.safe_store_get("missing", default=42)
         assert result is None
 
@@ -47,7 +47,7 @@ class TestSafeStoreGet:
 
 class TestSafeStoreSet:
     def test_returns_false_on_exception(self) -> None:
-        svc = ConcreteService(name="test_svc_set", bus=LocalBus(), store=MemoryStore())
+        svc = ConcreteService(name="test_svc_set", bus=LocalBus(), store=InMemory())
         svc.store = BrokenStore()
         result = svc.safe_store_set("some_key", "value")
         assert result is False
@@ -161,13 +161,13 @@ class TestAuthzBuildFallback:
 
 
 # ---------------------------------------------------------------------------
-# 8) PostgresStore.health returns {"ok": False} on error
+# 8) Sqlite.health returns {"ok": False} on error
 # ---------------------------------------------------------------------------
 
 
 class TestPostgresStoreHealthFallback:
     def test_returns_ok_false_on_query_failure(self) -> None:
-        store = PostgresStore(dsn="", table="test")
+        store = Sqlite(dsn="", table="test")
         store.execute = MagicMock(side_effect=RuntimeError("db down"))
         result = store.health()
         assert result["ok"] is False
@@ -181,7 +181,7 @@ class TestPostgresStoreHealthFallback:
 
 class TestCQRSStoreHealthFallback:
     def test_uses_fallback_on_write_store_exception(self) -> None:
-        read_store = MemoryStore()
+        read_store = InMemory()
         write_store = MagicMock(spec=Store)
         write_store.health.side_effect = RuntimeError("write store down")
         store = CQRSStore(read_store=cast(ReadStore, read_store), write_store=write_store)
@@ -199,7 +199,7 @@ class TestMechanismRejection:
     def test_repay_unknown_user_emits_rejected(self) -> None:
         bus: EventBus = LocalBus()
         bus.start()
-        svc = MechanismHandler(name="mechanism", bus=bus, store=MemoryStore())
+        svc = MechanismHandler(name="mechanism", bus=bus, store=InMemory())
         emitted: list[Message] = []
 
         def capture(e: Message) -> None:
@@ -224,7 +224,7 @@ class TestAuditLoadJsonl:
     def test_skips_corrupted_line(self, tmp_path: Path) -> None:
         ledger_file = tmp_path / "audit.jsonl"
         ledger_file.write_text('{"valid": true}\nnot json\n{"also_valid": 42}\n')
-        svc = AuditHandler(name="audit", bus=LocalBus(), store=MemoryStore())
+        svc = AuditHandler(name="audit", bus=LocalBus(), store=InMemory())
         svc.load_jsonl(str(ledger_file))
         records = svc.ledger
         assert len(records) == 2
@@ -234,13 +234,13 @@ class TestAuditLoadJsonl:
     def test_handles_empty_file(self, tmp_path: Path) -> None:
         ledger_file = tmp_path / "empty.jsonl"
         ledger_file.write_text("")
-        svc = AuditHandler(name="audit", bus=LocalBus(), store=MemoryStore())
+        svc = AuditHandler(name="audit", bus=LocalBus(), store=InMemory())
         svc.load_jsonl(str(ledger_file))
         records = svc.ledger
         assert len(records) == 0
 
     def test_handles_missing_file(self) -> None:
-        svc = AuditHandler(name="audit", bus=LocalBus(), store=MemoryStore())
+        svc = AuditHandler(name="audit", bus=LocalBus(), store=InMemory())
         svc.load_jsonl("/nonexistent/audit.jsonl")
         records = svc.ledger
         assert len(records) == 0

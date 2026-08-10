@@ -15,11 +15,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message
 from underwrite.services.graph.handler import Handler
 from underwrite.services.graph.handler import Handler as GraphHandler
-from underwrite.store import MemoryStore
+from underwrite.store import InMemory
 
 
 def graph(store_data: dict[str, Any], bus=None) -> Handler:
-    store = MemoryStore()
+    store = InMemory()
     if store_data:
         store.set("protocol:state", store_data)
     return GraphHandler(name="graph", store=store, bus=bus or LocalBus())
@@ -179,6 +179,6 @@ class TestEdgeCases:
         assert svc.is_running is False
 
     def test_handles_none_store(self) -> None:
-        svc = GraphHandler(name="graph", store=MemoryStore(), bus=LocalBus())
+        svc = GraphHandler(name="graph", store=InMemory(), bus=LocalBus())
         svc.handle(Message(event_type="graph_users", source="test", payload={}))
         assert svc.is_running is False

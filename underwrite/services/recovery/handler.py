@@ -6,8 +6,8 @@ Implements a multi-stage recovery process with store-backed persistence:
   3. ESCALATION — flagged if too many offers rejected
   4. SETTLEMENT — recovery completed or loss recognized
 
-State is persisted via the Store backend (MemoryStore, FileStore, or
-PostgresStore) so in-flight recoveries survive service restarts.
+State is persisted via the Store backend (InMemory, Disk, or
+Sqlite) so in-flight recoveries survive service restarts.
 """
 
 from __future__ import annotations

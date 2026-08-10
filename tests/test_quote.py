@@ -11,11 +11,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.quote.handler import Handler
 from underwrite.services.quote.handler import Handler as QuoteHandler
-from underwrite.store import MemoryStore
+from underwrite.store import InMemory
 
 
 def quote(bus=None) -> Handler:
-    return QuoteHandler(name="quote", bus=bus, store=MemoryStore())
+    return QuoteHandler(name="quote", bus=bus, store=InMemory())
 
 
 def emit_quote(svc, **overrides) -> None:

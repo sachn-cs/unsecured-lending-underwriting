@@ -14,11 +14,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.npa.handler import Handler
 from underwrite.services.npa.handler import Handler as NpaHandler
-from underwrite.store import MemoryStore
+from underwrite.store import InMemory
 
 
 def npa(bus=None) -> Handler:
-    return NpaHandler(name="npa", bus=bus or LocalBus(), store=MemoryStore())
+    return NpaHandler(name="npa", bus=bus or LocalBus(), store=InMemory())
 
 
 class TestBucketClassification:

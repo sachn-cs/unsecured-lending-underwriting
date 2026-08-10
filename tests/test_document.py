@@ -6,11 +6,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.document.handler import Handler
 from underwrite.services.document.handler import Handler as DocumentHandler
-from underwrite.store import MemoryStore
+from underwrite.store import InMemory
 
 
 def svc(bus=None) -> Handler:
-    return DocumentHandler(name="document", bus=bus or LocalBus(), store=MemoryStore())
+    return DocumentHandler(name="document", bus=bus or LocalBus(), store=InMemory())
 
 
 class TestDocumentService:

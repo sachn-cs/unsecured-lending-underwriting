@@ -34,7 +34,7 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.runtime import Runtime
 from underwrite.services import Core
-from underwrite.store import FileStore, MemoryStore, Store
+from underwrite.store import Disk, InMemory, Store
 
 try:
     from underwrite.__version__ import __version__ as _version
@@ -55,8 +55,8 @@ __all__: list[str] = [
     "EventBus",
     "LocalBus",
     "Store",
-    "MemoryStore",
-    "FileStore",
+    "InMemory",
+    "Disk",
     "UnderwriteError",
     "ConfigurationError",
     "ServiceNotFoundError",

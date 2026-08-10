@@ -12,11 +12,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.recovery.handler import Handler
 from underwrite.services.recovery.handler import Handler as RecoveryHandler
-from underwrite.store import MemoryStore
+from underwrite.store import InMemory
 
 
 def _recovery(bus=None) -> Handler:
-    svc = RecoveryHandler(name="recovery", bus=bus, store=MemoryStore())
+    svc = RecoveryHandler(name="recovery", bus=bus, store=InMemory())
     svc.repo.save({})
     return svc
 

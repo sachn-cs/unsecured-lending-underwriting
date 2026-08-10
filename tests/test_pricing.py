@@ -16,12 +16,12 @@ from underwrite.services.pricing.handler import (
 from underwrite.services.pricing.handler import (
     Handler as PricingHandler,
 )
-from underwrite.store import MemoryStore
+from underwrite.store import InMemory
 
 
 def svc(**kwargs) -> Handler:
     kwargs.setdefault("bus", LocalBus())
-    kwargs.setdefault("store", MemoryStore())
+    kwargs.setdefault("store", InMemory())
     return PricingHandler(name="pricing", **kwargs)
 
 

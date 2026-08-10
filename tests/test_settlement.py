@@ -8,11 +8,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.settlement.handler import Handler
 from underwrite.services.settlement.handler import Handler as SettlementHandler
-from underwrite.store import MemoryStore
+from underwrite.store import InMemory
 
 
 def svc(bus=None) -> Handler:
-    return SettlementHandler(name="settlement", bus=bus or LocalBus(), store=MemoryStore())
+    return SettlementHandler(name="settlement", bus=bus or LocalBus(), store=InMemory())
 
 
 class TestSettlementService:

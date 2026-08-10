@@ -14,11 +14,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.mechanism.handler import Handler
 from underwrite.services.mechanism.handler import Handler as MechHandler
-from underwrite.store import MemoryStore
+from underwrite.store import InMemory
 
 
 def make_svc() -> Handler:
-    return Handler(name="test-mech", bus=LocalBus(), store=MemoryStore())
+    return Handler(name="test-mech", bus=LocalBus(), store=InMemory())
 
 
 def command(svc: Handler, cmd: str, payload: dict[str, Any], corr: str = "") -> None:
@@ -70,7 +70,7 @@ class TestAddSeed:
         bus = LocalBus()
         received: list[Message] = []
         bus.subscribe(Type.SEED_ADDED, lambda e: received.append(e))
-        svc = MechHandler(name="mech", bus=bus, store=MemoryStore())
+        svc = MechHandler(name="mech", bus=bus, store=InMemory())
         svc.start()
         bus.start()
         command(svc, "add_seed", {"user": "bank", "base_budget": 100_000})
@@ -422,7 +422,7 @@ class TestQuote:
         bus = LocalBus()
         received: list[Message] = []
         bus.subscribe(Type.QUOTE_CALCULATED, lambda e: received.append(e))
-        svc = MechHandler(name="mech", bus=bus, store=MemoryStore())
+        svc = MechHandler(name="mech", bus=bus, store=InMemory())
         svc.start()
         bus.start()
         command(
@@ -558,7 +558,7 @@ class TestEdgeCases:
 
 class TestMechanismStoreLoad:
     def test_loads_state_from_store_on_init(self) -> None:
-        store = MemoryStore()
+        store = InMemory()
         svc1 = MechHandler(name="mech", bus=LocalBus(), store=store)
         svc1.start()
         command(svc1, "add_seed", {"user": "bank", "base_budget": 100_000})
@@ -571,14 +571,14 @@ class TestMechanismStoreLoad:
         assert svc2.credit_limit("alice") == 50_000
 
     def test_empty_store_initializes_empty_state(self) -> None:
-        store = MemoryStore()
+        store = InMemory()
         svc = MechHandler(name="mech", bus=LocalBus(), store=store)
         svc.start()
         assert len(svc.earned) == 0
         assert svc.credit_limit("alice") == 0.0
 
     def test_partial_state_restores_gracefully(self) -> None:
-        store = MemoryStore()
+        store = InMemory()
         store.set("protocol:state", {"seeds": ["bank"], "earned": {"bank": 0.0}})
         svc = MechHandler(name="mech", bus=LocalBus(), store=store)
         svc.start()
@@ -598,7 +598,7 @@ class TestMechanismStateOrdering:
                 captured["user_in_earned_at_emit"] = event.payload.get("user", "") in svc.earned
 
         bus.subscribe(Type.SEED_ADDED, capture)
-        svc = Handler(name="test-mech", bus=bus, store=MemoryStore())
+        svc = Handler(name="test-mech", bus=bus, store=InMemory())
         svc.start()
         command(svc, "add_seed", {"user": "bank", "base_budget": 100_000})
         assert captured.get("emit_seen") is True
@@ -615,7 +615,7 @@ class TestMechanismStateOrdering:
                 captured["loans_at_emit"] = len(svc.loans.get("bank", []))
 
         bus.subscribe(Type.LOAN_ORIGINATED, capture)
-        svc = Handler(name="test-mech", bus=bus, store=MemoryStore())
+        svc = Handler(name="test-mech", bus=bus, store=InMemory())
         svc.start()
         command(svc, "add_seed", {"user": "bank", "base_budget": 100_000})
         command(

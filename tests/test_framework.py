@@ -21,7 +21,7 @@ from underwrite.local import LocalBus
 from underwrite.message import Message
 from underwrite.runtime import Runtime
 from underwrite.services.base import Core
-from underwrite.store import FileStore, MemoryStore
+from underwrite.store import Disk, InMemory
 
 # =============================================================================
 # Configuration
@@ -210,28 +210,28 @@ class TestLocalBus:
 
 class TestMemoryStore:
     def test_set_and_get(self) -> None:
-        store: MemoryStore = MemoryStore()
+        store: InMemory = InMemory()
         store.set("key1", [1, 2, 3])
         assert store.get("key1") == [1, 2, 3]
 
     def test_get_missing(self) -> None:
-        store: MemoryStore = MemoryStore()
+        store: InMemory = InMemory()
         assert store.get("nonexistent") is None
 
     def test_delete(self) -> None:
-        store: MemoryStore = MemoryStore()
+        store: InMemory = InMemory()
         store.set("key", "val")
         assert store.delete("key") is True
         assert store.delete("key") is False
 
     def test_exists(self) -> None:
-        store: MemoryStore = MemoryStore()
+        store: InMemory = InMemory()
         assert store.exists("k") is False
         store.set("k", "v")
         assert store.exists("k") is True
 
     def test_keys_with_pattern(self) -> None:
-        store: MemoryStore = MemoryStore()
+        store: InMemory = InMemory()
         store.set("a:1", 1)
         store.set("a:2", 2)
         store.set("b:1", 3)
@@ -239,7 +239,7 @@ class TestMemoryStore:
         assert "b:1" in store.keys()
 
     def test_thread_safety(self) -> None:
-        store: MemoryStore = MemoryStore()
+        store: InMemory = InMemory()
         errors: list[Exception] = []
         lock: threading.Lock = threading.Lock()
 
@@ -261,21 +261,21 @@ class TestMemoryStore:
 
 class TestFileStore:
     def test_persistence(self, tmp_path: Path) -> None:
-        store: FileStore = FileStore(str(tmp_path))
+        store: Disk = Disk(str(tmp_path))
         store.set("user:alice", {"credit": 100.0})
         store.set("user:bob", {"credit": 50.0})
-        store2: FileStore = FileStore(str(tmp_path))
+        store2: Disk = Disk(str(tmp_path))
         assert store2.get("user:alice") == {"credit": 100.0}
         assert store2.get("user:bob") == {"credit": 50.0}
 
     def test_delete(self, tmp_path: Path) -> None:
-        store: FileStore = FileStore(str(tmp_path))
+        store: Disk = Disk(str(tmp_path))
         store.set("key", "val")
         assert store.delete("key") is True
         assert store.delete("key") is False
 
     def test_keys(self, tmp_path: Path) -> None:
-        store: FileStore = FileStore(str(tmp_path))
+        store: Disk = Disk(str(tmp_path))
         store.set("a:x", 1)
         store.set("a:y", 2)
         all_keys: list[str] = store.keys()
@@ -301,11 +301,11 @@ class ServiceHelper(Core):
 
 class TestCore:
     def test_service_id(self) -> None:
-        svc: ServiceHelper = ServiceHelper(name="mysvc", bus=LocalBus(), store=MemoryStore())
+        svc: ServiceHelper = ServiceHelper(name="mysvc", bus=LocalBus(), store=InMemory())
         assert svc.service_id == "mysvc"
 
     def test_identity_auto_created(self) -> None:
-        svc: ServiceHelper = ServiceHelper(name="test", bus=LocalBus(), store=MemoryStore())
+        svc: ServiceHelper = ServiceHelper(name="test", bus=LocalBus(), store=InMemory())
         assert svc.service_id == "test"
         sig: str = svc.sign_event("test_payload")
         assert len(sig) > 0
@@ -318,7 +318,7 @@ class TestCore:
             received.append(event)
 
         bus.subscribe("custom.event", handler)
-        svc: ServiceHelper = ServiceHelper(name="emitter", bus=bus, store=MemoryStore())
+        svc: ServiceHelper = ServiceHelper(name="emitter", bus=bus, store=InMemory())
         svc.emit("custom.event", {"msg": "hello"})
         bus.start()
         time.sleep(0.01)
@@ -326,13 +326,13 @@ class TestCore:
         assert received[0].event_type == "custom.event"
 
     def test_event_has_signature(self) -> None:
-        svc: ServiceHelper = ServiceHelper(name="signer", bus=LocalBus(), store=MemoryStore())
+        svc: ServiceHelper = ServiceHelper(name="signer", bus=LocalBus(), store=InMemory())
         event: Message = svc.emit("signed.event", {"data": 1})
         assert event.signature != ""
 
     def test_subscribe_receives_events(self) -> None:
         bus: LocalBus = LocalBus()
-        svc: ServiceHelper = ServiceHelper(name="subscriber", bus=bus, store=MemoryStore())
+        svc: ServiceHelper = ServiceHelper(name="subscriber", bus=bus, store=InMemory())
         svc.subscribe("incoming")
         bus.start()
         svc.start()
@@ -343,7 +343,7 @@ class TestCore:
 
     def test_stop_unsubscribes(self) -> None:
         bus: LocalBus = LocalBus()
-        svc: ServiceHelper = ServiceHelper(name="stoppable", bus=bus, store=MemoryStore())
+        svc: ServiceHelper = ServiceHelper(name="stoppable", bus=bus, store=InMemory())
         svc.subscribe("incoming")
         svc.start()
         svc.stop()
@@ -360,7 +360,7 @@ class TestCore:
             received.append(event)
 
         bus.subscribe("response", handler)
-        svc: ServiceHelper = ServiceHelper(name="responder", bus=bus, store=MemoryStore())
+        svc: ServiceHelper = ServiceHelper(name="responder", bus=bus, store=InMemory())
         svc.subscribe("request")
         bus.start()
         svc.start()

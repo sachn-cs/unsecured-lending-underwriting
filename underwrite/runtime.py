@@ -49,7 +49,7 @@ from underwrite.migrate import default_plan
 from underwrite.saga import Orchestrator
 from underwrite.secrets import Manager
 from underwrite.services.kyc.base import Provider
-from underwrite.store import FileStore, MemoryStore, Store
+from underwrite.store import Disk, InMemory, Store
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
 
@@ -106,11 +106,11 @@ def build_tracer(config: Configuration) -> Tracer | None:
 def build_store(config: Configuration) -> Store:
     cfg = config.store
     if cfg.backend == "filesystem":
-        return FileStore(config.data_dir)
+        return Disk(config.data_dir)
     elif cfg.backend == "memory":
-        return MemoryStore()
-    logger.warning("unrecognized store backend {!r}, falling back to FileStore", cfg.backend)
-    return FileStore(config.data_dir)
+        return InMemory()
+    logger.warning("unrecognized store backend {!r}, falling back to Disk", cfg.backend)
+    return Disk(config.data_dir)
 
 
 def build_read_store(config: Configuration) -> Store | None:
@@ -118,9 +118,9 @@ def build_read_store(config: Configuration) -> Store | None:
     if not cfg.read_backend:
         return None
     if cfg.read_backend == "filesystem":
-        return FileStore(config.data_dir)
-    logger.warning("unrecognized read store backend {!r}, falling back to MemoryStore", cfg.read_backend)
-    return MemoryStore()
+        return Disk(config.data_dir)
+    logger.warning("unrecognized read store backend {!r}, falling back to InMemory", cfg.read_backend)
+    return InMemory()
 
 
 def start_metrics_export(metrics_collector: Collector | None, config: Configuration) -> Exporter | None:

@@ -173,7 +173,7 @@ class Core(ABC):
                 timestamp at construction.
             identity: Ed25519 identity for signing events. Created if omitted.
             bus: Message bus for pub/sub. Uses LocalBus if omitted.
-            store: State persistence backend. Uses MemoryStore if omitted.
+            store: State persistence backend. Uses InMemory if omitted.
             metrics: Optional metrics collector for instrumentation.
             health: Optional health registry for liveness checks.
             authz: Optional access control for authorization gating.

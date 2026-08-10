@@ -6,11 +6,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.dsr.handler import Handler
 from underwrite.services.dsr.handler import Handler as DsrHandler
-from underwrite.store import MemoryStore
+from underwrite.store import InMemory
 
 
 def svc(**kw) -> Handler:
-    return DsrHandler(name="dsr", bus=LocalBus(), store=MemoryStore(), **kw)
+    return DsrHandler(name="dsr", bus=LocalBus(), store=InMemory(), **kw)
 
 
 class TestDsrRequestCreation:
@@ -60,7 +60,7 @@ class TestDsrRequestCreation:
         bus = LocalBus()
         received: list = []
         bus.subscribe(Type.DSR_REQUESTED, lambda e: received.append(e))
-        s = DsrHandler(name="dsr", bus=bus, store=MemoryStore())
+        s = DsrHandler(name="dsr", bus=bus, store=InMemory())
         bus.start()
         s.handle(
             Message(event_type=Type.DSR_REQUEST, source="test", payload={"user_id": "u5", "request_type": "access"})

@@ -1,16 +1,16 @@
 """Persistence abstraction for state and log storage.
 
-Supports CQRS — separate read/write stores.  MemoryStore, FileStore,
-and PostgresStore with connection pooling and circuit breaker.
+Supports CQRS — separate read/write stores.  InMemory, Disk,
+and Sqlite with connection pooling and circuit breaker.
 """
 
 from __future__ import annotations
 
 __all__ = [
     "CQRSStore",
-    "FileStore",
-    "MemoryStore",
-    "PostgresStore",
+    "Disk",
+    "InMemory",
+    "Sqlite",
     "ReadStore",
     "Store",
 ]
@@ -117,7 +117,7 @@ class ReadStore(ABC):
         return {"ok": True}
 
 
-class MemoryStore(Store):
+class InMemory(Store):
     """Thread-safe in-memory store.  Data is lost on process exit.
 
     Bounded by *max_entries* — when the limit is reached the oldest
@@ -167,7 +167,7 @@ class MemoryStore(Store):
             return all_keys
 
 
-class FileStore(Store):
+class Disk(Store):
     """Filesystem-backed store.  Each key maps to a JSON file under *data_dir*.
 
     Args:
@@ -332,7 +332,7 @@ class FileStore(Store):
         return full
 
 
-class PostgresStore(Store):
+class Sqlite(Store):
     """PostgreSQL-backed key-value store with connection pooling and circuit breaker.
 
     Uses ``psycopg2.pool.ThreadedConnectionPool`` for safe, bounded,
@@ -398,7 +398,7 @@ class PostgresStore(Store):
             from psycopg2 import pool as pgpool
         except ImportError:
             raise StoreError(
-                "PostgresStore requires psycopg2-binary; install with: pip install underwrite[postgres]"
+                "Sqlite requires psycopg2-binary; install with: pip install underwrite[postgres]"
             ) from None
         with self.__lock:
             if self.__pool is not None:
@@ -506,7 +506,7 @@ class PostgresStore(Store):
             self.__execute("SELECT 1")
             return {"ok": True, "circuit": self.__circuit.state.value}
         except Exception as e:
-            logger.warning("PostgresStore health check failed: {}", e)
+            logger.warning("Sqlite health check failed: {}", e)
             return {"ok": False, "detail": "Postgres health check failed", "circuit": self.__circuit.state.value}
 
     @staticmethod

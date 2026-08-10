@@ -6,11 +6,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.disbursement.handler import Handler
 from underwrite.services.disbursement.handler import Handler as DisbursementHandler
-from underwrite.store import MemoryStore
+from underwrite.store import InMemory
 
 
 def svc(bus=None) -> Handler:
-    return DisbursementHandler(name="disbursement", bus=bus or LocalBus(), store=MemoryStore())
+    return DisbursementHandler(name="disbursement", bus=bus or LocalBus(), store=InMemory())
 
 
 class TestDisbursementService:

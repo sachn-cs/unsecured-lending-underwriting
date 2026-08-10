@@ -12,11 +12,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.governance.handler import Handler
 from underwrite.services.governance.handler import Handler as GovHandler
-from underwrite.store import MemoryStore
+from underwrite.store import InMemory
 
 
 def gov(bus=None) -> Handler:
-    return GovHandler(name="gov", bus=bus or LocalBus(), store=MemoryStore())
+    return GovHandler(name="gov", bus=bus or LocalBus(), store=InMemory())
 
 
 class TestGovernanceService:

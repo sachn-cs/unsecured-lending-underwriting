@@ -1,4 +1,4 @@
-"""Tests for Store failure handling — FileStore corruption, CQRS."""
+"""Tests for Store failure handling — Disk corruption, CQRS."""
 
 from __future__ import annotations
 
@@ -11,13 +11,13 @@ import pytest
 from tests.helpers import MockReadStore, MockStore
 from underwrite.exceptions import StoreError
 from underwrite.metrics import Collector
-from underwrite.store import CQRSStore, FileStore, MemoryStore, PostgresStore, Store
+from underwrite.store import CQRSStore, Disk, InMemory, Sqlite, Store
 
 
 class TestFileStoreCorruption:
     def test_corrupted_json_raises_store_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            store = FileStore(tmp)
+            store = Disk(tmp)
             store.set("key1", {"value": 42})
             path = Path(tmp) / "key1.json"
             path.write_text("not valid json{{{")
@@ -26,13 +26,13 @@ class TestFileStoreCorruption:
 
     def test_missing_file_returns_none(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            store = FileStore(tmp)
+            store = Disk(tmp)
             result = store.get("nonexistent")
             assert result is None
 
     def test_corrupted_file_raises_store_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            store = FileStore(tmp)
+            store = Disk(tmp)
             store.set("key1", {"value": 42})
             path = Path(tmp) / "key1.json"
             path.write_text("{bad json]")
@@ -42,7 +42,7 @@ class TestFileStoreCorruption:
     def test_corruption_increments_metric(self) -> None:
         metrics = Collector()
         with tempfile.TemporaryDirectory() as tmp:
-            store = FileStore(tmp, metrics_collector=metrics)
+            store = Disk(tmp, metrics_collector=metrics)
             store.set("key1", {"value": 42})
             path = Path(tmp) / "key1.json"
             path.write_text("garbage{{{")
@@ -54,7 +54,7 @@ class TestFileStoreCorruption:
     def test_io_error_increments_metric(self) -> None:
         metrics = Collector()
         with tempfile.TemporaryDirectory() as tmp:
-            store = FileStore(tmp, metrics_collector=metrics)
+            store = Disk(tmp, metrics_collector=metrics)
             store.set("key1", {"value": 42})
             path = Path(tmp) / "key1.json"
             path.chmod(0o200)
@@ -66,38 +66,38 @@ class TestFileStoreCorruption:
 
 class TestMemoryStore:
     def test_get_missing(self) -> None:
-        store = MemoryStore()
+        store = InMemory()
         assert store.get("nonexistent") is None
 
     def test_set_and_get(self) -> None:
-        store = MemoryStore()
+        store = InMemory()
         store.set("k", "v")
         assert store.get("k") == "v"
 
     def test_delete_existing(self) -> None:
-        store = MemoryStore()
+        store = InMemory()
         store.set("k", "v")
         assert store.delete("k") is True
         assert store.get("k") is None
 
     def test_delete_missing(self) -> None:
-        store = MemoryStore()
+        store = InMemory()
         assert store.delete("nonexistent") is False
 
     def test_exists(self) -> None:
-        store = MemoryStore()
+        store = InMemory()
         store.set("k", "v")
         assert store.exists("k") is True
         assert store.exists("missing") is False
 
     def test_keys(self) -> None:
-        store = MemoryStore()
+        store = InMemory()
         store.set("a", 1)
         store.set("b", 2)
         assert set(store.keys()) == {"a", "b"}
 
     def test_keys_with_pattern(self) -> None:
-        store = MemoryStore()
+        store = InMemory()
         store.set("foo.bar", 1)
         store.set("foo.baz", 2)
         store.set("other", 3)
@@ -178,31 +178,31 @@ class TestCQRSStore:
 class TestFileStorePathTraversal:
     def test_rejects_dotdot_key(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            store = FileStore(tmp)
+            store = Disk(tmp)
             with pytest.raises(StoreError, match="invalid store key"):
                 store.get("foo:..:..:etc:passwd")
 
     def test_rejects_absolute_key(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            store = FileStore(tmp)
+            store = Disk(tmp)
             with pytest.raises(StoreError, match="invalid store key"):
                 store.get("/etc/passwd")
 
     def test_rejects_key_resolving_outside_data_dir(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            store = FileStore(tmp)
+            store = Disk(tmp)
             with pytest.raises(StoreError):
                 store.set("..:etc:passwd", "value")
 
     def test_normal_key_allowed(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            store = FileStore(tmp)
+            store = Disk(tmp)
             store.set("test:key", {"hello": "world"})
             assert store.get("test:key") == {"hello": "world"}
 
     def test_keys_with_pagination(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            store = FileStore(tmp)
+            store = Disk(tmp)
             for i in range(10):
                 store.set(f"k:{i}", i)
             all_keys = store.keys()
@@ -216,12 +216,12 @@ class TestFileStorePathTraversal:
 class TestPostgresStoreTableName:
     def test_rejects_invalid_table_name(self) -> None:
         with pytest.raises(StoreError, match="invalid table name"):
-            PostgresStore(dsn="", table="store; DROP TABLE migrations")
+            Sqlite(dsn="", table="store; DROP TABLE migrations")
 
     def test_rejects_table_with_spaces(self) -> None:
         with pytest.raises(StoreError, match="invalid table name"):
-            PostgresStore(dsn="", table="my table")
+            Sqlite(dsn="", table="my table")
 
     def test_accepts_valid_table_name(self) -> None:
-        store = PostgresStore(dsn="", table="valid_table_1")
+        store = Sqlite(dsn="", table="valid_table_1")
         assert store is not None

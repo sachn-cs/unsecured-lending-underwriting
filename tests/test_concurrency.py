@@ -13,7 +13,7 @@ import threading
 from underwrite.local import LocalBus
 from underwrite.message import Message
 from underwrite.services.mechanism.handler import Handler as MechanismHandler
-from underwrite.store import MemoryStore
+from underwrite.store import InMemory
 
 
 class TestLocalBusConcurrency:
@@ -86,7 +86,7 @@ class TestMechanismServiceConcurrency:
         )
 
     def test_concurrent_add_seed(self) -> None:
-        store = MemoryStore()
+        store = InMemory()
         mech = self.__make_mechanism(store)
         errors: list[Exception] = []
 
@@ -114,7 +114,7 @@ class TestMechanismServiceConcurrency:
         assert len(mech.seeds) == 20
 
     def test_concurrent_add_user_and_originate(self) -> None:
-        store = MemoryStore()
+        store = InMemory()
         mech = self.__make_mechanism(store)
         # Set up a seed first
         seed_ev = Message(
@@ -150,7 +150,7 @@ class TestMechanismServiceConcurrency:
         assert len(errors) == 0
 
     def test_credit_limit_does_not_race(self) -> None:
-        store = MemoryStore()
+        store = InMemory()
         mech = self.__make_mechanism(store)
         # Set up seed + user
         mech.handle(
@@ -193,7 +193,7 @@ class TestMechanismServiceConcurrency:
 
 class TestMemoryStoreConcurrency:
     def test_concurrent_set_and_get(self) -> None:
-        store = MemoryStore()
+        store = InMemory()
 
         def writer() -> None:
             for i in range(100):
@@ -213,7 +213,7 @@ class TestMemoryStoreConcurrency:
         # No crash = success
 
     def test_concurrent_keys_does_not_race(self) -> None:
-        store = MemoryStore()
+        store = InMemory()
         for i in range(50):
             store.set(f"k{i}", i)
 

@@ -6,11 +6,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.collection.handler import Handler
 from underwrite.services.collection.handler import Handler as CollectionHandler
-from underwrite.store import MemoryStore
+from underwrite.store import InMemory
 
 
 def svc(bus=None) -> Handler:
-    return CollectionHandler(name="collection", bus=bus or LocalBus(), store=MemoryStore())
+    return CollectionHandler(name="collection", bus=bus or LocalBus(), store=InMemory())
 
 
 class TestCollectionService:

@@ -11,7 +11,7 @@ import pytest
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.store import MemoryStore, Store
+from underwrite.store import InMemory, Store
 
 # -- Domain event fixture ------------------------------------------------------
 
@@ -32,9 +32,9 @@ def event() -> Message:
 
 
 @pytest.fixture
-def store() -> MemoryStore:
-    """Return a fresh MemoryStore instance."""
-    return MemoryStore()
+def store() -> InMemory:
+    """Return a fresh InMemory instance."""
+    return InMemory()
 
 
 @pytest.fixture(scope="session")
@@ -54,16 +54,16 @@ def postgres_dsn() -> Generator[str, None, None]:
 
 @pytest.fixture
 def pg_store(postgres_dsn: str) -> Generator[Store, None, None]:
-    """Return a PostgresStore backed by a temporary table.
+    """Return a Sqlite backed by a temporary table.
 
     Requires the ``postgres`` extra and ``testcontainers``.
     """
     import uuid
 
-    from underwrite.store import PostgresStore
+    from underwrite.store import Sqlite
 
     table = f"test_store_{uuid.uuid4().hex[:12]}"
-    store = PostgresStore(dsn=postgres_dsn, table=table)
+    store = Sqlite(dsn=postgres_dsn, table=table)
     store.migrate(_empty_plan())
     yield store
     try:

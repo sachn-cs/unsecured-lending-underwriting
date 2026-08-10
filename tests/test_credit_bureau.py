@@ -15,7 +15,7 @@ from underwrite.services.credit_bureau.client import (
 from underwrite.services.credit_bureau.handler import Handler
 from underwrite.services.credit_bureau.handler import Handler as CreditBureauHandler
 from underwrite.services.kyc.base import ProviderResult, Verdict
-from underwrite.store import MemoryStore
+from underwrite.store import InMemory
 
 
 class CibilProviderStub:
@@ -51,7 +51,7 @@ class CibilProviderStub:
 def svc(**kw) -> Handler:
     kw.setdefault("allow_mock", True)
     kw.setdefault("bus", LocalBus())
-    kw.setdefault("store", MemoryStore())
+    kw.setdefault("store", InMemory())
     return CreditBureauHandler(name="credit_bureau", **kw)
 
 
@@ -295,7 +295,7 @@ class TestCibilProviderIntegration:
         bus.subscribe(Type.CREDIT_BUREAU_CHECKED, lambda e: received.append(e))
         provider = CibilProviderStub()
         s = Handler(
-            name="credit_bureau", bus=bus, kyc_providers={"cibil": provider}, allow_mock=True, store=MemoryStore()
+            name="credit_bureau", bus=bus, kyc_providers={"cibil": provider}, allow_mock=True, store=InMemory()
         )
         bus.start()
         s.handle(
@@ -319,7 +319,7 @@ class TestCibilProviderIntegration:
             name="credit_bureau",
             bus=LocalBus(),
             kyc_providers={"cibil": CibilProviderStub()},
-            store=MemoryStore(),
+            store=InMemory(),
             allow_mock=True,
         )
         s.handle(
@@ -363,7 +363,7 @@ class TestClientSelection:
             Handler(
                 name="credit_bureau",
                 bus=LocalBus(),
-                store=MemoryStore(),
+                store=InMemory(),
                 allow_mock=False,
             )
 

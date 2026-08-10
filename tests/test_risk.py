@@ -14,11 +14,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.risk.handler import Handler
 from underwrite.services.risk.handler import Handler as RiskHandler
-from underwrite.store import MemoryStore
+from underwrite.store import InMemory
 
 
 def risk(bus=None) -> Handler:
-    return RiskHandler(name="risk", bus=bus or LocalBus(), store=MemoryStore())
+    return RiskHandler(name="risk", bus=bus or LocalBus(), store=InMemory())
 
 
 class TestEarlyWarning:

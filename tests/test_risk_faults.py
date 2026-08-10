@@ -11,7 +11,7 @@ from underwrite.message import Message, Type
 from underwrite.services.audit.handler import Handler as AuditHandler
 from underwrite.services.risk.handler import Handler as RiskHandler
 from underwrite.services.risk.model import RiskModel
-from underwrite.store import MemoryStore
+from underwrite.store import InMemory
 
 
 class EmitSpy:
@@ -31,7 +31,7 @@ class TestRiskServiceFaults:
         bus = LocalBus()
         spy = EmitSpy()
         bus.subscribe(Type.RISK_SCORED, spy)
-        svc = RiskHandler(name="risk", bus=bus, store=MemoryStore())
+        svc = RiskHandler(name="risk", bus=bus, store=InMemory())
         svc.set_model(FaultyModel())
 
         event = Message(
@@ -53,7 +53,7 @@ class TestRiskServiceFaults:
         bus = LocalBus()
         spy = EmitSpy()
         bus.subscribe(Type.RISK_EARLY_WARNING, spy)
-        svc = RiskHandler(name="risk", bus=bus, store=MemoryStore())
+        svc = RiskHandler(name="risk", bus=bus, store=InMemory())
 
         event = Message(
             event_type=Type.LOAN_ORIGINATED,
@@ -72,7 +72,7 @@ class TestRiskServiceFaults:
 
 class TestAuditServiceFaults:
     def test_load_corrupted_jsonl_skips_bad_lines(self, tmp_path: Any) -> None:
-        svc = AuditHandler(name="audit", bus=LocalBus(), store=MemoryStore())
+        svc = AuditHandler(name="audit", bus=LocalBus(), store=InMemory())
         p = tmp_path / "audit.jsonl"
         p.write_text('{"event_type":"a","source":"s"}\nnot json\n{"event_type":"b","source":"s"}\n')
         svc.load_jsonl(str(p))
@@ -81,7 +81,7 @@ class TestAuditServiceFaults:
         assert svc.ledger[1]["event_type"] == "b"
 
     def test_load_nonexistent_file_clears_ledger(self, tmp_path: Any) -> None:
-        svc = AuditHandler(name="audit", bus=LocalBus(), store=MemoryStore())
+        svc = AuditHandler(name="audit", bus=LocalBus(), store=InMemory())
         svc.handle(Message(event_type="test", source="test", payload={"dummy": True}))
         assert len(svc.ledger) == 1
         svc.load_jsonl(str(tmp_path / "nonexistent.jsonl"))

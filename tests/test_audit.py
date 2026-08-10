@@ -13,15 +13,15 @@ from typing import Any
 from underwrite.local import LocalBus
 from underwrite.message import Message
 from underwrite.services.audit.handler import Handler as AuditHandler
-from underwrite.store import MemoryStore
+from underwrite.store import InMemory
 
 
 def audit() -> AuditHandler:
-    return AuditHandler(name="audit", bus=LocalBus(), store=MemoryStore())
+    return AuditHandler(name="audit", bus=LocalBus(), store=InMemory())
 
 
 def audit_capped() -> AuditHandler:
-    return AuditHandler(name="audit", max_ledger=5, bus=LocalBus(), store=MemoryStore())
+    return AuditHandler(name="audit", max_ledger=5, bus=LocalBus(), store=InMemory())
 
 
 class TestAuditService:
@@ -120,7 +120,7 @@ class TestAuditService:
         assert svc.ledger[-1]["payload"] == {"i": 9}
 
     def test_export_noop_without_url(self) -> None:
-        svc = AuditHandler(name="audit", bus=LocalBus(), store=MemoryStore())
+        svc = AuditHandler(name="audit", bus=LocalBus(), store=InMemory())
         svc.handle(Message(event_type="ev", source="s"))
         svc.export()  # should not raise
 
@@ -143,7 +143,7 @@ class TestAuditService:
             svc2 = AuditSvc2(
                 name="audit",
                 bus=LocalBus(),
-                store=MemoryStore(),
+                store=InMemory(),
                 export_url="s3://bucket/path.jsonl",
             )
             svc2.handle(Message(event_type="ev", source="s"))
@@ -151,6 +151,6 @@ class TestAuditService:
         assert put_called[0]
 
     def test_export_gcs_noop_without_library(self) -> None:
-        svc = AuditHandler(name="audit", export_url="gs://bucket/path.jsonl", bus=LocalBus(), store=MemoryStore())
+        svc = AuditHandler(name="audit", export_url="gs://bucket/path.jsonl", bus=LocalBus(), store=InMemory())
         svc.handle(Message(event_type="ev", source="s"))
         svc.export()  # should log warning, not raise

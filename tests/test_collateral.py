@@ -14,11 +14,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.collateral.handler import Handler
 from underwrite.services.collateral.handler import Handler as CollateralHandler
-from underwrite.store import MemoryStore
+from underwrite.store import InMemory
 
 
 def collateral(bus=None) -> Handler:
-    return CollateralHandler(name="collateral", bus=bus or LocalBus(), store=MemoryStore())
+    return CollateralHandler(name="collateral", bus=bus or LocalBus(), store=InMemory())
 
 
 class TestCollateralService:

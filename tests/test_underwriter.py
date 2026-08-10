@@ -6,11 +6,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.underwriter.handler import Handler
 from underwrite.services.underwriter.handler import Handler as UnderwriterHandler
-from underwrite.store import MemoryStore
+from underwrite.store import InMemory
 
 
 def svc(bus=None) -> Handler:
-    return UnderwriterHandler(name="underwriter", bus=bus or LocalBus(), store=MemoryStore())
+    return UnderwriterHandler(name="underwriter", bus=bus or LocalBus(), store=InMemory())
 
 
 def request(svc, bus, **kw) -> None:

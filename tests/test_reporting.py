@@ -9,11 +9,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.reporting.handler import Handler
 from underwrite.services.reporting.handler import Handler as ReportingHandler
-from underwrite.store import MemoryStore
+from underwrite.store import InMemory
 
 
 def reporting() -> Handler:
-    return ReportingHandler(name="reporting", bus=LocalBus(), store=MemoryStore())
+    return ReportingHandler(name="reporting", bus=LocalBus(), store=InMemory())
 
 
 class TestReportingService:

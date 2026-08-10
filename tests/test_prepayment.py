@@ -6,11 +6,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.prepayment.handler import Handler
 from underwrite.services.prepayment.handler import Handler as PrepaymentHandler
-from underwrite.store import MemoryStore
+from underwrite.store import InMemory
 
 
 def svc(bus=None) -> Handler:
-    return PrepaymentHandler(name="prepayment", bus=bus or LocalBus(), store=MemoryStore())
+    return PrepaymentHandler(name="prepayment", bus=bus or LocalBus(), store=InMemory())
 
 
 class TestPrepaymentService:

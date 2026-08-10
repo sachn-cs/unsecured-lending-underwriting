@@ -11,11 +11,11 @@ from typing import Any, cast
 from underwrite.config import Configuration
 from underwrite.message import Message, Type
 from underwrite.runtime import Runtime
-from underwrite.store import MemoryStore
+from underwrite.store import InMemory
 
 
 def memory_runtime() -> Runtime:
-    """Returns a Runtime backed by MemoryStore for test isolation."""
+    """Returns a Runtime backed by InMemory for test isolation."""
     cfg = Configuration.default()
     cfg.store.backend = "memory"
     cfg.metrics.enabled = False
@@ -177,7 +177,7 @@ class TestRuntimeIntegration:
 
 class TestStoreIntegration:
     def test_memory_store_round_trip(self) -> None:
-        store = MemoryStore()
+        store = InMemory()
         store.set("key", {"nested": [1, 2, 3]})
         assert store.get("key") == {"nested": [1, 2, 3]}
         assert store.exists("key")
@@ -185,7 +185,7 @@ class TestStoreIntegration:
         assert store.get("key") is None
 
     def test_keys_pattern(self) -> None:
-        store = MemoryStore()
+        store = InMemory()
         store.set("a:1", 1)
         store.set("a:2", 2)
         store.set("b:1", 3)

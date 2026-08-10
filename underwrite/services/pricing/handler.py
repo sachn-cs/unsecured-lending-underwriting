@@ -17,6 +17,7 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
+from underwrite.local import LocalBus
 from underwrite.constants import DAYS_PER_YEAR, RATE_QUANTUM
 from underwrite.exceptions import ProtocolError
 from underwrite.health import Checks
@@ -25,7 +26,7 @@ from underwrite.message import Message, Type
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
 from underwrite.services.base import Core, Dependencies
-from underwrite.store import Store
+from underwrite.store import Store, InMemory, Disk, Sqlite
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
 from underwrite.validate import PayloadValidator
@@ -143,8 +144,8 @@ class Handler(Core):
     def __init__(
         self,
         name: str,
-        bus: EventBus,
-        store: Store,
+        bus: EventBus | LocalBus,
+        store: Store | InMemory | Disk | Sqlite,
         identity: Keypair | None = None,
         metrics: Collector | None = None,
         health: Checks | None = None,

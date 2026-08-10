@@ -1,14 +1,15 @@
-"""Tests for ConsentHandler — DPDPA-compliant consent lifecycle."""
+"""Tests for Handler — DPDPA-compliant consent lifecycle."""
 
 from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.consent.handler import ConsentHandler
 from underwrite.store import MemoryStore
+from underwrite.services.consent.handler import Handler
+from underwrite.services.consent.handler import Handler as ConsentHandler
 
 
-def svc(**kw) -> ConsentHandler:
+def svc(**kw) -> Handler:
     kw.setdefault("bus", LocalBus())
     kw.setdefault("store", MemoryStore())
     return ConsentHandler(service_id="consent", **kw)

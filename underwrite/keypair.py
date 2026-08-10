@@ -7,7 +7,7 @@ verify provenance.
 from __future__ import annotations
 
 __all__ = [
-    "Identity",
+    "Keypair",
 ]
 
 import base64
@@ -31,7 +31,7 @@ class PrivateKeyBackend(Protocol):
 
 
 @dataclass(frozen=True)
-class Identity:
+class Keypair:
     """An Ed25519 keypair that identifies a nano service.
 
     The public key is included in every emitted event; downstream
@@ -56,7 +56,7 @@ class Identity:
         private_key_pem: str = "",
         secrets_manager: PrivateKeyBackend | None = None,
         encryption_passphrase: str | None = None,
-    ) -> Identity:
+    ) -> Keypair:
         """Creates or derives an identity.
 
         Args:
@@ -70,7 +70,7 @@ class Identity:
                 rest in memory using this passphrase.
 
         Returns:
-            A new Identity instance.
+            A new Keypair instance.
         """
         if not private_key_pem and secrets_manager is not None:
             loaded = secrets_manager.load_private_key(service_id)
@@ -120,7 +120,7 @@ class Identity:
         """Returns the private key as a PEM-encoded string.
 
         The result is suitable for storage in a secrets backend and for
-        re-loading via ``Identity.create(private_key_pem=...)``.
+        re-loading via ``Keypair.create(private_key_pem=...)``.
         """
         with self.sign_lock:
             pk = self.private_key

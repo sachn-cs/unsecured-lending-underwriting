@@ -20,7 +20,7 @@ from pathlib import Path
 import typer
 
 from underwrite.config import HANDLER_NAMES, Configuration, ServiceConfig
-from underwrite.identity import Identity
+from underwrite.keypair import Keypair
 from underwrite.runtime import Runtime
 
 app = typer.Typer(
@@ -115,11 +115,11 @@ def identity(
 ) -> None:
     """Generates an Ed25519 identity for a service."""
     try:
-        ident: Identity = Identity.create(service_name)
+        ident: Keypair = Keypair.create(service_name)
     except Exception as exc:
         typer.secho(f"Failed to create identity: {exc}", err=True, fg=typer.colors.RED)
         raise typer.Exit(code=1) from exc
-    typer.echo(f"Identity for: {service_name}")
+    typer.echo(f"Keypair for: {service_name}")
     typer.echo(f"  Public key:  {ident.public_key}")
     typer.echo("  Private key: (stored only in memory / TPM — not printable)")
 

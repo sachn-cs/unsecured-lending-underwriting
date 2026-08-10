@@ -22,8 +22,8 @@ class TestCLILoadConfig:
 class TestCLIIdentityEdgeCases:
     def test_identity_import_guard_does_not_crash(self) -> None:
         try:
-            from underwrite.identity import Identity
+            from underwrite.keypair import Keypair
         except ImportError:
             pytest.skip("cryptography not installed")
-        ident = Identity.create("test-service")
+        ident = Keypair.create("test-service")
         assert ident.service_id == "test-service"

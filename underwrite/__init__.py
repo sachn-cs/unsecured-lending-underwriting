@@ -30,7 +30,7 @@ from underwrite.exceptions import (
     UnderwriteError,
     UnknownUserError,
 )
-from underwrite.identity import Identity
+from underwrite.keypair import Keypair
 from underwrite.local import LocalBus
 from underwrite.runtime import Runtime
 from underwrite.services import Core
@@ -51,7 +51,7 @@ __all__: list[str] = [
     "Core",
     "Event",
     "EventType",
-    "Identity",
+    "Keypair",
     "EventBus",
     "LocalBus",
     "Store",

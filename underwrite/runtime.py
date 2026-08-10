@@ -41,7 +41,7 @@ from underwrite.exceptions import ServiceNotFoundError
 from underwrite.exporter import Exporter
 from underwrite.handler import HANDLER_CLASSES, HANDLER_MAP, WIRING
 from underwrite.health import Checks
-from underwrite.identity import Identity
+from underwrite.keypair import Keypair
 from underwrite.local import LocalBus
 from underwrite.logger import JsonFormatter, TextFormatter, logger, loguru_sink_format
 from underwrite.metrics import Collector
@@ -271,8 +271,8 @@ class Runtime:
     __authz: AccessControl | None
     __supervisor: Watcher | None
     __metrics_exporter: Exporter | None
-    __runtime_identity: Identity | None
-    __publisher_identities: dict[str, Identity]
+    __runtime_identity: Keypair | None
+    __publisher_identities: dict[str, Keypair]
     __publisher_lock: threading.Lock
 
     def __init__(self, config: Configuration | None = None, readonly: bool = False) -> None:
@@ -308,7 +308,7 @@ class Runtime:
             return
         self.__runtime_identity = None
         self.__secrets = build_secrets(self.__config)
-        self.__runtime_identity = Identity.create("runtime", secrets_manager=self.__secrets)
+        self.__runtime_identity = Keypair.create("runtime", secrets_manager=self.__secrets)
         self.__kyc_providers = build_kyc_providers(self.__config, self.__secrets)
         self.__tracer = build_tracer(self.__config)
         self.__bus = build_event_bus(self.__config.bus, self.__store)
@@ -386,7 +386,7 @@ class Runtime:
         """Returns the secrets manager, or ``None`` if secrets are disabled."""
         return self.__secrets
 
-    def register(self, service_name: str, identity: Identity | None = None) -> Core:
+    def register(self, service_name: str, identity: Keypair | None = None) -> Core:
         """Instantiates a nano service by name and registers it."""
         module_path = HANDLER_MAP.get(service_name)
         if not module_path:
@@ -638,17 +638,17 @@ class Runtime:
             self.__authz.trust(identity.service_id, identity.public_key)
         return self.__bus.publish(event)
 
-    def __identity_for(self, service_id: str) -> Identity:
+    def __identity_for(self, service_id: str) -> Keypair:
         existing = self.__publisher_identities.get(service_id)
         if existing is not None:
             return existing
-        identity = Identity.create(service_id, secrets_manager=self.__secrets)
+        identity = Keypair.create(service_id, secrets_manager=self.__secrets)
         with self.__publisher_lock:
             self.__publisher_identities[service_id] = identity
         return identity
 
     def __sign_outbound_event(self, event_type: str, payload: dict[str, Any], correlation_id: str) -> Event:
-        identity: Identity | None = self.__runtime_identity
+        identity: Keypair | None = self.__runtime_identity
         if identity is None:
             return Event(
                 event_type=event_type,

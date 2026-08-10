@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Callable
+from typing import Any
 
 from underwrite.logger import logger
 from underwrite.metrics import Collector

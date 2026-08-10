@@ -7,7 +7,7 @@ import pytest
 from underwrite.authz import AccessControl
 from underwrite.events import Event
 from underwrite.exceptions import AuthzError
-from underwrite.identity import Identity
+from underwrite.keypair import Keypair
 
 
 class TestAccessControl:
@@ -48,7 +48,7 @@ class TestAccessControl:
 
     def test_signature_verify_roundtrip(self) -> None:
         acl = AccessControl()
-        identity = Identity.create("risk")
+        identity = Keypair.create("risk")
         acl.trust("risk", identity.public_key)
         event = Event(
             event_type="risk.scored",
@@ -71,7 +71,7 @@ class TestAccessControl:
     def test_signature_verify_rejects_tampered_payload(self) -> None:
         """Signature now covers payload — tampered payload must fail."""
         acl = AccessControl()
-        identity = Identity.create("risk")
+        identity = Keypair.create("risk")
         acl.trust("risk", identity.public_key)
         event = Event(
             event_type="risk.scored",
@@ -103,7 +103,7 @@ class TestAccessControl:
 
     def test_assert_verified(self) -> None:
         acl = AccessControl()
-        identity = Identity.create("risk")
+        identity = Keypair.create("risk")
         acl.trust("risk", identity.public_key)
         event = Event(
             event_type="risk.scored",

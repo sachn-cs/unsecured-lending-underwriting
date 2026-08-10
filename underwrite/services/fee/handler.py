@@ -17,7 +17,7 @@ from underwrite.bus import EventBus
 from underwrite.constants import MONEY_QUANTUM
 from underwrite.events import Event, EventType
 from underwrite.health import Checks
-from underwrite.identity import Identity
+from underwrite.keypair import Keypair
 from underwrite.logger import logger
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
@@ -71,7 +71,7 @@ class FeeHandler(StatefulService):
         service_id: str,
         bus: EventBus,
         store: Store,
-        identity: Identity | None = None,
+        identity: Keypair | None = None,
         metrics: Collector | None = None,
         health: Checks | None = None,
         authz: AccessControl | None = None,

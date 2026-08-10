@@ -1,9 +1,9 @@
-"""Identity management - key registration and rotation."""
+"""Keypair management - key registration and rotation."""
 
 from __future__ import annotations
 
 from underwrite.events import Event, EventType
-from underwrite.identity import Identity
+from underwrite.keypair import Keypair
 from underwrite.logger import logger
 from underwrite.services import Core
 from underwrite.validate import PayloadValidator
@@ -30,7 +30,7 @@ class IdentityHandler(Core):
             event: The identity registration event.
         """
         service_id: str = PayloadValidator().non_empty(event.payload, "service_id")
-        identity: Identity = Identity.create(service_id)
+        identity: Keypair = Keypair.create(service_id)
         self.store.set(
             f"identity:{service_id}",
             {
@@ -59,7 +59,7 @@ class IdentityHandler(Core):
             if not existing:
                 logger.warning("identity rotation requested for unknown service {!r}", service_id)
                 return
-            identity = Identity.create(service_id)
+            identity = Keypair.create(service_id)
             self.store.set(
                 f"identity:{service_id}",
                 {

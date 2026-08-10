@@ -2,7 +2,7 @@
 
 Each service:
   - Has a unique service_id
-  - Owns an Ed25519 Identity for signing its emitted events
+  - Owns an Ed25519 Keypair for signing its emitted events
   - Subscribes to events on a shared EventBus
   - Persists state through a Store
   - Implements handle(event) -> None to process incoming events
@@ -38,7 +38,7 @@ from underwrite.correlation import (
 )
 from underwrite.events import Event
 from underwrite.health import Checks
-from underwrite.identity import Identity
+from underwrite.keypair import Keypair
 from underwrite.logger import logger
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
@@ -60,7 +60,7 @@ class Dependencies:
     constructor argument of the same name on ``Core``.
     """
 
-    identity: Identity | None = None
+    identity: Keypair | None = None
     bus: EventBus | None = None
     store: Store | None = None
     metrics: Collector | None = None
@@ -85,14 +85,14 @@ class Emitter:
     def __init__(
         self,
         service_id: str,
-        identity: Identity,
+        identity: Keypair,
         bus: EventBus,
         metrics: Collector | None,
         tracer: Tracer | None,
         authz: AccessControl | None,
     ) -> None:
         self.__service_id: str = service_id
-        self.__identity: Identity = identity
+        self.__identity: Keypair = identity
         self.__bus: EventBus = bus
         self.__metrics: Collector | None = metrics
         self.__tracer: Tracer | None = tracer
@@ -164,7 +164,7 @@ class Core(ABC):
     def __init__(
         self,
         service_id: str,
-        identity: Identity | None = None,
+        identity: Keypair | None = None,
         bus: EventBus | None = None,
         store: Store | None = None,
         metrics: Collector | None = None,
@@ -197,8 +197,8 @@ class Core(ABC):
         """
         self.__service_id: str = service_id
         if identity is None:
-            identity = Identity.create(service_id, secrets_manager=secrets_manager)
-        self.__identity: Identity = identity
+            identity = Keypair.create(service_id, secrets_manager=secrets_manager)
+        self.__identity: Keypair = identity
         if bus is None:
             raise ValueError(
                 f"{type(self).__name__}({service_id!r}) requires bus; "

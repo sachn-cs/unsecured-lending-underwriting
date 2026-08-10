@@ -116,7 +116,7 @@ class AwsSecretsBackend(Backend):
 
 
 class Manager:
-    """Manages secret backends and loads private keys for Identity."""
+    """Manages secret backends and loads private keys for Keypair."""
 
     def __init__(self, backend: Backend | None = None, config: Any | None = None) -> None:
         self.__backend = backend or self.__build_backend(config)

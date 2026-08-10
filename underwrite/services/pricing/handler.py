@@ -18,7 +18,7 @@ from underwrite.constants import DAYS_PER_YEAR, RATE_QUANTUM
 from underwrite.events import Event, EventType
 from underwrite.exceptions import ProtocolError
 from underwrite.health import Checks
-from underwrite.identity import Identity
+from underwrite.keypair import Keypair
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
 from underwrite.services import Core
@@ -142,7 +142,7 @@ class PricingHandler(Core):
         service_id: str,
         bus: EventBus,
         store: Store,
-        identity: Identity | None = None,
+        identity: Keypair | None = None,
         metrics: Collector | None = None,
         health: Checks | None = None,
         authz: AccessControl | None = None,

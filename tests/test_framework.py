@@ -1,6 +1,6 @@
 """Exhaustive tests for the underwrite framework.
 
-Covers: Configuration, Identity, Event, EventBus, Store, Core, Runtime.
+Covers: Configuration, Keypair, Event, EventBus, Store, Core, Runtime.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from underwrite.events import Event
 from underwrite.exceptions import (
     ServiceNotFoundError,
 )
-from underwrite.identity import Identity
+from underwrite.keypair import Keypair
 from underwrite.local import LocalBus
 from underwrite.runtime import Runtime
 from underwrite.services.base import Core
@@ -72,31 +72,31 @@ class TestConfiguration:
 
 
 # =============================================================================
-# Identity
+# Keypair
 # =============================================================================
 
 
 class TestIdentity:
     def test_create_generates_keypair(self) -> None:
-        identity: Identity = Identity.create("test-svc")
+        identity: Keypair = Keypair.create("test-svc")
         assert identity.service_id == "test-svc"
         assert len(identity.public_key) > 0
 
     def test_sign_and_verify(self) -> None:
-        identity: Identity = Identity.create("svc")
+        identity: Keypair = Keypair.create("svc")
         payload: str = "message:123"
         sig: str = identity.sign(payload)
         assert identity.verify(payload, sig)
 
     def test_verify_rejects_tampered(self) -> None:
-        identity: Identity = Identity.create("svc")
+        identity: Keypair = Keypair.create("svc")
         payload: str = "message:123"
         sig: str = identity.sign(payload)
         assert identity.verify(payload + "x", sig) is False
 
     def test_unique_keys_per_service(self) -> None:
-        id1: Identity = Identity.create("svc1")
-        id2: Identity = Identity.create("svc2")
+        id1: Keypair = Keypair.create("svc1")
+        id2: Keypair = Keypair.create("svc2")
         assert id1.public_key != id2.public_key
 
 

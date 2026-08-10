@@ -154,7 +154,7 @@ class Handler(Core):
         with self.state_lock:
             record = self.store.get(f"loan:{loan_id}")
             if record:
-                accrued = self.__accrue_interest(record)
+                accrued = self.accrue_interest_internal(record)
                 remaining_dec: Decimal = Decimal(str(amount))
                 if accrued > 0 and remaining_dec > 0:
                     accrued_dec: Decimal = Decimal(str(accrued))
@@ -254,10 +254,10 @@ class Handler(Core):
         with self.state_lock:
             record = self.store.get(f"loan:{loan_id}")
             if record:
-                return self.__accrue_interest(record)
+                return self.accrue_interest_internal(record)
             return 0.0
 
-    def __accrue_interest(self, record: dict[str, Any]) -> float:
+    def accrue_interest_internal(self, record: dict[str, Any]) -> float:
         """Accrue interest from last_interest_date to now using actual/365.
 
         Updates the record in-place but does not save to store.

@@ -10,7 +10,7 @@ import time
 
 from underwrite.exceptions import RateLimitError
 from underwrite.logger import logger
-from underwrite.store import Store
+from underwrite.store import Disk, InMemory, Sqlite, Store
 
 
 class Limiter:
@@ -72,7 +72,7 @@ class DistributedLimiter(Limiter):
         self,
         max_rate: float = 100.0,
         interval: float = 1.0,
-        store: Store | None = None,
+        store: Store | InMemory | Disk | Sqlite | None = None,
         prefix: str = "ratelimit",
     ) -> None:
         """Initializes a distributed rate limiter.

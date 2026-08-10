@@ -133,7 +133,7 @@ class Orchestrator:
     so that in-flight sagas survive process restarts.
     """
 
-    def __init__(self, store: Store | None = None) -> None:
+    def __init__(self, store: Store | InMemory | Disk | Sqlite | None = None) -> None:
         self.global_lock: threading.RLock = threading.RLock()
         self.saga_locks: dict[str, threading.RLock] = {}
         self.sagas: dict[str, Saga] = {}

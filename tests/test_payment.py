@@ -1,4 +1,4 @@
-"""Exhaustive tests for PaymentHandler."""
+"""Exhaustive tests for Handler."""
 
 from __future__ import annotations
 
@@ -6,8 +6,9 @@ from datetime import datetime, timedelta, timezone
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.payment.handler import PaymentHandler
 from underwrite.store import MemoryStore
+from underwrite.services.payment.handler import Handler
+from underwrite.services.payment.handler import Handler as PaymentHandler
 
 
 class TestPaymentService:

@@ -1,21 +1,21 @@
-"""Prometheus text-format export for underwrite MetricsCollector.
+"""Prometheus text-format export for underwrite Collector.
 
 Usage:
-    exporter = MetricsExporter()
+    exporter = Exporter()
     text = exporter.to_prometheus_text(runtime)
 """
 
 from __future__ import annotations
 
 __all__ = [
-    "MetricsExporter",
+    "Exporter",
     "PrometheusMiddleware",
     "metrics_as_text",
 ]
 
 from typing import Any
 
-from underwrite.__pii import PIISanitizer, redact_text
+from underwrite.pii import PIISanitizer
 
 _redactor = PIISanitizer()
 
@@ -28,14 +28,14 @@ def _redact_tag_value(value: str) -> str:
     scrape endpoint. A user-controlled tag (e.g. ``loan_id``,
     ``customer_id``) must not carry PII patterns.
     """
-    return redact_text(str(value))
+    return PIISanitizer.redact_str(str(value))
 
 
-class MetricsExporter:
+class Exporter:
     """Formats runtime metrics into Prometheus exposition text format.
 
     Serialises counters, gauges, and timers from the Runtime's
-    ``MetricsCollector`` snapshot into the Prometheus text format
+    ``Collector`` snapshot into the Prometheus text format
     with ``TYPE`` and ``HELP`` headers.
     """
 
@@ -57,22 +57,22 @@ class MetricsExporter:
         lines: list[str] = []
 
         for name, data in snap.get("counters", {}).items():
-            safe = MetricsExporter.__sanitize(name)
-            tags = MetricsExporter.__format_tags(data.get("tags", {}))
+            safe = Exporter.__sanitize(name)
+            tags = Exporter.__format_tags(data.get("tags", {}))
             lines.append(f"# HELP {safe} Counter metric")
             lines.append(f"# TYPE {safe} counter")
             lines.append(f"{safe}{{{tags}}} {data['value']}")
 
         for name, data in snap.get("gauges", {}).items():
-            safe = MetricsExporter.__sanitize(name)
-            tags = MetricsExporter.__format_tags(data.get("tags", {}))
+            safe = Exporter.__sanitize(name)
+            tags = Exporter.__format_tags(data.get("tags", {}))
             lines.append(f"# HELP {safe} Gauge metric")
             lines.append(f"# TYPE {safe} gauge")
             lines.append(f"{safe}{{{tags}}} {data['value']}")
 
         for name, data in snap.get("timers", {}).items():
-            safe = MetricsExporter.__sanitize(name)
-            tags = MetricsExporter.__format_tags(data.get("tags", {}))
+            safe = Exporter.__sanitize(name)
+            tags = Exporter.__format_tags(data.get("tags", {}))
             lines.append(f"# HELP {safe} Timer metric")
             lines.append(f"# TYPE {safe} gauge")
             lines.append(f"{safe}_count{{{tags}}} {data['count']}")
@@ -100,13 +100,13 @@ class MetricsExporter:
         """
         parts: list[str] = []
         for k, v in sorted(tags.items()):
-            safe_k = MetricsExporter.__sanitize(str(k))
+            safe_k = Exporter.__sanitize(str(k))
             safe_v = _redact_tag_value(v).replace("\\", "\\\\").replace("\n", "\\n").replace('"', '\\"')
             parts.append(f'{safe_k}="{safe_v}"')
         return ",".join(parts)
 
 
-_exporter = MetricsExporter()
+_exporter = Exporter()
 
 
 def metrics_as_text(runtime: Any) -> str:

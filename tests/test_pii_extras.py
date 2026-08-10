@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from underwrite.__pii import PII_REDACTED, PIISanitizer
+from underwrite.pii import PII_REDACTED, PIISanitizer
 
 
 class TestPIISanitizer:

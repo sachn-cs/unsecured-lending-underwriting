@@ -44,7 +44,7 @@ the hardening pass:
   underwriter rule engine are all aligned with RBI norms.
 - **Real KYC provider integrations** — PAN (NSDL/ITD), Aadhaar
   (UIDAI KUA), CIBIL, and CKYC have full wire-protocol clients
-  in `services/kyc_providers/`. They are wired into the compliance
+  in `services/kyc/`. They are wired into the compliance
   and credit-bureau services and configured via
   `Configuration.kyc_providers`.
 - **Production Docker image** — multi-stage build, non-root

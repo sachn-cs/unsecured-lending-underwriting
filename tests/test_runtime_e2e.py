@@ -14,6 +14,7 @@ from typing import Any, cast
 from underwrite.config import Configuration
 from underwrite.message import Message, Type
 from underwrite.runtime import Runtime
+from underwrite.services.audit.handler import Handler as AuditHandler
 
 
 def memory_runtime(enable_metrics: bool = True) -> Runtime:
@@ -42,7 +43,7 @@ class TestPublishFlow:
                 payload={"aadhaar": "1234-5678-9012", "principal": 50000},
             )
         )
-        audit = rt.get("audit")
+        audit = cast(AuditHandler, rt.get("audit"))
         assert audit is not None
         records = [e for e in audit.ledger if e["event_type"] == Type.LOAN_ORIGINATED]
         assert len(records) == 1

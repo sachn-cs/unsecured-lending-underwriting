@@ -48,4 +48,4 @@ Wiring is declarative: the `WIRING` dict in `handler.py:80` maps each `EventType
 ### Negative
 - No network isolation — a crash in one service takes down the entire process. Mitigated by `ServiceSupervisor` auto-restart with exponential backoff.
 - Single-process bottleneck — all services share the same GIL. Mitigated by `ThreadPoolExecutor` for concurrent handler dispatch (configurable per service via `max_concurrent`).
-- `Runtime.runtime.py` (399 lines) and `MechanismService` (383 lines) already violate SRP — tracked in TODO.md for future refactoring.
+- `Runtime.runtime.py` and `MechanismService` may grow large enough to violate SRP — split out when they cross ~500 lines, tracked in `docs/REFACTORING_PLAN.md`.

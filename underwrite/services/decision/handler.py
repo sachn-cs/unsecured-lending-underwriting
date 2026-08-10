@@ -11,9 +11,9 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector, SystemClock
 from underwrite.saga import Orchestrator
 from underwrite.services.base import StatefulService
@@ -73,7 +73,7 @@ class DecisionHandler(StatefulService):
         if loaded:
             self.__signals = loaded
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Process signal events and evaluate decisions.
 
         Args:
@@ -83,7 +83,7 @@ class DecisionHandler(StatefulService):
         if not entity_id:
             return
 
-        if event.event_type == EventType.FRAUD_ALERT:
+        if event.event_type == Type.FRAUD_ALERT:
             with self.state_lock:
                 self.__signals.setdefault(entity_id, []).append(
                     {
@@ -95,7 +95,7 @@ class DecisionHandler(StatefulService):
                 )
                 self.repo.save(self.__signals)
 
-        elif event.event_type == EventType.RISK_SCORED:
+        elif event.event_type == Type.RISK_SCORED:
             score: float = PayloadValidator().finite(event.payload, "score", 0.0)
             signal: dict[str, Any] = {
                 "source": "risk",
@@ -112,7 +112,7 @@ class DecisionHandler(StatefulService):
                 self.__signals.setdefault(entity_id, []).append(signal)
                 self.repo.save(self.__signals)
 
-        elif event.event_type == EventType.DECISION_EVALUATE:
+        elif event.event_type == Type.DECISION_EVALUATE:
             self.evaluate(entity_id, event.correlation_id)
 
     def evaluate(self, entity_id: str, correlation_id: str) -> None:
@@ -157,7 +157,7 @@ class DecisionHandler(StatefulService):
             self.__signals.pop(entity_id, None)
             self.repo.save(self.__signals)
         self.emit(
-            EventType.DECISION_MADE,
+            Type.DECISION_MADE,
             {
                 "entity_id": entity_id,
                 "action": action,

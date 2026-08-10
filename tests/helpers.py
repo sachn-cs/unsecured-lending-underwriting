@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from underwrite.events import Event
+from underwrite.message import Message
 from underwrite.services.base import Core
 from underwrite.store import ReadStore, Store
 
@@ -41,7 +41,7 @@ class BadStr:
 class ConcreteService(Core):
     """Minimal concrete Core subclass for testing base-class error paths."""
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         pass
 
 
@@ -57,13 +57,13 @@ class FakeEmitter:
         self._fail_on = fail_on or set()
         self._fail_compensation = fail_compensation
 
-    def emit(self, event_type: str, payload: dict[str, Any], correlation_id: str = "") -> Event:
+    def emit(self, event_type: str, payload: dict[str, Any], correlation_id: str = "") -> Message:
         if event_type in self._fail_on:
             raise RuntimeError(f"step {event_type} failed")
         if self._fail_compensation and event_type.startswith("comp."):
             raise RuntimeError(f"compensation failed for {event_type}")
         self.emitted.append((event_type, payload))
-        return Event(event_type=event_type, source="test", payload=payload)
+        return Message(event_type=event_type, source="test", payload=payload)
 
 
 class MockStore(Store):

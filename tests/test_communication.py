@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from underwrite.events import Event, EventType
 from underwrite.local import LocalBus
+from underwrite.message import Message, Type
 from underwrite.services.communication.handler import CommunicationHandler
 from underwrite.store import MemoryStore
 
@@ -12,7 +12,7 @@ class TestCommunicationService:
     def test_send_message_creates_record(self) -> None:
         svc = CommunicationHandler(service_id="comm", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
+            Message(
                 event_type="communication.send",
                 source="test",
                 payload={"recipient": "alice@test.com", "subject": "Welcome", "body": "Hello"},
@@ -35,7 +35,7 @@ class TestCommunicationService:
         svc = CommunicationHandler(service_id="comm", bus=bus, store=MemoryStore())
         bus.start()
         svc.handle(
-            Event(
+            Message(
                 event_type="communication.send",
                 source="test",
                 payload={"recipient": "bob@test.com", "subject": "Alert", "body": "Risk"},
@@ -51,7 +51,7 @@ class TestCommunicationService:
     def test_send_with_custom_channel(self) -> None:
         svc = CommunicationHandler(service_id="comm", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
+            Message(
                 event_type="communication.send",
                 source="test",
                 payload={"recipient": "+12345", "subject": "SMS Alert", "body": "Hi", "channel": "sms"},
@@ -66,7 +66,7 @@ class TestCommunicationService:
     def test_rejects_empty_recipient(self) -> None:
         svc = CommunicationHandler(service_id="comm", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
+            Message(
                 event_type="communication.send",
                 source="test",
                 payload={"recipient": "", "subject": "Test", "body": "Body"},
@@ -76,33 +76,33 @@ class TestCommunicationService:
 
     def test_handles_statement_generated(self) -> None:
         svc = CommunicationHandler(service_id="comm", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type=EventType.STATEMENT_GENERATED, source="test", payload={"loan_id": "L1"}))
+        svc.handle(Message(event_type=Type.STATEMENT_GENERATED, source="test", payload={"loan_id": "L1"}))
         keys = svc.store.keys("comm_stmt:L1:")
         assert len(keys) == 1
 
     def test_ignores_unrelated_events(self) -> None:
         svc = CommunicationHandler(service_id="comm", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type="seed.added", source="test", payload={}))
+        svc.handle(Message(event_type="seed.added", source="test", payload={}))
         assert len(svc.store.keys("message:")) == 0
 
     def test_multiple_messages_to_same_recipient(self) -> None:
         svc = CommunicationHandler(service_id="comm", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
+            Message(
                 event_type="communication.send",
                 source="test",
                 payload={"recipient": "same@test.com", "subject": "Msg 1", "body": "B"},
             )
         )
         svc.handle(
-            Event(
+            Message(
                 event_type="communication.send",
                 source="test",
                 payload={"recipient": "same@test.com", "subject": "Msg 2", "body": "B"},
             )
         )
         svc.handle(
-            Event(
+            Message(
                 event_type="communication.send",
                 source="test",
                 payload={"recipient": "same@test.com", "subject": "Msg 3", "body": "B"},

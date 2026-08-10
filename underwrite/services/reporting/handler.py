@@ -10,9 +10,9 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector, SystemClock
 from underwrite.saga import Orchestrator
 from underwrite.services.base import StatefulService
@@ -90,27 +90,27 @@ class ReportingHandler(StatefulService):
             self.__defaults = loaded.get("defaults", 0)
             self.__total_principal = loaded.get("total_principal", 0.0)
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Process events to update portfolio metrics.
 
         Args:
             event: The incoming domain event.
         """
-        if event.event_type == EventType.LOAN_ORIGINATED:
+        if event.event_type == Type.LOAN_ORIGINATED:
             with self.state_lock:
                 self.__originations += 1
                 self.__total_principal += PayloadValidator().finite(event.payload, "principal")
                 self.__sync()
-        elif event.event_type == EventType.DEFAULT_OCCURRED:
+        elif event.event_type == Type.DEFAULT_OCCURRED:
             with self.state_lock:
                 self.__defaults += 1
                 self.__sync()
-        elif event.event_type == EventType.NPA_BUCKET_CHANGED:
+        elif event.event_type == Type.NPA_BUCKET_CHANGED:
             self.track_bucket_change(event)
-        elif event.event_type == EventType.PROVISIONING_COMPUTED:
+        elif event.event_type == Type.PROVISIONING_COMPUTED:
             self.track_provisioning(event)
 
-    def track_bucket_change(self, event: Event) -> None:
+    def track_bucket_change(self, event: Message) -> None:
         """Update bucket-wise counters when NPA classification changes.
 
         Args:
@@ -123,7 +123,7 @@ class ReportingHandler(StatefulService):
         with self.state_lock:
             self.__bucket_counts[bucket] = self.__bucket_counts.get(bucket, 0) + 1
 
-    def track_provisioning(self, event: Event) -> None:
+    def track_provisioning(self, event: Message) -> None:
         """Track total provisioning amount.
 
         Args:

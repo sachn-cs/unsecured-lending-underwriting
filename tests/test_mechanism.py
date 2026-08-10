@@ -9,9 +9,9 @@ from typing import Any
 
 import pytest
 
-from underwrite.events import Event, EventType
 from underwrite.exceptions import ProtocolError
 from underwrite.local import LocalBus
+from underwrite.message import Message, Type
 from underwrite.services.mechanism.handler import MechanismHandler
 from underwrite.store import MemoryStore
 
@@ -22,7 +22,7 @@ def make_svc() -> MechanismHandler:
 
 def command(svc: MechanismHandler, cmd: str, payload: dict[str, Any], corr: str = "") -> None:
     svc.handle(
-        Event(
+        Message(
             event_type="mechanism",
             source="test",
             payload={"command": cmd, **payload},
@@ -67,8 +67,8 @@ class TestAddSeed:
 
     def test_emits_seed_added_event(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.SEED_ADDED, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.SEED_ADDED, lambda e: received.append(e))
         svc = MechanismHandler(service_id="mech", bus=bus, store=MemoryStore())
         svc.start()
         bus.start()
@@ -419,8 +419,8 @@ class TestCreditLimit:
 class TestQuote:
     def test_quote_calculated(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.QUOTE_CALCULATED, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.QUOTE_CALCULATED, lambda e: received.append(e))
         svc = MechanismHandler(service_id="mech", bus=bus, store=MemoryStore())
         svc.start()
         bus.start()
@@ -591,12 +591,12 @@ class TestMechanismStateOrdering:
         captured: dict[str, Any] = {}
         bus = LocalBus()
 
-        def capture(event: Event) -> None:
-            if event.event_type == EventType.SEED_ADDED:
+        def capture(event: Message) -> None:
+            if event.event_type == Type.SEED_ADDED:
                 captured["emit_seen"] = True
                 captured["user_in_earned_at_emit"] = event.payload.get("user", "") in svc.earned
 
-        bus.subscribe(EventType.SEED_ADDED, capture)
+        bus.subscribe(Type.SEED_ADDED, capture)
         svc = MechanismHandler(service_id="test-mech", bus=bus, store=MemoryStore())
         svc.start()
         command(svc, "add_seed", {"user": "bank", "base_budget": 100_000})
@@ -608,12 +608,12 @@ class TestMechanismStateOrdering:
         captured: dict[str, Any] = {}
         bus = LocalBus()
 
-        def capture(event: Event) -> None:
-            if event.event_type == EventType.LOAN_ORIGINATED:
+        def capture(event: Message) -> None:
+            if event.event_type == Type.LOAN_ORIGINATED:
                 captured["emit_seen"] = True
                 captured["loans_at_emit"] = len(svc.loans.get("bank", []))
 
-        bus.subscribe(EventType.LOAN_ORIGINATED, capture)
+        bus.subscribe(Type.LOAN_ORIGINATED, capture)
         svc = MechanismHandler(service_id="test-mech", bus=bus, store=MemoryStore())
         svc.start()
         command(svc, "add_seed", {"user": "bank", "base_budget": 100_000})

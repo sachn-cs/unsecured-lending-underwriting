@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from underwrite.events import Event, EventType
 from underwrite.local import LocalBus
+from underwrite.message import Message, Type
 from underwrite.services.collection.handler import CollectionHandler
 from underwrite.store import MemoryStore
 
@@ -16,12 +16,12 @@ class TestCollectionService:
     def test_tracks_loan_on_origination(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.COLLECTION_UPDATED, lambda e: received.append(e))
+        bus.subscribe(Type.COLLECTION_UPDATED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
         svc_inst.handle(
-            Event(
-                event_type=EventType.LOAN_ORIGINATED,
+            Message(
+                event_type=Type.LOAN_ORIGINATED,
                 source="test",
                 payload={"borrower": "alice", "principal": 12000, "term": 12},
             )
@@ -33,35 +33,31 @@ class TestCollectionService:
     def test_updates_on_repayment(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.COLLECTION_UPDATED, lambda e: received.append(e))
+        bus.subscribe(Type.COLLECTION_UPDATED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
         svc_inst.handle(
-            Event(
-                event_type=EventType.LOAN_ORIGINATED,
+            Message(
+                event_type=Type.LOAN_ORIGINATED,
                 source="test",
                 payload={"borrower": "bob", "principal": 6000, "term": 6},
             )
         )
         received.clear()
-        svc_inst.handle(
-            Event(event_type=EventType.REPAID, source="test", payload={"user": "bob", "delta_earned": 1000})
-        )
+        svc_inst.handle(Message(event_type=Type.REPAID, source="test", payload={"user": "bob", "delta_earned": 1000}))
         assert len(received) == 1
         assert received[0].payload["paid"] == 1000.0
 
     def test_closes_loan_when_fully_repaid(self) -> None:
         svc_inst = svc()
         svc_inst.handle(
-            Event(
-                event_type=EventType.LOAN_ORIGINATED,
+            Message(
+                event_type=Type.LOAN_ORIGINATED,
                 source="test",
                 payload={"borrower": "carol", "principal": 5000, "term": 1},
             )
         )
-        svc_inst.handle(
-            Event(event_type=EventType.REPAID, source="test", payload={"user": "carol", "delta_earned": 5000})
-        )
+        svc_inst.handle(Message(event_type=Type.REPAID, source="test", payload={"user": "carol", "delta_earned": 5000}))
         loan = svc_inst.get("carol")
         assert loan is not None
         assert loan["status"] == "closed"
@@ -71,15 +67,13 @@ class TestCollectionService:
 
     def test_repay_unknown_user_no_crash(self) -> None:
         svc_inst = svc()
-        svc_inst.handle(
-            Event(event_type=EventType.REPAID, source="test", payload={"user": "ghost", "delta_earned": 100})
-        )
+        svc_inst.handle(Message(event_type=Type.REPAID, source="test", payload={"user": "ghost", "delta_earned": 100}))
 
     def test_ignores_unrelated_events(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.COLLECTION_UPDATED, lambda e: received.append(e))
+        bus.subscribe(Type.COLLECTION_UPDATED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
-        svc_inst.handle(Event(event_type="seed.added", source="test", payload={}))
+        svc_inst.handle(Message(event_type="seed.added", source="test", payload={}))
         assert len(received) == 0

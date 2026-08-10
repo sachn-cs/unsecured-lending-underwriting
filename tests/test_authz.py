@@ -5,9 +5,9 @@ from __future__ import annotations
 import pytest
 
 from underwrite.authz import AccessControl
-from underwrite.events import Event
 from underwrite.exceptions import AuthzError
 from underwrite.keypair import Keypair
+from underwrite.message import Message
 
 
 class TestAccessControl:
@@ -50,13 +50,13 @@ class TestAccessControl:
         acl = AccessControl()
         identity = Keypair.create("risk")
         acl.trust("risk", identity.public_key)
-        event = Event(
+        event = Message(
             event_type="risk.scored",
             source="risk",
             source_key=identity.public_key,
             payload={},
         )
-        signed = Event(
+        signed = Message(
             event_id=event.event_id,
             event_type=event.event_type,
             source=event.source,
@@ -73,13 +73,13 @@ class TestAccessControl:
         acl = AccessControl()
         identity = Keypair.create("risk")
         acl.trust("risk", identity.public_key)
-        event = Event(
+        event = Message(
             event_type="risk.scored",
             source="risk",
             source_key=identity.public_key,
             payload={},
         )
-        signed = Event(
+        signed = Message(
             event_id=event.event_id,
             event_type=event.event_type,
             source=event.source,
@@ -89,7 +89,7 @@ class TestAccessControl:
             correlation_id=event.correlation_id,
             signature=identity.sign(event.canonical_sign_bytes().decode("utf-8")),
         )
-        tampered = Event(
+        tampered = Message(
             event_id=signed.event_id,
             event_type=signed.event_type,
             source=signed.source,
@@ -105,12 +105,12 @@ class TestAccessControl:
         acl = AccessControl()
         identity = Keypair.create("risk")
         acl.trust("risk", identity.public_key)
-        event = Event(
+        event = Message(
             event_type="risk.scored",
             source="risk",
             source_key=identity.public_key,
         )
-        signed = Event(
+        signed = Message(
             event_id=event.event_id,
             event_type=event.event_type,
             source=event.source,
@@ -124,5 +124,5 @@ class TestAccessControl:
 
     def test_verify_without_trusted_key(self) -> None:
         acl = AccessControl()
-        event = Event(event_type="t", source="unknown")
+        event = Message(event_type="t", source="unknown")
         assert acl.verify_signature(event) is False

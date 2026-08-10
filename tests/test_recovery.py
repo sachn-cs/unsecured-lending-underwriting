@@ -8,8 +8,8 @@ Tests verify the full recovery workflow with store-backed persistence:
 
 from __future__ import annotations
 
-from underwrite.events import Event, EventType
 from underwrite.local import LocalBus
+from underwrite.message import Message, Type
 from underwrite.services.recovery.handler import RecoveryHandler
 from underwrite.store import MemoryStore
 
@@ -23,14 +23,12 @@ def _recovery(bus=None) -> RecoveryHandler:
 class TestRecoveryService:
     def test_emits_started_on_default(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.RECOVERY_STARTED, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.RECOVERY_STARTED, lambda e: received.append(e))
         svc = _recovery(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.DEFAULT_OCCURRED, source="test", payload={"borrower": "alice", "principal": 50000}
-            )
+            Message(event_type=Type.DEFAULT_OCCURRED, source="test", payload={"borrower": "alice", "principal": 50000})
         )
         assert len(received) == 1
         assert received[0].payload["borrower"] == "alice"
@@ -40,16 +38,14 @@ class TestRecoveryService:
 
     def test_default_triggers_offer(self) -> None:
         bus = LocalBus()
-        started: list[Event] = []
-        offers: list[Event] = []
-        bus.subscribe(EventType.RECOVERY_STARTED, lambda e: started.append(e))
+        started: list[Message] = []
+        offers: list[Message] = []
+        bus.subscribe(Type.RECOVERY_STARTED, lambda e: started.append(e))
         bus.subscribe("recovery.offer", lambda e: offers.append(e))
         svc = _recovery(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.DEFAULT_OCCURRED, source="test", payload={"borrower": "bob", "principal": 100000}
-            )
+            Message(event_type=Type.DEFAULT_OCCURRED, source="test", payload={"borrower": "bob", "principal": 100000})
         )
         assert len(started) == 1
         assert len(offers) == 1
@@ -58,30 +54,26 @@ class TestRecoveryService:
 
     def test_does_not_emit_completed_on_default(self) -> None:
         bus = LocalBus()
-        completed: list[Event] = []
-        bus.subscribe(EventType.RECOVERY_COMPLETED, lambda e: completed.append(e))
+        completed: list[Message] = []
+        bus.subscribe(Type.RECOVERY_COMPLETED, lambda e: completed.append(e))
         svc = _recovery(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.DEFAULT_OCCURRED, source="test", payload={"borrower": "carol", "principal": 50000}
-            )
+            Message(event_type=Type.DEFAULT_OCCURRED, source="test", payload={"borrower": "carol", "principal": 50000})
         )
         assert len(completed) == 0
 
     def test_emits_completed_after_full_recovery(self) -> None:
         bus = LocalBus()
-        completed: list[Event] = []
-        bus.subscribe(EventType.RECOVERY_COMPLETED, lambda e: completed.append(e))
+        completed: list[Message] = []
+        bus.subscribe(Type.RECOVERY_COMPLETED, lambda e: completed.append(e))
         svc = _recovery(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.DEFAULT_OCCURRED, source="test", payload={"borrower": "dave", "principal": 10000}
-            )
+            Message(event_type=Type.DEFAULT_OCCURRED, source="test", payload={"borrower": "dave", "principal": 10000})
         )
         svc.handle(
-            Event(event_type=EventType.PAYMENT_RECEIVED, source="test", payload={"borrower": "dave", "amount": 10000})
+            Message(event_type=Type.PAYMENT_RECEIVED, source="test", payload={"borrower": "dave", "amount": 10000})
         )
         assert len(completed) == 1
         assert completed[0].payload["recovered"] == 10000.0
@@ -89,34 +81,32 @@ class TestRecoveryService:
 
     def test_offer_rejection_retriggers_offer(self) -> None:
         bus = LocalBus()
-        offers: list[Event] = []
+        offers: list[Message] = []
         bus.subscribe("recovery.offer", lambda e: offers.append(e))
         svc = _recovery(bus=bus)
         bus.start()
         svc.handle(
-            Event(event_type=EventType.DEFAULT_OCCURRED, source="test", payload={"borrower": "eve", "principal": 30000})
+            Message(event_type=Type.DEFAULT_OCCURRED, source="test", payload={"borrower": "eve", "principal": 30000})
         )
         offers.clear()
         svc.handle(
-            Event(event_type="recovery.offer_response", source="test", payload={"borrower": "eve", "accepted": False})
+            Message(event_type="recovery.offer_response", source="test", payload={"borrower": "eve", "accepted": False})
         )
         assert len(offers) == 1
         assert offers[0].payload["offer_amount"] == 9000.0
 
     def test_three_rejections_escalates(self) -> None:
         bus = LocalBus()
-        escalated: list[Event] = []
+        escalated: list[Message] = []
         bus.subscribe("recovery.escalated", lambda e: escalated.append(e))
         svc = _recovery(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.DEFAULT_OCCURRED, source="test", payload={"borrower": "faythe", "principal": 10000}
-            )
+            Message(event_type=Type.DEFAULT_OCCURRED, source="test", payload={"borrower": "faythe", "principal": 10000})
         )
         for _ in range(3):
             svc.handle(
-                Event(
+                Message(
                     event_type="recovery.offer_response",
                     source="test",
                     payload={"borrower": "faythe", "accepted": False},
@@ -128,35 +118,33 @@ class TestRecoveryService:
 
     def test_offer_accepted_enters_payment_plan(self) -> None:
         bus = LocalBus()
-        started: list[Event] = []
-        bus.subscribe(EventType.RECOVERY_STARTED, lambda e: started.append(e))
+        started: list[Message] = []
+        bus.subscribe(Type.RECOVERY_STARTED, lambda e: started.append(e))
         svc = _recovery(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.DEFAULT_OCCURRED, source="test", payload={"borrower": "grace", "principal": 20000}
-            )
+            Message(event_type=Type.DEFAULT_OCCURRED, source="test", payload={"borrower": "grace", "principal": 20000})
         )
         started.clear()
         svc.handle(
-            Event(event_type="recovery.offer_response", source="test", payload={"borrower": "grace", "accepted": True})
+            Message(
+                event_type="recovery.offer_response", source="test", payload={"borrower": "grace", "accepted": True}
+            )
         )
         assert len(started) == 1
         assert started[0].payload["stage"] == "payment_plan"
 
     def test_partial_payment_emits_progress(self) -> None:
         bus = LocalBus()
-        progress: list[Event] = []
+        progress: list[Message] = []
         bus.subscribe("recovery.progress", lambda e: progress.append(e))
         svc = _recovery(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.DEFAULT_OCCURRED, source="test", payload={"borrower": "heidi", "principal": 5000}
-            )
+            Message(event_type=Type.DEFAULT_OCCURRED, source="test", payload={"borrower": "heidi", "principal": 5000})
         )
         svc.handle(
-            Event(event_type=EventType.PAYMENT_RECEIVED, source="test", payload={"borrower": "heidi", "amount": 2000})
+            Message(event_type=Type.PAYMENT_RECEIVED, source="test", payload={"borrower": "heidi", "amount": 2000})
         )
         assert len(progress) == 1
         assert progress[0].payload["recovered"] == 2000.0
@@ -164,52 +152,54 @@ class TestRecoveryService:
 
     def test_partial_then_full_payment_completes(self) -> None:
         bus = LocalBus()
-        completed: list[Event] = []
-        bus.subscribe(EventType.RECOVERY_COMPLETED, lambda e: completed.append(e))
+        completed: list[Message] = []
+        bus.subscribe(Type.RECOVERY_COMPLETED, lambda e: completed.append(e))
         svc = _recovery(bus=bus)
         bus.start()
         svc.handle(
-            Event(event_type=EventType.DEFAULT_OCCURRED, source="test", payload={"borrower": "ivan", "principal": 8000})
+            Message(event_type=Type.DEFAULT_OCCURRED, source="test", payload={"borrower": "ivan", "principal": 8000})
         )
         svc.handle(
-            Event(event_type=EventType.PAYMENT_RECEIVED, source="test", payload={"borrower": "ivan", "amount": 5000})
+            Message(event_type=Type.PAYMENT_RECEIVED, source="test", payload={"borrower": "ivan", "amount": 5000})
         )
         svc.handle(
-            Event(event_type=EventType.PAYMENT_RECEIVED, source="test", payload={"borrower": "ivan", "amount": 3000})
+            Message(event_type=Type.PAYMENT_RECEIVED, source="test", payload={"borrower": "ivan", "amount": 3000})
         )
         assert len(completed) == 1
         assert completed[0].payload["recovered"] == 8000.0
 
     def test_unknown_borrower_payment_silently_ignored(self) -> None:
         bus = LocalBus()
-        progress: list[Event] = []
+        progress: list[Message] = []
         bus.subscribe("recovery.progress", lambda e: progress.append(e))
         svc = _recovery(bus=bus)
         bus.start()
         svc.handle(
-            Event(event_type=EventType.PAYMENT_RECEIVED, source="test", payload={"borrower": "nobody", "amount": 1000})
+            Message(event_type=Type.PAYMENT_RECEIVED, source="test", payload={"borrower": "nobody", "amount": 1000})
         )
         assert len(progress) == 0
 
     def test_unknown_borrower_offer_response_silently_ignored(self) -> None:
         bus = LocalBus()
-        started: list[Event] = []
-        bus.subscribe(EventType.RECOVERY_STARTED, lambda e: started.append(e))
+        started: list[Message] = []
+        bus.subscribe(Type.RECOVERY_STARTED, lambda e: started.append(e))
         svc = _recovery(bus=bus)
         bus.start()
         svc.handle(
-            Event(event_type="recovery.offer_response", source="test", payload={"borrower": "nobody", "accepted": True})
+            Message(
+                event_type="recovery.offer_response", source="test", payload={"borrower": "nobody", "accepted": True}
+            )
         )
         assert len(started) == 0
 
     def test_ignores_non_default_events(self) -> None:
         bus = LocalBus()
-        started: list[Event] = []
-        bus.subscribe(EventType.RECOVERY_STARTED, lambda e: started.append(e))
+        started: list[Message] = []
+        bus.subscribe(Type.RECOVERY_STARTED, lambda e: started.append(e))
         svc = _recovery(bus=bus)
         bus.start()
-        svc.handle(Event(event_type="seed.added", source="test", payload={}))
-        svc.handle(Event(event_type=EventType.LOAN_ORIGINATED, source="test", payload={}))
+        svc.handle(Message(event_type="seed.added", source="test", payload={}))
+        svc.handle(Message(event_type=Type.LOAN_ORIGINATED, source="test", payload={}))
         assert len(started) == 0
 
     def test_recovery_state_persisted(self) -> None:
@@ -217,8 +207,8 @@ class TestRecoveryService:
         svc = _recovery(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.DEFAULT_OCCURRED,
+            Message(
+                event_type=Type.DEFAULT_OCCURRED,
                 source="test",
                 payload={"borrower": "persist_test", "principal": 50000},
             )
@@ -231,20 +221,20 @@ class TestRecoveryService:
 
     def test_duplicate_default_skipped(self) -> None:
         bus = LocalBus()
-        started: list[Event] = []
-        bus.subscribe(EventType.RECOVERY_STARTED, lambda e: started.append(e))
+        started: list[Message] = []
+        bus.subscribe(Type.RECOVERY_STARTED, lambda e: started.append(e))
         svc = _recovery(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.DEFAULT_OCCURRED,
+            Message(
+                event_type=Type.DEFAULT_OCCURRED,
                 source="test",
                 payload={"borrower": "dup_test", "principal": 50000},
             )
         )
         svc.handle(
-            Event(
-                event_type=EventType.DEFAULT_OCCURRED,
+            Message(
+                event_type=Type.DEFAULT_OCCURRED,
                 source="test",
                 payload={"borrower": "dup_test", "principal": 50000},
             )

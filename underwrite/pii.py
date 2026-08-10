@@ -41,18 +41,18 @@ def redact_event(event: Any) -> Any:
     untouched.
 
     Args:
-        event: The Event whose payload is to be redacted.
+        event: The Message whose payload is to be redacted.
 
     Returns:
-        A new Event with sensitive content in the payload replaced
+        A new Message with sensitive content in the payload replaced
         by ``PII_REDACTED``. Returns the same object if no change.
     """
-    from underwrite.events import Event
+    from underwrite.message import Message
 
     sanitized_payload = redact(dict(event.payload))
     if sanitized_payload == event.payload:
         return event
-    return Event(
+    return Message(
         event_id=event.event_id,
         event_type=event.event_type,
         source=event.source,

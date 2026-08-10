@@ -11,9 +11,9 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector, SystemClock
 from underwrite.saga import Orchestrator
 from underwrite.services.base import StatefulService
@@ -75,18 +75,18 @@ class WorkflowHandler(StatefulService):
         )
         self.__clock: SystemClock = SystemClock()
         self.handlers: dict[str, Any] = {
-            EventType.WORKFLOW_START: self.__on_workflow_start,
-            EventType.WORKFLOW_ADVANCE: self.__on_workflow_advance,
-            EventType.ORIGINATION_SUBMITTED: self.__on_origination_submitted,
-            EventType.UNDERWRITER_APPROVED: self.__on_underwriter_approved,
+            Type.WORKFLOW_START: self.__on_workflow_start,
+            Type.WORKFLOW_ADVANCE: self.__on_workflow_advance,
+            Type.ORIGINATION_SUBMITTED: self.__on_origination_submitted,
+            Type.UNDERWRITER_APPROVED: self.__on_underwriter_approved,
         }
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         handler = self.handlers.get(event.event_type)
         if handler is not None:
             handler(event)
 
-    def __on_workflow_start(self, event: Event) -> None:
+    def __on_workflow_start(self, event: Message) -> None:
         """Start a new workflow instance.
 
         Args:
@@ -98,7 +98,7 @@ class WorkflowHandler(StatefulService):
             event.correlation_id,
         )
 
-    def __on_workflow_advance(self, event: Event) -> None:
+    def __on_workflow_advance(self, event: Message) -> None:
         """Advance a workflow to the next stage.
 
         Args:
@@ -109,7 +109,7 @@ class WorkflowHandler(StatefulService):
             event.correlation_id,
         )
 
-    def __on_origination_submitted(self, event: Event) -> None:
+    def __on_origination_submitted(self, event: Message) -> None:
         """Start an origination workflow when an application is submitted.
 
         Args:
@@ -119,7 +119,7 @@ class WorkflowHandler(StatefulService):
         if entity_id and not self.store.get(f"workflow:{entity_id}"):
             self.__start_workflow("origination", entity_id, event.correlation_id)
 
-    def __on_underwriter_approved(self, event: Event) -> None:
+    def __on_underwriter_approved(self, event: Message) -> None:
         """Advance the workflow when underwriter approves.
 
         Args:
@@ -153,7 +153,7 @@ class WorkflowHandler(StatefulService):
             },
         )
         self.emit(
-            EventType.WORKFLOW_STARTED,
+            Type.WORKFLOW_STARTED,
             {
                 "workflow_type": workflow_type,
                 "entity_id": entity_id,
@@ -186,7 +186,7 @@ class WorkflowHandler(StatefulService):
                 self.store.set(f"workflow:{entity_id}", record)
         if record["status"] == "completed":
             self.emit(
-                EventType.WORKFLOW_COMPLETED,
+                Type.WORKFLOW_COMPLETED,
                 {
                     "workflow_type": record["type"],
                     "entity_id": entity_id,

@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any, cast
 
 from underwrite.config import Configuration
-from underwrite.events import Event, EventType
+from underwrite.message import Message, Type
 from underwrite.runtime import Runtime
 
 
@@ -33,15 +33,15 @@ class TestPublishFlow:
         bus.start()
         rt.start(["audit"])
         bus.publish(
-            Event(
-                event_type=EventType.LOAN_ORIGINATED,
+            Message(
+                event_type=Type.LOAN_ORIGINATED,
                 source="test",
                 payload={"aadhaar": "1234-5678-9012", "principal": 50000},
             )
         )
         audit = rt.get("audit")
         assert audit is not None
-        records = [e for e in audit.ledger if e["event_type"] == EventType.LOAN_ORIGINATED]
+        records = [e for e in audit.ledger if e["event_type"] == Type.LOAN_ORIGINATED]
         assert len(records) == 1
         assert records[0]["payload"]["aadhaar"] == "***REDACTED***"
         rt.stop()
@@ -51,10 +51,10 @@ class TestPublishFlow:
         cfg.authz.enabled = False
         rt = Runtime(config=cfg)
         bus = rt.bus
-        received: list[Event] = []
+        received: list[Message] = []
         bus.subscribe("*", lambda e: received.append(e))
         bus.start()
-        bus.publish(Event(event_type="custom.test", source="test", payload={"key": "value"}))
+        bus.publish(Message(event_type="custom.test", source="test", payload={"key": "value"}))
         assert any(e.event_type == "custom.test" for e in received)
         rt.stop()
 
@@ -70,7 +70,7 @@ class TestPublishFlow:
         mechanism = rt.get("mechanism")
         assert mechanism is not None
         mechanism.handle(
-            Event(
+            Message(
                 event_type="mechanism",
                 source="test",
                 payload={"command": "add_seed", "user": "bank", "base_budget": 200000},
@@ -78,7 +78,7 @@ class TestPublishFlow:
         )
         audit = cast(Any, rt.get("audit"))
         assert audit is not None
-        seed_events = [e for e in audit.ledger if e["event_type"] == EventType.SEED_ADDED]
+        seed_events = [e for e in audit.ledger if e["event_type"] == Type.SEED_ADDED]
         assert len(seed_events) >= 1
         state = rt.store.get("protocol:state")
         assert state is not None
@@ -88,7 +88,7 @@ class TestPublishFlow:
     def test_service_emits_through_bus_downstream(self) -> None:
         rt = memory_runtime()
         bus = rt.bus
-        all_events: list[Event] = []
+        all_events: list[Message] = []
         bus.subscribe("*", lambda e: all_events.append(e))
         rt.register("mechanism")
         rt.wire("mechanism")
@@ -97,14 +97,14 @@ class TestPublishFlow:
         svc = rt.get("mechanism")
         assert svc is not None
         svc.handle(
-            Event(
+            Message(
                 event_type="mechanism",
                 source="test",
                 payload={"command": "add_seed", "user": "bank", "base_budget": 300000},
             )
         )
         emitted_types = {e.event_type for e in all_events}
-        assert EventType.SEED_ADDED in emitted_types
+        assert Type.SEED_ADDED in emitted_types
         rt.stop()
 
     def test_audit_records_emitted_events_via_wiring(self) -> None:
@@ -119,7 +119,7 @@ class TestPublishFlow:
         svc = rt.get("mechanism")
         assert svc is not None
         svc.handle(
-            Event(
+            Message(
                 event_type="mechanism",
                 source="test",
                 payload={"command": "add_seed", "user": "bank", "base_budget": 400000},
@@ -127,7 +127,7 @@ class TestPublishFlow:
         )
         audit = cast(Any, rt.get("audit"))
         assert audit is not None
-        seed_records = audit.events_by_type(EventType.SEED_ADDED)
+        seed_records = audit.events_by_type(Type.SEED_ADDED)
         assert len(seed_records) >= 1
         rt.stop()
 
@@ -187,7 +187,7 @@ class TestMetricsE2E:
         svc = rt.get("mechanism")
         assert svc is not None
         svc.handle(
-            Event(
+            Message(
                 event_type="mechanism",
                 source="test",
                 payload={"command": "add_seed", "user": "bank", "base_budget": 50000},
@@ -258,7 +258,7 @@ class TestMultipleServiceCoordination:
         svc = rt.get("mechanism")
         assert svc is not None
         svc.handle(
-            Event(
+            Message(
                 event_type="mechanism",
                 source="test",
                 payload={"command": "add_seed", "user": "bank", "base_budget": 100000},
@@ -287,7 +287,7 @@ class TestMultipleServiceCoordination:
         mech_svc = rt.get("mechanism")
         assert mech_svc is not None
         mech_svc.handle(
-            Event(
+            Message(
                 event_type="mechanism",
                 source="test",
                 payload={"command": "add_seed", "user": "bank", "base_budget": 100000},

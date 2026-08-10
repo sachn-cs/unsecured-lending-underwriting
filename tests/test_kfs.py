@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from underwrite.events import Event, EventType
 from underwrite.local import LocalBus
+from underwrite.message import Message, Type
 from underwrite.services.kfs.handler import KfsHandler
 from underwrite.store import MemoryStore
 
@@ -16,21 +16,21 @@ class TestKfsService:
     def test_generate_kfs_missing_loan_id_ignored(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.KFS_GENERATED, lambda e: received.append(e))
+        bus.subscribe(Type.KFS_GENERATED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
-        svc_inst.handle(Event(event_type=EventType.KFS_GENERATE, source="test", payload={}))
+        svc_inst.handle(Message(event_type=Type.KFS_GENERATE, source="test", payload={}))
         assert len(received) == 0
 
     def test_generate_kfs_basic(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.KFS_GENERATED, lambda e: received.append(e))
+        bus.subscribe(Type.KFS_GENERATED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
         svc_inst.handle(
-            Event(
-                event_type=EventType.KFS_GENERATE,
+            Message(
+                event_type=Type.KFS_GENERATE,
                 source="test",
                 payload={
                     "loan_id": "L1",
@@ -56,12 +56,12 @@ class TestKfsService:
     def test_generate_kfs_with_fees(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.KFS_GENERATED, lambda e: received.append(e))
+        bus.subscribe(Type.KFS_GENERATED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
         svc_inst.handle(
-            Event(
-                event_type=EventType.KFS_GENERATE,
+            Message(
+                event_type=Type.KFS_GENERATE,
                 source="test",
                 payload={
                     "loan_id": "L2",
@@ -82,12 +82,12 @@ class TestKfsService:
     def test_generate_kfs_with_start_date(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.KFS_GENERATED, lambda e: received.append(e))
+        bus.subscribe(Type.KFS_GENERATED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
         svc_inst.handle(
-            Event(
-                event_type=EventType.KFS_GENERATE,
+            Message(
+                event_type=Type.KFS_GENERATE,
                 source="test",
                 payload={
                     "loan_id": "L3",
@@ -107,12 +107,12 @@ class TestKfsService:
     def test_generate_kfs_zero_rate_handling(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.KFS_GENERATED, lambda e: received.append(e))
+        bus.subscribe(Type.KFS_GENERATED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
         svc_inst.handle(
-            Event(
-                event_type=EventType.KFS_GENERATE,
+            Message(
+                event_type=Type.KFS_GENERATE,
                 source="test",
                 payload={
                     "loan_id": "L4",
@@ -129,12 +129,12 @@ class TestKfsService:
     def test_generate_kfs_zero_principal(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.KFS_GENERATED, lambda e: received.append(e))
+        bus.subscribe(Type.KFS_GENERATED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
         svc_inst.handle(
-            Event(
-                event_type=EventType.KFS_GENERATE,
+            Message(
+                event_type=Type.KFS_GENERATE,
                 source="test",
                 payload={
                     "loan_id": "L5",
@@ -150,8 +150,8 @@ class TestKfsService:
     def test_ignores_unrelated_events(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.KFS_GENERATED, lambda e: received.append(e))
+        bus.subscribe(Type.KFS_GENERATED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
-        svc_inst.handle(Event(event_type="seed.added", source="test", payload={}))
+        svc_inst.handle(Message(event_type="seed.added", source="test", payload={}))
         assert len(received) == 0

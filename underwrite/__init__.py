@@ -17,7 +17,6 @@ Or use the full runtime:
 
 from underwrite.bus import EventBus
 from underwrite.config import Configuration
-from underwrite.events import Event, EventType
 from underwrite.exceptions import (
     BusError,
     ConfigurationError,
@@ -32,6 +31,7 @@ from underwrite.exceptions import (
 )
 from underwrite.keypair import Keypair
 from underwrite.local import LocalBus
+from underwrite.message import Message, Type
 from underwrite.runtime import Runtime
 from underwrite.services import Core
 from underwrite.store import FileStore, MemoryStore, Store
@@ -49,8 +49,8 @@ __all__: list[str] = [
     "Runtime",
     "Configuration",
     "Core",
-    "Event",
-    "EventType",
+    "Message",
+    "Type",
     "Keypair",
     "EventBus",
     "LocalBus",

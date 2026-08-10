@@ -19,9 +19,9 @@ from datetime import datetime, timezone
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
-from underwrite.events import Event
 from underwrite.exceptions import AuthzError
 from underwrite.logger import logger
+from underwrite.message import Message
 
 DEFAULT_REPLAY_WINDOW_SECONDS: float = 300.0
 
@@ -35,7 +35,7 @@ class Policy:
         Args:
             effect: ``"allow"`` or ``"deny"``.
             subject: Service or wildcard (``"*"``) this rule applies to.
-            resource: Event-type or wildcard (``"*"``) this rule applies to.
+            resource: Message-type or wildcard (``"*"``) this rule applies to.
 
         Raises:
             ValueError: If *effect* is not ``"allow"`` or ``"deny"``.
@@ -51,7 +51,7 @@ class Policy:
 
         Args:
             subject: Service identifier to match.
-            resource: Event-type resource to match.
+            resource: Message-type resource to match.
 
         Returns:
             True if the rule matches, False otherwise.
@@ -98,7 +98,7 @@ class AccessControl:
 
         Args:
             subject: Service identifier or ``"*"`` (all).
-            resource: Event-type or ``"*"`` (all).
+            resource: Message-type or ``"*"`` (all).
         """
         with self.__lock:
             self.__policies.append(Policy("allow", subject, resource))
@@ -108,7 +108,7 @@ class AccessControl:
 
         Args:
             subject: Service identifier or ``"*"`` (all).
-            resource: Event-type or ``"*"`` (all).
+            resource: Message-type or ``"*"`` (all).
         """
         with self.__lock:
             self.__policies.append(Policy("deny", subject, resource))
@@ -142,7 +142,7 @@ class AccessControl:
 
         Args:
             subject: Service identifier.
-            event_type: Event type to check.
+            event_type: Message type to check.
 
         Returns:
             True if allowed, False if denied.
@@ -154,7 +154,7 @@ class AccessControl:
 
         Args:
             subject: Service identifier.
-            event_type: Event type to check.
+            event_type: Message type to check.
 
         Returns:
             True if allowed, False if denied.
@@ -171,7 +171,7 @@ class AccessControl:
                     return True
         return False
 
-    def verify_signature(self, event: Event) -> bool:
+    def verify_signature(self, event: Message) -> bool:
         """Verifies an event's Ed25519 signature against the issuer's trusted key.
 
         The signed payload binds the event id, timestamp, event type,
@@ -216,7 +216,7 @@ class AccessControl:
 
         Args:
             subject: Service identifier.
-            event_type: Event type to check.
+            event_type: Message type to check.
 
         Raises:
             AuthzError: If the subject is not allowed to publish.
@@ -229,7 +229,7 @@ class AccessControl:
 
         Args:
             subject: Service identifier.
-            event_type: Event type to check.
+            event_type: Message type to check.
 
         Raises:
             AuthzError: If the subject is not allowed to subscribe.
@@ -237,7 +237,7 @@ class AccessControl:
         if not self.check_subscribe(subject, event_type):
             raise AuthzError(f"{subject} not allowed to subscribe to {event_type}")
 
-    def assert_verified(self, event: Event) -> None:
+    def assert_verified(self, event: Message) -> None:
         """Asserts an event carries a valid signature from its source.
 
         Args:

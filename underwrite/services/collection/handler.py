@@ -15,10 +15,10 @@ from typing import Any
 from underwrite.amortization import generate_schedule
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector, SystemClock
 from underwrite.saga import Orchestrator
 from underwrite.services.base import StatefulService
@@ -80,19 +80,19 @@ class CollectionHandler(StatefulService):
         if loaded:
             self.__loans = loaded
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Process loan origination and repayment events.
 
         Args:
             event: The incoming domain event.
 
         """
-        if event.event_type == EventType.LOAN_ORIGINATED:
+        if event.event_type == Type.LOAN_ORIGINATED:
             self.on_loan_originated(event)
-        elif event.event_type == EventType.REPAID:
+        elif event.event_type == Type.REPAID:
             self.on_repaid(event)
 
-    def on_loan_originated(self, event: Event) -> None:
+    def on_loan_originated(self, event: Message) -> None:
         """Create a collection record with amortization schedule."""
         p = event.payload
         borrower: str = PayloadValidator().non_empty(p, "borrower")
@@ -122,7 +122,7 @@ class CollectionHandler(StatefulService):
             self.repo.save(self.__loans)
 
         self.emit(
-            EventType.COLLECTION_UPDATED,
+            Type.COLLECTION_UPDATED,
             {
                 "borrower": borrower,
                 "monthly": monthly,
@@ -132,7 +132,7 @@ class CollectionHandler(StatefulService):
             correlation_id=event.correlation_id,
         )
 
-    def on_repaid(self, event: Event) -> None:
+    def on_repaid(self, event: Message) -> None:
         """Apply a repayment to the borrower's loan."""
         p = event.payload
         borrower: str = p.get("borrower", "") or p.get("user", "")
@@ -156,7 +156,7 @@ class CollectionHandler(StatefulService):
                 }
         if emit_data is not None:
             self.emit(
-                EventType.COLLECTION_UPDATED,
+                Type.COLLECTION_UPDATED,
                 emit_data,
                 correlation_id=event.correlation_id,
             )

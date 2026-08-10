@@ -8,8 +8,8 @@ import uuid
 from collections.abc import Callable
 from typing import Any
 
-from underwrite.events import Event
 from underwrite.logger import logger
+from underwrite.message import Message
 
 
 class Registry:
@@ -21,9 +21,9 @@ class Registry:
 
     def __init__(self) -> None:
         self.__lock: threading.RLock = threading.RLock()
-        self.__handlers: dict[str, list[tuple[str, Callable[[Event], None]]]] = {}
+        self.__handlers: dict[str, list[tuple[str, Callable[[Message], None]]]] = {}
 
-    def subscribe(self, event_type: str, handler: Callable[[Event], None]) -> str:
+    def subscribe(self, event_type: str, handler: Callable[[Message], None]) -> str:
         """Register a handler for a given event type.
 
         Args:
@@ -50,7 +50,7 @@ class Registry:
                     (sid, h) for sid, h in self.__handlers[event_type] if sid != subscription_id
                 ]
 
-    def handlers_for(self, event_type: str) -> list[tuple[str, Callable[[Event], None]]]:
+    def handlers_for(self, event_type: str) -> list[tuple[str, Callable[[Message], None]]]:
         """Return a snapshot of (sid, handler) tuples for the given event type.
 
         Combines the specific-type bucket with the wildcard (``"*"``) bucket.

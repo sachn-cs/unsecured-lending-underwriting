@@ -11,10 +11,10 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
 from underwrite.services import Core
@@ -76,18 +76,18 @@ class RiskHandler(Core):
         """
         self.__model = model
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Score new loans and emit early-warning signals.
 
         Args:
             event: The incoming event. Only LOAN_ORIGINATED events are processed.
         """
-        if event.event_type == EventType.LOAN_ORIGINATED:
+        if event.event_type == Type.LOAN_ORIGINATED:
             dp: float = PayloadValidator().finite(event.payload, "default_probability")
             borrower: str = PayloadValidator().non_empty(event.payload, "borrower")
             if dp > 0.3:
                 self.emit(
-                    EventType.RISK_EARLY_WARNING,
+                    Type.RISK_EARLY_WARNING,
                     {
                         "borrower": borrower,
                         "default_probability": dp,
@@ -111,7 +111,7 @@ class RiskHandler(Core):
                         )
                     score = -1.0
                 self.emit(
-                    EventType.RISK_SCORED,
+                    Type.RISK_SCORED,
                     {
                         "borrower": borrower,
                         "score": score,

@@ -8,9 +8,9 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
 from underwrite.services.base import StatefulService
@@ -88,7 +88,7 @@ class FraudHandler(StatefulService):
         with self.state_lock:
             return {k: deque(v, maxlen=v.maxlen) for k, v in self.__records.items()}
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Check loan origination and repayment events against fraud rules.
 
         Triggers alerts for wash lending cycles, velocity bursts, and
@@ -97,7 +97,7 @@ class FraudHandler(StatefulService):
         Args:
             event: The incoming event. LOAN_ORIGINATED and REPAID are processed.
         """
-        if event.event_type == EventType.LOAN_ORIGINATED:
+        if event.event_type == Type.LOAN_ORIGINATED:
             borrower: str = PayloadValidator().non_empty(event.payload, "borrower")
             principal: float = PayloadValidator().finite(event.payload, "principal")
             with self.state_lock:
@@ -106,7 +106,7 @@ class FraudHandler(StatefulService):
                 self.__check_burst(borrower, event.correlation_id)
             if principal > self.LARGE_PRINCIPAL_THRESHOLD:
                 self.emit(
-                    EventType.FRAUD_ALERT,
+                    Type.FRAUD_ALERT,
                     {
                         "rule": "large_origination",
                         "borrower": borrower,
@@ -114,7 +114,7 @@ class FraudHandler(StatefulService):
                     },
                     correlation_id=event.correlation_id,
                 )
-        elif event.event_type == EventType.REPAID:
+        elif event.event_type == Type.REPAID:
             user: str = PayloadValidator().non_empty(event.payload, "user")
             delta: float = PayloadValidator().finite(event.payload, "delta_earned")
             with self.state_lock:
@@ -169,7 +169,7 @@ class FraudHandler(StatefulService):
                 i += 1
         if cycles >= 3:
             self.emit(
-                EventType.WASH_FLAG,
+                Type.WASH_FLAG,
                 {
                     "borrower": borrower,
                     "cycles": cycles,
@@ -189,7 +189,7 @@ class FraudHandler(StatefulService):
         recent = [r for r in records if r["event_type"] == "origination"]
         if len(recent) > 3:
             self.emit(
-                EventType.VELOCITY_FLAG,
+                Type.VELOCITY_FLAG,
                 {
                     "borrower": borrower,
                     "count": len(recent),

@@ -12,9 +12,9 @@ import pytest
 from tests.helpers import BadStr, BrokenStore, ConcreteService, RaisingStrategy
 from underwrite.bus import EventBus
 from underwrite.config import Configuration
-from underwrite.events import Event
 from underwrite.exceptions import ProtocolError
 from underwrite.local import LocalBus
+from underwrite.message import Message
 from underwrite.runtime import Runtime, build_authz
 from underwrite.services.audit.handler import AuditHandler
 from underwrite.services.mechanism.handler import MechanismHandler
@@ -83,7 +83,7 @@ class TestBusSyncDispatchDLQ:
         bus: EventBus = LocalBus()
         bus.subscribe("test.event", lambda e: (_ for _ in ()).throw(ValueError("fail")))
         bus.start()
-        event = Event(event_type="test.event", source="test", payload={})
+        event = Message(event_type="test.event", source="test", payload={})
         bus.publish(event)
         assert bus.dlq.count > 0
 
@@ -91,7 +91,7 @@ class TestBusSyncDispatchDLQ:
         bus: EventBus = LocalBus()
         bus.subscribe("test.event3", lambda e: (_ for _ in ()).throw(ValueError("fail")))
         bus.start()
-        event = Event(event_type="test.event3", source="test", payload={})
+        event = Message(event_type="test.event3", source="test", payload={})
         bus.publish(event)
         assert bus.dlq.count > 0
 
@@ -114,14 +114,14 @@ class TestConfigSkipBadFile:
 
 
 # ---------------------------------------------------------------------------
-# 6) Event rejects non-serializable payload (bad __str__ → ValueError)
+# 6) Message rejects non-serializable payload (bad __str__ → ValueError)
 # ---------------------------------------------------------------------------
 
 
 class TestEventNonSerializablePayload:
     def test_raises_protocol_error_on_bad_payload(self) -> None:
         with pytest.raises(ProtocolError, match="MAX_PAYLOAD_SIZE"):
-            Event(
+            Message(
                 event_type="test.bad",
                 source="test",
                 payload={"bad": BadStr()},
@@ -200,13 +200,13 @@ class TestMechanismRejection:
         bus: EventBus = LocalBus()
         bus.start()
         svc = MechanismHandler(service_id="mechanism", bus=bus, store=MemoryStore())
-        emitted: list[Event] = []
+        emitted: list[Message] = []
 
-        def capture(e: Event) -> None:
+        def capture(e: Message) -> None:
             emitted.append(e)
 
         bus.subscribe("mechanism.rejected", capture)
-        event = Event(
+        event = Message(
             event_type="mechanism",
             source="test",
             payload={"command": "repay", "user": "nobody", "amount": 100.0},

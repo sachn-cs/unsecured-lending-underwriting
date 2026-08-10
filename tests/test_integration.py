@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any, cast
 
 from underwrite.config import Configuration
-from underwrite.events import Event, EventType
+from underwrite.message import Message, Type
 from underwrite.runtime import Runtime
 from underwrite.store import MemoryStore
 
@@ -44,7 +44,7 @@ class TestRuntimeIntegration:
     def test_mechanism_emits_seed_added(self) -> None:
         rt = memory_runtime()
         bus = rt.bus
-        received: list[Event] = []
+        received: list[Message] = []
         bus.subscribe("*", lambda e: received.append(e))
         rt.register("mechanism")
         rt.wire("mechanism")
@@ -53,13 +53,13 @@ class TestRuntimeIntegration:
         svc = rt.get("mechanism")
         assert svc is not None
         svc.handle(
-            Event(
+            Message(
                 event_type="mechanism",
                 source="test",
                 payload={"command": "add_seed", "user": "bank", "base_budget": 100000},
             )
         )
-        assert any(e.event_type == EventType.SEED_ADDED for e in received)
+        assert any(e.event_type == Type.SEED_ADDED for e in received)
 
     def test_store_persists_across_start_stop(self) -> None:
         cfg = Configuration.default()
@@ -71,7 +71,7 @@ class TestRuntimeIntegration:
         svc = rt.get("mechanism")
         assert svc is not None
         svc.handle(
-            Event(
+            Message(
                 event_type="mechanism",
                 source="test",
                 payload={"command": "add_seed", "user": "bank", "base_budget": 100000},
@@ -92,21 +92,19 @@ class TestRuntimeIntegration:
         bus.start()
         rt.start(["audit"])
         bus.publish(
-            Event(
-                event_type=EventType.LOAN_ORIGINATED, source="test", payload={"borrower": "alice", "principal": 10000}
-            )
+            Message(event_type=Type.LOAN_ORIGINATED, source="test", payload={"borrower": "alice", "principal": 10000})
         )
         audit = cast(Any, rt.get("audit"))
         assert audit is not None
         assert len(audit.ledger) >= 1
-        assert audit.ledger[0]["event_type"] == EventType.LOAN_ORIGINATED
+        assert audit.ledger[0]["event_type"] == Type.LOAN_ORIGINATED
 
     def test_mechanism_rejects_with_bus(self) -> None:
         cfg = Configuration.default()
         cfg.authz.enabled = False
         rt = Runtime(config=cfg)
         bus = rt.bus
-        received: list[Event] = []
+        received: list[Message] = []
         bus.subscribe("mechanism.rejected", lambda e: received.append(e))
         rt.register("mechanism")
         rt.wire("mechanism")
@@ -115,7 +113,7 @@ class TestRuntimeIntegration:
         svc = rt.get("mechanism")
         assert svc is not None
         svc.handle(
-            Event(
+            Message(
                 event_type="mechanism", source="test", payload={"command": "add_seed", "user": "bank", "base_budget": 0}
             )
         )
@@ -125,7 +123,7 @@ class TestRuntimeIntegration:
     def test_full_loan_lifecycle(self) -> None:
         rt = memory_runtime()
         bus = rt.bus
-        all_events: list[Event] = []
+        all_events: list[Message] = []
         bus.subscribe("*", lambda e: all_events.append(e))
         rt.register("mechanism")
         rt.register("audit")
@@ -137,21 +135,21 @@ class TestRuntimeIntegration:
         assert svc is not None
 
         svc.handle(
-            Event(
+            Message(
                 event_type="mechanism",
                 source="test",
                 payload={"command": "add_seed", "user": "bank", "base_budget": 1_000_000},
             )
         )
         svc.handle(
-            Event(
+            Message(
                 event_type="mechanism",
                 source="test",
                 payload={"command": "add_user", "sponsor": "bank", "user": "alice", "delegation_amount": 500_000},
             )
         )
         svc.handle(
-            Event(
+            Message(
                 event_type="mechanism",
                 source="test",
                 payload={
@@ -167,9 +165,9 @@ class TestRuntimeIntegration:
         )
 
         emitted = {e.event_type for e in all_events}
-        assert EventType.SEED_ADDED in emitted
-        assert EventType.USER_ADDED in emitted
-        assert EventType.LOAN_ORIGINATED in emitted
+        assert Type.SEED_ADDED in emitted
+        assert Type.USER_ADDED in emitted
+        assert Type.LOAN_ORIGINATED in emitted
 
         audit = cast(Any, rt.get("audit"))
         assert audit is not None
@@ -207,7 +205,7 @@ class TestCrossServiceCommunication:
         svc = rt.get("mechanism")
         assert svc is not None
         svc.handle(
-            Event(
+            Message(
                 event_type="mechanism",
                 source="test",
                 payload={"command": "add_seed", "user": "bank", "base_budget": 100000},

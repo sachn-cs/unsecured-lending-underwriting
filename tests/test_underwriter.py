@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from underwrite.events import Event, EventType
 from underwrite.local import LocalBus
+from underwrite.message import Message, Type
 from underwrite.services.underwriter.handler import UnderwriterHandler
 from underwrite.store import MemoryStore
 
@@ -14,14 +14,14 @@ def svc(bus=None) -> UnderwriterHandler:
 
 def request(svc, bus, **kw) -> None:
     bus.start()
-    svc.handle(Event(event_type="underwrite.request", source="test", payload=kw))
+    svc.handle(Message(event_type="underwrite.request", source="test", payload=kw))
 
 
 class TestUnderwriterApproval:
     def test_approves_low_risk_loan(self) -> None:
         bus = LocalBus()
         approved: list = []
-        bus.subscribe(EventType.UNDERWRITER_APPROVED, lambda e: approved.append(e))
+        bus.subscribe(Type.UNDERWRITER_APPROVED, lambda e: approved.append(e))
         request(
             svc(bus),
             bus,
@@ -40,7 +40,7 @@ class TestUnderwriterApproval:
     def test_rejects_high_default_probability(self) -> None:
         bus = LocalBus()
         rejected: list = []
-        bus.subscribe(EventType.UNDERWRITER_REJECTED, lambda e: rejected.append(e))
+        bus.subscribe(Type.UNDERWRITER_REJECTED, lambda e: rejected.append(e))
         request(svc(bus), bus, application_id="APP2", borrower="bob", principal=10000, default_probability=0.50)
         assert len(rejected) == 1
         assert "default_probability_max" in rejected[0].payload["reasons"][0]
@@ -48,7 +48,7 @@ class TestUnderwriterApproval:
     def test_rejects_zero_principal(self) -> None:
         bus = LocalBus()
         rejected: list = []
-        bus.subscribe(EventType.UNDERWRITER_REJECTED, lambda e: rejected.append(e))
+        bus.subscribe(Type.UNDERWRITER_REJECTED, lambda e: rejected.append(e))
         request(svc(bus), bus, application_id="APP3", borrower="carol", principal=0, default_probability=0.05)
         assert len(rejected) == 1
         assert "principal_positive" in rejected[0].payload["reasons"][0]
@@ -56,18 +56,18 @@ class TestUnderwriterApproval:
     def test_rejects_multiple_reasons(self) -> None:
         bus = LocalBus()
         rejected: list = []
-        bus.subscribe(EventType.UNDERWRITER_REJECTED, lambda e: rejected.append(e))
+        bus.subscribe(Type.UNDERWRITER_REJECTED, lambda e: rejected.append(e))
         request(svc(bus), bus, application_id="APP4", borrower="dave", principal=0, default_probability=0.50)
         assert len(rejected[0].payload["reasons"]) >= 2
 
     def test_ignores_unrelated_events(self) -> None:
         bus = LocalBus()
         approved: list = []
-        bus.subscribe(EventType.UNDERWRITER_APPROVED, lambda e: approved.append(e))
+        bus.subscribe(Type.UNDERWRITER_APPROVED, lambda e: approved.append(e))
         svc_inst = svc(bus)
         bus.start()
-        svc_inst.handle(Event(event_type="seed.added", source="test", payload={}))
-        svc_inst.handle(Event(event_type="user.added", source="test", payload={}))
+        svc_inst.handle(Message(event_type="seed.added", source="test", payload={}))
+        svc_inst.handle(Message(event_type="user.added", source="test", payload={}))
         assert len(approved) == 0
 
 
@@ -79,12 +79,12 @@ class TestEdgeCases:
         bus = LocalBus()
         approved: list = []
         conditional: list = []
-        bus.subscribe(EventType.UNDERWRITER_APPROVED, lambda e: approved.append(e))
-        bus.subscribe(EventType.UNDERWRITER_CONDITIONAL_APPROVED, lambda e: conditional.append(e))
+        bus.subscribe(Type.UNDERWRITER_APPROVED, lambda e: approved.append(e))
+        bus.subscribe(Type.UNDERWRITER_CONDITIONAL_APPROVED, lambda e: conditional.append(e))
         bus.start()
         svc_inst = svc(bus)
         svc_inst.handle(
-            Event(
+            Message(
                 event_type="underwrite.request",
                 source="test",
                 payload={
@@ -106,7 +106,7 @@ class TestConditionalApproval:
     def test_approves_with_conditions_when_low_credit(self) -> None:
         bus = LocalBus()
         cond: list = []
-        bus.subscribe(EventType.UNDERWRITER_CONDITIONAL_APPROVED, lambda e: cond.append(e))
+        bus.subscribe(Type.UNDERWRITER_CONDITIONAL_APPROVED, lambda e: cond.append(e))
         request(
             svc(bus),
             bus,
@@ -124,7 +124,7 @@ class TestConditionalApproval:
     def test_approves_with_conditions_when_high_dti(self) -> None:
         bus = LocalBus()
         cond: list = []
-        bus.subscribe(EventType.UNDERWRITER_CONDITIONAL_APPROVED, lambda e: cond.append(e))
+        bus.subscribe(Type.UNDERWRITER_CONDITIONAL_APPROVED, lambda e: cond.append(e))
         request(
             svc(bus),
             bus,
@@ -142,7 +142,7 @@ class TestConditionalApproval:
     def test_approves_with_conditions_when_high_ltv(self) -> None:
         bus = LocalBus()
         cond: list = []
-        bus.subscribe(EventType.UNDERWRITER_CONDITIONAL_APPROVED, lambda e: cond.append(e))
+        bus.subscribe(Type.UNDERWRITER_CONDITIONAL_APPROVED, lambda e: cond.append(e))
         request(
             svc(bus),
             bus,
@@ -162,7 +162,7 @@ class TestReviewAndEscalate:
     def test_review_when_medium_severity(self) -> None:
         bus = LocalBus()
         review: list = []
-        bus.subscribe(EventType.UNDERWRITER_REVIEW, lambda e: review.append(e))
+        bus.subscribe(Type.UNDERWRITER_REVIEW, lambda e: review.append(e))
         request(
             svc(bus),
             bus,
@@ -180,10 +180,10 @@ class TestReviewAndEscalate:
     def test_rejects_when_fraud_signals(self) -> None:
         bus = LocalBus()
         rejected: list = []
-        bus.subscribe(EventType.UNDERWRITER_REJECTED, lambda e: rejected.append(e))
+        bus.subscribe(Type.UNDERWRITER_REJECTED, lambda e: rejected.append(e))
         svc_inst = svc(bus)
         svc_inst.handle(
-            Event(event_type=EventType.FRAUD_ALERT, source="fraud", payload={"entity_id": "APP30", "severity": "high"})
+            Message(event_type=Type.FRAUD_ALERT, source="fraud", payload={"entity_id": "APP30", "severity": "high"})
         )
         request(
             svc_inst,
@@ -201,9 +201,9 @@ class TestReviewAndEscalate:
     def test_rejected_when_aml_frozen(self) -> None:
         bus = LocalBus()
         rejected: list = []
-        bus.subscribe(EventType.UNDERWRITER_REJECTED, lambda e: rejected.append(e))
+        bus.subscribe(Type.UNDERWRITER_REJECTED, lambda e: rejected.append(e))
         svc_inst = svc(bus)
-        svc_inst.handle(Event(event_type=EventType.AML_FROZEN, source="compliance", payload={"entity_id": "APP31"}))
+        svc_inst.handle(Message(event_type=Type.AML_FROZEN, source="compliance", payload={"entity_id": "APP31"}))
         request(
             svc_inst,
             bus,
@@ -220,9 +220,9 @@ class TestReviewAndEscalate:
     def test_rejected_when_kyc_rejected(self) -> None:
         bus = LocalBus()
         rejected: list = []
-        bus.subscribe(EventType.UNDERWRITER_REJECTED, lambda e: rejected.append(e))
+        bus.subscribe(Type.UNDERWRITER_REJECTED, lambda e: rejected.append(e))
         svc_inst = svc(bus)
-        svc_inst.handle(Event(event_type=EventType.KYC_REJECTED, source="compliance", payload={"entity_id": "APP32"}))
+        svc_inst.handle(Message(event_type=Type.KYC_REJECTED, source="compliance", payload={"entity_id": "APP32"}))
         request(
             svc_inst,
             bus,
@@ -241,7 +241,7 @@ class TestSignalAccumulation:
     def test_accumulates_risk_score(self) -> None:
         s = svc()
         s.handle(
-            Event(event_type=EventType.RISK_SCORED, source="risk", payload={"application_id": "APP40", "score": 0.75})
+            Message(event_type=Type.RISK_SCORED, source="risk", payload={"application_id": "APP40", "score": 0.75})
         )
         app = s.get_application("APP40")
         assert app is not None
@@ -250,8 +250,8 @@ class TestSignalAccumulation:
     def test_accumulates_credit_bureau(self) -> None:
         s = svc()
         s.handle(
-            Event(
-                event_type=EventType.CREDIT_BUREAU_CHECKED,
+            Message(
+                event_type=Type.CREDIT_BUREAU_CHECKED,
                 source="credit_bureau",
                 payload={
                     "pan": "ABCDE1234F",
@@ -268,10 +268,10 @@ class TestSignalAccumulation:
     def test_accumulates_fraud_signals(self) -> None:
         s = svc()
         s.handle(
-            Event(event_type=EventType.FRAUD_ALERT, source="fraud", payload={"entity_id": "APP41", "severity": "high"})
+            Message(event_type=Type.FRAUD_ALERT, source="fraud", payload={"entity_id": "APP41", "severity": "high"})
         )
         s.handle(
-            Event(event_type=EventType.FRAUD_ALERT, source="fraud", payload={"entity_id": "APP41", "severity": "low"})
+            Message(event_type=Type.FRAUD_ALERT, source="fraud", payload={"entity_id": "APP41", "severity": "low"})
         )
         app = s.get_application("APP41")
         assert app is not None
@@ -334,7 +334,7 @@ class TestRuleEngine:
         )
         bus = LocalBus()
         rejected: list = []
-        bus.subscribe(EventType.UNDERWRITER_REJECTED, lambda e: rejected.append(e))
+        bus.subscribe(Type.UNDERWRITER_REJECTED, lambda e: rejected.append(e))
         s = svc(bus)
         s.add_rule(
             Rule(
@@ -366,7 +366,7 @@ class TestRuleViolationEvents:
     def test_emits_rule_violations(self) -> None:
         bus = LocalBus()
         violations: list = []
-        bus.subscribe(EventType.UNDERWRITE_RULE_VIOLATED, lambda e: violations.append(e))
+        bus.subscribe(Type.UNDERWRITE_RULE_VIOLATED, lambda e: violations.append(e))
         request(
             svc(bus),
             bus,
@@ -385,8 +385,8 @@ class TestHealthCheck:
     def test_health_returns_counts(self) -> None:
         s = svc()
         s.handle(
-            Event(
-                event_type=EventType.UNDERWRITE_REQUEST,
+            Message(
+                event_type=Type.UNDERWRITE_REQUEST,
                 source="test",
                 payload={
                     "application_id": "APP99",

@@ -9,18 +9,18 @@ from typing import Any
 
 import pytest
 
-from underwrite.events import Event, EventType
 from underwrite.local import LocalBus
+from underwrite.message import Message, Type
 from underwrite.store import MemoryStore, Store
 
 # -- Domain event fixture ------------------------------------------------------
 
 
 @pytest.fixture
-def event() -> Event:
+def event() -> Message:
     """Return a minimal domain event for testing."""
-    return Event(
-        event_type=EventType.LOAN_ORIGINATED,
+    return Message(
+        event_type=Type.LOAN_ORIGINATED,
         source="test",
         source_key="test",
         payload={"borrower": "alice", "principal": 10000.0, "term": 12.0},

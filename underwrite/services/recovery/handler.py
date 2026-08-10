@@ -19,10 +19,10 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector, SystemClock
 from underwrite.saga import Orchestrator
 from underwrite.services.base import StatefulService
@@ -131,20 +131,20 @@ class RecoveryHandler(StatefulService):
                     active,
                 )
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Process events that drive the recovery workflow.
 
         Args:
             event: The incoming domain event.
         """
-        if event.event_type == EventType.DEFAULT_OCCURRED:
+        if event.event_type == Type.DEFAULT_OCCURRED:
             self.__start_recovery(event)
-        elif event.event_type == EventType.PAYMENT_RECEIVED:
+        elif event.event_type == Type.PAYMENT_RECEIVED:
             self.__on_payment_received(event)
-        elif event.event_type == EventType.RECOVERY_OFFER_RESPONSE.value:
+        elif event.event_type == Type.RECOVERY_OFFER_RESPONSE.value:
             self.__on_offer_response(event)
 
-    def __start_recovery(self, event: Event) -> None:
+    def __start_recovery(self, event: Message) -> None:
         """Start a new recovery workflow for a defaulted borrower.
 
         Args:
@@ -173,7 +173,7 @@ class RecoveryHandler(StatefulService):
 
         logger.info("recovery started for {} (principal={:.2f})", borrower, principal)
         self.emit(
-            EventType.RECOVERY_STARTED,
+            Type.RECOVERY_STARTED,
             {
                 "borrower": borrower,
                 "principal": principal,
@@ -190,7 +190,7 @@ class RecoveryHandler(StatefulService):
             self.__sync()
 
         self.emit(
-            EventType.RECOVERY_OFFER.value,
+            Type.RECOVERY_OFFER.value,
             {
                 "borrower": borrower,
                 "offer_amount": offer_amount,
@@ -200,7 +200,7 @@ class RecoveryHandler(StatefulService):
             correlation_id=event.correlation_id,
         )
 
-    def __on_offer_response(self, event: Event) -> None:
+    def __on_offer_response(self, event: Message) -> None:
         """Handle a borrower's response to a recovery offer.
 
         Args:
@@ -225,7 +225,7 @@ class RecoveryHandler(StatefulService):
                 self.__sync()
                 logger.info("recovery offer accepted for {}", borrower)
                 self.emit(
-                    EventType.RECOVERY_STARTED,
+                    Type.RECOVERY_STARTED,
                     {
                         "borrower": borrower,
                         "principal": recovery["principal"],
@@ -242,7 +242,7 @@ class RecoveryHandler(StatefulService):
                     self.__sync()
                     logger.warning("recovery escalated for {}", borrower)
                     self.emit(
-                        EventType.RECOVERY_ESCALATED.value,
+                        Type.RECOVERY_ESCALATED.value,
                         {
                             "borrower": borrower,
                             "principal": recovery["principal"],
@@ -255,7 +255,7 @@ class RecoveryHandler(StatefulService):
                     self.__sync()
                     offer_amount = recovery["principal"] * self.__recovery_rate
                     self.emit(
-                        EventType.RECOVERY_OFFER.value,
+                        Type.RECOVERY_OFFER.value,
                         {
                             "borrower": borrower,
                             "offer_amount": offer_amount,
@@ -265,7 +265,7 @@ class RecoveryHandler(StatefulService):
                         correlation_id=event.correlation_id,
                     )
 
-    def __on_payment_received(self, event: Event) -> None:
+    def __on_payment_received(self, event: Message) -> None:
         """Track a payment received during recovery.
 
         Args:
@@ -294,7 +294,7 @@ class RecoveryHandler(StatefulService):
                     recovery["recovered"],
                 )
                 self.emit(
-                    EventType.RECOVERY_COMPLETED,
+                    Type.RECOVERY_COMPLETED,
                     {
                         "borrower": borrower,
                         "recovered": recovery["recovered"],
@@ -312,7 +312,7 @@ class RecoveryHandler(StatefulService):
                     outstanding,
                 )
                 self.emit(
-                    EventType.RECOVERY_PROGRESS.value,
+                    Type.RECOVERY_PROGRESS.value,
                     {
                         "borrower": borrower,
                         "recovered": recovery["recovered"],

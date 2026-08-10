@@ -6,8 +6,8 @@ from typing import Any
 
 import pytest
 
-from underwrite.events import Event, EventType
 from underwrite.local import LocalBus
+from underwrite.message import Message, Type
 from underwrite.services.risk.handler import RiskHandler
 from underwrite.services.risk.model import RiskModel
 from underwrite.store import MemoryStore
@@ -15,9 +15,9 @@ from underwrite.store import MemoryStore
 
 class EmitSpy:
     def __init__(self) -> None:
-        self.captured: list[tuple[str | EventType, dict[str, Any]]] = []
+        self.captured: list[tuple[str | Type, dict[str, Any]]] = []
 
-    def __call__(self, event: Event) -> None:
+    def __call__(self, event: Message) -> None:
         self.captured.append((event.event_type, event.payload))
 
 
@@ -29,12 +29,12 @@ class TestRiskServiceFaults:
 
         bus = LocalBus()
         spy = EmitSpy()
-        bus.subscribe(EventType.RISK_SCORED, spy)
+        bus.subscribe(Type.RISK_SCORED, spy)
         svc = RiskHandler(service_id="risk", bus=bus, store=MemoryStore())
         svc.set_model(FaultyModel())
 
-        event = Event(
-            event_type=EventType.LOAN_ORIGINATED,
+        event = Message(
+            event_type=Type.LOAN_ORIGINATED,
             source="test",
             payload={
                 "borrower": "user1",
@@ -44,18 +44,18 @@ class TestRiskServiceFaults:
             },
         )
         svc.handle(event)
-        risk_scored = [e for e in spy.captured if e[0] == EventType.RISK_SCORED]
+        risk_scored = [e for e in spy.captured if e[0] == Type.RISK_SCORED]
         assert len(risk_scored) == 1
         assert risk_scored[0][1]["score"] == -1.0
 
     def test_early_warning_emitted_for_high_dp(self) -> None:
         bus = LocalBus()
         spy = EmitSpy()
-        bus.subscribe(EventType.RISK_EARLY_WARNING, spy)
+        bus.subscribe(Type.RISK_EARLY_WARNING, spy)
         svc = RiskHandler(service_id="risk", bus=bus, store=MemoryStore())
 
-        event = Event(
-            event_type=EventType.LOAN_ORIGINATED,
+        event = Message(
+            event_type=Type.LOAN_ORIGINATED,
             source="test",
             payload={
                 "borrower": "user1",
@@ -65,7 +65,7 @@ class TestRiskServiceFaults:
             },
         )
         svc.handle(event)
-        warnings = [e for e in spy.captured if e[0] == EventType.RISK_EARLY_WARNING]
+        warnings = [e for e in spy.captured if e[0] == Type.RISK_EARLY_WARNING]
         assert len(warnings) == 1
 
 
@@ -85,7 +85,7 @@ class TestAuditServiceFaults:
         from underwrite.services.audit.handler import AuditHandler
 
         svc = AuditHandler(service_id="audit", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type="test", source="test", payload={"dummy": True}))
+        svc.handle(Message(event_type="test", source="test", payload={"dummy": True}))
         assert len(svc.ledger) == 1
         svc.load_jsonl(str(tmp_path / "nonexistent.jsonl"))
         assert len(svc.ledger) == 0

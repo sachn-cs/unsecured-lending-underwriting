@@ -10,8 +10,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from underwrite.events import Event
 from underwrite.local import LocalBus
+from underwrite.message import Message
 from underwrite.services.audit.handler import AuditHandler
 from underwrite.store import MemoryStore
 
@@ -27,13 +27,13 @@ def audit_capped() -> AuditHandler:
 class TestAuditService:
     def test_records_all_event_types(self) -> None:
         svc = audit()
-        svc.handle(Event(event_type="seed.added", source="test", payload={"user": "bank"}))
-        svc.handle(Event(event_type="loan.originated", source="test", payload={"borrower": "a"}))
+        svc.handle(Message(event_type="seed.added", source="test", payload={"user": "bank"}))
+        svc.handle(Message(event_type="loan.originated", source="test", payload={"borrower": "a"}))
         assert len(svc.ledger) == 2
 
     def test_ledger_records_all_fields(self) -> None:
         svc = audit()
-        svc.handle(Event(event_type="test.event", source="src", payload={"k": "v"}, correlation_id="corr-1"))
+        svc.handle(Message(event_type="test.event", source="src", payload={"k": "v"}, correlation_id="corr-1"))
         rec = svc.ledger[0]
         assert rec["event_type"] == "test.event"
         assert rec["source"] == "src"
@@ -44,7 +44,7 @@ class TestAuditService:
 
     def test_ledger_does_not_expose_internal_list(self) -> None:
         svc = audit()
-        svc.handle(Event(event_type="a", source="s"))
+        svc.handle(Message(event_type="a", source="s"))
         ledger = svc.ledger
         ledger.clear()
         assert len(svc.ledger) == 1
@@ -52,8 +52,8 @@ class TestAuditService:
     def test_events_by_type_filters_correctly(self) -> None:
         svc = audit()
         for i in range(5):
-            svc.handle(Event(event_type="t1", source="s", payload={"i": i}))
-        svc.handle(Event(event_type="t2", source="s", payload={}))
+            svc.handle(Message(event_type="t1", source="s", payload={"i": i}))
+        svc.handle(Message(event_type="t2", source="s", payload={}))
         assert len(svc.events_by_type("t1")) == 5
         assert len(svc.events_by_type("t2")) == 1
         assert len(svc.events_by_type("nonexistent")) == 0
@@ -61,14 +61,14 @@ class TestAuditService:
     def test_sequential_numbering(self) -> None:
         svc = audit()
         for _ in range(10):
-            svc.handle(Event(event_type="ev", source="s"))
+            svc.handle(Message(event_type="ev", source="s"))
         seqs = [r["seq"] for r in svc.ledger]
         assert seqs == list(range(1, 11))
 
     def test_save_and_load_jsonl_round_trip(self, tmp_path: Any) -> None:
         svc = audit()
-        svc.handle(Event(event_type="e1", source="s", payload={"x": 1}))
-        svc.handle(Event(event_type="e2", source="s", payload={"y": 2}))
+        svc.handle(Message(event_type="e1", source="s", payload={"x": 1}))
+        svc.handle(Message(event_type="e2", source="s", payload={"y": 2}))
         path = str(tmp_path / "audit.jsonl")
         svc.save_jsonl(path)
         loaded = audit()
@@ -107,21 +107,21 @@ class TestAuditService:
         svc = audit()
         seqs = set()
         for _ in range(100):
-            svc.handle(Event(event_type="ev", source="s"))
+            svc.handle(Message(event_type="ev", source="s"))
             seqs.add(svc.ledger[-1]["seq"])
         assert len(seqs) == 100
 
     def test_capped_ledger_evicts_oldest(self) -> None:
         svc = audit_capped()
         for i in range(10):
-            svc.handle(Event(event_type="ev", source="s", payload={"i": i}))
+            svc.handle(Message(event_type="ev", source="s", payload={"i": i}))
         assert len(svc.ledger) == 5
         assert svc.ledger[0]["payload"] == {"i": 5}
         assert svc.ledger[-1]["payload"] == {"i": 9}
 
     def test_export_noop_without_url(self) -> None:
         svc = AuditHandler(service_id="audit", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type="ev", source="s"))
+        svc.handle(Message(event_type="ev", source="s"))
         svc.export()  # should not raise
 
     def test_export_s3_calls_boto3(self) -> None:
@@ -146,11 +146,11 @@ class TestAuditService:
                 store=MemoryStore(),
                 export_url="s3://bucket/path.jsonl",
             )
-            svc2.handle(Event(event_type="ev", source="s"))
+            svc2.handle(Message(event_type="ev", source="s"))
             svc2.export()
         assert put_called[0]
 
     def test_export_gcs_noop_without_library(self) -> None:
         svc = AuditHandler(service_id="audit", export_url="gs://bucket/path.jsonl", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type="ev", source="s"))
+        svc.handle(Message(event_type="ev", source="s"))
         svc.export()  # should log warning, not raise

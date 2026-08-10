@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from underwrite.events import Event, EventType
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
+from underwrite.message import Message, Type
 from underwrite.services import Core
 from underwrite.validate import PayloadValidator
 
@@ -12,18 +12,18 @@ from underwrite.validate import PayloadValidator
 class IdentityHandler(Core):
     """Manages nano-service identities: registration and key rotation."""
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Process identity registration and rotation events.
 
         Args:
             event: The incoming domain event.
         """
-        if event.event_type == EventType.IDENTITY_REGISTER:
+        if event.event_type == Type.IDENTITY_REGISTER:
             self.register(event)
-        elif event.event_type == EventType.IDENTITY_ROTATE:
+        elif event.event_type == Type.IDENTITY_ROTATE:
             self.rotate(event)
 
-    def register(self, event: Event) -> None:
+    def register(self, event: Message) -> None:
         """Register a new service identity.
 
         Args:
@@ -39,7 +39,7 @@ class IdentityHandler(Core):
             },
         )
         self.emit(
-            EventType.IDENTITY_REGISTERED,
+            Type.IDENTITY_REGISTERED,
             {
                 "service_id": service_id,
                 "public_key": identity.public_key,
@@ -47,7 +47,7 @@ class IdentityHandler(Core):
             correlation_id=event.correlation_id,
         )
 
-    def rotate(self, event: Event) -> None:
+    def rotate(self, event: Message) -> None:
         """Rotate the key for an existing service identity.
 
         Args:
@@ -68,7 +68,7 @@ class IdentityHandler(Core):
                 },
             )
         self.emit(
-            EventType.IDENTITY_ROTATED,
+            Type.IDENTITY_ROTATED,
             {
                 "service_id": service_id,
                 "public_key": identity.public_key,

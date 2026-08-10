@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from underwrite.events import Event, EventType
+from underwrite.message import Message, Type
 from underwrite.services import Core
 from underwrite.validate import PayloadValidator
 
@@ -10,7 +10,7 @@ from underwrite.validate import PayloadValidator
 class QuoteHandler(Core):
     """Computes loan quotes.  Pure function — no side effects on state."""
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Compute a loan quote and emit a QUOTE_CALCULATED event.
 
         This is a pure function with no side effects on persisted state.
@@ -18,7 +18,7 @@ class QuoteHandler(Core):
         Args:
             event: The incoming event. Only ``quote`` events are processed.
         """
-        if event.event_type != EventType.QUOTE:
+        if event.event_type != Type.QUOTE:
             return
         p = event.payload
         principal: float = PayloadValidator().non_negative(p, "principal")
@@ -43,7 +43,7 @@ class QuoteHandler(Core):
             )
 
         self.emit(
-            EventType.QUOTE_CALCULATED,
+            Type.QUOTE_CALCULATED,
             {
                 "borrower": borrower,
                 "principal": principal,

@@ -10,9 +10,9 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
 from underwrite.services.base import StatefulService
@@ -67,13 +67,13 @@ class DocumentHandler(StatefulService):
         if loaded:
             self.__documents = loaded
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Generate a document record on underwriter approval.
 
         Args:
             event: The incoming domain event.
         """
-        if event.event_type != EventType.UNDERWRITER_APPROVED:
+        if event.event_type != Type.UNDERWRITER_APPROVED:
             return
         p = event.payload
         borrower: str = PayloadValidator().non_empty(p, "borrower")
@@ -91,7 +91,7 @@ class DocumentHandler(StatefulService):
             self.repo.save(self.__documents)
 
         self.emit(
-            EventType.DOCUMENT_GENERATED,
+            Type.DOCUMENT_GENERATED,
             {
                 "borrower": borrower,
                 "principal": principal,

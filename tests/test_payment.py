@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from underwrite.events import Event, EventType
 from underwrite.local import LocalBus
+from underwrite.message import Message, Type
 from underwrite.services.payment.handler import PaymentHandler
 from underwrite.store import MemoryStore
 
@@ -13,7 +13,7 @@ from underwrite.store import MemoryStore
 class TestPaymentService:
     def test_receive_payment_creates_record(self) -> None:
         svc = PaymentHandler(service_id="payment", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type="payment.receive", source="test", payload={"loan_id": "L1", "amount": 500}))
+        svc.handle(Message(event_type="payment.receive", source="test", payload={"loan_id": "L1", "amount": 500}))
         keys = svc.store.keys("payment:pay_L1_")
         assert len(keys) == 1
         rec = svc.store.get(keys[0])
@@ -24,28 +24,28 @@ class TestPaymentService:
     def test_receive_emits_payment_received(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.PAYMENT_RECEIVED, lambda e: received.append(e))
+        bus.subscribe(Type.PAYMENT_RECEIVED, lambda e: received.append(e))
         svc = PaymentHandler(service_id="payment", bus=bus, store=MemoryStore())
         bus.start()
-        svc.handle(Event(event_type="payment.receive", source="test", payload={"loan_id": "L1", "amount": 250}))
+        svc.handle(Message(event_type="payment.receive", source="test", payload={"loan_id": "L1", "amount": 250}))
         assert len(received) == 1
         assert received[0].payload["amount"] == 250
         assert received[0].payload["loan_id"] == "L1"
 
     def test_rejects_zero_amount(self) -> None:
         svc = PaymentHandler(service_id="payment", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type="payment.receive", source="test", payload={"loan_id": "L1", "amount": 0}))
+        svc.handle(Message(event_type="payment.receive", source="test", payload={"loan_id": "L1", "amount": 0}))
         assert len(svc.store.keys("payment:")) == 0
 
     def test_rejects_empty_loan_id(self) -> None:
         svc = PaymentHandler(service_id="payment", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type="payment.receive", source="test", payload={"loan_id": "", "amount": 100}))
+        svc.handle(Message(event_type="payment.receive", source="test", payload={"loan_id": "", "amount": 100}))
         assert len(svc.store.keys("payment:")) == 0
 
     def test_schedule_payment_creates_schedule(self) -> None:
         svc = PaymentHandler(service_id="payment", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
+            Message(
                 event_type="payment.schedule",
                 source="test",
                 payload={"loan_id": "L1", "due_date": "2025-01-15", "amount": 1000},
@@ -60,11 +60,11 @@ class TestPaymentService:
     def test_schedule_emits_payment_due(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.PAYMENT_DUE, lambda e: received.append(e))
+        bus.subscribe(Type.PAYMENT_DUE, lambda e: received.append(e))
         svc = PaymentHandler(service_id="payment", bus=bus, store=MemoryStore())
         bus.start()
         svc.handle(
-            Event(
+            Message(
                 event_type="payment.schedule",
                 source="test",
                 payload={"loan_id": "L1", "due_date": "2025-02-01", "amount": 500},
@@ -74,23 +74,23 @@ class TestPaymentService:
 
     def test_schedule_rejects_missing_due_date(self) -> None:
         svc = PaymentHandler(service_id="payment", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type="payment.schedule", source="test", payload={"loan_id": "L1", "amount": 100}))
+        svc.handle(Message(event_type="payment.schedule", source="test", payload={"loan_id": "L1", "amount": 100}))
         assert len(svc.store.keys("schedule:")) == 0
 
     def test_check_overdue_detects_late_payments(self) -> None:
         svc = PaymentHandler(service_id="payment", bus=LocalBus(), store=MemoryStore())
         past = (datetime.now(timezone.utc) - timedelta(days=45)).isoformat()
         svc.handle(
-            Event(
+            Message(
                 event_type="payment.schedule", source="test", payload={"loan_id": "L1", "due_date": past, "amount": 100}
             )
         )
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.PAYMENT_OVERDUE, lambda e: received.append(e))
+        bus.subscribe(Type.PAYMENT_OVERDUE, lambda e: received.append(e))
         svc2 = PaymentHandler(service_id="payment", bus=bus, store=svc.store)
         bus.start()
-        svc2.handle(Event(event_type="payment.check_overdue", source="test", payload={"loan_id": "L1"}))
+        svc2.handle(Message(event_type="payment.check_overdue", source="test", payload={"loan_id": "L1"}))
         assert len(received) >= 1
         key = f"schedule:L1:{past}"
         rec = svc2.store.get(key)
@@ -101,7 +101,7 @@ class TestPaymentService:
         svc = PaymentHandler(service_id="payment", bus=LocalBus(), store=MemoryStore())
         recent = datetime.now(timezone.utc).isoformat()
         svc.handle(
-            Event(
+            Message(
                 event_type="payment.schedule",
                 source="test",
                 payload={"loan_id": "L1", "due_date": recent, "amount": 100},
@@ -109,27 +109,27 @@ class TestPaymentService:
         )
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.PAYMENT_OVERDUE, lambda e: received.append(e))
+        bus.subscribe(Type.PAYMENT_OVERDUE, lambda e: received.append(e))
         svc2 = PaymentHandler(service_id="payment", bus=bus, store=svc.store)
         bus.start()
-        svc2.handle(Event(event_type="payment.check_overdue", source="test", payload={"loan_id": "L1"}))
+        svc2.handle(Message(event_type="payment.check_overdue", source="test", payload={"loan_id": "L1"}))
         assert len(received) == 0
 
     def test_check_overdue_noop_for_unknown_loan(self) -> None:
         svc = PaymentHandler(service_id="payment", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type="payment.check_overdue", source="test", payload={"loan_id": "NONEXISTENT"}))
+        svc.handle(Message(event_type="payment.check_overdue", source="test", payload={"loan_id": "NONEXISTENT"}))
         assert len(svc.store.keys("schedule:")) == 0
 
     def test_ignores_unrelated_events(self) -> None:
         svc = PaymentHandler(service_id="payment", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type="seed.added", source="test", payload={}))
+        svc.handle(Message(event_type="seed.added", source="test", payload={}))
         assert len(svc.store.keys("payment:")) == 0
 
     def test_multiple_payments_same_loan(self) -> None:
         svc = PaymentHandler(service_id="payment", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type="payment.receive", source="test", payload={"loan_id": "L1", "amount": 100}))
-        svc.handle(Event(event_type="payment.receive", source="test", payload={"loan_id": "L1", "amount": 200}))
-        svc.handle(Event(event_type="payment.receive", source="test", payload={"loan_id": "L1", "amount": 300}))
+        svc.handle(Message(event_type="payment.receive", source="test", payload={"loan_id": "L1", "amount": 100}))
+        svc.handle(Message(event_type="payment.receive", source="test", payload={"loan_id": "L1", "amount": 200}))
+        svc.handle(Message(event_type="payment.receive", source="test", payload={"loan_id": "L1", "amount": 300}))
         keys = svc.store.keys("payment:pay_L1_")
         assert len(keys) == 3
 
@@ -138,12 +138,12 @@ class TestPaymentServiceRazorpayBridging:
     def test_razorpay_captured_emits_payment_received(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.PAYMENT_RECEIVED, lambda e: received.append(e))
+        bus.subscribe(Type.PAYMENT_RECEIVED, lambda e: received.append(e))
         svc = PaymentHandler(service_id="payment", bus=bus, store=MemoryStore())
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.RAZORPAY_PAYMENT_CAPTURED,
+            Message(
+                event_type=Type.RAZORPAY_PAYMENT_CAPTURED,
                 source="razorpay",
                 payload={
                     "loan_id": "L1",
@@ -163,8 +163,8 @@ class TestPaymentServiceRazorpayBridging:
     def test_razorpay_captured_stores_record(self) -> None:
         svc = PaymentHandler(service_id="payment", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
-                event_type=EventType.RAZORPAY_PAYMENT_CAPTURED,
+            Message(
+                event_type=Type.RAZORPAY_PAYMENT_CAPTURED,
                 source="razorpay",
                 payload={
                     "loan_id": "L2",
@@ -182,12 +182,12 @@ class TestPaymentServiceRazorpayBridging:
     def test_razorpay_captured_no_loan_id_ignored(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.PAYMENT_RECEIVED, lambda e: received.append(e))
+        bus.subscribe(Type.PAYMENT_RECEIVED, lambda e: received.append(e))
         svc = PaymentHandler(service_id="payment", bus=bus, store=MemoryStore())
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.RAZORPAY_PAYMENT_CAPTURED,
+            Message(
+                event_type=Type.RAZORPAY_PAYMENT_CAPTURED,
                 source="razorpay",
                 payload={
                     "payment_id": "pay_rzp_no_loan",
@@ -200,12 +200,12 @@ class TestPaymentServiceRazorpayBridging:
     def test_razorpay_captured_zero_amount_ignored(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.PAYMENT_RECEIVED, lambda e: received.append(e))
+        bus.subscribe(Type.PAYMENT_RECEIVED, lambda e: received.append(e))
         svc = PaymentHandler(service_id="payment", bus=bus, store=MemoryStore())
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.RAZORPAY_PAYMENT_CAPTURED,
+            Message(
+                event_type=Type.RAZORPAY_PAYMENT_CAPTURED,
                 source="razorpay",
                 payload={
                     "loan_id": "L3",
@@ -219,12 +219,12 @@ class TestPaymentServiceRazorpayBridging:
     def test_razorpay_subscription_charged_emits_payment_received(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.PAYMENT_RECEIVED, lambda e: received.append(e))
+        bus.subscribe(Type.PAYMENT_RECEIVED, lambda e: received.append(e))
         svc = PaymentHandler(service_id="payment", bus=bus, store=MemoryStore())
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.RAZORPAY_SUBSCRIPTION_CHARGED,
+            Message(
+                event_type=Type.RAZORPAY_SUBSCRIPTION_CHARGED,
                 source="razorpay",
                 payload={
                     "loan_id": "L10",
@@ -243,8 +243,8 @@ class TestPaymentServiceRazorpayBridging:
     def test_razorpay_subscription_charged_stores_record(self) -> None:
         svc = PaymentHandler(service_id="payment", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
-                event_type=EventType.RAZORPAY_SUBSCRIPTION_CHARGED,
+            Message(
+                event_type=Type.RAZORPAY_SUBSCRIPTION_CHARGED,
                 source="razorpay",
                 payload={
                     "loan_id": "L11",
@@ -263,8 +263,8 @@ class TestPaymentServiceRazorpayBridging:
     def test_razorpay_refund_stores_record(self) -> None:
         svc = PaymentHandler(service_id="payment", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
-                event_type=EventType.RAZORPAY_PAYMENT_REFUNDED,
+            Message(
+                event_type=Type.RAZORPAY_PAYMENT_REFUNDED,
                 source="razorpay",
                 payload={
                     "loan_id": "L20",

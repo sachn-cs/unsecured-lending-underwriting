@@ -14,10 +14,10 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
+from underwrite.message import Message
 from underwrite.metrics import Collector
 from underwrite.pii import PIISanitizer
 from underwrite.saga import Orchestrator
@@ -60,7 +60,7 @@ class AuditHandler(StatefulService):
 
         Args:
             service_id: Unique identifier for this service instance.
-            bus: Event bus for pub/sub.
+            bus: Message bus for pub/sub.
             store: State persistence backend.
             max_ledger: Maximum number of records to keep. Oldest entries
                 are evicted when the ledger exceeds this limit.
@@ -114,7 +114,7 @@ class AuditHandler(StatefulService):
                 if et:
                     self.__event_index.setdefault(et, []).append(r)
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Record a redacted version of event to the audit ledger.
 
         Args:

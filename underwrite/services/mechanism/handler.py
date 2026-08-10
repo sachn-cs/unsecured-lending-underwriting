@@ -12,11 +12,11 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event, EventType
 from underwrite.exceptions import ProtocolError
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
 from underwrite.services.base import Core
@@ -28,7 +28,7 @@ from underwrite.validate import PayloadValidator
 
 EPSILON: float = 1e-12
 
-CommandHandler = Callable[[Event], None]
+CommandHandler = Callable[[Message], None]
 
 
 class MechanismHandler(Core):
@@ -146,7 +146,7 @@ class MechanismHandler(Core):
                 self.__graph.restore(snap)
                 raise
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Process a mechanism command event.
 
         Args:
@@ -169,7 +169,7 @@ class MechanismHandler(Core):
                 correlation_id=event.correlation_id,
             )
 
-    def __add_seed(self, event: Event) -> None:
+    def __add_seed(self, event: Message) -> None:
         """Add a seed participant to the delegation graph."""
         v = PayloadValidator()
         p = event.payload
@@ -179,9 +179,9 @@ class MechanismHandler(Core):
             snap = self.__graph.snapshot()
             self.__graph.add_seed(user, budget)
         self.__persist_or_rollback(snap)
-        self.emit(EventType.SEED_ADDED, p, correlation_id=event.correlation_id)
+        self.emit(Type.SEED_ADDED, p, correlation_id=event.correlation_id)
 
-    def __add_user(self, event: Event) -> None:
+    def __add_user(self, event: Message) -> None:
         """Add a downstream user sponsored by an existing participant."""
         v = PayloadValidator()
         p = event.payload
@@ -192,9 +192,9 @@ class MechanismHandler(Core):
             snap = self.__graph.snapshot()
             self.__graph.add_user(sponsor, user, amount)
         self.__persist_or_rollback(snap)
-        self.emit(EventType.USER_ADDED, p, correlation_id=event.correlation_id)
+        self.emit(Type.USER_ADDED, p, correlation_id=event.correlation_id)
 
-    def __repay(self, event: Event) -> None:
+    def __repay(self, event: Message) -> None:
         """Apply a repayment and credit the user's earned amount."""
         v = PayloadValidator()
         p = event.payload
@@ -204,9 +204,9 @@ class MechanismHandler(Core):
             snap = self.__graph.snapshot()
             self.__graph.repay(user, delta)
         self.__persist_or_rollback(snap)
-        self.emit(EventType.REPAID, p, correlation_id=event.correlation_id)
+        self.emit(Type.REPAID, p, correlation_id=event.correlation_id)
 
-    def __originate(self, event: Event) -> None:
+    def __originate(self, event: Message) -> None:
         """Issue a loan to a borrower."""
         v = PayloadValidator()
         p = event.payload
@@ -233,9 +233,9 @@ class MechanismHandler(Core):
         p["total_interest"] = total_interest
         p["annual_rate"] = annual_rate
         self.__persist_or_rollback(snap)
-        self.emit(EventType.LOAN_ORIGINATED, p, correlation_id=event.correlation_id)
+        self.emit(Type.LOAN_ORIGINATED, p, correlation_id=event.correlation_id)
 
-    def __default(self, event: Event) -> None:
+    def __default(self, event: Message) -> None:
         """Process a default, propagating the loss up the chain."""
         v = PayloadValidator()
         p = event.payload.copy()
@@ -245,9 +245,9 @@ class MechanismHandler(Core):
             self.__graph.default(borrower)
             p["principal"] = self.__graph.principal.get(borrower, 0.0)
         self.__persist_or_rollback(snap)
-        self.emit(EventType.DEFAULT_OCCURRED, p, correlation_id=event.correlation_id)
+        self.emit(Type.DEFAULT_OCCURRED, p, correlation_id=event.correlation_id)
 
-    def __revoke(self, event: Event) -> None:
+    def __revoke(self, event: Message) -> None:
         """Change the delegation amount on a sponsor->child edge."""
         v = PayloadValidator()
         p = event.payload
@@ -258,9 +258,9 @@ class MechanismHandler(Core):
             snap = self.__graph.snapshot()
             self.__graph.revoke(sponsor, child, new_amount)
         self.__persist_or_rollback(snap)
-        self.emit(EventType.REVOKED, p, correlation_id=event.correlation_id)
+        self.emit(Type.REVOKED, p, correlation_id=event.correlation_id)
 
-    def __quote(self, event: Event) -> None:
+    def __quote(self, event: Message) -> None:
         """Compute a quick quote without modifying state."""
         v = PayloadValidator()
         p = event.payload
@@ -278,7 +278,7 @@ class MechanismHandler(Core):
         break_even: float = min(clamped_dp / (one_minus_dp * clamped_term), 1e6)
         total_interest: float = pr * principal * term
         self.emit(
-            EventType.QUOTE_CALCULATED,
+            Type.QUOTE_CALCULATED,
             {
                 "borrower": borrower,
                 "principal": principal,

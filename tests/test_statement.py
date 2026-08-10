@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from underwrite.events import Event, EventType
 from underwrite.local import LocalBus
+from underwrite.message import Message, Type
 from underwrite.services.statement.handler import StatementHandler
 from underwrite.store import MemoryStore
 
@@ -14,7 +14,7 @@ class TestStatementService:
         store.set("loan:L1", {"outstanding": 50000})
         svc = StatementHandler(service_id="statement", store=store, bus=LocalBus())
         svc.handle(
-            Event(
+            Message(
                 event_type="statement.generate", source="test", payload={"loan_id": "L1", "period_start": "2025-01-01"}
             )
         )
@@ -30,11 +30,11 @@ class TestStatementService:
         store = MemoryStore()
         store.set("loan:L2", {"outstanding": 30000})
         received: list = []
-        bus.subscribe(EventType.STATEMENT_GENERATED, lambda e: received.append(e))
+        bus.subscribe(Type.STATEMENT_GENERATED, lambda e: received.append(e))
         svc = StatementHandler(service_id="statement", bus=bus, store=store)
         bus.start()
         svc.handle(
-            Event(
+            Message(
                 event_type="statement.generate", source="test", payload={"loan_id": "L2", "period_start": "2025-02-01"}
             )
         )
@@ -43,12 +43,12 @@ class TestStatementService:
 
     def test_rejects_missing_loan_id(self) -> None:
         svc = StatementHandler(service_id="statement", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type="statement.generate", source="test", payload={"period_start": "2025-01-01"}))
+        svc.handle(Message(event_type="statement.generate", source="test", payload={"period_start": "2025-01-01"}))
         assert len(svc.store.keys("statement:")) == 0
 
     def test_rejects_missing_period_start(self) -> None:
         svc = StatementHandler(service_id="statement", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type="statement.generate", source="test", payload={"loan_id": "L3"}))
+        svc.handle(Message(event_type="statement.generate", source="test", payload={"loan_id": "L3"}))
         assert len(svc.store.keys("statement:")) == 0
 
     def test_deduplicates_by_statement_id(self) -> None:
@@ -56,12 +56,12 @@ class TestStatementService:
         store.set("loan:L4", {"outstanding": 10000})
         svc = StatementHandler(service_id="statement", store=store, bus=LocalBus())
         svc.handle(
-            Event(
+            Message(
                 event_type="statement.generate", source="test", payload={"loan_id": "L4", "period_start": "2025-03-01"}
             )
         )
         svc.handle(
-            Event(
+            Message(
                 event_type="statement.generate", source="test", payload={"loan_id": "L4", "period_start": "2025-03-01"}
             )
         )
@@ -74,7 +74,7 @@ class TestStatementService:
         store.set("payment:pay_L5_2", {"loan_id": "L5", "amount": 500})
         svc = StatementHandler(service_id="statement", store=store, bus=LocalBus())
         svc.handle(
-            Event(
+            Message(
                 event_type="statement.generate", source="test", payload={"loan_id": "L5", "period_start": "2025-04-01"}
             )
         )
@@ -86,19 +86,19 @@ class TestStatementService:
 
     def test_tracks_collection_update(self) -> None:
         svc = StatementHandler(service_id="statement", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type=EventType.COLLECTION_UPDATED, source="test", payload={"loan_id": "L6"}))
+        svc.handle(Message(event_type=Type.COLLECTION_UPDATED, source="test", payload={"loan_id": "L6"}))
         keys = svc.store.keys("stmt_trigger:L6:")
         assert len(keys) == 1
 
     def test_tracks_payment_received(self) -> None:
         svc = StatementHandler(service_id="statement", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type=EventType.PAYMENT_RECEIVED, source="test", payload={"loan_id": "L7"}))
+        svc.handle(Message(event_type=Type.PAYMENT_RECEIVED, source="test", payload={"loan_id": "L7"}))
         keys = svc.store.keys("stmt_trigger:L7:")
         assert len(keys) == 1
 
     def test_ignores_unrelated_events(self) -> None:
         svc = StatementHandler(service_id="statement", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type="seed.added", source="test", payload={}))
+        svc.handle(Message(event_type="seed.added", source="test", payload={}))
         assert len(svc.store.keys("statement:")) == 0
 
     def test_period_end_defaults_to_now(self) -> None:
@@ -106,7 +106,7 @@ class TestStatementService:
         store.set("loan:L8", {"outstanding": 0})
         svc = StatementHandler(service_id="statement", store=store, bus=LocalBus())
         svc.handle(
-            Event(
+            Message(
                 event_type="statement.generate", source="test", payload={"loan_id": "L8", "period_start": "2025-05-01"}
             )
         )

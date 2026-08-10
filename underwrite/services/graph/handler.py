@@ -6,10 +6,10 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
 from underwrite.services.base import Core
@@ -57,12 +57,12 @@ class GraphHandler(Core):
             max_concurrent=max_concurrent,
         )
         self.handlers: dict[str, Any] = {
-            EventType.GRAPH_PATH: self.__on_graph_path,
-            EventType.GRAPH_CREDIT_LIMIT: self.__on_graph_credit_limit,
-            EventType.GRAPH_USERS: self.__on_graph_users,
+            Type.GRAPH_PATH: self.__on_graph_path,
+            Type.GRAPH_CREDIT_LIMIT: self.__on_graph_credit_limit,
+            Type.GRAPH_USERS: self.__on_graph_users,
         }
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Process graph query events.
 
         Args:
@@ -72,7 +72,7 @@ class GraphHandler(Core):
         if handler is not None:
             handler(event)
 
-    def __on_graph_path(self, event: Event) -> None:
+    def __on_graph_path(self, event: Message) -> None:
         """Compute the delegation path from a user to a seed.
 
         Args:
@@ -96,7 +96,7 @@ class GraphHandler(Core):
             path.append(current)
         path.reverse()
         self.emit(
-            EventType.GRAPH_PATH_RESULT,
+            Type.GRAPH_PATH_RESULT,
             {
                 "user": user,
                 "path": path,
@@ -104,7 +104,7 @@ class GraphHandler(Core):
             correlation_id=event.correlation_id,
         )
 
-    def __on_graph_credit_limit(self, event: Event) -> None:
+    def __on_graph_credit_limit(self, event: Message) -> None:
         """Compute the available credit limit for a user.
 
         Args:
@@ -129,7 +129,7 @@ class GraphHandler(Core):
             budget = delegation_raw.get(edge_key, 0.0) + earned.get(user, 0.0)
         outgoing: float = sum(delegation_raw.get(f"{user}->{child}", 0.0) for child in children_raw.get(user, []))
         self.emit(
-            EventType.GRAPH_CREDIT_LIMIT_RESULT,
+            Type.GRAPH_CREDIT_LIMIT_RESULT,
             {
                 "user": user,
                 "credit_limit": budget - outgoing,
@@ -137,7 +137,7 @@ class GraphHandler(Core):
             correlation_id=event.correlation_id,
         )
 
-    def __on_graph_users(self, event: Event) -> None:
+    def __on_graph_users(self, event: Message) -> None:
         """Return the sorted list of all known users.
 
         Args:
@@ -148,7 +148,7 @@ class GraphHandler(Core):
             state = {}
         earned: dict[str, float] = state.get("earned", {})
         self.emit(
-            EventType.GRAPH_USERS_RESULT,
+            Type.GRAPH_USERS_RESULT,
             {"users": sorted(earned.keys())},
             correlation_id=event.correlation_id,
         )

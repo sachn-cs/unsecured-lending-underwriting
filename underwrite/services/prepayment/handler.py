@@ -16,8 +16,8 @@ from underwrite.amortization import (
     calculate_foreclosure,
     generate_schedule,
 )
-from underwrite.events import Event, EventType
 from underwrite.logger import logger
+from underwrite.message import Message, Type
 from underwrite.services.base import Core
 from underwrite.validate import PayloadValidator
 
@@ -28,10 +28,10 @@ class PrepaymentHandler(Core):
     def handlers(self) -> dict[str, Any]:
         """Return event type to handler mapping."""
         return {
-            EventType.PREPAYMENT_REQUEST: self.__on_prepayment_request,
+            Type.PREPAYMENT_REQUEST: self.__on_prepayment_request,
         }
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Dispatch an event to the appropriate handler.
 
         Args:
@@ -41,7 +41,7 @@ class PrepaymentHandler(Core):
         if handler is not None:
             handler(event)
 
-    def __on_prepayment_request(self, event: Event) -> None:
+    def __on_prepayment_request(self, event: Message) -> None:
         """Compute a foreclosure quote for a prepayment request.
 
         Args:
@@ -96,7 +96,7 @@ class PrepaymentHandler(Core):
             return
 
         self.emit(
-            EventType.FORECLOSURE_COMPUTED,
+            Type.FORECLOSURE_COMPUTED,
             {
                 "loan_id": loan_id,
                 "outstanding_principal": float(quote.outstanding_principal),

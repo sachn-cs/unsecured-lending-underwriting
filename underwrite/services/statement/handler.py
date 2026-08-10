@@ -11,10 +11,10 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector, SystemClock
 from underwrite.saga import Orchestrator
 from underwrite.services.base import Core
@@ -58,17 +58,17 @@ class StatementHandler(Core):
         )
         self.__clock: SystemClock = SystemClock()
         self.handlers: dict[str, Any] = {
-            EventType.STATEMENT_GENERATE: self.__on_statement_generate,
-            EventType.COLLECTION_UPDATED: self.__on_collection_updated,
-            EventType.PAYMENT_RECEIVED: self.__on_payment_received_trigger,
+            Type.STATEMENT_GENERATE: self.__on_statement_generate,
+            Type.COLLECTION_UPDATED: self.__on_collection_updated,
+            Type.PAYMENT_RECEIVED: self.__on_payment_received_trigger,
         }
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         handler = self.handlers.get(event.event_type)
         if handler is not None:
             handler(event)
 
-    def __on_statement_generate(self, event: Event) -> None:
+    def __on_statement_generate(self, event: Message) -> None:
         """Generate a statement for the given loan and period.
 
         Args:
@@ -110,7 +110,7 @@ class StatementHandler(Core):
             }
             self.store.set(f"statement:{statement_id}", statement)
         self.emit(
-            EventType.STATEMENT_GENERATED,
+            Type.STATEMENT_GENERATED,
             {
                 "statement_id": statement_id,
                 "loan_id": loan_id,
@@ -120,7 +120,7 @@ class StatementHandler(Core):
             correlation_id=event.correlation_id,
         )
 
-    def __on_collection_updated(self, event: Event) -> None:
+    def __on_collection_updated(self, event: Message) -> None:
         """Record a collection update trigger for statement generation.
 
         Args:
@@ -136,7 +136,7 @@ class StatementHandler(Core):
                 },
             )
 
-    def __on_payment_received_trigger(self, event: Event) -> None:
+    def __on_payment_received_trigger(self, event: Message) -> None:
         """Record a payment received trigger for statement generation.
 
         Args:

@@ -13,10 +13,10 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
 from underwrite.services.base import StatefulService
@@ -103,18 +103,18 @@ class DataSubjectRightsHandler(StatefulService):
             self.__requests = loaded.get("requests", {})
             self.__grievances = loaded.get("grievances", {})
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Process DSR and grievance events.
 
         Args:
             event: The incoming domain event.
         """
-        if event.event_type == EventType.DSR_REQUEST:
+        if event.event_type == Type.DSR_REQUEST:
             self.create_request(event)
-        elif event.event_type == EventType.GRIEVANCE_LOGGED:
+        elif event.event_type == Type.GRIEVANCE_LOGGED:
             self.log_grievance(event)
 
-    def create_request(self, event: Event) -> None:
+    def create_request(self, event: Message) -> None:
         """Create a new data subject request.
 
         Args:
@@ -145,7 +145,7 @@ class DataSubjectRightsHandler(StatefulService):
                 }
             )
             self.emit(
-                EventType.DSR_REQUESTED,
+                Type.DSR_REQUESTED,
                 {
                     "request_id": request_id,
                     "user_id": user_id,
@@ -154,7 +154,7 @@ class DataSubjectRightsHandler(StatefulService):
                 correlation_id=event.correlation_id,
             )
 
-    def log_grievance(self, event: Event) -> None:
+    def log_grievance(self, event: Message) -> None:
         """Log a new grievance.
 
         Args:
@@ -203,7 +203,7 @@ class DataSubjectRightsHandler(StatefulService):
                     }
                 )
                 self.emit(
-                    EventType.DSR_FULFILLED,
+                    Type.DSR_FULFILLED,
                     {
                         "request_id": request_id,
                         "user_id": req["user_id"],
@@ -231,7 +231,7 @@ class DataSubjectRightsHandler(StatefulService):
                     }
                 )
                 self.emit(
-                    EventType.DSR_REJECTED,
+                    Type.DSR_REJECTED,
                     {
                         "request_id": request_id,
                         "user_id": req["user_id"],
@@ -260,7 +260,7 @@ class DataSubjectRightsHandler(StatefulService):
                     }
                 )
                 self.emit(
-                    EventType.GRIEVANCE_RESOLVED,
+                    Type.GRIEVANCE_RESOLVED,
                     {
                         "grievance_id": grievance_id,
                         "user_id": gr["user_id"],

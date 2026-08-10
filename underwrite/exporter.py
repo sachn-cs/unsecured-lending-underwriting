@@ -42,13 +42,13 @@ class Exporter:
         self.__metrics: Collector = metrics
         self.__interval_seconds: float = interval_seconds
         self.__on_snapshot: Callable[[dict], None] | None = on_snapshot
-        self.__stop_event: threading.Event = threading.Event()
+        self.__stop_event: threading.Message = threading.Message()
         self.__thread: threading.Thread | None = None
 
     def start(self) -> None:
         if self.__thread is not None:
             return
-        self.__stop_event = threading.Event()
+        self.__stop_event = threading.Message()
         self.__thread = threading.Thread(target=self.__run, daemon=True, name="metrics-exporter")
         self.__thread.start()
 

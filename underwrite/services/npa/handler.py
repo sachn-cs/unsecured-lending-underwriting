@@ -13,10 +13,10 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector, SystemClock
 from underwrite.saga import Orchestrator
 from underwrite.services.base import StatefulService
@@ -111,14 +111,14 @@ class NPAHandler(StatefulService):
         if loaded:
             self.__accounts = loaded
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Process loan-originated and default-occurred events.
 
         Args:
             event: The incoming domain event.
         """
         with self.state_lock:
-            if event.event_type == EventType.LOAN_ORIGINATED:
+            if event.event_type == Type.LOAN_ORIGINATED:
                 borrower: str = PayloadValidator().non_empty(event.payload, "borrower")
                 principal: float = PayloadValidator().finite(event.payload, "principal", 0.0)
                 self.__accounts[borrower] = {
@@ -133,7 +133,7 @@ class NPAHandler(StatefulService):
                     "income_suspended": False,
                 }
                 self.__sync()
-            elif event.event_type == EventType.DEFAULT_OCCURRED:
+            elif event.event_type == Type.DEFAULT_OCCURRED:
                 borrower = event.payload.get("borrower", "")
                 if not borrower:
                     logger.warning("dropping DEFAULT_OCCURRED with missing borrower")
@@ -179,7 +179,7 @@ class NPAHandler(StatefulService):
         sma_bucket = self.sma_classify(days)
         if sma_bucket:
             self.emit(
-                EventType.SMA_CLASSIFIED,
+                Type.SMA_CLASSIFIED,
                 {
                     "borrower": borrower,
                     "sma_bucket": sma_bucket,
@@ -196,7 +196,7 @@ class NPAHandler(StatefulService):
         provisioning_amount = round(outstanding * rate, 2)
 
         self.emit(
-            EventType.PROVISIONING_COMPUTED,
+            Type.PROVISIONING_COMPUTED,
             {
                 "borrower": borrower,
                 "bucket": bucket,
@@ -214,7 +214,7 @@ class NPAHandler(StatefulService):
             record["income_suspended"] = True
             record["income_suspended_at"] = self.__clock.iso()
             self.emit(
-                EventType.INCOME_RECOGNITION_SUSPENDED,
+                Type.INCOME_RECOGNITION_SUSPENDED,
                 {
                     "borrower": borrower,
                     "bucket": bucket,
@@ -224,7 +224,7 @@ class NPAHandler(StatefulService):
             )
 
         self.emit(
-            EventType.NPA_BUCKET_CHANGED,
+            Type.NPA_BUCKET_CHANGED,
             {
                 "borrower": borrower,
                 "bucket": bucket,
@@ -237,7 +237,7 @@ class NPAHandler(StatefulService):
             record["dlg_invoked"] = True
             self.__sync()
             self.emit(
-                EventType.DLG_TRIGGERED,
+                Type.DLG_TRIGGERED,
                 {
                     "loan_id": borrower,
                     "recovery_amount": event_principal or outstanding,

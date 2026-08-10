@@ -9,7 +9,7 @@ from __future__ import annotations
 import threading
 from typing import Any
 
-from underwrite.bus import Event
+from underwrite.bus import Message
 from underwrite.circuit import CircuitBreaker
 from underwrite.health import Checks
 from underwrite.local import LocalBus
@@ -25,7 +25,7 @@ OPS_PER_THREAD: int = 100
 
 def _mechanism_cmd(svc: MechanismHandler, cmd: str, payload: dict[str, Any]) -> None:
     svc.handle(
-        Event(
+        Message(
             event_type="mechanism",
             source="test",
             payload={"command": cmd, **payload},
@@ -40,7 +40,7 @@ class TestBusConcurrency:
         counter_lock = threading.Lock()
         counter: int = 0
 
-        def handler(event: Event) -> None:
+        def handler(event: Message) -> None:
             nonlocal counter
             with counter_lock:
                 counter += 1
@@ -51,7 +51,7 @@ class TestBusConcurrency:
         def publish_many() -> None:
             try:
                 for i in range(OPS_PER_THREAD):
-                    bus.publish(Event(event_type="test.event", source="test", payload={"i": i}))
+                    bus.publish(Message(event_type="test.event", source="test", payload={"i": i}))
             except Exception as exc:
                 with counter_lock:
                     errors.append(exc)
@@ -74,7 +74,7 @@ class TestBusConcurrency:
         def dlq_ops() -> None:
             try:
                 for i in range(OPS_PER_THREAD):
-                    ev = Event(event_type="dlq.test", source="t", payload={"i": i})
+                    ev = Message(event_type="dlq.test", source="t", payload={"i": i})
                     bus.publish(ev)
                 with ops_lock:
                     _ = bus.dlq.count
@@ -224,10 +224,10 @@ class TestSagaConcurrency:
         emit_lock = threading.Lock()
 
         class DummyEmitter:
-            def emit(self, event_type: str, payload: dict[str, Any], correlation_id: str = "") -> Event:
+            def emit(self, event_type: str, payload: dict[str, Any], correlation_id: str = "") -> Message:
                 with emit_lock:
                     emitted.append(event_type)
-                return Event(event_type=event_type, source="dummy", payload=payload)
+                return Message(event_type=event_type, source="dummy", payload=payload)
 
         orchestrator.register_emitter("test_saga", DummyEmitter())
 

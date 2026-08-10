@@ -1,6 +1,6 @@
 """Exhaustive tests for the underwrite framework.
 
-Covers: Configuration, Keypair, Event, EventBus, Store, Core, Runtime.
+Covers: Configuration, Keypair, Message, EventBus, Store, Core, Runtime.
 """
 
 from __future__ import annotations
@@ -13,12 +13,12 @@ from typing import Any
 import pytest
 
 from underwrite.config import HANDLER_NAMES, Configuration
-from underwrite.events import Event
 from underwrite.exceptions import (
     ServiceNotFoundError,
 )
 from underwrite.keypair import Keypair
 from underwrite.local import LocalBus
+from underwrite.message import Message
 from underwrite.runtime import Runtime
 from underwrite.services.base import Core
 from underwrite.store import FileStore, MemoryStore
@@ -101,24 +101,24 @@ class TestIdentity:
 
 
 # =============================================================================
-# Event
+# Message
 # =============================================================================
 
 
 class TestEvent:
     def test_default_fields(self) -> None:
-        event: Event = Event(event_type="test.event", source="testsvc")
+        event: Message = Message(event_type="test.event", source="testsvc")
         assert event.event_id != ""
         assert event.timestamp != ""
         assert event.correlation_id != ""
 
     def test_frozen_dataclass(self) -> None:
-        event: Event = Event(event_type="a", source="s")
+        event: Message = Message(event_type="a", source="s")
         with pytest.raises(AttributeError):
             event.__setattr__("event_type", "changed")
 
     def test_payload_round_trip(self) -> None:
-        event: Event = Event(event_type="x", source="s", payload={"a": 1})
+        event: Message = Message(event_type="x", source="s", payload={"a": 1})
         assert event.payload["a"] == 1
 
 
@@ -130,75 +130,75 @@ class TestEvent:
 class TestLocalBus:
     def test_publish_and_deliver(self) -> None:
         bus: LocalBus = LocalBus()
-        received: list[Event] = []
+        received: list[Message] = []
 
-        def handler(event: Event) -> None:
+        def handler(event: Message) -> None:
             received.append(event)
 
         bus.subscribe("test.event", handler)
         bus.start()
-        bus.publish(Event(event_type="test.event", source="test"))
+        bus.publish(Message(event_type="test.event", source="test"))
         time.sleep(0.01)
         assert len(received) == 1
         assert received[0].event_type == "test.event"
 
     def test_wildcard_subscriber(self) -> None:
         bus: LocalBus = LocalBus()
-        received: list[Event] = []
+        received: list[Message] = []
 
-        def handler(event: Event) -> None:
+        def handler(event: Message) -> None:
             received.append(event)
 
         bus.subscribe("*", handler)
         bus.start()
-        bus.publish(Event(event_type="ev1", source="s"))
-        bus.publish(Event(event_type="ev2", source="s"))
+        bus.publish(Message(event_type="ev1", source="s"))
+        bus.publish(Message(event_type="ev2", source="s"))
         time.sleep(0.01)
         assert len(received) == 2
 
     def test_unsubscribe(self) -> None:
         bus: LocalBus = LocalBus()
-        received: list[Event] = []
+        received: list[Message] = []
 
-        def handler(event: Event) -> None:
+        def handler(event: Message) -> None:
             received.append(event)
 
         sid: str = bus.subscribe("test.event", handler)
         bus.unsubscribe(sid)
         bus.start()
-        bus.publish(Event(event_type="test.event", source="test"))
+        bus.publish(Message(event_type="test.event", source="test"))
         time.sleep(0.01)
         assert len(received) == 0
 
     def test_handler_exception_does_not_crash(self) -> None:
         bus: LocalBus = LocalBus()
 
-        def failing(event: Event) -> None:
+        def failing(event: Message) -> None:
             raise ValueError("oops")
 
         ok: list[str] = []
 
-        def ok_handler(event: Event) -> None:
+        def ok_handler(event: Message) -> None:
             ok.append(event.event_type)
 
         bus.subscribe("test", failing)
         bus.subscribe("test", ok_handler)
         bus.start()
-        bus.publish(Event(event_type="test", source="test"))
+        bus.publish(Message(event_type="test", source="test"))
         time.sleep(0.01)
         assert ok == ["test"]
 
     def test_stop_clears_handlers(self) -> None:
         bus: LocalBus = LocalBus()
-        received: list[Event] = []
+        received: list[Message] = []
 
-        def handler(event: Event) -> None:
+        def handler(event: Message) -> None:
             received.append(event)
 
         bus.subscribe("test", handler)
         bus.start()
         bus.stop()
-        bus.publish(Event(event_type="test", source="test"))
+        bus.publish(Message(event_type="test", source="test"))
         time.sleep(0.01)
         assert len(received) == 0
 
@@ -292,9 +292,9 @@ class TestFileStore:
 class ServiceHelper(Core):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self.handled: list[Event] = []
+        self.handled: list[Message] = []
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         self.handled.append(event)
         self.emit("response", {"received": event.event_type}, correlation_id=event.correlation_id)
 
@@ -312,9 +312,9 @@ class TestCore:
 
     def test_emit_publishes_event(self) -> None:
         bus: LocalBus = LocalBus()
-        received: list[Event] = []
+        received: list[Message] = []
 
-        def handler(event: Event) -> None:
+        def handler(event: Message) -> None:
             received.append(event)
 
         bus.subscribe("custom.event", handler)
@@ -327,7 +327,7 @@ class TestCore:
 
     def test_event_has_signature(self) -> None:
         svc: ServiceHelper = ServiceHelper(service_id="signer", bus=LocalBus(), store=MemoryStore())
-        event: Event = svc.emit("signed.event", {"data": 1})
+        event: Message = svc.emit("signed.event", {"data": 1})
         assert event.signature != ""
 
     def test_subscribe_receives_events(self) -> None:
@@ -336,7 +336,7 @@ class TestCore:
         svc.subscribe("incoming")
         bus.start()
         svc.start()
-        bus.publish(Event(event_type="incoming", source="test"))
+        bus.publish(Message(event_type="incoming", source="test"))
         time.sleep(0.01)
         assert len(svc.handled) == 1
         assert svc.handled[0].event_type == "incoming"
@@ -348,15 +348,15 @@ class TestCore:
         svc.start()
         svc.stop()
         bus.start()
-        bus.publish(Event(event_type="incoming", source="test"))
+        bus.publish(Message(event_type="incoming", source="test"))
         time.sleep(0.01)
         assert len(svc.handled) == 0
 
     def test_dispatched_event_triggers_response(self) -> None:
         bus: LocalBus = LocalBus()
-        received: list[Event] = []
+        received: list[Message] = []
 
-        def handler(event: Event) -> None:
+        def handler(event: Message) -> None:
             received.append(event)
 
         bus.subscribe("response", handler)
@@ -364,7 +364,7 @@ class TestCore:
         svc.subscribe("request")
         bus.start()
         svc.start()
-        bus.publish(Event(event_type="request", source="test", correlation_id="corr-1"))
+        bus.publish(Message(event_type="request", source="test", correlation_id="corr-1"))
         time.sleep(0.01)
         assert len(received) >= 1
         assert received[0].payload["received"] == "request"
@@ -393,9 +393,9 @@ class TestRuntime:
             rt.register("nonexistent")
 
     def test_publish_event(self) -> None:
-        received: list[Event] = []
+        received: list[Message] = []
 
-        def handler(event: Event) -> None:
+        def handler(event: Message) -> None:
             received.append(event)
 
         rt: Runtime = Runtime()
@@ -441,6 +441,6 @@ class TestRuntime:
         bus = rt.bus
         bus.subscribe("fail.me", lambda e: (_ for _ in ()).throw(RuntimeError("bang")))
         bus.start()
-        bus.publish(Event(event_type="fail.me", source="t"))
+        bus.publish(Message(event_type="fail.me", source="t"))
         status = rt.health.status()
         assert status["checks"]["dlq"]["dead_letter_count"] >= 1

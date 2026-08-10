@@ -15,10 +15,10 @@ from typing import Any
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
 from underwrite.constants import DAYS_PER_YEAR, MONEY_QUANTUM
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
 from underwrite.services.base import Core
@@ -76,20 +76,20 @@ class ServicingHandler(Core):
             max_concurrent=max_concurrent,
         )
         self.handlers: dict[str, Any] = {
-            EventType.LOAN_ORIGINATED: self.__on_loan_originated,
-            EventType.REPAID: self.__on_repaid,
-            EventType.DEFAULT_OCCURRED: self.__on_default_occurred,
-            EventType.RAZORPAY_ORDER_CREATED: self.__on_razorpay_order_created,
-            EventType.RAZORPAY_MANDATE_ACTIVE: self.__on_mandate_active,
-            EventType.RAZORPAY_MANDATE_INACTIVE: self.__on_mandate_inactive,
+            Type.LOAN_ORIGINATED: self.__on_loan_originated,
+            Type.REPAID: self.__on_repaid,
+            Type.DEFAULT_OCCURRED: self.__on_default_occurred,
+            Type.RAZORPAY_ORDER_CREATED: self.__on_razorpay_order_created,
+            Type.RAZORPAY_MANDATE_ACTIVE: self.__on_mandate_active,
+            Type.RAZORPAY_MANDATE_INACTIVE: self.__on_mandate_inactive,
         }
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         handler = self.handlers.get(event.event_type)
         if handler is not None:
             handler(event)
 
-    def __on_loan_originated(self, event: Event) -> None:
+    def __on_loan_originated(self, event: Message) -> None:
         """Create a loan record when a loan is originated.
 
         Args:
@@ -122,7 +122,7 @@ class ServicingHandler(Core):
             },
         )
 
-    def __on_repaid(self, event: Event) -> None:
+    def __on_repaid(self, event: Message) -> None:
         """Apply a repayment to a loan record.
 
         Args:
@@ -158,7 +158,7 @@ class ServicingHandler(Core):
                     record["paid_at"] = datetime.now(timezone.utc).isoformat()
                 self.store.set(f"loan:{loan_id}", record)
 
-    def __on_default_occurred(self, event: Event) -> None:
+    def __on_default_occurred(self, event: Message) -> None:
         """Mark a loan as defaulted.
 
         Args:
@@ -176,7 +176,7 @@ class ServicingHandler(Core):
                 record["defaulted_at"] = datetime.now(timezone.utc).isoformat()
                 self.store.set(f"loan:{loan_id}", record)
 
-    def __on_razorpay_order_created(self, event: Event) -> None:
+    def __on_razorpay_order_created(self, event: Message) -> None:
         """Associate a Razorpay order ID with a loan.
 
         Args:
@@ -193,7 +193,7 @@ class ServicingHandler(Core):
                 record["razorpay_order_id"] = order_id
                 self.store.set(f"loan:{loan_id}", record)
 
-    def __on_mandate_active(self, event: Event) -> None:
+    def __on_mandate_active(self, event: Message) -> None:
         """Record an active Razorpay mandate for a loan.
 
         Args:
@@ -211,7 +211,7 @@ class ServicingHandler(Core):
                 record["razorpay_mandate_status"] = "active"
                 self.store.set(f"loan:{loan_id}", record)
 
-    def __on_mandate_inactive(self, event: Event) -> None:
+    def __on_mandate_inactive(self, event: Message) -> None:
         """Record an inactive Razorpay mandate for a loan.
 
         Args:

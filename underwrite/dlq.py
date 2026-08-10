@@ -23,8 +23,8 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Any
 
-from underwrite.events import Event
 from underwrite.logger import logger
+from underwrite.message import Message
 from underwrite.pii import redact_event
 from underwrite.store import Store
 
@@ -33,7 +33,7 @@ from underwrite.store import Store
 class Record:
     """A single failed event and the error that caused the failure."""
 
-    event: Event
+    event: Message
     error: str
     subscriber_id: str
     timestamp: float = field(default_factory=time.time)
@@ -58,7 +58,7 @@ class Queue:
             self.__load_store()
 
     @staticmethod
-    def event_to_dict(event: Event) -> dict[str, Any]:
+    def event_to_dict(event: Message) -> dict[str, Any]:
         return {
             "event_id": event.event_id,
             "event_type": event.event_type,
@@ -73,8 +73,8 @@ class Queue:
         }
 
     @staticmethod
-    def event_from_dict(d: dict[str, Any]) -> Event:
-        return Event(**d)
+    def event_from_dict(d: dict[str, Any]) -> Message:
+        return Message(**d)
 
     @staticmethod
     def record_to_dict(r: Record) -> dict[str, Any]:
@@ -138,7 +138,7 @@ class Queue:
         with self.lock:
             return len(self.records)
 
-    def put(self, event: Event, error: str, subscriber_id: str) -> None:
+    def put(self, event: Message, error: str, subscriber_id: str) -> None:
         """Records a failed event.
 
         Args:

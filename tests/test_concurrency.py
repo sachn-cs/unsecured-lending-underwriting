@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import threading
 
-from underwrite.events import Event
 from underwrite.local import LocalBus
+from underwrite.message import Message
 from underwrite.store import MemoryStore
 
 
@@ -21,12 +21,12 @@ class TestLocalBusConcurrency:
     def test_concurrent_publish_does_not_crash(self) -> None:
         bus = LocalBus(max_workers=4)
         bus.start()
-        received: list[Event] = []
+        received: list[Message] = []
         bus.subscribe("test.event", lambda e: received.append(e))
 
         def publish() -> None:
             for _ in range(100):
-                bus.publish(Event(event_type="test.event", source="test"))
+                bus.publish(Message(event_type="test.event", source="test"))
 
         threads = [threading.Thread(target=publish) for _ in range(10)]
         for t in threads:
@@ -93,7 +93,7 @@ class TestMechanismServiceConcurrency:
 
         def add_seed(i: int) -> None:
             try:
-                ev = Event(
+                ev = Message(
                     event_type="mechanism",
                     source="test",
                     payload={
@@ -118,7 +118,7 @@ class TestMechanismServiceConcurrency:
         store = MemoryStore()
         mech = self.__make_mechanism(store)
         # Set up a seed first
-        seed_ev = Event(
+        seed_ev = Message(
             event_type="mechanism",
             source="test",
             payload={"command": "add_seed", "user": "bank", "base_budget": 1_000_000.0},
@@ -129,7 +129,7 @@ class TestMechanismServiceConcurrency:
 
         def add_user(i: int) -> None:
             try:
-                ev = Event(
+                ev = Message(
                     event_type="mechanism",
                     source="test",
                     payload={
@@ -155,14 +155,14 @@ class TestMechanismServiceConcurrency:
         mech = self.__make_mechanism(store)
         # Set up seed + user
         mech.handle(
-            Event(
+            Message(
                 event_type="mechanism",
                 source="test",
                 payload={"command": "add_seed", "user": "bank", "base_budget": 1_000_000.0},
             )
         )
         mech.handle(
-            Event(
+            Message(
                 event_type="mechanism",
                 source="test",
                 payload={

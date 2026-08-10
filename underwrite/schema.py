@@ -1,4 +1,4 @@
-"""Event schema registry — per-event-type payload validation with versioning.
+"""Message schema registry — per-event-type payload validation with versioning.
 
 Each event type registered in the schema registry declares its expected
 payload fields and a version number.  When an event is published or

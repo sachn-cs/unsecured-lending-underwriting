@@ -12,10 +12,10 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector, SystemClock
 from underwrite.saga import Orchestrator
 from underwrite.services.base import StatefulService
@@ -106,19 +106,19 @@ class ConsentHandler(StatefulService):
         if loaded:
             self.__records = loaded
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Process consent recording and withdrawal events.
 
         Args:
             event: The incoming domain event.
 
         """
-        if event.event_type == EventType.CONSENT_RECORDED:
+        if event.event_type == Type.CONSENT_RECORDED:
             self.record_consent(event)
-        elif event.event_type == EventType.CONSENT_WITHDRAWN:
+        elif event.event_type == Type.CONSENT_WITHDRAWN:
             self.withdraw_consent(event)
 
-    def record_consent(self, event: Event) -> None:
+    def record_consent(self, event: Message) -> None:
         """Record a new consent for a user/purpose pair.
 
         Args:
@@ -146,7 +146,7 @@ class ConsentHandler(StatefulService):
             }
             self.repo.save(self.__records)
 
-    def withdraw_consent(self, event: Event) -> None:
+    def withdraw_consent(self, event: Message) -> None:
         """Withdraw consent for a user, optionally for a specific purpose.
 
         Args:

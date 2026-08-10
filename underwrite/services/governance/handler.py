@@ -12,10 +12,10 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
 from underwrite.services.base import StatefulService
@@ -119,7 +119,7 @@ class GovernanceHandler(StatefulService):
         if loaded:
             self.__params = loaded
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Process a governance proposal to update a protocol parameter.
 
         Validates the parameter name and value range before applying.
@@ -128,7 +128,7 @@ class GovernanceHandler(StatefulService):
             event: The incoming event. Only GOVERNANCE_PROPOSAL events
                 are processed.
         """
-        if event.event_type != EventType.GOVERNANCE_PROPOSAL:
+        if event.event_type != Type.GOVERNANCE_PROPOSAL:
             return
         p = event.payload
         param: str = PayloadValidator().non_empty(p, "param")
@@ -150,7 +150,7 @@ class GovernanceHandler(StatefulService):
             self.__params[param] = value
             self.repo.save(self.__params)
         self.emit(
-            EventType.GOVERNANCE_EXECUTED,
+            Type.GOVERNANCE_EXECUTED,
             {
                 "param": param,
                 "value": value,

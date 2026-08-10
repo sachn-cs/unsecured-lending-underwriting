@@ -10,10 +10,10 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector, SystemClock
 from underwrite.saga import Orchestrator
 from underwrite.services.base import StatefulService
@@ -63,13 +63,13 @@ class DisbursementHandler(StatefulService):
         if loaded:
             self.__disbursements = loaded
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Process document.generated events to trigger disbursement.
 
         Args:
             event: The incoming domain event.
         """
-        if event.event_type != EventType.DOCUMENT_GENERATED:
+        if event.event_type != Type.DOCUMENT_GENERATED:
             return
         p = event.payload
         borrower: str = PayloadValidator().non_empty(p, "borrower")
@@ -91,7 +91,7 @@ class DisbursementHandler(StatefulService):
             self.repo.save(self.__disbursements)
 
         self.emit(
-            EventType.DISBURSEMENT_PROCESSED,
+            Type.DISBURSEMENT_PROCESSED,
             {
                 "borrower": borrower,
                 "principal": principal,

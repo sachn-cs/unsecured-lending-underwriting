@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from underwrite.events import Event, EventType
 from underwrite.local import LocalBus
+from underwrite.message import Message, Type
 from underwrite.services.servicing.handler import ServicingHandler
 from underwrite.store import MemoryStore
 
@@ -12,7 +12,7 @@ class TestServicingService:
     def test_creates_loan_record_on_originated(self) -> None:
         svc = ServicingHandler(service_id="servicing", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
+            Message(
                 event_type="loan.originated",
                 source="test",
                 payload={"loan_id": "L1", "borrower": "alice", "principal": 100000},
@@ -28,13 +28,13 @@ class TestServicingService:
     def test_handles_partial_repayment(self) -> None:
         svc = ServicingHandler(service_id="servicing", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
+            Message(
                 event_type="loan.originated",
                 source="test",
                 payload={"loan_id": "L2", "borrower": "bob", "principal": 50000},
             )
         )
-        svc.handle(Event(event_type="repaid", source="test", payload={"loan_id": "L2", "amount": 10000}))
+        svc.handle(Message(event_type="repaid", source="test", payload={"loan_id": "L2", "amount": 10000}))
         rec = svc.store.get("loan:L2")
         assert rec is not None
         assert rec["outstanding"] == 40000
@@ -43,13 +43,13 @@ class TestServicingService:
     def test_marks_paid_on_full_repayment(self) -> None:
         svc = ServicingHandler(service_id="servicing", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
+            Message(
                 event_type="loan.originated",
                 source="test",
                 payload={"loan_id": "L3", "borrower": "carol", "principal": 30000},
             )
         )
-        svc.handle(Event(event_type="repaid", source="test", payload={"loan_id": "L3", "amount": 30000}))
+        svc.handle(Message(event_type="repaid", source="test", payload={"loan_id": "L3", "amount": 30000}))
         rec = svc.store.get("loan:L3")
         assert rec is not None
         assert rec["outstanding"] == 0
@@ -59,13 +59,13 @@ class TestServicingService:
     def test_prevents_negative_outstanding(self) -> None:
         svc = ServicingHandler(service_id="servicing", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
+            Message(
                 event_type="loan.originated",
                 source="test",
                 payload={"loan_id": "L4", "borrower": "dave", "principal": 10000},
             )
         )
-        svc.handle(Event(event_type="repaid", source="test", payload={"loan_id": "L4", "amount": 99999}))
+        svc.handle(Message(event_type="repaid", source="test", payload={"loan_id": "L4", "amount": 99999}))
         rec = svc.store.get("loan:L4")
         assert rec is not None
         assert rec["outstanding"] == 0
@@ -73,13 +73,13 @@ class TestServicingService:
     def test_handles_default(self) -> None:
         svc = ServicingHandler(service_id="servicing", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
+            Message(
                 event_type="loan.originated",
                 source="test",
                 payload={"loan_id": "L5", "borrower": "eve", "principal": 20000},
             )
         )
-        svc.handle(Event(event_type="default.occurred", source="test", payload={"loan_id": "L5"}))
+        svc.handle(Message(event_type="default.occurred", source="test", payload={"loan_id": "L5"}))
         rec = svc.store.get("loan:L5")
         assert rec is not None
         assert rec["status"] == "defaulted"
@@ -87,33 +87,33 @@ class TestServicingService:
 
     def test_unknown_loan_repayment_noop(self) -> None:
         svc = ServicingHandler(service_id="servicing", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type="repaid", source="test", payload={"loan_id": "NONEXISTENT", "amount": 100}))
+        svc.handle(Message(event_type="repaid", source="test", payload={"loan_id": "NONEXISTENT", "amount": 100}))
         assert len(svc.store.keys("loan:")) == 0
 
     def test_unknown_loan_default_noop(self) -> None:
         svc = ServicingHandler(service_id="servicing", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type="default.occurred", source="test", payload={"loan_id": "NONEXISTENT"}))
+        svc.handle(Message(event_type="default.occurred", source="test", payload={"loan_id": "NONEXISTENT"}))
         assert len(svc.store.keys("loan:")) == 0
 
     def test_empty_loan_id_noop(self) -> None:
         svc = ServicingHandler(service_id="servicing", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type="loan.originated", source="test", payload={}))
+        svc.handle(Message(event_type="loan.originated", source="test", payload={}))
         assert len(svc.store.keys("loan:")) == 0
 
     def test_ignores_unrelated_events(self) -> None:
         svc = ServicingHandler(service_id="servicing", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type="seed.added", source="test", payload={}))
+        svc.handle(Message(event_type="seed.added", source="test", payload={}))
         assert len(svc.store.keys("loan:")) == 0
 
     def test_multiple_loans_independent(self) -> None:
         svc = ServicingHandler(service_id="servicing", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
+            Message(
                 event_type="loan.originated", source="test", payload={"loan_id": "A", "borrower": "a", "principal": 100}
             )
         )
         svc.handle(
-            Event(
+            Message(
                 event_type="loan.originated", source="test", payload={"loan_id": "B", "borrower": "b", "principal": 200}
             )
         )
@@ -129,7 +129,7 @@ class TestServicingInterestAccrual:
     def test_loan_originated_with_rate(self) -> None:
         svc = ServicingHandler(service_id="servicing", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
+            Message(
                 event_type="loan.originated",
                 source="test",
                 payload={
@@ -151,7 +151,7 @@ class TestServicingInterestAccrual:
     def test_accrue_interest_manual_trigger(self) -> None:
         svc = ServicingHandler(service_id="servicing", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
+            Message(
                 event_type="loan.originated",
                 source="test",
                 payload={
@@ -175,7 +175,7 @@ class TestServicingInterestAccrual:
         """Test that payment first clears accrued interest before reducing principal."""
         svc = ServicingHandler(service_id="servicing", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
+            Message(
                 event_type="loan.originated",
                 source="test",
                 payload={
@@ -196,7 +196,7 @@ class TestServicingRazorpayHandlers:
     def test_order_created_tracks_order_id(self) -> None:
         svc = ServicingHandler(service_id="servicing", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
+            Message(
                 event_type="loan.originated",
                 source="test",
                 payload={
@@ -207,8 +207,8 @@ class TestServicingRazorpayHandlers:
             )
         )
         svc.handle(
-            Event(
-                event_type=EventType.RAZORPAY_ORDER_CREATED,
+            Message(
+                event_type=Type.RAZORPAY_ORDER_CREATED,
                 source="razorpay",
                 payload={
                     "loan_id": "L50",
@@ -223,7 +223,7 @@ class TestServicingRazorpayHandlers:
     def test_mandate_active_tracks_subscription(self) -> None:
         svc = ServicingHandler(service_id="servicing", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
+            Message(
                 event_type="loan.originated",
                 source="test",
                 payload={
@@ -234,8 +234,8 @@ class TestServicingRazorpayHandlers:
             )
         )
         svc.handle(
-            Event(
-                event_type=EventType.RAZORPAY_MANDATE_ACTIVE,
+            Message(
+                event_type=Type.RAZORPAY_MANDATE_ACTIVE,
                 source="razorpay",
                 payload={
                     "loan_id": "L51",
@@ -251,7 +251,7 @@ class TestServicingRazorpayHandlers:
     def test_mandate_inactive_updates_status(self) -> None:
         svc = ServicingHandler(service_id="servicing", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
+            Message(
                 event_type="loan.originated",
                 source="test",
                 payload={
@@ -262,8 +262,8 @@ class TestServicingRazorpayHandlers:
             )
         )
         svc.handle(
-            Event(
-                event_type=EventType.RAZORPAY_MANDATE_ACTIVE,
+            Message(
+                event_type=Type.RAZORPAY_MANDATE_ACTIVE,
                 source="razorpay",
                 payload={
                     "loan_id": "L52",
@@ -272,8 +272,8 @@ class TestServicingRazorpayHandlers:
             )
         )
         svc.handle(
-            Event(
-                event_type=EventType.RAZORPAY_MANDATE_INACTIVE,
+            Message(
+                event_type=Type.RAZORPAY_MANDATE_INACTIVE,
                 source="razorpay",
                 payload={
                     "loan_id": "L52",
@@ -287,8 +287,8 @@ class TestServicingRazorpayHandlers:
     def test_order_created_unknown_loan_noop(self) -> None:
         svc = ServicingHandler(service_id="servicing", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
-                event_type=EventType.RAZORPAY_ORDER_CREATED,
+            Message(
+                event_type=Type.RAZORPAY_ORDER_CREATED,
                 source="razorpay",
                 payload={
                     "loan_id": "NONEXISTENT",
@@ -300,5 +300,5 @@ class TestServicingRazorpayHandlers:
 
     def test_mandate_active_missing_loan_id_noop(self) -> None:
         svc = ServicingHandler(service_id="servicing", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type=EventType.RAZORPAY_MANDATE_ACTIVE, source="razorpay", payload={}))
+        svc.handle(Message(event_type=Type.RAZORPAY_MANDATE_ACTIVE, source="razorpay", payload={}))
         assert len(svc.store.keys("loan:")) == 0

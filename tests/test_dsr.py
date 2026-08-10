@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from underwrite.events import Event, EventType
 from underwrite.local import LocalBus
+from underwrite.message import Message, Type
 from underwrite.services.dsr.handler import DataSubjectRightsHandler
 from underwrite.store import MemoryStore
 
@@ -16,7 +16,7 @@ class TestDsrRequestCreation:
     def test_creates_access_request(self) -> None:
         s = svc()
         s.handle(
-            Event(event_type=EventType.DSR_REQUEST, source="test", payload={"user_id": "u1", "request_type": "access"})
+            Message(event_type=Type.DSR_REQUEST, source="test", payload={"user_id": "u1", "request_type": "access"})
         )
         reqs = s.get_requests("u1")
         assert len(reqs) == 1
@@ -26,9 +26,7 @@ class TestDsrRequestCreation:
     def test_creates_correction_request(self) -> None:
         s = svc()
         s.handle(
-            Event(
-                event_type=EventType.DSR_REQUEST, source="test", payload={"user_id": "u2", "request_type": "correction"}
-            )
+            Message(event_type=Type.DSR_REQUEST, source="test", payload={"user_id": "u2", "request_type": "correction"})
         )
         reqs = s.get_requests("u2")
         assert len(reqs) == 1
@@ -36,7 +34,7 @@ class TestDsrRequestCreation:
     def test_creates_erasure_request(self) -> None:
         s = svc()
         s.handle(
-            Event(event_type=EventType.DSR_REQUEST, source="test", payload={"user_id": "u3", "request_type": "erasure"})
+            Message(event_type=Type.DSR_REQUEST, source="test", payload={"user_id": "u3", "request_type": "erasure"})
         )
         reqs = s.get_requests("u3")
         assert len(reqs) == 1
@@ -44,8 +42,8 @@ class TestDsrRequestCreation:
     def test_rejects_invalid_request_type(self) -> None:
         s = svc()
         s.handle(
-            Event(
-                event_type=EventType.DSR_REQUEST,
+            Message(
+                event_type=Type.DSR_REQUEST,
                 source="test",
                 payload={"user_id": "u4", "request_type": "invalid_type"},
             )
@@ -54,17 +52,17 @@ class TestDsrRequestCreation:
 
     def test_requires_user_id(self) -> None:
         s = svc()
-        s.handle(Event(event_type=EventType.DSR_REQUEST, source="test", payload={"request_type": "access"}))
+        s.handle(Message(event_type=Type.DSR_REQUEST, source="test", payload={"request_type": "access"}))
         assert s.get_requests("") == []
 
     def test_emits_dsr_requested_event(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.DSR_REQUESTED, lambda e: received.append(e))
+        bus.subscribe(Type.DSR_REQUESTED, lambda e: received.append(e))
         s = DataSubjectRightsHandler(service_id="dsr", bus=bus, store=MemoryStore())
         bus.start()
         s.handle(
-            Event(event_type=EventType.DSR_REQUEST, source="test", payload={"user_id": "u5", "request_type": "access"})
+            Message(event_type=Type.DSR_REQUEST, source="test", payload={"user_id": "u5", "request_type": "access"})
         )
         assert len(received) == 1
         assert received[0].payload["request_type"] == "access"
@@ -74,7 +72,7 @@ class TestDsrFulfillment:
     def test_fulfill_request(self) -> None:
         s = svc()
         s.handle(
-            Event(event_type=EventType.DSR_REQUEST, source="test", payload={"user_id": "u10", "request_type": "access"})
+            Message(event_type=Type.DSR_REQUEST, source="test", payload={"user_id": "u10", "request_type": "access"})
         )
         reqs = s.get_requests("u10")
         req_id = reqs[0]["request_id"]
@@ -85,9 +83,7 @@ class TestDsrFulfillment:
     def test_reject_request(self) -> None:
         s = svc()
         s.handle(
-            Event(
-                event_type=EventType.DSR_REQUEST, source="test", payload={"user_id": "u11", "request_type": "erasure"}
-            )
+            Message(event_type=Type.DSR_REQUEST, source="test", payload={"user_id": "u11", "request_type": "erasure"})
         )
         reqs = s.get_requests("u11")
         req_id = reqs[0]["request_id"]
@@ -103,7 +99,7 @@ class TestDsrFulfillment:
     def test_double_fulfill_noop(self) -> None:
         s = svc()
         s.handle(
-            Event(event_type=EventType.DSR_REQUEST, source="test", payload={"user_id": "u12", "request_type": "access"})
+            Message(event_type=Type.DSR_REQUEST, source="test", payload={"user_id": "u12", "request_type": "access"})
         )
         reqs = s.get_requests("u12")
         req_id = reqs[0]["request_id"]
@@ -117,8 +113,8 @@ class TestGrievance:
     def test_logs_grievance(self) -> None:
         s = svc()
         s.handle(
-            Event(
-                event_type=EventType.GRIEVANCE_LOGGED,
+            Message(
+                event_type=Type.GRIEVANCE_LOGGED,
                 source="test",
                 payload={
                     "user_id": "u20",
@@ -135,8 +131,8 @@ class TestGrievance:
     def test_resolves_grievance(self) -> None:
         s = svc()
         s.handle(
-            Event(
-                event_type=EventType.GRIEVANCE_LOGGED,
+            Message(
+                event_type=Type.GRIEVANCE_LOGGED,
                 source="test",
                 payload={
                     "user_id": "u21",
@@ -153,13 +149,13 @@ class TestGrievance:
 
     def test_grievance_requires_user_id_and_subject(self) -> None:
         s = svc()
-        s.handle(Event(event_type=EventType.GRIEVANCE_LOGGED, source="test", payload={"user_id": "u22"}))
-        s.handle(Event(event_type=EventType.GRIEVANCE_LOGGED, source="test", payload={"subject": "no user"}))
+        s.handle(Message(event_type=Type.GRIEVANCE_LOGGED, source="test", payload={"user_id": "u22"}))
+        s.handle(Message(event_type=Type.GRIEVANCE_LOGGED, source="test", payload={"subject": "no user"}))
         assert s.get_grievances("u22") == []
         assert s.get_grievances("") == []
 
     def test_ignores_unrelated_events(self) -> None:
         s = svc()
-        s.handle(Event(event_type="seed.added", source="test", payload={}))
+        s.handle(Message(event_type="seed.added", source="test", payload={}))
         assert s.get_requests("") == []
         assert s.get_grievances("") == []

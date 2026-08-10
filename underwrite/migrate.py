@@ -90,7 +90,7 @@ def default_plan() -> MigrationPlan:
     plan.add(
         Migration(
             version=2,
-            description="Event dead-letter queue",
+            description="Message dead-letter queue",
             statements=(
                 """CREATE TABLE IF NOT EXISTS dead_letters (
                 id SERIAL PRIMARY KEY,

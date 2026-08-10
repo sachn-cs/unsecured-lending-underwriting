@@ -16,8 +16,8 @@ import os
 import tempfile
 from unittest.mock import patch
 
-from underwrite.events import Event, EventType
 from underwrite.local import LocalBus
+from underwrite.message import Message, Type
 from underwrite.services.compliance.handler import (
     ComplianceHandler,
     pan_category,
@@ -70,15 +70,15 @@ class TestPanCategory:
 
 
 class TestComplianceService:
-    def __assert_kyc_result(self, payload: dict, *, expect_kyc: bool, expect_reason: str = "") -> list[Event]:
+    def __assert_kyc_result(self, payload: dict, *, expect_kyc: bool, expect_reason: str = "") -> list[Message]:
         bus = LocalBus()
-        all_events: list[Event] = []
+        all_events: list[Message] = []
         bus.subscribe("*", lambda e: all_events.append(e))
         svc = compliance(bus=bus)
         bus.start()
-        svc.handle(Event(event_type=EventType.USER_ADDED, source="test", payload=payload))
-        kyc_rejected = [e for e in all_events if e.event_type == EventType.KYC_REJECTED.value]
-        kyc_verified = [e for e in all_events if e.event_type == EventType.KYC_VERIFIED.value]
+        svc.handle(Message(event_type=Type.USER_ADDED, source="test", payload=payload))
+        kyc_rejected = [e for e in all_events if e.event_type == Type.KYC_REJECTED.value]
+        kyc_verified = [e for e in all_events if e.event_type == Type.KYC_VERIFIED.value]
         if expect_kyc:
             assert len(kyc_rejected) == 0, f"Expected no rejection but got: {kyc_rejected}"
             assert len(kyc_verified) == 1, f"Expected KYC_VERIFIED but got {len(kyc_verified)}"
@@ -97,7 +97,7 @@ class TestComplianceService:
             expect_kyc=True,
         )
         types = [e.event_type for e in events]
-        assert EventType.CKYC_VERIFY.value in types
+        assert Type.CKYC_VERIFY.value in types
         assert "kyc.video_initiated" in types
 
     def test_rejected_with_invalid_pan(self) -> None:
@@ -171,32 +171,32 @@ class TestComplianceService:
 
     def test_ignores_non_user_added_events(self) -> None:
         bus = LocalBus()
-        all_events: list[Event] = []
+        all_events: list[Message] = []
         bus.subscribe("*", lambda e: all_events.append(e))
         svc = compliance(bus=bus)
         bus.start()
-        svc.handle(Event(event_type="seed.added", source="test", payload={}))
-        svc.handle(Event(event_type=EventType.LOAN_ORIGINATED, source="test", payload={}))
+        svc.handle(Message(event_type="seed.added", source="test", payload={}))
+        svc.handle(Message(event_type=Type.LOAN_ORIGINATED, source="test", payload={}))
         kyc_events = [
             e
             for e in all_events
             if e.event_type
             in (
-                EventType.KYC_VERIFIED.value,
-                EventType.KYC_REJECTED.value,
+                Type.KYC_VERIFIED.value,
+                Type.KYC_REJECTED.value,
             )
         ]
         assert len(kyc_events) == 0
 
     def test_missing_user_field_does_not_crash(self) -> None:
         bus = LocalBus()
-        verified: list[Event] = []
-        bus.subscribe(EventType.KYC_VERIFIED, lambda e: verified.append(e))
+        verified: list[Message] = []
+        bus.subscribe(Type.KYC_VERIFIED, lambda e: verified.append(e))
         svc = compliance(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.USER_ADDED,
+            Message(
+                event_type=Type.USER_ADDED,
                 source="test",
                 payload={"pan": "ABCDE1234F", "aadhaar": "123456789012"},
             )
@@ -206,13 +206,13 @@ class TestComplianceService:
 
     def test_aml_cleared_when_no_blocklist(self) -> None:
         bus = LocalBus()
-        cleared: list[Event] = []
-        bus.subscribe(EventType.AML_CLEARED, lambda e: cleared.append(e))
+        cleared: list[Message] = []
+        bus.subscribe(Type.AML_CLEARED, lambda e: cleared.append(e))
         svc = compliance(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.USER_ADDED,
+            Message(
+                event_type=Type.USER_ADDED,
                 source="test",
                 payload={
                     "user": "oscar",
@@ -231,15 +231,15 @@ class TestComplianceService:
         try:
             with patch.dict(os.environ, {"AML_BLOCKLIST_PATH": bl_path}, clear=False):
                 bus = LocalBus()
-                frozen: list[Event] = []
-                bus.subscribe(EventType.AML_FROZEN, lambda e: frozen.append(e))
+                frozen: list[Message] = []
+                bus.subscribe(Type.AML_FROZEN, lambda e: frozen.append(e))
                 svc = ComplianceHandler(
                     service_id="compliance", bus=bus, aml_blocklist_path=bl_path, store=MemoryStore()
                 )
                 bus.start()
                 svc.handle(
-                    Event(
-                        event_type=EventType.USER_ADDED,
+                    Message(
+                        event_type=Type.USER_ADDED,
                         source="test",
                         payload={
                             "user": "oscar",
@@ -255,13 +255,13 @@ class TestComplianceService:
 
     def test_aml_frozen_on_keyword_match(self) -> None:
         bus = LocalBus()
-        frozen: list[Event] = []
-        bus.subscribe(EventType.AML_FROZEN, lambda e: frozen.append(e))
+        frozen: list[Message] = []
+        bus.subscribe(Type.AML_FROZEN, lambda e: frozen.append(e))
         svc = compliance(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.USER_ADDED,
+            Message(
+                event_type=Type.USER_ADDED,
                 source="test",
                 payload={
                     "user": "innocent",
@@ -276,13 +276,13 @@ class TestComplianceService:
 
     def test_aml_flagged_on_medium_risk_keyword(self) -> None:
         bus = LocalBus()
-        flagged: list[Event] = []
+        flagged: list[Message] = []
         bus.subscribe("aml.flagged", lambda e: flagged.append(e))
         svc = compliance(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.USER_ADDED,
+            Message(
+                event_type=Type.USER_ADDED,
                 source="test",
                 payload={
                     "user": "pep_adjacent",
@@ -296,13 +296,13 @@ class TestComplianceService:
 
     def test_pan_category_in_kyc_verified(self) -> None:
         bus = LocalBus()
-        verified: list[Event] = []
-        bus.subscribe(EventType.KYC_VERIFIED, lambda e: verified.append(e))
+        verified: list[Message] = []
+        bus.subscribe(Type.KYC_VERIFIED, lambda e: verified.append(e))
         svc = compliance(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.USER_ADDED,
+            Message(
+                event_type=Type.USER_ADDED,
                 source="test",
                 payload={"user": "bob", "pan": "ABCPE1234F", "aadhaar": "123456789012"},
             )
@@ -312,13 +312,13 @@ class TestComplianceService:
 
     def test_ckyc_verify_emitted_on_kyc_pass(self) -> None:
         bus = LocalBus()
-        ckyc: list[Event] = []
-        bus.subscribe(EventType.CKYC_VERIFY, lambda e: ckyc.append(e))
+        ckyc: list[Message] = []
+        bus.subscribe(Type.CKYC_VERIFY, lambda e: ckyc.append(e))
         svc = compliance(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.USER_ADDED,
+            Message(
+                event_type=Type.USER_ADDED,
                 source="test",
                 payload={"user": "alice", "pan": "ABCDE1234F", "aadhaar": "123456789012"},
             )
@@ -328,13 +328,13 @@ class TestComplianceService:
 
     def test_video_kyc_initiated_emitted(self) -> None:
         bus = LocalBus()
-        vkyc: list[Event] = []
+        vkyc: list[Message] = []
         bus.subscribe("kyc.video_initiated", lambda e: vkyc.append(e))
         svc = compliance(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.USER_ADDED,
+            Message(
+                event_type=Type.USER_ADDED,
                 source="test",
                 payload={"user": "alice", "pan": "ABCDE1234F", "aadhaar": "123456789012"},
             )
@@ -346,8 +346,8 @@ class TestComplianceService:
         svc = compliance(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.USER_ADDED,
+            Message(
+                event_type=Type.USER_ADDED,
                 source="test",
                 payload={"user": "query_user", "pan": "ABCDE1234F", "aadhaar": "123456789012"},
             )
@@ -363,15 +363,15 @@ class TestComplianceService:
         svc = compliance(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.USER_ADDED,
+            Message(
+                event_type=Type.USER_ADDED,
                 source="test",
                 payload={"user": "ckyc_user", "pan": "ABCDE1234F", "aadhaar": "123456789012"},
             )
         )
         svc.handle(
-            Event(
-                event_type=EventType.CKYC_VERIFIED,
+            Message(
+                event_type=Type.CKYC_VERIFIED,
                 source="credit_bureau",
                 payload={
                     "user": "ckyc_user",

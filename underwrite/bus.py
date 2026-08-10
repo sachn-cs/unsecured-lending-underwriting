@@ -34,8 +34,8 @@ from collections.abc import Callable
 
 from underwrite.circuit import Breaker
 from underwrite.dlq import Queue, Record
-from underwrite.events import Event
 from underwrite.idempotency import Guard
+from underwrite.message import Message
 from underwrite.rate_limit import DistributedLimiter, Limiter
 from underwrite.subscription import Dispatcher, Registry
 
@@ -44,11 +44,11 @@ class EventBus(ABC):
     """Abstract event bus. All nano services publish and subscribe here."""
 
     @abstractmethod
-    def publish(self, event: Event) -> str:
+    def publish(self, event: Message) -> str:
         """Publishes an event to all matching subscribers. Returns the event ID."""
 
     @abstractmethod
-    def subscribe(self, event_type: str, handler: Callable[[Event], None]) -> str:
+    def subscribe(self, event_type: str, handler: Callable[[Message], None]) -> str:
         """Registers a handler for *event_type* (use ``*`` for wildcard).
 
         Returns a subscription ID that can be passed to ``unsubscribe``.
@@ -81,11 +81,11 @@ class AsyncEventBus(ABC):
     """Abstract async event bus. Same contract as EventBus but for async subscribers."""
 
     @abstractmethod
-    async def publish(self, event: Event) -> str:
+    async def publish(self, event: Message) -> str:
         """Publishes an event to all matching subscribers. Returns the event ID."""
 
     @abstractmethod
-    async def subscribe(self, event_type: str, handler: Callable[[Event], None]) -> str:
+    async def subscribe(self, event_type: str, handler: Callable[[Message], None]) -> str:
         """Registers a handler for *event_type* (use ``*`` for wildcard).
 
         Returns a subscription ID that can be passed to ``unsubscribe``.

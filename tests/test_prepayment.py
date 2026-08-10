@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from underwrite.events import Event, EventType
 from underwrite.local import LocalBus
+from underwrite.message import Message, Type
 from underwrite.services.prepayment.handler import PrepaymentHandler
 from underwrite.store import MemoryStore
 
@@ -16,21 +16,21 @@ class TestPrepaymentService:
     def test_prepayment_request_missing_loan_id_ignored(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.FORECLOSURE_COMPUTED, lambda e: received.append(e))
+        bus.subscribe(Type.FORECLOSURE_COMPUTED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
-        svc_inst.handle(Event(event_type=EventType.PREPAYMENT_REQUEST, source="test", payload={}))
+        svc_inst.handle(Message(event_type=Type.PREPAYMENT_REQUEST, source="test", payload={}))
         assert len(received) == 0
 
     def test_prepayment_request_computes_foreclosure(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.FORECLOSURE_COMPUTED, lambda e: received.append(e))
+        bus.subscribe(Type.FORECLOSURE_COMPUTED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
         svc_inst.handle(
-            Event(
-                event_type=EventType.PREPAYMENT_REQUEST,
+            Message(
+                event_type=Type.PREPAYMENT_REQUEST,
                 source="test",
                 payload={
                     "loan_id": "L1",
@@ -50,12 +50,12 @@ class TestPrepaymentService:
     def test_prepayment_with_penalty(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.FORECLOSURE_COMPUTED, lambda e: received.append(e))
+        bus.subscribe(Type.FORECLOSURE_COMPUTED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
         svc_inst.handle(
-            Event(
-                event_type=EventType.PREPAYMENT_REQUEST,
+            Message(
+                event_type=Type.PREPAYMENT_REQUEST,
                 source="test",
                 payload={
                     "loan_id": "L2",
@@ -74,8 +74,8 @@ class TestPrepaymentService:
     def test_ignores_unrelated_events(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.FORECLOSURE_COMPUTED, lambda e: received.append(e))
+        bus.subscribe(Type.FORECLOSURE_COMPUTED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
-        svc_inst.handle(Event(event_type="seed.added", source="test", payload={}))
+        svc_inst.handle(Message(event_type="seed.added", source="test", payload={}))
         assert len(received) == 0

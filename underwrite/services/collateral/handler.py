@@ -6,10 +6,10 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector, SystemClock
 from underwrite.saga import Orchestrator
 from underwrite.services.base import StatefulService
@@ -71,19 +71,19 @@ class CollateralHandler(StatefulService):
         if loaded:
             self.__collateral = loaded
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Process loan origination and default events against collateral.
 
         Args:
             event: The incoming domain event.
 
         """
-        if event.event_type == EventType.LOAN_ORIGINATED:
+        if event.event_type == Type.LOAN_ORIGINATED:
             self.on_loan_originated(event)
-        elif event.event_type == EventType.DEFAULT_OCCURRED:
+        elif event.event_type == Type.DEFAULT_OCCURRED:
             self.on_default(event)
 
-    def on_loan_originated(self, event: Event) -> None:
+    def on_loan_originated(self, event: Message) -> None:
         """Set collateral requirements for a new loan.
 
         Args:
@@ -104,7 +104,7 @@ class CollateralHandler(StatefulService):
             }
             self.repo.save(self.__collateral)
         self.emit(
-            EventType.COLLATERAL_MARKED,
+            Type.COLLATERAL_MARKED,
             {
                 "borrower": borrower,
                 "required": required,
@@ -113,7 +113,7 @@ class CollateralHandler(StatefulService):
             correlation_id=event.correlation_id,
         )
 
-    def on_default(self, event: Event) -> None:
+    def on_default(self, event: Message) -> None:
         """Liquidate collateral on default.
 
         Args:
@@ -138,7 +138,7 @@ class CollateralHandler(StatefulService):
                     raise
         if col:
             self.emit(
-                EventType.COLLATERAL_LIQUIDATED,
+                Type.COLLATERAL_LIQUIDATED,
                 {
                     "borrower": borrower,
                     "principal": col["principal"],

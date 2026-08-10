@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from underwrite.events import Event, EventType
 from underwrite.local import LocalBus
+from underwrite.message import Message, Type
 from underwrite.services.consent.handler import ConsentHandler
 from underwrite.store import MemoryStore
 
@@ -18,8 +18,8 @@ class TestConsentRecording:
     def test_records_consent(self) -> None:
         s = svc()
         s.handle(
-            Event(
-                event_type=EventType.CONSENT_RECORDED,
+            Message(
+                event_type=Type.CONSENT_RECORDED,
                 source="test",
                 payload={"user_id": "u1", "purpose": "kyc_verification"},
             )
@@ -33,8 +33,8 @@ class TestConsentRecording:
     def test_records_with_metadata(self) -> None:
         s = svc()
         s.handle(
-            Event(
-                event_type=EventType.CONSENT_RECORDED,
+            Message(
+                event_type=Type.CONSENT_RECORDED,
                 source="test",
                 payload={
                     "user_id": "u2",
@@ -51,12 +51,12 @@ class TestConsentRecording:
 
     def test_missing_user_id_ignored(self) -> None:
         s = svc()
-        s.handle(Event(event_type=EventType.CONSENT_RECORDED, source="test", payload={"purpose": "kyc"}))
+        s.handle(Message(event_type=Type.CONSENT_RECORDED, source="test", payload={"purpose": "kyc"}))
         assert s.get_user_consents("") == []
 
     def test_missing_purpose_ignored(self) -> None:
         s = svc()
-        s.handle(Event(event_type=EventType.CONSENT_RECORDED, source="test", payload={"user_id": "u3"}))
+        s.handle(Message(event_type=Type.CONSENT_RECORDED, source="test", payload={"user_id": "u3"}))
         assert s.get_user_consents("u3") == []
 
 
@@ -64,22 +64,22 @@ class TestConsentWithdrawal:
     def test_withdraw_specific_purpose(self) -> None:
         s = svc()
         s.handle(
-            Event(
-                event_type=EventType.CONSENT_RECORDED,
+            Message(
+                event_type=Type.CONSENT_RECORDED,
                 source="test",
                 payload={"user_id": "u10", "purpose": "kyc_verification"},
             )
         )
         s.handle(
-            Event(
-                event_type=EventType.CONSENT_RECORDED,
+            Message(
+                event_type=Type.CONSENT_RECORDED,
                 source="test",
                 payload={"user_id": "u10", "purpose": "loan_servicing"},
             )
         )
         s.handle(
-            Event(
-                event_type=EventType.CONSENT_WITHDRAWN,
+            Message(
+                event_type=Type.CONSENT_WITHDRAWN,
                 source="test",
                 payload={"user_id": "u10", "purpose": "kyc_verification"},
             )
@@ -90,27 +90,27 @@ class TestConsentWithdrawal:
     def test_withdraw_all_purposes(self) -> None:
         s = svc()
         s.handle(
-            Event(
-                event_type=EventType.CONSENT_RECORDED,
+            Message(
+                event_type=Type.CONSENT_RECORDED,
                 source="test",
                 payload={"user_id": "u11", "purpose": "kyc_verification"},
             )
         )
         s.handle(
-            Event(
-                event_type=EventType.CONSENT_RECORDED,
+            Message(
+                event_type=Type.CONSENT_RECORDED,
                 source="test",
                 payload={"user_id": "u11", "purpose": "collection"},
             )
         )
-        s.handle(Event(event_type=EventType.CONSENT_WITHDRAWN, source="test", payload={"user_id": "u11"}))
+        s.handle(Message(event_type=Type.CONSENT_WITHDRAWN, source="test", payload={"user_id": "u11"}))
         assert s.has_active_consent("u11", "kyc_verification") is False
         assert s.has_active_consent("u11", "collection") is False
 
     def test_withdraw_nonexistent_noop(self) -> None:
         s = svc()
         s.handle(
-            Event(event_type=EventType.CONSENT_WITHDRAWN, source="test", payload={"user_id": "ghost", "purpose": "kyc"})
+            Message(event_type=Type.CONSENT_WITHDRAWN, source="test", payload={"user_id": "ghost", "purpose": "kyc"})
         )
         assert s.get_user_consents("ghost") == []
 
@@ -119,8 +119,8 @@ class TestConsentQueries:
     def test_has_active_consent_true(self) -> None:
         s = svc()
         s.handle(
-            Event(
-                event_type=EventType.CONSENT_RECORDED,
+            Message(
+                event_type=Type.CONSENT_RECORDED,
                 source="test",
                 payload={"user_id": "u20", "purpose": "kyc_verification"},
             )
@@ -133,20 +133,14 @@ class TestConsentQueries:
 
     def test_get_user_consents(self) -> None:
         s = svc()
-        s.handle(
-            Event(event_type=EventType.CONSENT_RECORDED, source="test", payload={"user_id": "u30", "purpose": "p1"})
-        )
-        s.handle(
-            Event(event_type=EventType.CONSENT_RECORDED, source="test", payload={"user_id": "u30", "purpose": "p2"})
-        )
+        s.handle(Message(event_type=Type.CONSENT_RECORDED, source="test", payload={"user_id": "u30", "purpose": "p1"}))
+        s.handle(Message(event_type=Type.CONSENT_RECORDED, source="test", payload={"user_id": "u30", "purpose": "p2"}))
         consents = s.get_user_consents("u30")
         assert len(consents) == 2
 
     def test_check_missing_purposes(self) -> None:
         s = svc(required_purposes=["kyc", "cibil", "servicing"])
-        s.handle(
-            Event(event_type=EventType.CONSENT_RECORDED, source="test", payload={"user_id": "u40", "purpose": "kyc"})
-        )
+        s.handle(Message(event_type=Type.CONSENT_RECORDED, source="test", payload={"user_id": "u40", "purpose": "kyc"}))
         missing = s.check_missing_purposes("u40")
         assert "kyc" not in missing
         assert "cibil" in missing
@@ -156,12 +150,10 @@ class TestConsentQueries:
 class TestConsentEdgeCases:
     def test_ignores_unrelated_events(self) -> None:
         s = svc()
-        s.handle(Event(event_type="seed.added", source="test", payload={}))
+        s.handle(Message(event_type="seed.added", source="test", payload={}))
         assert s.get_user_consents("") == []
 
     def test_has_active_consent_expired(self) -> None:
         s = svc(consent_validity_days=365)
-        s.handle(
-            Event(event_type=EventType.CONSENT_RECORDED, source="test", payload={"user_id": "u60", "purpose": "kyc"})
-        )
+        s.handle(Message(event_type=Type.CONSENT_RECORDED, source="test", payload={"user_id": "u60", "purpose": "kyc"}))
         assert s.has_active_consent("u60", "kyc") is True

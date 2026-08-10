@@ -10,9 +10,9 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
 from underwrite.services.base import StatefulService
@@ -75,13 +75,13 @@ class SettlementHandler(StatefulService):
         with self.state_lock:
             return list(self.__settlements)
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Process a default event and emit a settlement.
 
         Args:
             event: The incoming domain event.
         """
-        if event.event_type != EventType.DEFAULT_OCCURRED:
+        if event.event_type != Type.DEFAULT_OCCURRED:
             return
         p = event.payload
         borrower: str = PayloadValidator().non_empty(p, "borrower")
@@ -98,7 +98,7 @@ class SettlementHandler(StatefulService):
             self.__sync()
 
         self.emit(
-            EventType.SETTLEMENT_COMPLETED,
+            Type.SETTLEMENT_COMPLETED,
             {
                 "borrower": borrower,
                 "principal": principal,

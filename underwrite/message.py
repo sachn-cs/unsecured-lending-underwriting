@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 __all__ = [
-    "Event",
-    "EventType",
+    "Message",
+    "Type",
     "MAX_PAYLOAD_SIZE",
 ]
 
@@ -21,7 +21,7 @@ MAX_PAYLOAD_SIZE: int = 1_000_000
 
 
 @dataclass(frozen=True, slots=True)
-class Event:
+class Message:
     """Standard event envelope for all nano-service communication.
 
     Every event carries a unique identifier, a correlation chain for
@@ -82,19 +82,19 @@ class Event:
         return canonical.encode("utf-8")
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> Event:
+    def from_dict(cls, data: dict[str, Any]) -> Message:
         known = {f.name for f in fields(cls)}
         extra = set(data) - known
         if extra:
-            logger.warning("Event.from_dict dropping unknown field(s): {}", sorted(extra))
+            logger.warning("Message.from_dict dropping unknown field(s): {}", sorted(extra))
         return cls(**{k: data[k] for k in known if k in data})
 
 
-class EventType(str, enum.Enum):
+class Type(str, enum.Enum):
     """Central registry of all event types in the underwrite system.
 
     Convention: ``<domain>.<action>[.<outcome>]``.
-    Use ``EventType.XXX.value`` to get the bare string where needed.
+    Use ``Type.XXX.value`` to get the bare string where needed.
     """
 
     SEED_ADDED = "seed.added"

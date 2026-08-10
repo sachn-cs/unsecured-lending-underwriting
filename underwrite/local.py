@@ -9,9 +9,9 @@ from typing import TYPE_CHECKING
 
 from underwrite.circuit import Breaker
 from underwrite.dlq import Queue
-from underwrite.events import Event
 from underwrite.idempotency import Guard
 from underwrite.logger import logger
+from underwrite.message import Message
 from underwrite.rate_limit import Limiter
 from underwrite.store import Store
 from underwrite.subscription import Dispatcher, Registry
@@ -46,7 +46,7 @@ class LocalBus:
         """
         self.__lock: threading.RLock = threading.RLock()
         self.__registry: Registry = Registry()
-        self.__buffer: deque[Event] = deque()
+        self.__buffer: deque[Message] = deque()
         self.__running: bool = True
         self.__started: bool = False
         self.__dlq: Queue = Queue(store=store)
@@ -66,7 +66,7 @@ class LocalBus:
         """Returns the idempotency guard for this bus instance."""
         return self.__idempotency
 
-    def publish(self, event: Event) -> str:
+    def publish(self, event: Message) -> str:
         """Publishes an event to all matching subscribers.
 
         Buffers the event and flushes immediately if the bus is running.
@@ -86,7 +86,7 @@ class LocalBus:
                 self.__flush()
         return event.event_id
 
-    def subscribe(self, event_type: str, handler: Callable[[Event], None]) -> str:
+    def subscribe(self, event_type: str, handler: Callable[[Message], None]) -> str:
         """Registers a handler for a given event type.
 
         Args:
@@ -147,7 +147,7 @@ class LocalBus:
         self.__dispatcher.shutdown()
 
     def __flush(self) -> None:
-        pending: deque[Event] = self.__buffer
+        pending: deque[Message] = self.__buffer
         self.__buffer = deque()
         for event in pending:
             handlers = self.__registry.handlers_for(event.event_type)
@@ -164,7 +164,7 @@ class LocalBus:
                 else:
                     self.__dispatch_sync(handler, event, sid)
 
-    def __dispatch_sync(self, handler: Callable[[Event], None], event: Event, sid: str) -> None:
+    def __dispatch_sync(self, handler: Callable[[Message], None], event: Message, sid: str) -> None:
         try:
             handler(event)
             self.__circuit_breaker.record_success(sid)
@@ -173,7 +173,7 @@ class LocalBus:
             self.__dlq.put(event, f"{type(exc).__name__}: {exc}", sid)
             self.__circuit_breaker.record_failure(sid)
 
-    def __dispatch(self, handler: Callable[[Event], None], event: Event, sid: str) -> None:
+    def __dispatch(self, handler: Callable[[Message], None], event: Message, sid: str) -> None:
         try:
             handler(event)
             self.__circuit_breaker.record_success(sid)

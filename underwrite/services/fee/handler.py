@@ -15,10 +15,10 @@ from typing import Any
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
 from underwrite.constants import MONEY_QUANTUM
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
 from underwrite.services.base import StatefulService
@@ -173,7 +173,7 @@ class FeeHandler(StatefulService):
             self.__fees[f"fee:{fee_id}"] = fee_record
             self.repo.incr_and_maybe_sync(self.__fees)
             self.emit(
-                EventType.FEE_ASSESSED,
+                Type.FEE_ASSESSED,
                 {
                     "fee_id": fee_id,
                     "loan_id": loan_id,
@@ -214,13 +214,13 @@ class FeeHandler(StatefulService):
             return self.__schedules.get("service", 0.0)
         return 0.0
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Assess and pay fees based on incoming events.
 
         Args:
             event: The incoming event.
         """
-        if event.event_type == EventType.FEE_ASSESS:
+        if event.event_type == Type.FEE_ASSESS:
             self.__assess(
                 loan_id=event.payload.get("loan_id", ""),
                 fee_type=event.payload.get("fee_type", ""),
@@ -230,7 +230,7 @@ class FeeHandler(StatefulService):
                 correlation_id=event.correlation_id,
             )
 
-        elif event.event_type == EventType.FEE_PAY:
+        elif event.event_type == Type.FEE_PAY:
             fee_id = event.payload.get("fee_id", "")
             with self.state_lock:
                 record = self.store.get(f"fee:{fee_id}")
@@ -241,7 +241,7 @@ class FeeHandler(StatefulService):
                     self.__fees[f"fee:{fee_id}"] = record.copy()
                     self.repo.incr_and_maybe_sync(self.__fees)
 
-        elif event.event_type == EventType.PAYMENT_OVERDUE:
+        elif event.event_type == Type.PAYMENT_OVERDUE:
             loan_id = event.payload.get("loan_id", "")
             if not loan_id:
                 logger.warning("PAYMENT_OVERDUE missing loan_id, skipped")

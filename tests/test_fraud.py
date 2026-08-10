@@ -13,9 +13,9 @@ from collections import deque
 
 import pytest
 
-from underwrite.events import Event, EventType
 from underwrite.exceptions import ProtocolError
 from underwrite.local import LocalBus
+from underwrite.message import Message, Type
 from underwrite.services.fraud.handler import FraudHandler
 from underwrite.store import MemoryStore
 
@@ -26,21 +26,19 @@ def fraud(bus=None) -> FraudHandler:
 
 def originate(svc: FraudHandler, borrower: str, principal: int = 1000) -> None:
     svc.handle(
-        Event(
-            event_type=EventType.LOAN_ORIGINATED, source="test", payload={"borrower": borrower, "principal": principal}
-        )
+        Message(event_type=Type.LOAN_ORIGINATED, source="test", payload={"borrower": borrower, "principal": principal})
     )
 
 
 def repay(svc: FraudHandler, user: str, amount: int = 1000) -> None:
-    svc.handle(Event(event_type=EventType.REPAID, source="test", payload={"user": user, "delta_earned": amount}))
+    svc.handle(Message(event_type=Type.REPAID, source="test", payload={"user": user, "delta_earned": amount}))
 
 
 class TestWashLending:
     def test_no_wash_with_zero_cycles(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.WASH_FLAG, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.WASH_FLAG, lambda e: received.append(e))
         svc = fraud(bus=bus)
         bus.start()
         originate(svc, "alice")
@@ -48,8 +46,8 @@ class TestWashLending:
 
     def test_no_wash_with_two_cycles(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.WASH_FLAG, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.WASH_FLAG, lambda e: received.append(e))
         svc = fraud(bus=bus)
         bus.start()
         for _ in range(2):
@@ -59,21 +57,21 @@ class TestWashLending:
 
     def test_wash_flag_on_three_cycles(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.WASH_FLAG, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.WASH_FLAG, lambda e: received.append(e))
         svc = fraud(bus=bus)
         bus.start()
         for _ in range(3):
             originate(svc, "carol")
             repay(svc, "carol")
         assert len(received) >= 1
-        assert received[0].event_type == EventType.WASH_FLAG
+        assert received[0].event_type == Type.WASH_FLAG
         assert received[0].payload["cycles"] >= 3
 
     def test_wash_score_increases_with_more_cycles(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.WASH_FLAG, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.WASH_FLAG, lambda e: received.append(e))
         svc = fraud(bus=bus)
         bus.start()
         for _ in range(6):
@@ -83,8 +81,8 @@ class TestWashLending:
 
     def test_wash_score_capped_at_100(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.WASH_FLAG, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.WASH_FLAG, lambda e: received.append(e))
         svc = fraud(bus=bus)
         bus.start()
         for _ in range(10):
@@ -94,8 +92,8 @@ class TestWashLending:
 
     def test_interleaved_events_dont_false_positive(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.WASH_FLAG, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.WASH_FLAG, lambda e: received.append(e))
         svc = fraud(bus=bus)
         bus.start()
         originate(svc, "frank")
@@ -109,8 +107,8 @@ class TestWashLending:
 class TestBurstDetection:
     def test_no_burst_below_threshold(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.VELOCITY_FLAG, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.VELOCITY_FLAG, lambda e: received.append(e))
         svc = fraud(bus=bus)
         bus.start()
         for _ in range(3):
@@ -119,20 +117,20 @@ class TestBurstDetection:
 
     def test_burst_on_four_originations(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.VELOCITY_FLAG, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.VELOCITY_FLAG, lambda e: received.append(e))
         svc = fraud(bus=bus)
         bus.start()
         for _ in range(4):
             originate(svc, "heidi")
         assert len(received) >= 1
-        assert received[0].event_type == EventType.VELOCITY_FLAG
+        assert received[0].event_type == Type.VELOCITY_FLAG
         assert received[0].payload["count"] >= 4
 
     def test_burst_not_triggered_by_repayments(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.VELOCITY_FLAG, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.VELOCITY_FLAG, lambda e: received.append(e))
         svc = fraud(bus=bus)
         bus.start()
         originate(svc, "ivan")
@@ -143,8 +141,8 @@ class TestBurstDetection:
 
     def test_different_borrowers_independent(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.VELOCITY_FLAG, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.VELOCITY_FLAG, lambda e: received.append(e))
         svc = fraud(bus=bus)
         bus.start()
         for _ in range(4):
@@ -156,8 +154,8 @@ class TestBurstDetection:
 class TestLargeOrigination:
     def test_alert_on_large_principal(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.FRAUD_ALERT, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.FRAUD_ALERT, lambda e: received.append(e))
         svc = fraud(bus=bus)
         bus.start()
         originate(svc, "mallory", principal=2_000_000)
@@ -167,8 +165,8 @@ class TestLargeOrigination:
 
     def test_no_alert_below_threshold(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.FRAUD_ALERT, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.FRAUD_ALERT, lambda e: received.append(e))
         svc = fraud(bus=bus)
         bus.start()
         originate(svc, "oscar", principal=500_000)
@@ -176,8 +174,8 @@ class TestLargeOrigination:
 
     def test_alert_at_exactly_one_million(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.FRAUD_ALERT, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.FRAUD_ALERT, lambda e: received.append(e))
         svc = fraud(bus=bus)
         bus.start()
         originate(svc, "peggy", principal=1_000_001)
@@ -185,13 +183,13 @@ class TestLargeOrigination:
 
     def test_alert_uses_borrower_from_origination_event(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.FRAUD_ALERT, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.FRAUD_ALERT, lambda e: received.append(e))
         svc = fraud(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.LOAN_ORIGINATED,
+            Message(
+                event_type=Type.LOAN_ORIGINATED,
                 source="test",
                 payload={"borrower": "trent", "principal": 1_500_000},
             )
@@ -203,35 +201,35 @@ class TestLargeOrigination:
 class TestEdgeCases:
     def test_ignores_unrelated_events(self) -> None:
         svc = fraud()
-        svc.handle(Event(event_type="seed.added", source="test", payload={}))
-        svc.handle(Event(event_type="user.added", source="test", payload={}))
-        svc.handle(Event(event_type="quote.calculated", source="test", payload={}))
+        svc.handle(Message(event_type="seed.added", source="test", payload={}))
+        svc.handle(Message(event_type="user.added", source="test", payload={}))
+        svc.handle(Message(event_type="quote.calculated", source="test", payload={}))
 
     def test_handles_empty_payload(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.WASH_FLAG, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.WASH_FLAG, lambda e: received.append(e))
         svc = fraud(bus=bus)
         bus.start()
         for _ in range(2):
             with pytest.raises(ProtocolError):
-                svc.handle(Event(event_type=EventType.LOAN_ORIGINATED, source="test", payload={}))
+                svc.handle(Message(event_type=Type.LOAN_ORIGINATED, source="test", payload={}))
         with pytest.raises(ProtocolError):
-            svc.handle(Event(event_type=EventType.REPAID, source="test", payload={}))
+            svc.handle(Message(event_type=Type.REPAID, source="test", payload={}))
         assert len(received) == 0
 
     def test_missing_borrower_does_not_crash(self) -> None:
         svc = fraud()
         with pytest.raises(ProtocolError):
-            svc.handle(Event(event_type=EventType.LOAN_ORIGINATED, source="test", payload={}))
+            svc.handle(Message(event_type=Type.LOAN_ORIGINATED, source="test", payload={}))
 
     def test_records_use_deque_maxlen(self) -> None:
         svc = fraud()
         borrower = "maxlen_test"
         for _ in range(2000):
             svc.handle(
-                Event(
-                    event_type=EventType.LOAN_ORIGINATED,
+                Message(
+                    event_type=Type.LOAN_ORIGINATED,
                     source="test",
                     payload={"borrower": borrower, "principal": 100},
                 )

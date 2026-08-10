@@ -16,13 +16,13 @@ from types import ModuleType
 from typing import Any
 
 from underwrite.bus import Breaker, EventBus, Guard, Queue
-from underwrite.events import Event
 from underwrite.logger import logger
+from underwrite.message import Message
 from underwrite.store import Store
 
 
 class ModalBus(EventBus):
-    """Event bus backed by a Modal distributed queue."""
+    """Message bus backed by a Modal distributed queue."""
 
     def __init__(
         self,
@@ -36,7 +36,7 @@ class ModalBus(EventBus):
         self.__poll_interval: float = max(0.1, poll_interval)
         self.__modal: ModuleType | None = None
         self.__modal_queue: Any = None
-        self.__handlers: dict[str, list[tuple[str, Callable[[Event], None]]]] = {}
+        self.__handlers: dict[str, list[tuple[str, Callable[[Message], None]]]] = {}
         self.__running: bool = False
         self.__poll_thread: threading.Thread | None = None
         self.__lock: threading.Lock = threading.Lock()
@@ -55,7 +55,7 @@ class ModalBus(EventBus):
         except ImportError:
             self.__modal = None
 
-    def publish(self, event: Event) -> str:
+    def publish(self, event: Message) -> str:
         if self.__modal is None:
             raise RuntimeError("modal is not installed; install underwrite[modal]")
         if self.__modal_queue is None:
@@ -64,7 +64,7 @@ class ModalBus(EventBus):
         self.__modal_queue.put(body)
         return event.event_id
 
-    def subscribe(self, event_type: str, handler: Callable[[Event], None]) -> str:
+    def subscribe(self, event_type: str, handler: Callable[[Message], None]) -> str:
         sid: str = uuid.uuid4().hex
         with self.__lock:
             self.__handlers.setdefault(event_type, []).append((sid, handler))
@@ -113,7 +113,7 @@ class ModalBus(EventBus):
                 raw = self.__modal_queue.get(block=False)
                 while raw is not None and self.__running:
                     data: dict[str, Any] = json.loads(raw)
-                    event: Event = Event.from_dict(data)
+                    event: Message = Message.from_dict(data)
                     self.__dispatch(event)
                     raw = self.__modal_queue.get(block=False)
             except (json.JSONDecodeError, KeyError) as exc:
@@ -122,10 +122,10 @@ class ModalBus(EventBus):
                 if self.__running:
                     logger.warning("modal poll error: {}", exc)
 
-    def __dispatch(self, event: Event) -> None:
+    def __dispatch(self, event: Message) -> None:
         with self.__lock:
-            wildcards: list[tuple[str, Callable[[Event], None]]] = self.__handlers.get("*", [])
-            specific: list[tuple[str, Callable[[Event], None]]] = self.__handlers.get(event.event_type, [])
+            wildcards: list[tuple[str, Callable[[Message], None]]] = self.__handlers.get("*", [])
+            specific: list[tuple[str, Callable[[Message], None]]] = self.__handlers.get(event.event_type, [])
         for sid, handler in wildcards + specific:
             if not self.__circuit_breaker.allow_request(sid):
                 logger.warning("circuit open for subscriber {}, sending {} to DLQ", sid, event.event_type)

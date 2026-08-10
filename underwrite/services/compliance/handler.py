@@ -16,10 +16,10 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
 from underwrite.services.base import StatefulService
@@ -228,7 +228,7 @@ class ComplianceHandler(StatefulService):
         if loaded:
             self.__kyc_records = loaded.get("kyc_records", {})
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Process KYC and compliance events.
 
         Args:
@@ -236,14 +236,14 @@ class ComplianceHandler(StatefulService):
                 CKYC_VERIFIED, and kyc.video_verified.
 
         """
-        if event.event_type == EventType.USER_ADDED:
+        if event.event_type == Type.USER_ADDED:
             self.on_user_added(event)
-        elif event.event_type == EventType.CKYC_VERIFIED:
+        elif event.event_type == Type.CKYC_VERIFIED:
             self.on_ckyc_verified(event)
-        elif event.event_type == EventType.KYC_VIDEO_VERIFIED.value:
+        elif event.event_type == Type.KYC_VIDEO_VERIFIED.value:
             self.on_video_kyc_done(event)
 
-    def on_user_added(self, event: Event) -> None:
+    def on_user_added(self, event: Message) -> None:
         """Process a new user: verify PAN, Aadhaar, run AML screening.
 
         Args:
@@ -259,7 +259,7 @@ class ComplianceHandler(StatefulService):
 
         if consent_id and not self.check_consent(user, consent_id):
             self.emit(
-                EventType.KYC_REJECTED,
+                Type.KYC_REJECTED,
                 {
                     "user": user,
                     "kyc_status": "rejected",
@@ -271,7 +271,7 @@ class ComplianceHandler(StatefulService):
 
         if not re.match(PAN_PATTERN, pan):
             self.emit(
-                EventType.KYC_REJECTED,
+                Type.KYC_REJECTED,
                 {
                     "user": user,
                     "kyc_status": "rejected",
@@ -285,7 +285,7 @@ class ComplianceHandler(StatefulService):
 
         if not verify_aadhaar_checksum(aadhaar):
             self.emit(
-                EventType.KYC_REJECTED,
+                Type.KYC_REJECTED,
                 {
                     "user": user,
                     "kyc_status": "rejected",
@@ -310,7 +310,7 @@ class ComplianceHandler(StatefulService):
                 pan_verdict = "verified"
             elif result.verdict in (_V.REJECTED, _V.NOT_FOUND, _V.MISMATCH):
                 self.emit(
-                    EventType.KYC_REJECTED,
+                    Type.KYC_REJECTED,
                     {
                         "user": user,
                         "kyc_status": "rejected",
@@ -341,7 +341,7 @@ class ComplianceHandler(StatefulService):
             self.repo.save({"kyc_records": self.__kyc_records})
 
         self.emit(
-            EventType.KYC_VERIFIED,
+            Type.KYC_VERIFIED,
             {
                 "user": user,
                 "kyc_status": pan_verdict,
@@ -353,7 +353,7 @@ class ComplianceHandler(StatefulService):
         )
 
         self.emit(
-            EventType.CKYC_VERIFY,
+            Type.CKYC_VERIFY,
             {
                 "user": user,
                 "ckyc_number": event.payload.get("ckyc_number", ""),
@@ -368,7 +368,7 @@ class ComplianceHandler(StatefulService):
         self.apply_aml_result(user, risk_score, event)
 
         self.emit(
-            EventType.KYC_VIDEO_INITIATED.value,
+            Type.KYC_VIDEO_INITIATED.value,
             {
                 "user": user,
                 "video_kyc_status": "pending",
@@ -376,7 +376,7 @@ class ComplianceHandler(StatefulService):
             correlation_id=event.correlation_id,
         )
 
-    def apply_aml_result(self, user: str, risk_score: int, event: Event) -> None:
+    def apply_aml_result(self, user: str, risk_score: int, event: Message) -> None:
         """Apply AML screening result and emit appropriate events.
 
         Args:
@@ -387,7 +387,7 @@ class ComplianceHandler(StatefulService):
         """
         if risk_score >= AML_MEDIUM_THRESHOLD:
             self.emit(
-                EventType.AML_FROZEN,
+                Type.AML_FROZEN,
                 {
                     "user": user,
                     "aml_status": "frozen",
@@ -403,7 +403,7 @@ class ComplianceHandler(StatefulService):
                     self.repo.save({"kyc_records": self.__kyc_records})
         elif risk_score >= AML_LOW_THRESHOLD:
             self.emit(
-                EventType.AML_FLAGGED.value,
+                Type.AML_FLAGGED.value,
                 {
                     "user": user,
                     "aml_status": "flagged",
@@ -418,7 +418,7 @@ class ComplianceHandler(StatefulService):
                     self.__kyc_records[user]["aml_risk_score"] = risk_score
                     self.repo.save({"kyc_records": self.__kyc_records})
             self.emit(
-                EventType.AML_CLEARED,
+                Type.AML_CLEARED,
                 {
                     "user": user,
                     "aml_status": "flagged_review",
@@ -427,7 +427,7 @@ class ComplianceHandler(StatefulService):
             )
         else:
             self.emit(
-                EventType.AML_CLEARED,
+                Type.AML_CLEARED,
                 {
                     "user": user,
                     "aml_status": "clear",
@@ -439,7 +439,7 @@ class ComplianceHandler(StatefulService):
                     self.__kyc_records[user]["aml_status"] = "clear"
                     self.repo.save({"kyc_records": self.__kyc_records})
 
-    def on_ckyc_verified(self, event: Event) -> None:
+    def on_ckyc_verified(self, event: Message) -> None:
         """Update CKYC verification status.
 
         Args:
@@ -453,7 +453,7 @@ class ComplianceHandler(StatefulService):
                 self.__kyc_records[user]["ckyc_status"] = status
                 self.repo.save({"kyc_records": self.__kyc_records})
 
-    def on_video_kyc_done(self, event: Event) -> None:
+    def on_video_kyc_done(self, event: Message) -> None:
         """Update video KYC status.
 
         Args:

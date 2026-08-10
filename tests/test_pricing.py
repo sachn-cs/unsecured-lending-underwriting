@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from underwrite.events import Event, EventType
 from underwrite.local import LocalBus
+from underwrite.message import Message, Type
 from underwrite.services.pricing.handler import (
     HOME_LOAN_CAP,
     MICRO_LOAN_CAP,
@@ -24,7 +24,7 @@ def svc(**kwargs) -> PricingHandler:
 
 def request(svc, bus, **kw) -> None:
     bus.start()
-    svc.handle(Event(event_type="pricing.request", source="test", payload=kw))
+    svc.handle(Message(event_type="pricing.request", source="test", payload=kw))
 
 
 class TestRateCap:
@@ -55,7 +55,7 @@ class TestPricing:
     def test_computes_base_rate_for_low_risk(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.PRICING_COMPUTED, lambda e: received.append(e))
+        bus.subscribe(Type.PRICING_COMPUTED, lambda e: received.append(e))
         request(svc(bus=bus), bus, borrower="alice", principal=10000, default_probability=0.02)
         assert received[0].payload["interest_rate"] == 0.09
         assert received[0].payload["origination_fee"] == 100.0
@@ -63,7 +63,7 @@ class TestPricing:
     def test_higher_risk_higher_rate(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.PRICING_COMPUTED, lambda e: received.append(e))
+        bus.subscribe(Type.PRICING_COMPUTED, lambda e: received.append(e))
         request(svc(bus=bus), bus, borrower="bob", principal=10000, default_probability=0.20)
         assert received[0].payload["interest_rate"] > 0.09
 
@@ -73,7 +73,7 @@ class TestPricing:
 
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.PRICING_COMPUTED, lambda e: received.append(e))
+        bus.subscribe(Type.PRICING_COMPUTED, lambda e: received.append(e))
         with pytest.raises(ProtocolError, match="exceeds personal cap"):
             request(
                 svc(bus=bus),
@@ -91,7 +91,7 @@ class TestPricing:
 
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.PRICING_COMPUTED, lambda e: received.append(e))
+        bus.subscribe(Type.PRICING_COMPUTED, lambda e: received.append(e))
         with pytest.raises(ProtocolError, match="exceeds personal cap"):
             request(
                 svc(bus=bus),
@@ -106,30 +106,30 @@ class TestPricing:
     def test_origination_fee_is_one_percent_by_default(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.PRICING_COMPUTED, lambda e: received.append(e))
+        bus.subscribe(Type.PRICING_COMPUTED, lambda e: received.append(e))
         request(svc(bus=bus), bus, borrower="carol", principal=50000, default_probability=0.05)
         assert received[0].payload["origination_fee"] == 500.0
 
     def test_ignores_unrelated_events(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.PRICING_COMPUTED, lambda e: received.append(e))
+        bus.subscribe(Type.PRICING_COMPUTED, lambda e: received.append(e))
         svc_inst = svc(bus=bus)
         bus.start()
-        svc_inst.handle(Event(event_type="seed.added", source="test", payload={}))
+        svc_inst.handle(Message(event_type="seed.added", source="test", payload={}))
         assert len(received) == 0
 
     def test_missing_dp_defaults(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.PRICING_COMPUTED, lambda e: received.append(e))
+        bus.subscribe(Type.PRICING_COMPUTED, lambda e: received.append(e))
         request(svc(bus=bus), bus, borrower="dave", principal=10000)
         assert received[0].payload["risk_premium"] == 0.01
 
     def test_emi_computed_in_result(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.PRICING_COMPUTED, lambda e: received.append(e))
+        bus.subscribe(Type.PRICING_COMPUTED, lambda e: received.append(e))
         request(svc(bus=bus), bus, borrower="emi_test", principal=100000, default_probability=0.02, tenure_months=12)
         assert received[0].payload["emi_amount"] > 0
         assert received[0].payload["tenure_months"] == 12
@@ -139,7 +139,7 @@ class TestPricing:
     def test_apr_included_in_result(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.PRICING_COMPUTED, lambda e: received.append(e))
+        bus.subscribe(Type.PRICING_COMPUTED, lambda e: received.append(e))
         request(svc(bus=bus), bus, borrower="apr_test", principal=100000, default_probability=0.02, tenure_months=12)
         assert received[0].payload["annual_percentage_rate"] > 0
         assert received[0].payload["annual_percentage_rate"] >= received[0].payload["interest_rate"]
@@ -147,7 +147,7 @@ class TestPricing:
     def test_gst_on_fees_included(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.PRICING_COMPUTED, lambda e: received.append(e))
+        bus.subscribe(Type.PRICING_COMPUTED, lambda e: received.append(e))
         request(svc(bus=bus), bus, borrower="gst_test", principal=100000, default_probability=0.02)
         assert received[0].payload["gst_on_fees"] > 0
         assert received[0].payload["total_upfront_fees"] > 0
@@ -159,7 +159,7 @@ class TestPricing:
         svc_inst = svc(bus=bus)
         bus.start()
         svc_inst.handle(
-            Event(
+            Message(
                 event_type="pricing.penal_interest",
                 source="test",
                 payload={
@@ -180,7 +180,7 @@ class TestPricing:
         svc_inst = svc(bus=bus)
         bus.start()
         svc_inst.handle(
-            Event(
+            Message(
                 event_type="pricing.foreclosure",
                 source="test",
                 payload={
@@ -197,7 +197,7 @@ class TestPricing:
     def test_credit_score_and_income_included(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.PRICING_COMPUTED, lambda e: received.append(e))
+        bus.subscribe(Type.PRICING_COMPUTED, lambda e: received.append(e))
         request(
             svc(bus=bus),
             bus,
@@ -215,7 +215,7 @@ class TestPricing:
     def test_home_loan_lower_origination_fee(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.PRICING_COMPUTED, lambda e: received.append(e))
+        bus.subscribe(Type.PRICING_COMPUTED, lambda e: received.append(e))
         request(svc(bus=bus), bus, borrower="home_buyer", principal=5000000, default_probability=0.02, loan_type="home")
         assert received[0].payload["origination_fee_pct"] == 0.005
 
@@ -225,7 +225,7 @@ class TestPricing:
 
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.PRICING_COMPUTED, lambda e: received.append(e))
+        bus.subscribe(Type.PRICING_COMPUTED, lambda e: received.append(e))
         with pytest.raises(ProtocolError, match="exceeds personal cap"):
             request(
                 svc(bus=bus),

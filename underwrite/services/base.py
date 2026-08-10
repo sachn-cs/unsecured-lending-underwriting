@@ -36,10 +36,10 @@ from underwrite.correlation import (
 from underwrite.correlation import (
     get_log_correlation_id as get_log_correlation_id,
 )
-from underwrite.events import Event
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
+from underwrite.message import Message
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
 from underwrite.secrets import Manager
@@ -103,16 +103,16 @@ class Emitter:
         event_type: str,
         payload: dict[str, Any],
         correlation_id: str,
-    ) -> Event:
+    ) -> Message:
         """Create, sign, authorise, publish and instrument an event.
 
         Args:
             event_type: The event type string.
-            payload: Event payload dictionary.
+            payload: Message payload dictionary.
             correlation_id: Optional correlation ID for tracing.
 
         Returns:
-            The signed Event that was published.
+            The signed Message that was published.
         """
         if self.__authz:
             self.__authz.assert_publish(self.__service_id, event_type)
@@ -120,7 +120,7 @@ class Emitter:
         parent_span_id: str = ""
         if self.__tracer:
             trace_id = correlation_id or ""
-        event: Event = Event(
+        event: Message = Message(
             event_type=event_type,
             source=self.__service_id,
             source_key=self.__identity.public_key,
@@ -129,7 +129,7 @@ class Emitter:
             trace_id=trace_id,
             parent_span_id=parent_span_id,
         )
-        signed: Event = Event(
+        signed: Message = Message(
             event_id=event.event_id,
             event_type=event.event_type,
             source=event.source,
@@ -181,7 +181,7 @@ class Core(ABC):
         Args:
             service_id: Unique identifier for this service instance.
             identity: Ed25519 identity for signing events. Created if omitted.
-            bus: Event bus for pub/sub. Uses LocalBus if omitted.
+            bus: Message bus for pub/sub. Uses LocalBus if omitted.
             store: State persistence backend. Uses MemoryStore if omitted.
             metrics: Optional metrics collector for instrumentation.
             health: Optional health registry for liveness checks.
@@ -357,16 +357,16 @@ class Core(ABC):
         event_type: str,
         payload: dict[str, Any],
         correlation_id: str = "",
-    ) -> Event:
+    ) -> Message:
         """Create, sign, publish and return a new event.
 
         Args:
             event_type: The event type string.
-            payload: Event payload dictionary.
+            payload: Message payload dictionary.
             correlation_id: Optional correlation ID for tracing.
 
         Returns:
-            The signed Event that was published.
+            The signed Message that was published.
         """
         return self.__emitter.emit(event_type, payload, correlation_id)
 
@@ -381,7 +381,7 @@ class Core(ABC):
         """
         return self.__identity.sign(payload)
 
-    def __dispatch(self, event: Event) -> None:
+    def __dispatch(self, event: Message) -> None:
         """Internal: dispatch an event to the handler with authz and idempotency."""
         if not self.__running:
             return
@@ -428,7 +428,7 @@ class Core(ABC):
         else:
             self.__handle_event(event)
 
-    def __handle_event(self, event: Event) -> None:
+    def __handle_event(self, event: Message) -> None:
         """Internal: process a single event with tracing and metrics."""
         start = time.perf_counter()
         context = (
@@ -491,11 +491,11 @@ class Core(ABC):
                     )
 
     @abstractmethod
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Process an incoming event. Override in subclasses.
 
         Args:
-            event: The incoming Event to process.
+            event: The incoming Message to process.
         """
 
     def health_check(self) -> dict[str, Any]:

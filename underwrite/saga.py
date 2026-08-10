@@ -20,16 +20,16 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Protocol
 
-from underwrite.events import Event
 from underwrite.exceptions import ProtocolError
 from underwrite.logger import logger
+from underwrite.message import Message
 from underwrite.store import MemoryStore, Store
 
 
 class Emitter(Protocol):
     """Protocol for saga event emitters (typically a Core)."""
 
-    def emit(self, event_type: str, payload: dict[str, Any], correlation_id: str = "") -> Event: ...
+    def emit(self, event_type: str, payload: dict[str, Any], correlation_id: str = "") -> Message: ...
 
 
 @dataclass(frozen=True, slots=True)

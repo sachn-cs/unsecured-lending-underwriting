@@ -9,25 +9,25 @@ import pytest
 from underwrite.async_bus import AsyncLocalBus
 from underwrite.authz import AccessControl
 from underwrite.bus import Queue
-from underwrite.events import MAX_PAYLOAD_SIZE, Event
 from underwrite.exceptions import ProtocolError
+from underwrite.message import MAX_PAYLOAD_SIZE, Message
 from underwrite.store import MemoryStore, Store
 
 
 class TestEventPayloadSizeLimit:
-    """Event payload size is capped at MAX_PAYLOAD_SIZE."""
+    """Message payload size is capped at MAX_PAYLOAD_SIZE."""
 
     def test_small_payload_accepted(self) -> None:
-        Event(event_type="test", payload={"key": "value"})
+        Message(event_type="test", payload={"key": "value"})
 
     def test_large_payload_rejected(self) -> None:
         big = {"data": "x" * (MAX_PAYLOAD_SIZE + 1)}
         with pytest.raises(ProtocolError, match="exceeds MAX_PAYLOAD_SIZE"):
-            Event(event_type="test", payload=big)
+            Message(event_type="test", payload=big)
 
     def test_payload_at_limit_accepted(self) -> None:
         size = MAX_PAYLOAD_SIZE - 100
-        Event(event_type="test", payload={"data": "x" * size})
+        Message(event_type="test", payload={"data": "x" * size})
 
 
 class TestMemoryStoreEviction:
@@ -74,7 +74,7 @@ class TestQueuePersistence:
         store: Store = MemoryStore()
         dlq = Queue(store=store, sync_interval=1)
 
-        event = Event(event_type="test", payload={"msg": "hello"})
+        event = Message(event_type="test", payload={"msg": "hello"})
         dlq.put(event, "test error", "svc1")
 
         dlq2 = Queue(store=store, sync_interval=1)
@@ -88,13 +88,13 @@ class TestQueuePersistence:
         dlq = Queue(store=store, sync_interval=5)
 
         for i in range(4):
-            e = Event(event_type=f"test.{i}", payload={"n": i})
+            e = Message(event_type=f"test.{i}", payload={"n": i})
             dlq.put(e, f"err{i}", "svc1")
 
         dlq2 = Queue(store=store, sync_interval=1)
         assert dlq2.count == 0  # not synced yet
 
-        e = Event(event_type="test.trigger", payload={"n": 5})
+        e = Message(event_type="test.trigger", payload={"n": 5})
         dlq.put(e, "trigger", "svc1")
 
         dlq3 = Queue(store=store, sync_interval=1)
@@ -106,7 +106,7 @@ class TestCryptoGuardrail:
 
     def test_invalid_signature_rejected(self) -> None:
         acl = AccessControl()
-        event = Event(
+        event = Message(
             event_type="test",
             source="unknown",
             signature="invalid",
@@ -130,7 +130,7 @@ class TestAsyncBusTimeout:
         await bus.subscribe("test.timeout", slow_handler)
         await bus.start()
 
-        event = Event(event_type="test.timeout")
+        event = Message(event_type="test.timeout")
         await bus.publish(event)
         import asyncio
 
@@ -155,7 +155,7 @@ class TestAsyncBusTimeout:
         await bus.subscribe("test.fast", fast_handler)
         await bus.start()
 
-        event = Event(event_type="test.fast")
+        event = Message(event_type="test.fast")
         await bus.publish(event)
         import asyncio
 
@@ -270,15 +270,15 @@ class TestGuard:
 
 
 class TestEventSlots:
-    """Event dataclass uses __slots__ for memory efficiency."""
+    """Message dataclass uses __slots__ for memory efficiency."""
 
     def test_slots_defined(self) -> None:
-        e = Event(event_type="test")
+        e = Message(event_type="test")
         assert not hasattr(e, "__dict__")
 
     def test_slots_contains_fields(self) -> None:
-        assert hasattr(Event, "__slots__")
-        slots = Event.__slots__
+        assert hasattr(Message, "__slots__")
+        slots = Message.__slots__
         assert "event_id" in slots
         assert "payload" in slots
         assert "trace_id" in slots

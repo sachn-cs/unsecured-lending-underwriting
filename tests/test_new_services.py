@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from underwrite.events import Event, EventType
 from underwrite.local import LocalBus
+from underwrite.message import Message, Type
 from underwrite.services.collection.handler import CollectionHandler
 from underwrite.services.disbursement.handler import DisbursementHandler
 from underwrite.services.document.handler import DocumentHandler
@@ -16,13 +16,13 @@ from underwrite.store import MemoryStore
 class TestUnderwriterService:
     def test_ignores_unrelated_event(self) -> None:
         svc = UnderwriterHandler(service_id="underwriter", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type="other", source="test", payload={}))
+        svc.handle(Message(event_type="other", source="test", payload={}))
 
     def test_rejects_high_default_probability(self) -> None:
         svc = UnderwriterHandler(service_id="underwriter", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
-                event_type=EventType.UNDERWRITE_REQUEST,
+            Message(
+                event_type=Type.UNDERWRITE_REQUEST,
                 source="test",
                 payload={
                     "borrower": "bob",
@@ -35,8 +35,8 @@ class TestUnderwriterService:
     def test_approves_low_risk_loan(self) -> None:
         svc = UnderwriterHandler(service_id="underwriter", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
-                event_type=EventType.UNDERWRITE_REQUEST,
+            Message(
+                event_type=Type.UNDERWRITE_REQUEST,
                 source="test",
                 payload={
                     "borrower": "alice",
@@ -50,13 +50,13 @@ class TestUnderwriterService:
 class TestPricingService:
     def test_ignores_unrelated_event(self) -> None:
         svc = PricingHandler(service_id="pricing", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type="other", source="test", payload={}))
+        svc.handle(Message(event_type="other", source="test", payload={}))
 
     def test_computes_pricing(self) -> None:
         svc = PricingHandler(service_id="pricing", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
-                event_type=EventType.PRICING_REQUEST,
+            Message(
+                event_type=Type.PRICING_REQUEST,
                 source="test",
                 payload={
                     "borrower": "alice",
@@ -70,13 +70,13 @@ class TestPricingService:
 class TestDocumentService:
     def test_ignores_unrelated_event(self) -> None:
         svc = DocumentHandler(service_id="document", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type="other", source="test", payload={}))
+        svc.handle(Message(event_type="other", source="test", payload={}))
 
     def test_generates_document_on_approval(self) -> None:
         svc = DocumentHandler(service_id="document", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
-                event_type=EventType.UNDERWRITER_APPROVED,
+            Message(
+                event_type=Type.UNDERWRITER_APPROVED,
                 source="test",
                 payload={"borrower": "alice", "principal": 10000.0},
             )
@@ -90,8 +90,8 @@ class TestDocumentService:
         svc = DocumentHandler(service_id="document", bus=LocalBus(), store=MemoryStore())
         for _ in range(3):
             svc.handle(
-                Event(
-                    event_type=EventType.UNDERWRITER_APPROVED,
+                Message(
+                    event_type=Type.UNDERWRITER_APPROVED,
                     source="test",
                     payload={"borrower": "bob", "principal": 5000.0},
                 )
@@ -102,13 +102,13 @@ class TestDocumentService:
 class TestDisbursementService:
     def test_ignores_unrelated_event(self) -> None:
         svc = DisbursementHandler(service_id="disbursement", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type="other", source="test", payload={}))
+        svc.handle(Message(event_type="other", source="test", payload={}))
 
     def test_records_disbursement(self) -> None:
         svc = DisbursementHandler(service_id="disbursement", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
-                event_type=EventType.DOCUMENT_GENERATED,
+            Message(
+                event_type=Type.DOCUMENT_GENERATED,
                 source="test",
                 payload={"borrower": "alice", "principal": 10000.0, "doc_id": "doc123"},
             )
@@ -122,13 +122,13 @@ class TestDisbursementService:
 class TestCollectionService:
     def test_ignores_unrelated_event(self) -> None:
         svc = CollectionHandler(service_id="collection", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type="other", source="test", payload={}))
+        svc.handle(Message(event_type="other", source="test", payload={}))
 
     def test_records_originated_loan(self) -> None:
         svc = CollectionHandler(service_id="collection", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
-                event_type=EventType.LOAN_ORIGINATED,
+            Message(
+                event_type=Type.LOAN_ORIGINATED,
                 source="test",
                 payload={
                     "borrower": "alice",
@@ -146,8 +146,8 @@ class TestCollectionService:
     def test_marks_loan_closed_on_full_repayment(self) -> None:
         svc = CollectionHandler(service_id="collection", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
-                event_type=EventType.LOAN_ORIGINATED,
+            Message(
+                event_type=Type.LOAN_ORIGINATED,
                 source="test",
                 payload={
                     "borrower": "bob",
@@ -157,8 +157,8 @@ class TestCollectionService:
             )
         )
         svc.handle(
-            Event(
-                event_type=EventType.REPAID,
+            Message(
+                event_type=Type.REPAID,
                 source="test",
                 payload={"user": "bob", "delta_earned": 1000.0},
             )
@@ -171,13 +171,13 @@ class TestCollectionService:
 class TestSettlementService:
     def test_ignores_unrelated_event(self) -> None:
         svc = SettlementHandler(service_id="settlement", bus=LocalBus(), store=MemoryStore())
-        svc.handle(Event(event_type="other", source="test", payload={}))
+        svc.handle(Message(event_type="other", source="test", payload={}))
 
     def test_records_settlement_on_default(self) -> None:
         svc = SettlementHandler(service_id="settlement", bus=LocalBus(), store=MemoryStore())
         svc.handle(
-            Event(
-                event_type=EventType.DEFAULT_OCCURRED,
+            Message(
+                event_type=Type.DEFAULT_OCCURRED,
                 source="test",
                 payload={"borrower": "alice", "principal": 10000.0},
             )
@@ -191,8 +191,8 @@ class TestSettlementService:
         svc = SettlementHandler(service_id="settlement", bus=LocalBus(), store=MemoryStore())
         for borrower in ["alice", "bob"]:
             svc.handle(
-                Event(
-                    event_type=EventType.DEFAULT_OCCURRED,
+                Message(
+                    event_type=Type.DEFAULT_OCCURRED,
                     source="test",
                     payload={"borrower": borrower, "principal": 5000.0},
                 )

@@ -12,10 +12,10 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector, SystemClock
 from underwrite.saga import Orchestrator
 from underwrite.services.base import Core
@@ -72,11 +72,11 @@ class CommunicationHandler(Core):
         self.__clock: SystemClock = SystemClock()
         self.__id_generator: IdGenerator = IdGenerator()
         self.handlers: dict[str, Any] = {
-            EventType.COMMUNICATION_SEND: self.__on_communication_send,
-            EventType.STATEMENT_GENERATED: self.__on_statement_generated,
+            Type.COMMUNICATION_SEND: self.__on_communication_send,
+            Type.STATEMENT_GENERATED: self.__on_statement_generated,
         }
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Dispatch an outbound communication.
 
         Args:
@@ -88,7 +88,7 @@ class CommunicationHandler(Core):
         if handler is not None:
             handler(event)
 
-    def __on_communication_send(self, event: Event) -> None:
+    def __on_communication_send(self, event: Message) -> None:
         """Send a communication via the configured channel.
 
         Args:
@@ -113,7 +113,7 @@ class CommunicationHandler(Core):
         self.store.set(f"message:{message_id}", {**msg, "delivery_status": delivery_status})
         if delivery_status == "sent":
             self.emit(
-                EventType.COMMUNICATION_SENT,
+                Type.COMMUNICATION_SENT,
                 {
                     "message_id": message_id,
                     "recipient": recipient,
@@ -147,7 +147,7 @@ class CommunicationHandler(Core):
         """
         return "queued"
 
-    def __on_statement_generated(self, event: Event) -> None:
+    def __on_statement_generated(self, event: Message) -> None:
         """Record that a statement notification was sent.
 
         Args:

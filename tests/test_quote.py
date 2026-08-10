@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import pytest
 
-from underwrite.events import Event, EventType
 from underwrite.local import LocalBus
+from underwrite.message import Message, Type
 from underwrite.services.quote.handler import QuoteHandler
 from underwrite.store import MemoryStore
 
@@ -27,14 +27,14 @@ def emit_quote(svc, **overrides) -> None:
         "max_delegation_rate": 0.05,
     }
     payload.update(overrides)
-    svc.handle(Event(event_type="quote", source="test", payload=payload))
+    svc.handle(Message(event_type="quote", source="test", payload=payload))
 
 
 class TestProtocolPremium:
     def test_calculates_protocol_premium(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.QUOTE_CALCULATED, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.QUOTE_CALCULATED, lambda e: received.append(e))
         svc = quote(bus=bus)
         bus.start()
         emit_quote(svc, principal=10000, term=12, protocol_rate=0.10)
@@ -43,8 +43,8 @@ class TestProtocolPremium:
 
     def test_zero_principal_zero_premium(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.QUOTE_CALCULATED, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.QUOTE_CALCULATED, lambda e: received.append(e))
         svc = quote(bus=bus)
         bus.start()
         emit_quote(svc, principal=0, term=12, protocol_rate=0.10)
@@ -52,8 +52,8 @@ class TestProtocolPremium:
 
     def test_zero_term_rejected(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.QUOTE_CALCULATED, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.QUOTE_CALCULATED, lambda e: received.append(e))
         svc = quote(bus=bus)
         bus.start()
         from underwrite.exceptions import ProtocolError
@@ -64,8 +64,8 @@ class TestProtocolPremium:
 
     def test_zero_rate_zero_premium(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.QUOTE_CALCULATED, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.QUOTE_CALCULATED, lambda e: received.append(e))
         svc = quote(bus=bus)
         bus.start()
         emit_quote(svc, protocol_rate=0.0)
@@ -73,8 +73,8 @@ class TestProtocolPremium:
 
     def test_large_principal_large_premium(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.QUOTE_CALCULATED, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.QUOTE_CALCULATED, lambda e: received.append(e))
         svc = quote(bus=bus)
         bus.start()
         emit_quote(svc, principal=1_000_000, term=12, protocol_rate=0.10)
@@ -84,8 +84,8 @@ class TestProtocolPremium:
 class TestBreakEvenRate:
     def test_normal_dp_gives_positive_break_even(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.QUOTE_CALCULATED, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.QUOTE_CALCULATED, lambda e: received.append(e))
         svc = quote(bus=bus)
         bus.start()
         emit_quote(svc, default_probability=0.05, term=6)
@@ -93,8 +93,8 @@ class TestBreakEvenRate:
 
     def test_zero_dp_means_zero_break_even(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.QUOTE_CALCULATED, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.QUOTE_CALCULATED, lambda e: received.append(e))
         svc = quote(bus=bus)
         bus.start()
         emit_quote(svc, default_probability=0.0, term=12)
@@ -102,8 +102,8 @@ class TestBreakEvenRate:
 
     def test_dp_of_one_means_zero_break_even(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.QUOTE_CALCULATED, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.QUOTE_CALCULATED, lambda e: received.append(e))
         svc = quote(bus=bus)
         bus.start()
         emit_quote(svc, default_probability=1.0, term=12)
@@ -111,8 +111,8 @@ class TestBreakEvenRate:
 
     def test_high_dp_capped_at_one_million(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.QUOTE_CALCULATED, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.QUOTE_CALCULATED, lambda e: received.append(e))
         svc = quote(bus=bus)
         bus.start()
         emit_quote(svc, default_probability=0.9999999, term=1)
@@ -120,8 +120,8 @@ class TestBreakEvenRate:
 
     def test_positive_dp_short_term(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.QUOTE_CALCULATED, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.QUOTE_CALCULATED, lambda e: received.append(e))
         svc = quote(bus=bus)
         bus.start()
         emit_quote(svc, default_probability=0.50, term=1)
@@ -132,8 +132,8 @@ class TestBreakEvenRate:
 class TestFieldPassthrough:
     def test_all_input_fields_in_output(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.QUOTE_CALCULATED, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.QUOTE_CALCULATED, lambda e: received.append(e))
         svc = quote(bus=bus)
         bus.start()
         emit_quote(
@@ -155,11 +155,11 @@ class TestFieldPassthrough:
 
     def test_defaults_when_fields_missing(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.QUOTE_CALCULATED, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.QUOTE_CALCULATED, lambda e: received.append(e))
         svc = quote(bus=bus)
         bus.start()
-        svc.handle(Event(event_type="quote", source="test", payload={"borrower": "grace"}))
+        svc.handle(Message(event_type="quote", source="test", payload={"borrower": "grace"}))
         p = received[0].payload
         assert p["principal"] == 0.0
         assert p["term"] == 1.0
@@ -171,22 +171,22 @@ class TestFieldPassthrough:
 class TestEdgeCases:
     def test_ignores_non_quote_events(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.QUOTE_CALCULATED, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.QUOTE_CALCULATED, lambda e: received.append(e))
         svc = quote(bus=bus)
         bus.start()
-        svc.handle(Event(event_type="seed.added", source="test", payload={}))
-        svc.handle(Event(event_type="loan.originated", source="test", payload={}))
+        svc.handle(Message(event_type="seed.added", source="test", payload={}))
+        svc.handle(Message(event_type="loan.originated", source="test", payload={}))
         assert len(received) == 0
 
     def test_string_values_converted(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.QUOTE_CALCULATED, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.QUOTE_CALCULATED, lambda e: received.append(e))
         svc = quote(bus=bus)
         bus.start()
         svc.handle(
-            Event(
+            Message(
                 event_type="quote",
                 source="test",
                 payload={

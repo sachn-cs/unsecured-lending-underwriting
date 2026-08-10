@@ -10,10 +10,10 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
 from underwrite.services.base import StatefulService
@@ -59,7 +59,7 @@ class CreditBureauHandler(StatefulService):
 
         Args:
             service_id: Unique identifier for this service instance.
-            bus: Event bus for pub/sub.
+            bus: Message bus for pub/sub.
             store: State persistence backend.
             cibil_api_key: CIBIL API key (enables HttpCreditBureauClient).
             allow_mock: Permit MockCreditBureauClient when no API key.
@@ -184,19 +184,19 @@ class CreditBureauHandler(StatefulService):
             "no credit bureau credentials configured; set cibil_api_key or pass allow_mock=True for tests only"
         )
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Process credit bureau and CKYC verification events.
 
         Args:
             event: The incoming domain event.
 
         """
-        if event.event_type == EventType.CREDIT_BUREAU_CHECK:
+        if event.event_type == Type.CREDIT_BUREAU_CHECK:
             self.check_bureau(event)
-        elif event.event_type == EventType.CKYC_VERIFY:
+        elif event.event_type == Type.CKYC_VERIFY:
             self.verify_ckyc(event)
 
-    def check_bureau(self, event: Event) -> None:
+    def check_bureau(self, event: Message) -> None:
         """Fetch a credit report and emit the result.
 
         When a ``kyc_providers`` mapping is provided, the bureau
@@ -230,7 +230,7 @@ class CreditBureauHandler(StatefulService):
             except Exception as exc:
                 logger.error("credit_bureau.check failed for {}: {}", pan, exc)
                 self.emit(
-                    EventType.CREDIT_BUREAU_CHECK_FAILED,
+                    Type.CREDIT_BUREAU_CHECK_FAILED,
                     {
                         "pan": pan,
                         "bureau": bureau,
@@ -242,7 +242,7 @@ class CreditBureauHandler(StatefulService):
 
             if not result.ok:
                 self.emit(
-                    EventType.CREDIT_BUREAU_CHECK_FAILED,
+                    Type.CREDIT_BUREAU_CHECK_FAILED,
                     {
                         "pan": pan,
                         "bureau": bureau,
@@ -271,7 +271,7 @@ class CreditBureauHandler(StatefulService):
                 self.reports[pan] = report
                 self.sync()
             self.emit(
-                EventType.CREDIT_BUREAU_CHECKED,
+                Type.CREDIT_BUREAU_CHECKED,
                 {
                     "pan": pan,
                     "bureau": bureau,
@@ -288,7 +288,7 @@ class CreditBureauHandler(StatefulService):
         except Exception as exc:
             logger.error("credit_bureau.check failed for {}: {}", pan, exc)
             self.emit(
-                EventType.CREDIT_BUREAU_CHECK_FAILED,
+                Type.CREDIT_BUREAU_CHECK_FAILED,
                 {
                     "pan": pan,
                     "bureau": bureau,
@@ -301,7 +301,7 @@ class CreditBureauHandler(StatefulService):
             self.reports[pan] = report
             self.sync()
         self.emit(
-            EventType.CREDIT_BUREAU_CHECKED,
+            Type.CREDIT_BUREAU_CHECKED,
             {
                 "pan": pan,
                 "bureau": bureau,
@@ -315,7 +315,7 @@ class CreditBureauHandler(StatefulService):
             correlation_id=event.correlation_id,
         )
 
-    def verify_ckyc(self, event: Event) -> None:
+    def verify_ckyc(self, event: Message) -> None:
         """Verify CKYC identity and emit the result.
 
         Args:
@@ -332,7 +332,7 @@ class CreditBureauHandler(StatefulService):
         except Exception as exc:
             logger.error("ckyc.verify failed for {}: {}", ckyc_number, exc)
             self.emit(
-                EventType.CKYC_REJECTED,
+                Type.CKYC_REJECTED,
                 {
                     "ckyc_number": ckyc_number,
                     "error": str(exc),
@@ -354,7 +354,7 @@ class CreditBureauHandler(StatefulService):
             }
             self.sync()
         self.emit(
-            EventType.CKYC_VERIFIED,
+            Type.CKYC_VERIFIED,
             {
                 "ckyc_number": ckyc_number,
                 "name": response.name,

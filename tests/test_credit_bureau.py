@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from underwrite.events import Event, EventType
 from underwrite.local import LocalBus
+from underwrite.message import Message, Type
 from underwrite.services.credit_bureau.client import (
     CkycResponse,
     CreditReport,
@@ -58,7 +58,7 @@ class TestCreditBureauCheck:
     def test_check_bureau_emits_checked(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.CREDIT_BUREAU_CHECKED, lambda e: received.append(e))
+        bus.subscribe(Type.CREDIT_BUREAU_CHECKED, lambda e: received.append(e))
         s = svc(bus=bus)
         s.client = MockCreditBureauClient()
         s.client.add_report(
@@ -66,8 +66,8 @@ class TestCreditBureauCheck:
         )
         bus.start()
         s.handle(
-            Event(
-                event_type=EventType.CREDIT_BUREAU_CHECK,
+            Message(
+                event_type=Type.CREDIT_BUREAU_CHECK,
                 source="test",
                 payload={"pan": "ABCDE1234F", "bureau": "cibil"},
             )
@@ -81,23 +81,21 @@ class TestCreditBureauCheck:
         bus = LocalBus()
         s = svc(bus=bus)
         received: list = []
-        bus.subscribe(EventType.CREDIT_BUREAU_CHECKED, lambda e: received.append(e))
+        bus.subscribe(Type.CREDIT_BUREAU_CHECKED, lambda e: received.append(e))
         bus.start()
-        s.handle(Event(event_type=EventType.CREDIT_BUREAU_CHECK, source="test", payload={"bureau": "cibil"}))
+        s.handle(Message(event_type=Type.CREDIT_BUREAU_CHECK, source="test", payload={"bureau": "cibil"}))
         assert len(received) == 0
 
     def test_check_bureau_failure_emits_failed(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.CREDIT_BUREAU_CHECK_FAILED, lambda e: received.append(e))
+        bus.subscribe(Type.CREDIT_BUREAU_CHECK_FAILED, lambda e: received.append(e))
         s = svc(bus=bus)
         mock = MockCreditBureauClient()
         s.client = mock
         bus.start()
         s.handle(
-            Event(
-                event_type=EventType.CREDIT_BUREAU_CHECK, source="test", payload={"pan": "NOTFOUND1", "bureau": "cibil"}
-            )
+            Message(event_type=Type.CREDIT_BUREAU_CHECK, source="test", payload={"pan": "NOTFOUND1", "bureau": "cibil"})
         )
         assert len(received) == 1
         assert "NOTFOUND1" in received[0].payload["error"]
@@ -109,8 +107,8 @@ class TestCreditBureauCheck:
             "ABCDE1234F", CreditReport(bureau="cibil", pan="ABCDE1234F", name="Test", dob="1990-06-15", score=720)
         )
         s.handle(
-            Event(
-                event_type=EventType.CREDIT_BUREAU_CHECK,
+            Message(
+                event_type=Type.CREDIT_BUREAU_CHECK,
                 source="test",
                 payload={"pan": "ABCDE1234F", "bureau": "cibil"},
             )
@@ -130,12 +128,10 @@ class TestCreditBureauCheck:
         s.client.add_report("PAN1", CreditReport(bureau="cibil", pan="PAN1", name="A", dob="1990-01-01", score=750))
         s.client.add_report("PAN2", CreditReport(bureau="experian", pan="PAN2", name="B", dob="1991-02-02", score=680))
         s.handle(
-            Event(event_type=EventType.CREDIT_BUREAU_CHECK, source="test", payload={"pan": "PAN1", "bureau": "cibil"})
+            Message(event_type=Type.CREDIT_BUREAU_CHECK, source="test", payload={"pan": "PAN1", "bureau": "cibil"})
         )
         s.handle(
-            Event(
-                event_type=EventType.CREDIT_BUREAU_CHECK, source="test", payload={"pan": "PAN2", "bureau": "experian"}
-            )
+            Message(event_type=Type.CREDIT_BUREAU_CHECK, source="test", payload={"pan": "PAN2", "bureau": "experian"})
         )
         r1 = s.get_report("PAN1")
         r2 = s.get_report("PAN2")
@@ -148,7 +144,7 @@ class TestCkycVerification:
     def test_verify_ckyc_emits_verified(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.CKYC_VERIFIED, lambda e: received.append(e))
+        bus.subscribe(Type.CKYC_VERIFIED, lambda e: received.append(e))
         s = svc(bus=bus)
         mock = MockCreditBureauClient()
         s.client = mock
@@ -167,8 +163,8 @@ class TestCkycVerification:
         )
         bus.start()
         s.handle(
-            Event(
-                event_type=EventType.CKYC_VERIFY,
+            Message(
+                event_type=Type.CKYC_VERIFY,
                 source="test",
                 payload={"ckyc_number": "CKYC1234567890", "aadhaar": "1234"},
             )
@@ -179,24 +175,22 @@ class TestCkycVerification:
     def test_verify_ckyc_missing_fields_ignored(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.CKYC_VERIFIED, lambda e: received.append(e))
+        bus.subscribe(Type.CKYC_VERIFIED, lambda e: received.append(e))
         s = svc(bus=bus)
         bus.start()
-        s.handle(Event(event_type=EventType.CKYC_VERIFY, source="test", payload={"ckyc_number": "CKYC1234567890"}))
-        s.handle(Event(event_type=EventType.CKYC_VERIFY, source="test", payload={"aadhaar": "1234"}))
+        s.handle(Message(event_type=Type.CKYC_VERIFY, source="test", payload={"ckyc_number": "CKYC1234567890"}))
+        s.handle(Message(event_type=Type.CKYC_VERIFY, source="test", payload={"aadhaar": "1234"}))
         assert len(received) == 0
 
     def test_verify_ckyc_failure_emits_rejected(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.CKYC_REJECTED, lambda e: received.append(e))
+        bus.subscribe(Type.CKYC_REJECTED, lambda e: received.append(e))
         s = svc(bus=bus)
         s.client = MockCreditBureauClient()
         bus.start()
         s.handle(
-            Event(
-                event_type=EventType.CKYC_VERIFY, source="test", payload={"ckyc_number": "UNKNOWN", "aadhaar": "0000"}
-            )
+            Message(event_type=Type.CKYC_VERIFY, source="test", payload={"ckyc_number": "UNKNOWN", "aadhaar": "0000"})
         )
         assert len(received) == 1
         assert "UNKNOWN" in received[0].payload["error"]
@@ -219,8 +213,8 @@ class TestCkycVerification:
             ),
         )
         s.handle(
-            Event(
-                event_type=EventType.CKYC_VERIFY,
+            Message(
+                event_type=Type.CKYC_VERIFY,
                 source="test",
                 payload={"ckyc_number": "CKYC9999999999", "aadhaar": "6789"},
             )
@@ -297,15 +291,15 @@ class TestCibilProviderIntegration:
     def test_check_bureau_populates_credit_report_fields(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.CREDIT_BUREAU_CHECKED, lambda e: received.append(e))
+        bus.subscribe(Type.CREDIT_BUREAU_CHECKED, lambda e: received.append(e))
         provider = CibilProviderStub()
         s = CreditBureauHandler(
             service_id="credit_bureau", bus=bus, kyc_providers={"cibil": provider}, allow_mock=True, store=MemoryStore()
         )
         bus.start()
         s.handle(
-            Event(
-                event_type=EventType.CREDIT_BUREAU_CHECK,
+            Message(
+                event_type=Type.CREDIT_BUREAU_CHECK,
                 source="test",
                 payload={"pan": "ABCDE1234F", "bureau": "cibil", "consumer_id": "consumer-1"},
             )
@@ -328,8 +322,8 @@ class TestCibilProviderIntegration:
             allow_mock=True,
         )
         s.handle(
-            Event(
-                event_type=EventType.CREDIT_BUREAU_CHECK,
+            Message(
+                event_type=Type.CREDIT_BUREAU_CHECK,
                 source="test",
                 payload={"pan": "ABCDE1234F", "bureau": "cibil", "consumer_id": "consumer-1"},
             )
@@ -354,7 +348,7 @@ class TestHealthCheck:
         s.client = MockCreditBureauClient()
         s.client.add_report("PAN1", CreditReport(bureau="cibil", pan="PAN1", name="A", dob="1990-01-01", score=750))
         s.handle(
-            Event(event_type=EventType.CREDIT_BUREAU_CHECK, source="test", payload={"pan": "PAN1", "bureau": "cibil"})
+            Message(event_type=Type.CREDIT_BUREAU_CHECK, source="test", payload={"pan": "PAN1", "bureau": "cibil"})
         )
         health = s.health_check()
         assert health["reports_cached"] == 1

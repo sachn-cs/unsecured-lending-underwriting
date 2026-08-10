@@ -24,10 +24,10 @@ from typing import Any
 from underwrite.amortization import AmortizationSchedule, generate_schedule
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector, SystemClock
 from underwrite.saga import Orchestrator
 from underwrite.services.base import Core
@@ -131,16 +131,16 @@ class KfsHandler(Core):
         self.__clock: SystemClock = SystemClock()
         self.__cooling_off_days: int = kwargs.get("cooling_off_days", DEFAULT_COOLING_OFF_DAYS)
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Generate a KFS document on request.
 
         Args:
             event: The incoming domain event.
         """
-        if event.event_type == EventType.KFS_GENERATE:
+        if event.event_type == Type.KFS_GENERATE:
             self.__on_kfs_generate(event)
 
-    def __on_kfs_generate(self, event: Event) -> None:
+    def __on_kfs_generate(self, event: Message) -> None:
         """Handle a KFS generation request.
 
         Args:
@@ -179,7 +179,7 @@ class KfsHandler(Core):
 
         kfs = self.__build_kfs(loan_id, borrower, principal, annual_rate, tenure_months, sched, fees, sd)
         self.emit(
-            EventType.KFS_GENERATED,
+            Type.KFS_GENERATED,
             kfs,
             correlation_id=event.correlation_id,
         )

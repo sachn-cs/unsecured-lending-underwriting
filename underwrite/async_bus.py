@@ -17,7 +17,7 @@ import uuid
 from collections.abc import Callable
 from typing import Any
 
-from underwrite.bus import AsyncEventBus, Event, Guard, Queue
+from underwrite.bus import AsyncEventBus, Guard, Message, Queue
 from underwrite.logger import logger
 from underwrite.store import Store
 
@@ -45,9 +45,9 @@ class AsyncLocalBus(AsyncEventBus):
         store: Store | None = None,
         handler_timeout: float = HANDLER_TIMEOUT,
     ) -> None:
-        self.__queue: asyncio.Queue[Event] = asyncio.Queue(maxsize=maxsize)
-        self.__subscribers: dict[str, list[Callable[[Event], Any]]] = {}
-        self.__subscription_ids: dict[str, tuple[str, Callable[[Event], Any]]] = {}
+        self.__queue: asyncio.Queue[Message] = asyncio.Queue(maxsize=maxsize)
+        self.__subscribers: dict[str, list[Callable[[Message], Any]]] = {}
+        self.__subscription_ids: dict[str, tuple[str, Callable[[Message], Any]]] = {}
         self.__subscription_lock: asyncio.Lock = asyncio.Lock()
         self.__task: asyncio.Task[None] | None = None
         self.__running: bool = False
@@ -97,11 +97,11 @@ class AsyncLocalBus(AsyncEventBus):
             self.__task = None
         logger.info("AsyncLocalBus stopped (drained {} events)", drained)
 
-    async def publish(self, event: Event) -> str:
+    async def publish(self, event: Message) -> str:
         await self.__queue.put(event)
         return event.event_id
 
-    async def subscribe(self, event_type: str, handler: Callable[[Event], Any]) -> str:
+    async def subscribe(self, event_type: str, handler: Callable[[Message], Any]) -> str:
         sid = str(uuid.uuid4())
         async with self.__subscription_lock:
             self.__subscribers.setdefault(event_type, []).append(handler)
@@ -132,7 +132,7 @@ class AsyncLocalBus(AsyncEventBus):
             if stopper in done:
                 getter.cancel()
                 break
-            event: Event = getter.result()
+            event: Message = getter.result()
             try:
                 await self.__dispatch(event)
             except asyncio.CancelledError:
@@ -140,7 +140,7 @@ class AsyncLocalBus(AsyncEventBus):
             except (RuntimeError, ValueError, TypeError, OSError, AttributeError, KeyError):
                 logger.exception("dispatch loop: unexpected error processing {}", event.event_id)
 
-    async def __dispatch(self, event: Event) -> None:
+    async def __dispatch(self, event: Message) -> None:
         async with self.__subscription_lock:
             handlers = list(self.__subscribers.get(event.event_type, []))
             wild_handlers = list(self.__subscribers.get("*", []))
@@ -172,7 +172,7 @@ class AsyncLocalBus(AsyncEventBus):
             if isinstance(result, Exception):
                 logger.warning("async handler {} failed: {}", getattr(handler, "__name__", str(handler)), result)
 
-    async def __safe_dispatch(self, handler: Callable[[Event], Any], event: Event) -> None:
+    async def __safe_dispatch(self, handler: Callable[[Message], Any], event: Message) -> None:
         try:
             result = handler(event)
             if inspect.isawaitable(result):

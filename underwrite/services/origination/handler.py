@@ -11,10 +11,10 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector, SystemClock
 from underwrite.saga import Orchestrator
 from underwrite.services.base import Core
@@ -62,11 +62,11 @@ class OriginationHandler(Core):
         self.__id_generator: IdGenerator = IdGenerator()
         self.__clock: SystemClock = SystemClock()
         self.handlers: dict[str, Any] = {
-            EventType.ORIGINATION_CREATE: self.__on_create,
-            EventType.ORIGINATION_SUBMIT: self.__on_submit,
+            Type.ORIGINATION_CREATE: self.__on_create,
+            Type.ORIGINATION_SUBMIT: self.__on_submit,
         }
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Process an origination event.
 
         Args:
@@ -76,7 +76,7 @@ class OriginationHandler(Core):
         if handler is not None:
             handler(event)
 
-    def __on_create(self, event: Event) -> None:
+    def __on_create(self, event: Message) -> None:
         """Handle an origination create request.
 
         Args:
@@ -96,7 +96,7 @@ class OriginationHandler(Core):
         }
         self.store.set(f"origination:{application_id}", app_record)
         self.emit(
-            EventType.ORIGINATION_CREATED,
+            Type.ORIGINATION_CREATED,
             {
                 "application_id": application_id,
                 "borrower": borrower,
@@ -105,7 +105,7 @@ class OriginationHandler(Core):
             correlation_id=event.correlation_id,
         )
 
-    def __on_submit(self, event: Event) -> None:
+    def __on_submit(self, event: Message) -> None:
         """Handle an origination submit request.
 
         Args:
@@ -120,7 +120,7 @@ class OriginationHandler(Core):
             record["submitted_at"] = self.__clock.iso()
             self.store.set(f"origination:{application_id}", record)
         self.emit(
-            EventType.ORIGINATION_SUBMITTED,
+            Type.ORIGINATION_SUBMITTED,
             {
                 "application_id": application_id,
                 "borrower": record["borrower"],

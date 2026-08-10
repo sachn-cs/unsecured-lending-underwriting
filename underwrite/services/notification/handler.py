@@ -8,10 +8,10 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
 from underwrite.services import Core
@@ -63,12 +63,12 @@ class NotificationHandler(Core):
             max_workers=4
         )
         self.handlers: dict[str, Any] = {
-            EventType.FRAUD_ALERT: self.__on_notify_event,
-            EventType.WASH_FLAG: self.__on_notify_event,
-            EventType.VELOCITY_FLAG: self.__on_notify_event,
-            EventType.RISK_EARLY_WARNING: self.__on_notify_event,
-            EventType.NPA_BUCKET_CHANGED: self.__on_notify_event,
-            EventType.DLG_TRIGGERED: self.__on_notify_event,
+            Type.FRAUD_ALERT: self.__on_notify_event,
+            Type.WASH_FLAG: self.__on_notify_event,
+            Type.VELOCITY_FLAG: self.__on_notify_event,
+            Type.RISK_EARLY_WARNING: self.__on_notify_event,
+            Type.NPA_BUCKET_CHANGED: self.__on_notify_event,
+            Type.DLG_TRIGGERED: self.__on_notify_event,
         }
 
     @property
@@ -87,7 +87,7 @@ class NotificationHandler(Core):
             self.__executor = None
         super().stop()
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Dispatch a notification event to the handler.
 
         Args:
@@ -97,7 +97,7 @@ class NotificationHandler(Core):
         if handler is not None:
             handler(event)
 
-    def __on_notify_event(self, event: Event) -> None:
+    def __on_notify_event(self, event: Message) -> None:
         """Submit a notification dispatch to the thread pool.
 
         Args:
@@ -109,7 +109,7 @@ class NotificationHandler(Core):
             return
         self.__executor.submit(self.__dispatch_notification, event)
         self.emit(
-            EventType.NOTIFICATION_SENT,
+            Type.NOTIFICATION_SENT,
             {
                 "original_event": event.event_type,
                 "payload": dict(event.payload),
@@ -117,7 +117,7 @@ class NotificationHandler(Core):
             correlation_id=event.correlation_id,
         )
 
-    def __dispatch_notification(self, event: Event) -> None:
+    def __dispatch_notification(self, event: Message) -> None:
         """Dispatch a notification through configured channels.
 
         Args:
@@ -151,7 +151,7 @@ class NotificationHandler(Core):
         Args:
             recipient: Email recipient address.
             event_type: Type of event triggering the notification.
-            payload: Event payload data.
+            payload: Message payload data.
         """
         ses_region = os.environ.get("AWS_REGION", "")
         sender = os.environ.get("NOTIFICATION_EMAIL_SENDER", "noreply@underwrite.local")
@@ -179,7 +179,7 @@ class NotificationHandler(Core):
         Args:
             recipient: SMS recipient phone number.
             event_type: Type of event triggering the notification.
-            payload: Event payload data.
+            payload: Message payload data.
         """
         account_sid = os.environ.get("TWILIO_ACCOUNT_SID", "")
         auth_token = os.environ.get("TWILIO_AUTH_TOKEN", "")

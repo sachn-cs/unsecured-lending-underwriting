@@ -7,9 +7,9 @@ import time
 import pytest
 
 from underwrite.bus import DistributedLimiter, Guard, Limiter
-from underwrite.events import Event
 from underwrite.exceptions import RateLimitError
 from underwrite.local import LocalBus, Queue
+from underwrite.message import Message
 from underwrite.store import MemoryStore
 
 
@@ -21,19 +21,19 @@ class TestQueue:
 
     def test_put_and_count(self) -> None:
         dlq = Queue()
-        dlq.put(Event(event_type="t", source="s"), "error", "sub1")
+        dlq.put(Message(event_type="t", source="s"), "error", "sub1")
         assert dlq.count == 1
 
     def test_clear(self) -> None:
         dlq = Queue()
-        dlq.put(Event(event_type="t", source="s"), "err", "s1")
+        dlq.put(Message(event_type="t", source="s"), "err", "s1")
         dlq.clear()
         assert dlq.count == 0
 
     def test_replay(self) -> None:
         bus = LocalBus()
         dlq = Queue()
-        dlq.put(Event(event_type="t", source="s", payload={"k": "v"}), "err", "s1")
+        dlq.put(Message(event_type="t", source="s", payload={"k": "v"}), "err", "s1")
         bus.start()
         n = dlq.replay(bus)
         assert n == 1
@@ -41,8 +41,8 @@ class TestQueue:
     def test_replay_with_max(self) -> None:
         bus = LocalBus()
         dlq = Queue()
-        dlq.put(Event(event_type="t1", source="s"), "err", "s1")
-        dlq.put(Event(event_type="t2", source="s"), "err", "s1")
+        dlq.put(Message(event_type="t1", source="s"), "err", "s1")
+        dlq.put(Message(event_type="t2", source="s"), "err", "s1")
         n = dlq.replay(bus, max_count=1)
         assert n == 1
         assert dlq.count == 1
@@ -50,7 +50,9 @@ class TestQueue:
     def test_put_redacts_pii(self) -> None:
         dlq = Queue()
         dlq.put(
-            Event(event_type="loan.originated", source="origination", payload={"pan": "ABCDE1234F", "loan_id": "L100"}),
+            Message(
+                event_type="loan.originated", source="origination", payload={"pan": "ABCDE1234F", "loan_id": "L100"}
+            ),
             "err",
             "s1",
         )
@@ -61,7 +63,7 @@ class TestQueue:
     def test_cap_evicts_oldest(self) -> None:
         dlq = Queue(max_records=3)
         for i in range(5):
-            dlq.put(Event(event_type=f"e{i}", source="s"), "err", "s1")
+            dlq.put(Message(event_type=f"e{i}", source="s"), "err", "s1")
         assert dlq.count == 3
         # oldest two evicted; youngest three remain
         remaining = [r.event.event_type for r in dlq.records]
@@ -153,7 +155,7 @@ class TestLocalBusDLQ:
         bus = LocalBus()
         bus.subscribe("test.fail", lambda e: (_ for _ in ()).throw(RuntimeError("fail")))
         bus.start()
-        bus.publish(Event(event_type="test.fail", source="s"))
+        bus.publish(Message(event_type="test.fail", source="s"))
         assert bus.dlq.count == 1
 
     def test_healthy_handler_skips_dlq(self) -> None:
@@ -161,7 +163,7 @@ class TestLocalBusDLQ:
         results: list = []
         bus.subscribe("test.ok", lambda e: results.append(1))
         bus.start()
-        bus.publish(Event(event_type="test.ok", source="s"))
+        bus.publish(Message(event_type="test.ok", source="s"))
         assert bus.dlq.count == 0
         assert results == [1]
 
@@ -170,7 +172,7 @@ class TestQueuePersistence:
     def test_put_persists_to_store(self) -> None:
         store = MemoryStore()
         dlq = Queue(store=store, sync_interval=1)
-        dlq.put(Event(event_type="t", source="s", payload={"k": "v"}), "err", "sub1")
+        dlq.put(Message(event_type="t", source="s", payload={"k": "v"}), "err", "sub1")
         raw = store.get("bus:dlq")
         assert raw is not None
         assert isinstance(raw, list)
@@ -182,8 +184,8 @@ class TestQueuePersistence:
     def test_loads_from_store_on_init(self) -> None:
         store = MemoryStore()
         dlq1 = Queue(store=store, sync_interval=1)
-        dlq1.put(Event(event_type="t1", source="s"), "err1", "sub1")
-        dlq1.put(Event(event_type="t2", source="s"), "err2", "sub2")
+        dlq1.put(Message(event_type="t1", source="s"), "err1", "sub1")
+        dlq1.put(Message(event_type="t2", source="s"), "err2", "sub2")
 
         dlq2 = Queue(store=store, sync_interval=1)
         assert dlq2.count == 2
@@ -194,7 +196,7 @@ class TestQueuePersistence:
     def test_clear_removes_from_store(self) -> None:
         store = MemoryStore()
         dlq = Queue(store=store, sync_interval=1)
-        dlq.put(Event(event_type="t", source="s"), "err", "sub1")
+        dlq.put(Message(event_type="t", source="s"), "err", "sub1")
         dlq.clear()
         raw = store.get("bus:dlq")
         assert raw == []
@@ -203,7 +205,7 @@ class TestQueuePersistence:
         store = MemoryStore()
         bus = LocalBus()
         dlq = Queue(store=store, sync_interval=1)
-        dlq.put(Event(event_type="t", source="s"), "err", "sub1")
+        dlq.put(Message(event_type="t", source="s"), "err", "sub1")
         dlq.replay(bus)
         raw = store.get("bus:dlq")
         assert raw == []

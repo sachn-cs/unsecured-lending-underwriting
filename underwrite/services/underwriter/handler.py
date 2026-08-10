@@ -11,10 +11,10 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
 from underwrite.services.base import StatefulService
@@ -218,34 +218,34 @@ class UnderwriterHandler(StatefulService):
         """
         self.engine.add_policy(policy)
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Process events that contribute to underwriting facts.
 
         Args:
             event: The incoming domain event.
         """
-        if event.event_type == EventType.UNDERWRITE_REQUEST:
+        if event.event_type == Type.UNDERWRITE_REQUEST:
             self.handle_request(event)
-        elif event.event_type == EventType.RISK_SCORED:
+        elif event.event_type == Type.RISK_SCORED:
             self.accumulate(event, "risk_score", lambda p: p.get("score", 0))
-        elif event.event_type == EventType.FRAUD_ALERT:
+        elif event.event_type == Type.FRAUD_ALERT:
             self.accumulate_signal(event, "fraud_signals")
-        elif event.event_type == EventType.CREDIT_BUREAU_CHECKED:
+        elif event.event_type == Type.CREDIT_BUREAU_CHECKED:
             self.accumulate_bureau(event)
-        elif event.event_type == EventType.AML_CLEARED:
+        elif event.event_type == Type.AML_CLEARED:
             self.accumulate(event, "aml_status", lambda p: "cleared")
-        elif event.event_type == EventType.AML_FROZEN:
+        elif event.event_type == Type.AML_FROZEN:
             self.accumulate(event, "aml_status", lambda p: "frozen")
-        elif event.event_type == EventType.KYC_VERIFIED:
+        elif event.event_type == Type.KYC_VERIFIED:
             self.accumulate(event, "kyc_status", lambda p: "verified")
-        elif event.event_type == EventType.KYC_REJECTED:
+        elif event.event_type == Type.KYC_REJECTED:
             self.accumulate(event, "kyc_status", lambda p: "rejected")
-        elif event.event_type == EventType.DECISION_MADE:
+        elif event.event_type == Type.DECISION_MADE:
             self.accumulate(event, "decision_action", lambda p: p.get("action", ""))
 
     def accumulate(
         self,
-        event: Event,
+        event: Message,
         key: str,
         extractor: Callable[[dict[str, Any]], Any],
     ) -> None:
@@ -268,7 +268,7 @@ class UnderwriterHandler(StatefulService):
             self.applications[app_id][key] = extractor(event.payload)
             self.sync()
 
-    def accumulate_signal(self, event: Event, key: str) -> None:
+    def accumulate_signal(self, event: Message, key: str) -> None:
         """Accumulate a signal counter from an event payload.
 
         Args:
@@ -286,7 +286,7 @@ class UnderwriterHandler(StatefulService):
             self.applications[app_id][key] = current + 1
             self.sync()
 
-    def accumulate_bureau(self, event: Event) -> None:
+    def accumulate_bureau(self, event: Message) -> None:
         """Accumulate credit bureau data from an event payload.
 
         Args:
@@ -310,7 +310,7 @@ class UnderwriterHandler(StatefulService):
             )
             self.sync()
 
-    def handle_request(self, event: Event) -> None:
+    def handle_request(self, event: Message) -> None:
         """Handle an underwriting request event.
 
         Args:
@@ -382,7 +382,7 @@ class UnderwriterHandler(StatefulService):
         for r in decision.rule_results:
             if not r.passed:
                 self.emit(
-                    EventType.UNDERWRITE_RULE_VIOLATED,
+                    Type.UNDERWRITE_RULE_VIOLATED,
                     {
                         "application_id": decision.application_id,
                         "rule_id": r.rule_id,
@@ -396,19 +396,19 @@ class UnderwriterHandler(StatefulService):
                 )
 
         if decision.outcome == DecisionOutcome.APPROVED.value:
-            self.emit(EventType.UNDERWRITER_APPROVED, payload, correlation_id=correlation_id)
+            self.emit(Type.UNDERWRITER_APPROVED, payload, correlation_id=correlation_id)
         elif decision.outcome == DecisionOutcome.APPROVED_WITH_CONDITIONS.value:
             self.emit(
-                EventType.UNDERWRITER_CONDITIONAL_APPROVED,
+                Type.UNDERWRITER_CONDITIONAL_APPROVED,
                 payload,
                 correlation_id=correlation_id,
             )
         elif decision.outcome == DecisionOutcome.REVIEW.value:
-            self.emit(EventType.UNDERWRITER_REVIEW, payload, correlation_id=correlation_id)
+            self.emit(Type.UNDERWRITER_REVIEW, payload, correlation_id=correlation_id)
         elif decision.outcome == DecisionOutcome.ESCALATE.value:
-            self.emit(EventType.UNDERWRITER_ESCALATED, payload, correlation_id=correlation_id)
+            self.emit(Type.UNDERWRITER_ESCALATED, payload, correlation_id=correlation_id)
         else:
-            self.emit(EventType.UNDERWRITER_REJECTED, payload, correlation_id=correlation_id)
+            self.emit(Type.UNDERWRITER_REJECTED, payload, correlation_id=correlation_id)
 
     def get_application(self, app_id: str) -> dict[str, Any] | None:
         """Return the accumulated facts for an application.

@@ -21,10 +21,10 @@ from typing import Any
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
 from underwrite.constants import PAISE_PER_RUPEE
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
 from underwrite.services.base import StatefulService
@@ -130,9 +130,9 @@ class RazorpayHandler(StatefulService):
             self.__records = loaded
 
         self.handlers: dict[str, Any] = {
-            EventType.RAZORPAY_ORDER_CREATE: self.__on_order_create,
-            EventType.RAZORPAY_SUBSCRIBE: self.__on_subscription_create,
-            EventType.RAZORPAY_WEBHOOK_RECEIVED: self.__on_webhook_received,
+            Type.RAZORPAY_ORDER_CREATE: self.__on_order_create,
+            Type.RAZORPAY_SUBSCRIBE: self.__on_subscription_create,
+            Type.RAZORPAY_WEBHOOK_RECEIVED: self.__on_webhook_received,
         }
 
     def build_client(self, **kwargs: Any) -> RazorpayClient:
@@ -166,7 +166,7 @@ class RazorpayHandler(StatefulService):
         """Expose the underlying client for testing."""
         return self.__client
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Dispatch an event to the appropriate handler.
 
         Args:
@@ -176,7 +176,7 @@ class RazorpayHandler(StatefulService):
         if handler is not None:
             handler(event)
 
-    def __on_order_create(self, event: Event) -> None:
+    def __on_order_create(self, event: Message) -> None:
         """Handle a RAZORPAY_ORDER_CREATE event.
 
         Creates a Razorpay payment order and emits RAZORPAY_ORDER_CREATED.
@@ -219,7 +219,7 @@ class RazorpayHandler(StatefulService):
             },
         )
         self.emit(
-            EventType.RAZORPAY_ORDER_CREATED,
+            Type.RAZORPAY_ORDER_CREATED,
             {
                 "loan_id": loan_id,
                 "order_id": order.id,
@@ -230,7 +230,7 @@ class RazorpayHandler(StatefulService):
             correlation_id=event.correlation_id,
         )
 
-    def __on_subscription_create(self, event: Event) -> None:
+    def __on_subscription_create(self, event: Message) -> None:
         """Handle a RAZORPAY_SUBSCRIBE event.
 
         Creates a Razorpay subscription and emits RAZORPAY_SUBSCRIPTION_CREATED.
@@ -274,7 +274,7 @@ class RazorpayHandler(StatefulService):
             },
         )
         self.emit(
-            EventType.RAZORPAY_SUBSCRIPTION_CREATED,
+            Type.RAZORPAY_SUBSCRIPTION_CREATED,
             {
                 "loan_id": loan_id,
                 "subscription_id": sub.id,
@@ -285,7 +285,7 @@ class RazorpayHandler(StatefulService):
             correlation_id=event.correlation_id,
         )
 
-    def __on_webhook_received(self, event: Event) -> None:
+    def __on_webhook_received(self, event: Message) -> None:
         """Process an incoming Razorpay webhook event.
 
         Validates the signature against the configured client secret
@@ -411,7 +411,7 @@ class RazorpayHandler(StatefulService):
             correlation_id: Correlation ID for tracing.
         """
         self.emit(
-            EventType.RAZORPAY_PAYMENT_CAPTURED,
+            Type.RAZORPAY_PAYMENT_CAPTURED,
             {
                 "loan_id": loan_id,
                 "payment_id": payment_id,
@@ -442,7 +442,7 @@ class RazorpayHandler(StatefulService):
             correlation_id: Correlation ID for tracing.
         """
         self.emit(
-            EventType.RAZORPAY_PAYMENT_FAILED,
+            Type.RAZORPAY_PAYMENT_FAILED,
             {
                 "loan_id": loan_id,
                 "payment_id": payment_id,
@@ -474,7 +474,7 @@ class RazorpayHandler(StatefulService):
             correlation_id: Correlation ID for tracing.
         """
         self.emit(
-            EventType.RAZORPAY_PAYMENT_REFUNDED,
+            Type.RAZORPAY_PAYMENT_REFUNDED,
             {
                 "loan_id": loan_id,
                 "payment_id": payment_id,
@@ -502,7 +502,7 @@ class RazorpayHandler(StatefulService):
             correlation_id: Correlation ID for tracing.
         """
         self.emit(
-            EventType.RAZORPAY_SUBSCRIPTION_CHARGED,
+            Type.RAZORPAY_SUBSCRIPTION_CHARGED,
             {
                 "loan_id": loan_id,
                 "subscription_id": subscription_id,
@@ -528,7 +528,7 @@ class RazorpayHandler(StatefulService):
             correlation_id: Correlation ID for tracing.
         """
         self.emit(
-            EventType.RAZORPAY_SUBSCRIPTION_FAILED,
+            Type.RAZORPAY_SUBSCRIPTION_FAILED,
             {
                 "loan_id": loan_id,
                 "subscription_id": subscription_id,
@@ -548,7 +548,7 @@ class RazorpayHandler(StatefulService):
             correlation_id: Correlation ID for tracing.
         """
         self.emit(
-            EventType.RAZORPAY_MANDATE_ACTIVE,
+            Type.RAZORPAY_MANDATE_ACTIVE,
             {
                 "loan_id": loan_id,
                 "subscription_id": subscription_id,
@@ -566,7 +566,7 @@ class RazorpayHandler(StatefulService):
             correlation_id: Correlation ID for tracing.
         """
         self.emit(
-            EventType.RAZORPAY_MANDATE_INACTIVE,
+            Type.RAZORPAY_MANDATE_INACTIVE,
             {
                 "loan_id": loan_id,
                 "subscription_id": subscription_id,

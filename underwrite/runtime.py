@@ -36,7 +36,6 @@ from typing import TYPE_CHECKING, Any
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
 from underwrite.config import Configuration
-from underwrite.events import Event
 from underwrite.exceptions import ServiceNotFoundError
 from underwrite.exporter import Exporter
 from underwrite.handler import HANDLER_CLASSES, HANDLER_MAP, WIRING
@@ -44,6 +43,7 @@ from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.local import LocalBus
 from underwrite.logger import JsonFormatter, TextFormatter, logger, loguru_sink_format
+from underwrite.message import Message
 from underwrite.metrics import Collector
 from underwrite.migrate import default_plan
 from underwrite.saga import Orchestrator
@@ -609,8 +609,8 @@ class Runtime:
         Args:
             source: Service id the caller is publishing as. Must match
                 ``[a-z][a-z0-9_.-]+``.
-            event_type: Event type being published.
-            payload: Event payload.
+            event_type: Message type being published.
+            payload: Message payload.
             correlation_id: Optional correlation id.
 
         Returns:
@@ -625,7 +625,7 @@ class Runtime:
         if self.__authz is not None and not self.__authz.is_trusted(source):
             raise PermissionError(f"source {source!r} is not trusted")
         identity = self.__identity_for(source)
-        event = Event(
+        event = Message(
             event_type=event_type,
             source=identity.service_id,
             source_key=identity.public_key,
@@ -647,17 +647,17 @@ class Runtime:
             self.__publisher_identities[service_id] = identity
         return identity
 
-    def __sign_outbound_event(self, event_type: str, payload: dict[str, Any], correlation_id: str) -> Event:
+    def __sign_outbound_event(self, event_type: str, payload: dict[str, Any], correlation_id: str) -> Message:
         identity: Keypair | None = self.__runtime_identity
         if identity is None:
-            return Event(
+            return Message(
                 event_type=event_type,
                 source="runtime",
                 source_key="",
                 payload=payload,
                 correlation_id=correlation_id or "",
             )
-        event = Event(
+        event = Message(
             event_type=event_type,
             source=identity.service_id,
             source_key=identity.public_key,

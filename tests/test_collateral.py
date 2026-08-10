@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import pytest
 
-from underwrite.events import Event, EventType
 from underwrite.local import LocalBus
+from underwrite.message import Message, Type
 from underwrite.services.collateral.handler import CollateralHandler
 from underwrite.store import MemoryStore
 
@@ -24,8 +24,8 @@ class TestCollateralService:
     def test_tracks_collateral_on_origination(self) -> None:
         svc = collateral()
         svc.handle(
-            Event(
-                event_type=EventType.LOAN_ORIGINATED,
+            Message(
+                event_type=Type.LOAN_ORIGINATED,
                 source="test",
                 payload={"borrower": "alice", "principal": 10000},
             )
@@ -38,13 +38,13 @@ class TestCollateralService:
 
     def test_emits_marked_event_with_correct_values(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.COLLATERAL_MARKED, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.COLLATERAL_MARKED, lambda e: received.append(e))
         svc = collateral(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.LOAN_ORIGINATED,
+            Message(
+                event_type=Type.LOAN_ORIGINATED,
                 source="test",
                 payload={"borrower": "bob", "principal": 50000},
             )
@@ -56,20 +56,20 @@ class TestCollateralService:
 
     def test_liquidates_on_default_and_emits(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.COLLATERAL_LIQUIDATED, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.COLLATERAL_LIQUIDATED, lambda e: received.append(e))
         svc = collateral(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.LOAN_ORIGINATED,
+            Message(
+                event_type=Type.LOAN_ORIGINATED,
                 source="test",
                 payload={"borrower": "carol", "principal": 20000},
             )
         )
         svc.handle(
-            Event(
-                event_type=EventType.DEFAULT_OCCURRED,
+            Message(
+                event_type=Type.DEFAULT_OCCURRED,
                 source="test",
                 payload={"borrower": "carol", "principal": 20000},
             )
@@ -81,13 +81,13 @@ class TestCollateralService:
 
     def test_default_without_collateral_does_nothing(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.COLLATERAL_LIQUIDATED, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.COLLATERAL_LIQUIDATED, lambda e: received.append(e))
         svc = collateral(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.DEFAULT_OCCURRED,
+            Message(
+                event_type=Type.DEFAULT_OCCURRED,
                 source="test",
                 payload={"borrower": "nobody"},
             )
@@ -100,12 +100,8 @@ class TestCollateralService:
 
     def test_multiple_borrowers_independent(self) -> None:
         svc = collateral()
-        svc.handle(
-            Event(event_type=EventType.LOAN_ORIGINATED, source="test", payload={"borrower": "a", "principal": 100})
-        )
-        svc.handle(
-            Event(event_type=EventType.LOAN_ORIGINATED, source="test", payload={"borrower": "b", "principal": 200})
-        )
+        svc.handle(Message(event_type=Type.LOAN_ORIGINATED, source="test", payload={"borrower": "a", "principal": 100}))
+        svc.handle(Message(event_type=Type.LOAN_ORIGINATED, source="test", payload={"borrower": "b", "principal": 200}))
         col_a = svc.get("a")
         assert col_a is not None
         assert col_a["principal"] == 100
@@ -117,12 +113,12 @@ class TestCollateralService:
 
     def test_ignores_unrelated_event_types(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.COLLATERAL_MARKED, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.COLLATERAL_MARKED, lambda e: received.append(e))
         svc = collateral(bus=bus)
         bus.start()
-        svc.handle(Event(event_type="seed.added", source="test", payload={}))
-        svc.handle(Event(event_type="user.added", source="test", payload={}))
+        svc.handle(Message(event_type="seed.added", source="test", payload={}))
+        svc.handle(Message(event_type="user.added", source="test", payload={}))
         assert len(received) == 0
         assert svc.get("anyone") is None
 
@@ -131,12 +127,12 @@ class TestCollateralService:
         from underwrite.exceptions import ProtocolError
 
         with pytest.raises(ProtocolError):
-            svc.handle(Event(event_type=EventType.LOAN_ORIGINATED, source="test", payload={}))
+            svc.handle(Message(event_type=Type.LOAN_ORIGINATED, source="test", payload={}))
         assert svc.get("") is None
 
     def test_origination_without_principal_defaults_zero(self) -> None:
         svc = collateral()
-        svc.handle(Event(event_type=EventType.LOAN_ORIGINATED, source="test", payload={"borrower": "x"}))
+        svc.handle(Message(event_type=Type.LOAN_ORIGINATED, source="test", payload={"borrower": "x"}))
         col_x = svc.get("x")
         assert col_x is not None
         assert col_x["required"] == 0.0
@@ -144,24 +140,24 @@ class TestCollateralService:
     def test_liquidation_removes_borrower(self) -> None:
         svc = collateral()
         svc.handle(
-            Event(event_type=EventType.LOAN_ORIGINATED, source="test", payload={"borrower": "y", "principal": 5000})
+            Message(event_type=Type.LOAN_ORIGINATED, source="test", payload={"borrower": "y", "principal": 5000})
         )
         assert svc.get("y") is not None
-        svc.handle(Event(event_type=EventType.DEFAULT_OCCURRED, source="test", payload={"borrower": "y"}))
+        svc.handle(Message(event_type=Type.DEFAULT_OCCURRED, source="test", payload={"borrower": "y"}))
         assert svc.get("y") is None
 
     def test_emit_both_marked_and_liquidated_on_lifecycle(self) -> None:
         bus = LocalBus()
-        all_events: list[Event] = []
+        all_events: list[Message] = []
         bus.subscribe("*", lambda e: all_events.append(e))
         svc = collateral(bus=bus)
         bus.start()
         svc.handle(
-            Event(event_type=EventType.LOAN_ORIGINATED, source="test", payload={"borrower": "z", "principal": 10000})
+            Message(event_type=Type.LOAN_ORIGINATED, source="test", payload={"borrower": "z", "principal": 10000})
         )
         svc.handle(
-            Event(event_type=EventType.DEFAULT_OCCURRED, source="test", payload={"borrower": "z", "principal": 10000})
+            Message(event_type=Type.DEFAULT_OCCURRED, source="test", payload={"borrower": "z", "principal": 10000})
         )
         types = [e.event_type for e in all_events]
-        assert EventType.COLLATERAL_MARKED in types
-        assert EventType.COLLATERAL_LIQUIDATED in types
+        assert Type.COLLATERAL_MARKED in types
+        assert Type.COLLATERAL_LIQUIDATED in types

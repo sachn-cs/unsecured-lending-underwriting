@@ -5,8 +5,8 @@ Tests verify behavior through the public generate_report() method.
 
 from __future__ import annotations
 
-from underwrite.events import Event, EventType
 from underwrite.local import LocalBus
+from underwrite.message import Message, Type
 from underwrite.services.reporting.handler import ReportingHandler
 from underwrite.store import MemoryStore
 
@@ -19,14 +19,10 @@ class TestReportingService:
     def test_records_events(self) -> None:
         svc = reporting()
         svc.handle(
-            Event(
-                event_type=EventType.LOAN_ORIGINATED, source="test", payload={"borrower": "alice", "principal": 10000}
-            )
+            Message(event_type=Type.LOAN_ORIGINATED, source="test", payload={"borrower": "alice", "principal": 10000})
         )
         svc.handle(
-            Event(
-                event_type=EventType.DEFAULT_OCCURRED, source="test", payload={"borrower": "alice", "principal": 10000}
-            )
+            Message(event_type=Type.DEFAULT_OCCURRED, source="test", payload={"borrower": "alice", "principal": 10000})
         )
         report = svc.generate_report()
         assert report["total_originations"] == 1
@@ -36,16 +32,16 @@ class TestReportingService:
         svc = reporting()
         for i in range(10):
             svc.handle(
-                Event(
-                    event_type=EventType.LOAN_ORIGINATED,
+                Message(
+                    event_type=Type.LOAN_ORIGINATED,
                     source="test",
                     payload={"borrower": f"b{i}", "principal": 10000},
                 )
             )
         for i in range(3):
             svc.handle(
-                Event(
-                    event_type=EventType.DEFAULT_OCCURRED,
+                Message(
+                    event_type=Type.DEFAULT_OCCURRED,
                     source="test",
                     payload={"borrower": f"b{i}", "principal": 10000},
                 )
@@ -58,10 +54,10 @@ class TestReportingService:
     def test_total_principal_originated(self) -> None:
         svc = reporting()
         svc.handle(
-            Event(event_type=EventType.LOAN_ORIGINATED, source="test", payload={"borrower": "a", "principal": 50000})
+            Message(event_type=Type.LOAN_ORIGINATED, source="test", payload={"borrower": "a", "principal": 50000})
         )
         svc.handle(
-            Event(event_type=EventType.LOAN_ORIGINATED, source="test", payload={"borrower": "b", "principal": 150000})
+            Message(event_type=Type.LOAN_ORIGINATED, source="test", payload={"borrower": "b", "principal": 150000})
         )
         report = svc.generate_report()
         assert report["total_principal_originated"] == 200000.0
@@ -88,7 +84,7 @@ class TestReportingService:
     def test_default_rate_with_no_originations(self) -> None:
         svc = reporting()
         svc.handle(
-            Event(event_type=EventType.DEFAULT_OCCURRED, source="test", payload={"borrower": "a", "principal": 10000})
+            Message(event_type=Type.DEFAULT_OCCURRED, source="test", payload={"borrower": "a", "principal": 10000})
         )
         report = svc.generate_report()
         assert report["total_originations"] == 0
@@ -96,8 +92,8 @@ class TestReportingService:
 
     def test_handles_non_loan_events_gracefully(self) -> None:
         svc = reporting()
-        svc.handle(Event(event_type="seed.added", source="test", payload={}))
-        svc.handle(Event(event_type="user.added", source="test", payload={}))
+        svc.handle(Message(event_type="seed.added", source="test", payload={}))
+        svc.handle(Message(event_type="user.added", source="test", payload={}))
         report = svc.generate_report()
         assert report["total_originations"] == 0
         assert report["total_defaults"] == 0
@@ -116,8 +112,8 @@ class TestReportingNpaReport:
     def test_tracks_npa_bucket_changes(self) -> None:
         svc = reporting()
         svc.handle(
-            Event(
-                event_type=EventType.NPA_BUCKET_CHANGED,
+            Message(
+                event_type=Type.NPA_BUCKET_CHANGED,
                 source="npa",
                 payload={"borrower": "b1", "bucket": "substandard"},
             )
@@ -129,8 +125,8 @@ class TestReportingNpaReport:
     def test_tracks_provisioning_computed(self) -> None:
         svc = reporting()
         svc.handle(
-            Event(
-                event_type=EventType.PROVISIONING_COMPUTED,
+            Message(
+                event_type=Type.PROVISIONING_COMPUTED,
                 source="npa",
                 payload={
                     "borrower": "b2",
@@ -142,8 +138,8 @@ class TestReportingNpaReport:
             )
         )
         svc.handle(
-            Event(
-                event_type=EventType.PROVISIONING_COMPUTED,
+            Message(
+                event_type=Type.PROVISIONING_COMPUTED,
                 source="npa",
                 payload={
                     "borrower": "b3",
@@ -162,15 +158,15 @@ class TestReportingNpaReport:
     def test_provisioning_coverage_ratio(self) -> None:
         svc = reporting()
         svc.handle(
-            Event(
-                event_type=EventType.NPA_BUCKET_CHANGED,
+            Message(
+                event_type=Type.NPA_BUCKET_CHANGED,
                 source="npa",
                 payload={"borrower": "b4", "bucket": "substandard"},
             )
         )
         svc.handle(
-            Event(
-                event_type=EventType.PROVISIONING_COMPUTED,
+            Message(
+                event_type=Type.PROVISIONING_COMPUTED,
                 source="npa",
                 payload={
                     "borrower": "b4",
@@ -188,8 +184,8 @@ class TestReportingNpaReport:
         """RBI NPA ratio = NPA outstanding / total outstanding (per bucket)."""
         svc = reporting()
         svc.handle(
-            Event(
-                event_type=EventType.PROVISIONING_COMPUTED,
+            Message(
+                event_type=Type.PROVISIONING_COMPUTED,
                 source="npa",
                 payload={
                     "borrower": "standard_a",
@@ -201,8 +197,8 @@ class TestReportingNpaReport:
             )
         )
         svc.handle(
-            Event(
-                event_type=EventType.PROVISIONING_COMPUTED,
+            Message(
+                event_type=Type.PROVISIONING_COMPUTED,
                 source="npa",
                 payload={
                     "borrower": "doubtful_a",

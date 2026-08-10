@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import pytest
 
-from underwrite.events import Event, EventType
 from underwrite.exceptions import ProtocolError
 from underwrite.local import LocalBus
+from underwrite.message import Message, Type
 from underwrite.services.risk.handler import RiskHandler
 from underwrite.store import MemoryStore
 
@@ -23,13 +23,13 @@ def risk(bus=None) -> RiskHandler:
 class TestEarlyWarning:
     def test_warning_on_high_default_probability(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.RISK_EARLY_WARNING, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.RISK_EARLY_WARNING, lambda e: received.append(e))
         svc = risk(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.LOAN_ORIGINATED,
+            Message(
+                event_type=Type.LOAN_ORIGINATED,
                 source="test",
                 payload={"borrower": "alice", "default_probability": 0.45, "principal": 10000},
             )
@@ -40,13 +40,13 @@ class TestEarlyWarning:
 
     def test_no_warning_on_low_default_probability(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.RISK_EARLY_WARNING, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.RISK_EARLY_WARNING, lambda e: received.append(e))
         svc = risk(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.LOAN_ORIGINATED,
+            Message(
+                event_type=Type.LOAN_ORIGINATED,
                 source="test",
                 payload={"borrower": "bob", "default_probability": 0.05, "principal": 10000},
             )
@@ -55,13 +55,13 @@ class TestEarlyWarning:
 
     def test_no_warning_at_exactly_thirty_percent(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.RISK_EARLY_WARNING, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.RISK_EARLY_WARNING, lambda e: received.append(e))
         svc = risk(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.LOAN_ORIGINATED,
+            Message(
+                event_type=Type.LOAN_ORIGINATED,
                 source="test",
                 payload={"borrower": "carol", "default_probability": 0.30, "principal": 10000},
             )
@@ -70,13 +70,13 @@ class TestEarlyWarning:
 
     def test_warning_just_above_thirty_percent(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.RISK_EARLY_WARNING, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.RISK_EARLY_WARNING, lambda e: received.append(e))
         svc = risk(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.LOAN_ORIGINATED,
+            Message(
+                event_type=Type.LOAN_ORIGINATED,
                 source="test",
                 payload={"borrower": "dave", "default_probability": 0.3001, "principal": 10000},
             )
@@ -85,13 +85,13 @@ class TestEarlyWarning:
 
     def test_warning_at_one_hundred_percent(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.RISK_EARLY_WARNING, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.RISK_EARLY_WARNING, lambda e: received.append(e))
         svc = risk(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.LOAN_ORIGINATED,
+            Message(
+                event_type=Type.LOAN_ORIGINATED,
                 source="test",
                 payload={"borrower": "eve", "default_probability": 1.0, "principal": 10000},
             )
@@ -100,26 +100,24 @@ class TestEarlyWarning:
 
     def test_missing_default_probability_no_warning(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.RISK_EARLY_WARNING, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.RISK_EARLY_WARNING, lambda e: received.append(e))
         svc = risk(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.LOAN_ORIGINATED, source="test", payload={"borrower": "frank", "principal": 10000}
-            )
+            Message(event_type=Type.LOAN_ORIGINATED, source="test", payload={"borrower": "frank", "principal": 10000})
         )
         assert len(received) == 0
 
     def test_string_default_probability_parsed(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.RISK_EARLY_WARNING, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.RISK_EARLY_WARNING, lambda e: received.append(e))
         svc = risk(bus=bus)
         bus.start()
         svc.handle(
-            Event(
-                event_type=EventType.LOAN_ORIGINATED,
+            Message(
+                event_type=Type.LOAN_ORIGINATED,
                 source="test",
                 payload={"borrower": "grace", "default_probability": "0.50", "principal": 10000},
             )
@@ -131,8 +129,8 @@ class TestEdgeCases:
     def test_no_model_no_crash(self) -> None:
         svc = risk()
         svc.handle(
-            Event(
-                event_type=EventType.LOAN_ORIGINATED,
+            Message(
+                event_type=Type.LOAN_ORIGINATED,
                 source="test",
                 payload={"borrower": "heidi", "default_probability": 0.02, "principal": 10000},
             )
@@ -140,16 +138,16 @@ class TestEdgeCases:
 
     def test_ignores_non_loan_events(self) -> None:
         bus = LocalBus()
-        received: list[Event] = []
-        bus.subscribe(EventType.RISK_EARLY_WARNING, lambda e: received.append(e))
+        received: list[Message] = []
+        bus.subscribe(Type.RISK_EARLY_WARNING, lambda e: received.append(e))
         svc = risk(bus=bus)
         bus.start()
-        svc.handle(Event(event_type="seed.added", source="test", payload={}))
-        svc.handle(Event(event_type=EventType.REPAID, source="test", payload={}))
-        svc.handle(Event(event_type=EventType.DEFAULT_OCCURRED, source="test", payload={}))
+        svc.handle(Message(event_type="seed.added", source="test", payload={}))
+        svc.handle(Message(event_type=Type.REPAID, source="test", payload={}))
+        svc.handle(Message(event_type=Type.DEFAULT_OCCURRED, source="test", payload={}))
         assert len(received) == 0
 
     def test_empty_payload_no_crash(self) -> None:
         svc = risk()
         with pytest.raises(ProtocolError):
-            svc.handle(Event(event_type=EventType.LOAN_ORIGINATED, source="test", payload={}))
+            svc.handle(Message(event_type=Type.LOAN_ORIGINATED, source="test", payload={}))

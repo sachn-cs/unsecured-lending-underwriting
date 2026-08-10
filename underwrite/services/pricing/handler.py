@@ -15,10 +15,10 @@ from typing import Any
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
 from underwrite.constants import DAYS_PER_YEAR, RATE_QUANTUM
-from underwrite.events import Event, EventType
 from underwrite.exceptions import ProtocolError
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
 from underwrite.services import Core
@@ -180,12 +180,12 @@ class PricingHandler(Core):
         self.__rate_cap: float = config.rate_cap
         self.__penal_interest_cap: float = config.penal_interest_cap
         self.handlers: dict[str, Any] = {
-            EventType.PRICING_REQUEST: self.compute_pricing,
-            EventType.PRICING_PENAL_INTEREST.value: self.compute_penal_interest,
-            EventType.PRICING_FORECLOSURE.value: self.compute_foreclosure,
+            Type.PRICING_REQUEST: self.compute_pricing,
+            Type.PRICING_PENAL_INTEREST.value: self.compute_penal_interest,
+            Type.PRICING_FORECLOSURE.value: self.compute_foreclosure,
         }
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Dispatch an event to the appropriate handler.
 
         Args:
@@ -195,7 +195,7 @@ class PricingHandler(Core):
         if handler is not None:
             handler(event)
 
-    def compute_pricing(self, event: Event) -> None:
+    def compute_pricing(self, event: Message) -> None:
         """Compute loan pricing including interest rate, fees, and APR.
 
         Args:
@@ -259,9 +259,9 @@ class PricingHandler(Core):
             dti = (emi / annual_income * 12) if annual_income > 0 else 0
             result["debt_to_income_ratio"] = round(dti, 4)
 
-        self.emit(EventType.PRICING_COMPUTED, result, correlation_id=event.correlation_id)
+        self.emit(Type.PRICING_COMPUTED, result, correlation_id=event.correlation_id)
 
-    def compute_penal_interest(self, event: Event) -> None:
+    def compute_penal_interest(self, event: Message) -> None:
         """Compute penal interest on overdue amounts.
 
         Args:
@@ -276,7 +276,7 @@ class PricingHandler(Core):
         penal_amount = overdue_amount * daily_penal_rate * overdue_days
 
         self.emit(
-            EventType.PRICING_PENAL_INTEREST_COMPUTED.value,
+            Type.PRICING_PENAL_INTEREST_COMPUTED.value,
             {
                 "borrower": borrower,
                 "overdue_amount": overdue_amount,
@@ -287,7 +287,7 @@ class PricingHandler(Core):
             correlation_id=event.correlation_id,
         )
 
-    def compute_foreclosure(self, event: Event) -> None:
+    def compute_foreclosure(self, event: Message) -> None:
         """Compute foreclosure charges for a loan.
 
         Args:
@@ -303,7 +303,7 @@ class PricingHandler(Core):
         total_due = outstanding_principal + foreclosure_amount
 
         self.emit(
-            EventType.PRICING_FORECLOSURE_COMPUTED.value,
+            Type.PRICING_FORECLOSURE_COMPUTED.value,
             {
                 "borrower": borrower,
                 "outstanding_principal": outstanding_principal,

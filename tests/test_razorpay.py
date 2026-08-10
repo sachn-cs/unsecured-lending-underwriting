@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from underwrite.events import Event, EventType
 from underwrite.local import LocalBus
+from underwrite.message import Message, Type
 from underwrite.services.razorpay.handler import RazorpayHandler
 from underwrite.store import MemoryStore
 
@@ -30,21 +30,21 @@ class TestRazorpayServiceOrder:
     def test_create_order_missing_loan_id_ignored(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.RAZORPAY_ORDER_CREATED, lambda e: received.append(e))
+        bus.subscribe(Type.RAZORPAY_ORDER_CREATED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
-        svc_inst.handle(Event(event_type=EventType.RAZORPAY_ORDER_CREATE, source="test", payload={}))
+        svc_inst.handle(Message(event_type=Type.RAZORPAY_ORDER_CREATE, source="test", payload={}))
         assert len(received) == 0
 
     def test_create_order_emits_created(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.RAZORPAY_ORDER_CREATED, lambda e: received.append(e))
+        bus.subscribe(Type.RAZORPAY_ORDER_CREATED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
         svc_inst.handle(
-            Event(
-                event_type=EventType.RAZORPAY_ORDER_CREATE,
+            Message(
+                event_type=Type.RAZORPAY_ORDER_CREATE,
                 source="test",
                 payload={
                     "loan_id": "L1",
@@ -63,8 +63,8 @@ class TestRazorpayServiceOrder:
     def test_create_order_stores_record(self) -> None:
         svc_inst = svc()
         svc_inst.handle(
-            Event(
-                event_type=EventType.RAZORPAY_ORDER_CREATE,
+            Message(
+                event_type=Type.RAZORPAY_ORDER_CREATE,
                 source="test",
                 payload={
                     "loan_id": "L2",
@@ -78,12 +78,12 @@ class TestRazorpayServiceOrder:
     def test_create_order_with_custom_receipt(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.RAZORPAY_ORDER_CREATED, lambda e: received.append(e))
+        bus.subscribe(Type.RAZORPAY_ORDER_CREATED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
         svc_inst.handle(
-            Event(
-                event_type=EventType.RAZORPAY_ORDER_CREATE,
+            Message(
+                event_type=Type.RAZORPAY_ORDER_CREATE,
                 source="test",
                 payload={"loan_id": "L3", "amount": 8884.88, "receipt": "custom_receipt_001"},
             )
@@ -94,8 +94,8 @@ class TestRazorpayServiceOrder:
         svc_inst = svc()
         for i in range(3):
             svc_inst.handle(
-                Event(
-                    event_type=EventType.RAZORPAY_ORDER_CREATE,
+                Message(
+                    event_type=Type.RAZORPAY_ORDER_CREATE,
                     source="test",
                     payload={
                         "loan_id": f"L{i}",
@@ -109,10 +109,10 @@ class TestRazorpayServiceOrder:
     def test_ignores_unrelated_events(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.RAZORPAY_ORDER_CREATED, lambda e: received.append(e))
+        bus.subscribe(Type.RAZORPAY_ORDER_CREATED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
-        svc_inst.handle(Event(event_type="seed.added", source="test", payload={}))
+        svc_inst.handle(Message(event_type="seed.added", source="test", payload={}))
         assert len(received) == 0
 
 
@@ -120,21 +120,21 @@ class TestRazorpayServiceSubscription:
     def test_create_subscription_missing_loan_id(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.RAZORPAY_SUBSCRIPTION_CREATED, lambda e: received.append(e))
+        bus.subscribe(Type.RAZORPAY_SUBSCRIPTION_CREATED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
-        svc_inst.handle(Event(event_type=EventType.RAZORPAY_SUBSCRIBE, source="test", payload={}))
+        svc_inst.handle(Message(event_type=Type.RAZORPAY_SUBSCRIBE, source="test", payload={}))
         assert len(received) == 0
 
     def test_create_subscription_missing_plan_id(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.RAZORPAY_SUBSCRIPTION_CREATED, lambda e: received.append(e))
+        bus.subscribe(Type.RAZORPAY_SUBSCRIPTION_CREATED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
         svc_inst.handle(
-            Event(
-                event_type=EventType.RAZORPAY_SUBSCRIBE,
+            Message(
+                event_type=Type.RAZORPAY_SUBSCRIBE,
                 source="test",
                 payload={
                     "loan_id": "L10",
@@ -146,12 +146,12 @@ class TestRazorpayServiceSubscription:
     def test_create_subscription_emits_created(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.RAZORPAY_SUBSCRIPTION_CREATED, lambda e: received.append(e))
+        bus.subscribe(Type.RAZORPAY_SUBSCRIPTION_CREATED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
         svc_inst.handle(
-            Event(
-                event_type=EventType.RAZORPAY_SUBSCRIBE,
+            Message(
+                event_type=Type.RAZORPAY_SUBSCRIBE,
                 source="test",
                 payload={
                     "loan_id": "L11",
@@ -170,8 +170,8 @@ class TestRazorpayServiceSubscription:
     def test_create_subscription_stores_record(self) -> None:
         svc_inst = svc()
         svc_inst.handle(
-            Event(
-                event_type=EventType.RAZORPAY_SUBSCRIBE,
+            Message(
+                event_type=Type.RAZORPAY_SUBSCRIBE,
                 source="test",
                 payload={
                     "loan_id": "L12",
@@ -188,35 +188,33 @@ class TestRazorpayServiceWebhook:
     def test_webhook_missing_payload_ignored(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.RAZORPAY_PAYMENT_CAPTURED, lambda e: received.append(e))
+        bus.subscribe(Type.RAZORPAY_PAYMENT_CAPTURED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
-        svc_inst.handle(Event(event_type=EventType.RAZORPAY_WEBHOOK_RECEIVED, source="test", payload={}))
+        svc_inst.handle(Message(event_type=Type.RAZORPAY_WEBHOOK_RECEIVED, source="test", payload={}))
         assert len(received) == 0
 
     def test_webhook_missing_signature_ignored(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.RAZORPAY_PAYMENT_CAPTURED, lambda e: received.append(e))
+        bus.subscribe(Type.RAZORPAY_PAYMENT_CAPTURED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
         svc_inst.handle(
-            Event(
-                event_type=EventType.RAZORPAY_WEBHOOK_RECEIVED, source="test", payload={"payload": '{"event":"test"}'}
-            )
+            Message(event_type=Type.RAZORPAY_WEBHOOK_RECEIVED, source="test", payload={"payload": '{"event":"test"}'})
         )
         assert len(received) == 0
 
     def test_webhook_invalid_signature_ignored(self) -> None:
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.RAZORPAY_PAYMENT_CAPTURED, lambda e: received.append(e))
+        bus.subscribe(Type.RAZORPAY_PAYMENT_CAPTURED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
         _configure_webhook_secret(svc_inst, "secret")
         svc_inst.handle(
-            Event(
-                event_type=EventType.RAZORPAY_WEBHOOK_RECEIVED,
+            Message(
+                event_type=Type.RAZORPAY_WEBHOOK_RECEIVED,
                 source="test",
                 payload={
                     "payload": '{"event":"test"}',
@@ -255,13 +253,13 @@ class TestRazorpayServiceWebhook:
 
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.RAZORPAY_PAYMENT_CAPTURED, lambda e: received.append(e))
+        bus.subscribe(Type.RAZORPAY_PAYMENT_CAPTURED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
         _configure_webhook_secret(svc_inst, secret)
         svc_inst.handle(
-            Event(
-                event_type=EventType.RAZORPAY_WEBHOOK_RECEIVED,
+            Message(
+                event_type=Type.RAZORPAY_WEBHOOK_RECEIVED,
                 source="test",
                 payload={
                     "payload": payload_str,
@@ -305,13 +303,13 @@ class TestRazorpayServiceWebhook:
 
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.RAZORPAY_PAYMENT_FAILED, lambda e: received.append(e))
+        bus.subscribe(Type.RAZORPAY_PAYMENT_FAILED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
         _configure_webhook_secret(svc_inst, secret)
         svc_inst.handle(
-            Event(
-                event_type=EventType.RAZORPAY_WEBHOOK_RECEIVED,
+            Message(
+                event_type=Type.RAZORPAY_WEBHOOK_RECEIVED,
                 source="test",
                 payload={
                     "payload": payload_str,
@@ -353,13 +351,13 @@ class TestRazorpayServiceWebhook:
 
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.RAZORPAY_PAYMENT_REFUNDED, lambda e: received.append(e))
+        bus.subscribe(Type.RAZORPAY_PAYMENT_REFUNDED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
         _configure_webhook_secret(svc_inst, secret)
         svc_inst.handle(
-            Event(
-                event_type=EventType.RAZORPAY_WEBHOOK_RECEIVED,
+            Message(
+                event_type=Type.RAZORPAY_WEBHOOK_RECEIVED,
                 source="test",
                 payload={
                     "payload": payload_str,
@@ -396,13 +394,13 @@ class TestRazorpayServiceWebhook:
 
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.RAZORPAY_PAYMENT_CAPTURED, lambda e: received.append(e))
+        bus.subscribe(Type.RAZORPAY_PAYMENT_CAPTURED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
         _configure_webhook_secret(svc_inst, secret)
         svc_inst.handle(
-            Event(
-                event_type=EventType.RAZORPAY_WEBHOOK_RECEIVED,
+            Message(
+                event_type=Type.RAZORPAY_WEBHOOK_RECEIVED,
                 source="test",
                 payload={
                     "payload": payload_str,
@@ -443,13 +441,13 @@ class TestRazorpayServiceWebhook:
 
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.RAZORPAY_SUBSCRIPTION_CHARGED, lambda e: received.append(e))
+        bus.subscribe(Type.RAZORPAY_SUBSCRIPTION_CHARGED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
         _configure_webhook_secret(svc_inst, secret)
         svc_inst.handle(
-            Event(
-                event_type=EventType.RAZORPAY_WEBHOOK_RECEIVED,
+            Message(
+                event_type=Type.RAZORPAY_WEBHOOK_RECEIVED,
                 source="test",
                 payload={
                     "payload": payload_str,
@@ -494,13 +492,13 @@ class TestRazorpayServiceWebhook:
 
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.RAZORPAY_SUBSCRIPTION_FAILED, lambda e: received.append(e))
+        bus.subscribe(Type.RAZORPAY_SUBSCRIPTION_FAILED, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
         _configure_webhook_secret(svc_inst, secret)
         svc_inst.handle(
-            Event(
-                event_type=EventType.RAZORPAY_WEBHOOK_RECEIVED,
+            Message(
+                event_type=Type.RAZORPAY_WEBHOOK_RECEIVED,
                 source="test",
                 payload={
                     "payload": payload_str,
@@ -536,13 +534,13 @@ class TestRazorpayServiceWebhook:
 
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.RAZORPAY_MANDATE_ACTIVE, lambda e: received.append(e))
+        bus.subscribe(Type.RAZORPAY_MANDATE_ACTIVE, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
         _configure_webhook_secret(svc_inst, secret)
         svc_inst.handle(
-            Event(
-                event_type=EventType.RAZORPAY_WEBHOOK_RECEIVED,
+            Message(
+                event_type=Type.RAZORPAY_WEBHOOK_RECEIVED,
                 source="test",
                 payload={
                     "payload": payload_str,
@@ -578,13 +576,13 @@ class TestRazorpayServiceWebhook:
 
         bus = LocalBus()
         received: list = []
-        bus.subscribe(EventType.RAZORPAY_MANDATE_INACTIVE, lambda e: received.append(e))
+        bus.subscribe(Type.RAZORPAY_MANDATE_INACTIVE, lambda e: received.append(e))
         svc_inst = svc(bus)
         bus.start()
         _configure_webhook_secret(svc_inst, secret)
         svc_inst.handle(
-            Event(
-                event_type=EventType.RAZORPAY_WEBHOOK_RECEIVED,
+            Message(
+                event_type=Type.RAZORPAY_WEBHOOK_RECEIVED,
                 source="test",
                 payload={
                     "payload": payload_str,

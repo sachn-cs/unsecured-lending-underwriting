@@ -17,10 +17,10 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.events import Event, EventType
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
+from underwrite.message import Message, Type
 from underwrite.metrics import Collector, SystemClock
 from underwrite.saga import Orchestrator
 from underwrite.services.base import StatefulService
@@ -70,15 +70,15 @@ class PaymentHandler(StatefulService):
         self.__clock: SystemClock = SystemClock()
         self.__id_generator: IdGenerator = IdGenerator()
         self.handlers: dict[str, Any] = {
-            EventType.PAYMENT_RECEIVE: self.__on_payment_receive,
-            EventType.PAYMENT_SCHEDULE: self.__on_payment_schedule,
-            EventType.PAYMENT_CHECK_OVERDUE: self.__on_payment_check_overdue,
-            EventType.RAZORPAY_PAYMENT_CAPTURED: self.__on_razorpay_payment_captured,
-            EventType.RAZORPAY_SUBSCRIPTION_CHARGED: self.__on_razorpay_subscription_charged,
-            EventType.RAZORPAY_PAYMENT_REFUNDED: self.__on_razorpay_payment_refunded,
+            Type.PAYMENT_RECEIVE: self.__on_payment_receive,
+            Type.PAYMENT_SCHEDULE: self.__on_payment_schedule,
+            Type.PAYMENT_CHECK_OVERDUE: self.__on_payment_check_overdue,
+            Type.RAZORPAY_PAYMENT_CAPTURED: self.__on_razorpay_payment_captured,
+            Type.RAZORPAY_SUBSCRIPTION_CHARGED: self.__on_razorpay_subscription_charged,
+            Type.RAZORPAY_PAYMENT_REFUNDED: self.__on_razorpay_payment_refunded,
         }
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         """Dispatch an event to the appropriate handler.
 
         Args:
@@ -92,7 +92,7 @@ class PaymentHandler(StatefulService):
     def __to_money(amount: float) -> Money:
         return Money.from_rupees(Decimal(str(amount)))
 
-    def __on_payment_receive(self, event: Event) -> None:
+    def __on_payment_receive(self, event: Message) -> None:
         """Record a payment received.
 
         Args:
@@ -112,7 +112,7 @@ class PaymentHandler(StatefulService):
         }
         self.store.set(f"payment:{payment_id}", receipt)
         self.emit(
-            EventType.PAYMENT_RECEIVED,
+            Type.PAYMENT_RECEIVED,
             {
                 "payment_id": payment_id,
                 "loan_id": loan_id,
@@ -122,7 +122,7 @@ class PaymentHandler(StatefulService):
             correlation_id=event.correlation_id,
         )
 
-    def __on_payment_schedule(self, event: Event) -> None:
+    def __on_payment_schedule(self, event: Message) -> None:
         """Schedule a future payment.
 
         Args:
@@ -144,7 +144,7 @@ class PaymentHandler(StatefulService):
         }
         self.store.set(schedule_key, schedule)
         self.emit(
-            EventType.PAYMENT_DUE,
+            Type.PAYMENT_DUE,
             {
                 "loan_id": loan_id,
                 "due_date": due_date,
@@ -154,7 +154,7 @@ class PaymentHandler(StatefulService):
             correlation_id=event.correlation_id,
         )
 
-    def __on_payment_check_overdue(self, event: Event) -> None:
+    def __on_payment_check_overdue(self, event: Message) -> None:
         """Check for overdue payments and emit overdue events.
 
         Args:
@@ -176,7 +176,7 @@ class PaymentHandler(StatefulService):
                     sched["status"] = "overdue"
                     self.store.set(key, sched)
                     self.emit(
-                        EventType.PAYMENT_OVERDUE,
+                        Type.PAYMENT_OVERDUE,
                         {
                             "loan_id": loan_id,
                             "due_date": sched["due_date"],
@@ -186,7 +186,7 @@ class PaymentHandler(StatefulService):
                         correlation_id=event.correlation_id,
                     )
 
-    def __on_razorpay_payment_captured(self, event: Event) -> None:
+    def __on_razorpay_payment_captured(self, event: Message) -> None:
         """Bridge a Razorpay payment captured event to PAYMENT_RECEIVED.
 
         Args:
@@ -209,7 +209,7 @@ class PaymentHandler(StatefulService):
             },
         )
         self.emit(
-            EventType.PAYMENT_RECEIVED,
+            Type.PAYMENT_RECEIVED,
             {
                 "payment_id": razorpay_payment_id,
                 "loan_id": loan_id,
@@ -220,7 +220,7 @@ class PaymentHandler(StatefulService):
             correlation_id=event.correlation_id,
         )
 
-    def __on_razorpay_subscription_charged(self, event: Event) -> None:
+    def __on_razorpay_subscription_charged(self, event: Message) -> None:
         """Bridge a Razorpay subscription charge event to PAYMENT_RECEIVED.
 
         Args:
@@ -245,7 +245,7 @@ class PaymentHandler(StatefulService):
             },
         )
         self.emit(
-            EventType.PAYMENT_RECEIVED,
+            Type.PAYMENT_RECEIVED,
             {
                 "payment_id": payment_id,
                 "loan_id": loan_id,
@@ -257,7 +257,7 @@ class PaymentHandler(StatefulService):
             correlation_id=event.correlation_id,
         )
 
-    def __on_razorpay_payment_refunded(self, event: Event) -> None:
+    def __on_razorpay_payment_refunded(self, event: Message) -> None:
         """Record a Razorpay payment refund.
 
         Args:

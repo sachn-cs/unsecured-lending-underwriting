@@ -28,7 +28,7 @@ from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
 
 
-class AuditHandler(StatefulService):
+class Handler(StatefulService):
     """Subscribes to all domain events and persists them to an append-only ledger.
 
     PII fields (aadhaar, pan, ssn, phone, email, etc.) are automatically

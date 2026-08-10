@@ -362,18 +362,21 @@ class Store:
         self,
         type: str = MEMORY,
         *,
+        path: str | None = None,
         max_entries: int = 0,
-        data_dir: str = "./data",
-        path: str = "./store.db",
         **kwargs: Any,
     ) -> None:
         self.type: str = type
         if type == self.MEMORY:
             self.implementation: StoreBackend = InMemory(max_entries=max_entries)
         elif type == self.DISK:
+            kwargs.pop("data_dir", None)
+            data_dir: str = path if path is not None else "./data"
             self.implementation = Disk(data_dir=data_dir, **kwargs)
         elif type == self.SQLITE:
-            self.implementation = Sqlite(path=path, **kwargs)
+            kwargs.pop("path", None)
+            db_path: str = path if path is not None else "./store.db"
+            self.implementation = Sqlite(path=db_path, **kwargs)
         else:
             raise ValueError(f"unknown store type: {type!r}")
 

@@ -4,31 +4,38 @@ Provides gazetted holiday lists and utility functions to shift due
 dates to the next working day when they fall on a holiday or weekend.
 
 Follows RBI's list of bank holidays for clearing/settlement,
-modified for calendar year 2025-2026.
+modified for calendar year 2025-2030.
 """
 
 from __future__ import annotations
 
 import calendar
+import json
 from datetime import date, timedelta
+from pathlib import Path
 
 from underwrite.logger import logger
+
+_HOLIDAYS_PATH = Path(__file__).resolve().parent.parent / "data" / "holidays.json"
+_HOLIDAYS_DATA: dict[str, list[dict[str, int]]] | None = None
+
+
+def _load_holidays() -> dict[str, list[dict[str, int]]]:
+    """Load holiday data from the JSON table. Cached after first load."""
+    global _HOLIDAYS_DATA
+    if _HOLIDAYS_DATA is None:
+        with open(_HOLIDAYS_PATH) as f:
+            _HOLIDAYS_DATA = json.load(f)
+    return _HOLIDAYS_DATA
 
 
 def fixed_holidays(start_year: int = 2025, end_year: int = 2027) -> set[tuple[int, int, int]]:
     """Return set of (year, month, day) tuples for fixed-date holidays."""
+    data = _load_holidays()
     holidays: set[tuple[int, int, int]] = set()
-    fixed = [
-        (1, 26),  # Republic Day
-        (8, 15),  # Independence Day
-        (10, 2),  # Gandhi Jayanti
-        (1, 1),  # New Year's Day
-        (5, 1),  # Labour Day / Maharashtra Day
-        (12, 25),  # Christmas
-    ]
     for year in range(start_year, end_year + 1):
-        for month, day in fixed:
-            holidays.add((year, month, day))
+        for entry in data["fixed"]:
+            holidays.add((year, entry["month"], entry["day"]))
     return holidays
 
 
@@ -40,128 +47,14 @@ def moveable_holidays(start_year: int = 2025, end_year: int = 2030) -> set[tuple
     outside the configured range fall back to fixed holidays and
     weekend rules only (with a logged warning at module import time).
     """
-    known: dict[int, list[tuple[int, int, str]]] = {
-        2025: [
-            (3, 14, "Holi"),
-            (3, 31, "Eid-ul-Fitr"),
-            (4, 6, "Ram Navami"),
-            (4, 10, "Mahavir Jayanti"),
-            (4, 14, "Ambedkar Jayanti"),
-            (4, 18, "Good Friday"),
-            (6, 8, "Eid-ul-Adha"),
-            (8, 16, "Janmashtami"),
-            (9, 5, "Eid-e-Milad"),
-            (10, 1, "Dussehra"),
-            (10, 20, "Diwali"),
-            (10, 22, "Diwali (Balipratipada)"),
-            (11, 5, "Guru Nanak"),
-            (11, 24, "Kartik Purnima"),
-        ],
-        2026: [
-            (1, 14, "Makar Sankranti"),
-            (1, 26, "Republic Day"),
-            (2, 17, "Maha Shivaratri"),
-            (3, 20, "Holi"),
-            (3, 27, "Good Friday"),
-            (3, 31, "Eid-ul-Fitr"),
-            (4, 14, "Ambedkar Jayanti"),
-            (4, 21, "Ram Navami"),
-            (5, 1, "Maharashtra Day"),
-            (5, 29, "Eid-ul-Adha"),
-            (7, 17, "Muharram"),
-            (8, 15, "Independence Day"),
-            (8, 28, "Janmashtami"),
-            (10, 2, "Gandhi Jayanti"),
-            (10, 19, "Dussehra"),
-            (11, 7, "Diwali"),
-            (11, 25, "Guru Nanak"),
-            (12, 25, "Christmas"),
-        ],
-        2027: [
-            (1, 1, "New Year"),
-            (1, 14, "Makar Sankranti"),
-            (3, 6, "Holi"),
-            (3, 21, "Eid-ul-Fitr"),
-            (3, 26, "Good Friday"),
-            (4, 10, "Ram Navami"),
-            (4, 14, "Ambedkar Jayanti"),
-            (5, 1, "Maharashtra Day"),
-            (5, 18, "Eid-ul-Adha"),
-            (7, 6, "Muharram"),
-            (8, 15, "Independence Day"),
-            (8, 16, "Janmashtami"),
-            (10, 2, "Gandhi Jayanti"),
-            (10, 8, "Dussehra"),
-            (10, 28, "Diwali"),
-            (11, 15, "Guru Nanak"),
-            (12, 25, "Christmas"),
-        ],
-        2028: [
-            (1, 14, "Makar Sankranti"),
-            (1, 26, "Republic Day"),
-            (2, 23, "Maha Shivaratri"),
-            (3, 11, "Holi"),
-            (3, 24, "Good Friday"),
-            (4, 14, "Ambedkar Jayanti"),
-            (4, 16, "Eid-ul-Fitr"),
-            (4, 18, "Ram Navami"),
-            (5, 1, "Maharashtra Day"),
-            (5, 6, "Eid-ul-Adha"),
-            (6, 25, "Muharram"),
-            (8, 15, "Independence Day"),
-            (9, 4, "Janmashtami"),
-            (10, 2, "Gandhi Jayanti"),
-            (10, 17, "Dussehra"),
-            (11, 4, "Diwali"),
-            (11, 14, "Guru Nanak"),
-            (12, 25, "Christmas"),
-        ],
-        2029: [
-            (1, 14, "Makar Sankranti"),
-            (1, 26, "Republic Day"),
-            (3, 1, "Maha Shivaratri"),
-            (3, 30, "Holi"),
-            (3, 30, "Eid-ul-Fitr"),
-            (4, 6, "Ram Navami"),
-            (4, 13, "Good Friday"),
-            (4, 14, "Ambedkar Jayanti"),
-            (5, 1, "Maharashtra Day"),
-            (5, 25, "Eid-ul-Adha"),
-            (6, 14, "Muharram"),
-            (8, 15, "Independence Day"),
-            (8, 25, "Janmashtami"),
-            (10, 2, "Gandhi Jayanti"),
-            (10, 6, "Dussehra"),
-            (10, 25, "Diwali"),
-            (11, 3, "Guru Nanak"),
-            (12, 25, "Christmas"),
-        ],
-        2030: [
-            (1, 14, "Makar Sankranti"),
-            (1, 26, "Republic Day"),
-            (2, 19, "Maha Shivaratri"),
-            (3, 19, "Holi"),
-            (3, 20, "Eid-ul-Fitr"),
-            (4, 14, "Ambedkar Jayanti"),
-            (4, 16, "Ram Navami"),
-            (4, 26, "Good Friday"),
-            (5, 1, "Maharashtra Day"),
-            (5, 14, "Eid-ul-Adha"),
-            (6, 4, "Muharram"),
-            (8, 15, "Independence Day"),
-            (8, 14, "Janmashtami"),
-            (10, 2, "Gandhi Jayanti"),
-            (9, 26, "Dussehra"),
-            (11, 13, "Diwali"),
-            (11, 22, "Guru Nanak"),
-            (12, 25, "Christmas"),
-        ],
-    }
+    data = _load_holidays()
+    moveable = data["moveable"]
     holidays: set[tuple[int, int, int]] = set()
     for year in range(start_year, end_year + 1):
-        if year in known:
-            for month, day, _ in known[year]:
-                holidays.add((year, month, day))
+        key = str(year)
+        if key in moveable:
+            for entry in moveable[key]:
+                holidays.add((year, entry["month"], entry["day"]))
     return holidays
 
 

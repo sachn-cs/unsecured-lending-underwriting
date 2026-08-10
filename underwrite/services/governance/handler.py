@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Protocol governance - parameter management and proposals.
 
 Maintains protocol-level parameters (protocol_rate, max_delegation_rate,

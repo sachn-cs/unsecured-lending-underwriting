@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Compliance - RBI-compliant KYC/AML checks for Indian fintech.
 
 Verifies PAN (format + category), Aadhaar (Verhoeff check digit),

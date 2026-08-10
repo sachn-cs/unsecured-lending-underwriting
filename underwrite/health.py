@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Health check registry for nano-service platform.
 
 Each subsystem registers a callable that returns a dict with at least

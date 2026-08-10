@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Domain-wide named constants.
 
 Centralizes magic numbers that appear across services so they are

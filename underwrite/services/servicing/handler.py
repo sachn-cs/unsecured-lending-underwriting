@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Loan servicing service.
 
 Manages the post-origination lifecycle of loans: tracks active loans,

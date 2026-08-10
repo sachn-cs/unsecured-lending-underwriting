@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Notification service — dispatches alerts via configurable channels."""
 
 from __future__ import annotations

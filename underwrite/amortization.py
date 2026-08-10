@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """EMI amortization engine for Indian lending.
 
 Provides equal-monthly-installment (EMI) schedule generation, reducing

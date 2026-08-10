@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Decision intelligence service.
 
 Aggregates signals from fraud, risk, and compliance services to produce

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Indian holiday calendar for loan due-date adjustments.
 
 Provides gazetted holiday lists and utility functions to shift due

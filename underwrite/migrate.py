@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Schema migration engine for the underwrite platform.
 
 Migrations are ordered by version number.  Each migration is a SQL

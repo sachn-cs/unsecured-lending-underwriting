@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """NPA tracking — RBI-mandated asset classification, provisioning, and DLG triggers.
 
 Extends the base NPA service with:

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Plugin discovery — loads third-party services via ``importlib.metadata.entry_points``.
 
 Plugins register under the ``underwrite.services`` entry-point group.

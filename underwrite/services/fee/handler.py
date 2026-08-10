@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Fee assessment service.
 
 Calculates and tracks fees: late payment fees, origination fees,

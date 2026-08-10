@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Service registry constants — maps service names to module/class paths.
 
 Separated from ``__runtime__.py`` so the registry is testable without

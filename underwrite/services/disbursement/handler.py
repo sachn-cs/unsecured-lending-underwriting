@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Disbursement - processes loan payout after document generation.
 
 Listens for document.generated events and emits

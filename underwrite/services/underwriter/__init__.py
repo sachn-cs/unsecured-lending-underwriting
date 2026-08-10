@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Underwriting engine — rule and policy-based credit decisions."""
 
 from underwrite.services.underwriter.engine import (

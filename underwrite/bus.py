@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Abstract event bus — `EventBus` (sync) and `AsyncEventBus` (async) interfaces.
 
 Concrete implementations live in dedicated modules:

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """HTTP server for the underwrite Runtime.
 
 Provides health, metrics, and event-publishing endpoints with

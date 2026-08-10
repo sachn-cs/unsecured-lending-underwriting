@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Periodic metrics export loop.
 
 Lifecycle helper that runs a background thread snapshotting a

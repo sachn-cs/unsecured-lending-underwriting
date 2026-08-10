@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Service supervisor — monitors and auto-restarts crashed services.
 
 Tracks consecutive failures per service.  If a service exceeds the

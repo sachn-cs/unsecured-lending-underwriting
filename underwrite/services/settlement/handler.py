@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Settlement — final accounting and reconciliation.
 
 Listens for ``default.occurred`` and emits a ``settlement.completed``

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Underwriter — evaluates loan applications using rule engine.
 
 Enhanced service that aggregates signals from risk, fraud, credit bureau,

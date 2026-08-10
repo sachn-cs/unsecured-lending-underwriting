@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Shared validation helpers for nano services.
 
 All functions raise ``ProtocolError`` on invalid input, which is

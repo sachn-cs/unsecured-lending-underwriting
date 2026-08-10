@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Collateral management - LTV tracking, marking, and liquidation."""
 
 from __future__ import annotations

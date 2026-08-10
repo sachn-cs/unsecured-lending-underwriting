@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Keypair management - key registration and rotation."""
 
 from __future__ import annotations

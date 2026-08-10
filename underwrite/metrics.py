@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Thread-safe metrics collector — counters, timers, gauges."""
 
 from __future__ import annotations

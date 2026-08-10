@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Collection - tracks repayment schedule and overdue accounts.
 
 Listens for loan.originated and repaid events to maintain an

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Message schema registry — per-event-type payload validation with versioning.
 
 Each event type registered in the schema registry declares its expected

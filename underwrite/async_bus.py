@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Async-native event bus — ``asyncio.Queue``-based ``AsyncEventBus``.
 
 Provides a non-blocking, async-first alternative to the synchronous

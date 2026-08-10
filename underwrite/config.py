@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Core configuration engine for the underwrite nano-service platform.
 
 All services are configuration-driven. A JSON config determines:

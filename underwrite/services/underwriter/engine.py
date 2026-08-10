@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Underwriting rule engine — declarative policy evaluation.
 
 Defines a rule-based evaluation engine for credit underwriting.

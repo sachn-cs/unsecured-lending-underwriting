@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Persistence abstraction for state and log storage.
 
 Composition over inheritance: InMemory, Disk, and Sqlite are

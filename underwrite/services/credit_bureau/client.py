@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Credit bureau HTTP client abstraction with mock support.
 
 Supports CIBIL, Experian, Equifax credit reports and CKYC verification.

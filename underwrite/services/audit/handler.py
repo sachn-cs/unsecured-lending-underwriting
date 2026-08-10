@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Append-only audit ledger. Records every domain event for compliance.
 
 All payloads are redacted for PII before storage. The raw event is

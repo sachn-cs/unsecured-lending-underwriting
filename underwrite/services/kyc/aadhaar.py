@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Aadhaar eKYC — UIDAI KUA (KYC User Agency) client.
 
 UIDAI's eKYC service is consumed through licensed KUAs. The wire

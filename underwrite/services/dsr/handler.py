@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Data Subject Rights (DSR) - DPDPA 2023 compliant request handling.
 
 Manages data subject requests for access, correction, erasure, and

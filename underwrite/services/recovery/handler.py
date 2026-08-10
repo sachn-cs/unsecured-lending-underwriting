@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Recovery workflows — post-default recovery orchestration.
 
 Implements a multi-stage recovery process with store-backed persistence:

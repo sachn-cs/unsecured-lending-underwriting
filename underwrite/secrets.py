@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Secrets management — loads private keys from Vault, AWS SM, or env vars."""
 
 from __future__ import annotations

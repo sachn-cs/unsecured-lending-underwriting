@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Payment processing service.
 
 Handles payment scheduling, receipt, and overdue detection.  Emits

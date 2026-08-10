@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Saga orchestration — distributed transaction coordination.
 
 Each saga step has a forward action and a compensating rollback action.

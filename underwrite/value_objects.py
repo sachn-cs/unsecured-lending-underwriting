@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Domain value objects.
 
 AGENTS.md § Primitive Obsession: domain concepts should be modeled

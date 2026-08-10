@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """The core mechanism service - owns the DelegatedUnderwriting state machine.
 
 This service maintains the authoritative protocol state and processes all

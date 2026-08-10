@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """CLI for the underwrite nano-service platform.
 
 Usage:

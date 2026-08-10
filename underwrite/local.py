@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """In-process event bus implementation."""
 
 from __future__ import annotations

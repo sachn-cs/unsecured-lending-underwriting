@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Modal-backed event bus implementation.
 
 Publishes events to a Modal distributed queue and polls for messages

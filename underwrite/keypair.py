@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Ed25519 identity management for nano-service attestation.
 
 Each service signs every emitted event so downstream consumers can

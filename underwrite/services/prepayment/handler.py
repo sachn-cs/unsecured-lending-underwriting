@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Prepayment and foreclosure service.
 
 Handles prepayment requests and foreclosure computations per RBI

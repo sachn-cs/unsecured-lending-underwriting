@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Custom exceptions for the underwrite platform."""
 
 from __future__ import annotations

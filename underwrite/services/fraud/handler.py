@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Fraud detection - velocity checks, wash lending, and rule-based alerts."""
 
 from __future__ import annotations

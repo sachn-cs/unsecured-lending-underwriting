@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """CIBIL consumer bureau pull — TransUnion CIBIL partner API.
 
 The CIBIL consumer bureau pull is consumed through licensed

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """KYC provider integrations — PAN, Aadhaar (eKYC), CIBIL, CKYC.
 
 Each provider client implements the same ``Provider`` ABC and

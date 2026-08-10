@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Thread-local correlation context shared across modules.
 
 The correlation id for the current execution context lives here so that

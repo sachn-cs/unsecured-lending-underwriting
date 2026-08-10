@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """ML risk scoring and early-warning signals.
 
 Optionally integrates with sklearn-based risk models.  The risk model

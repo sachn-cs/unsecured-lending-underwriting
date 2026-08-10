@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Loan pricing and quoting.  Stateless — reads state from the shared store."""
 
 from __future__ import annotations

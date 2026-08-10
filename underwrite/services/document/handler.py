@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Document - generates and manages loan document references.
 
 Listens for underwriter.approved events, creates document records,

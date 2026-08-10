@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Risk scoring model (optional sklearn wrapper).
 
 Loads a pre-trained model from a joblib file or reconstructs from a

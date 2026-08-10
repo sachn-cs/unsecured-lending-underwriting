@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """PAN verification — Income Tax Department (NSDL / UTIITSL).
 
 The Income Tax Department exposes PAN verification through licensed

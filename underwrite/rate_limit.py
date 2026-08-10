@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Token-bucket rate limiter."""
 
 from __future__ import annotations

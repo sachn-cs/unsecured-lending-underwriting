@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Credit Bureau & CKYC service - pulls credit reports and verifies CKYC.
 
 Integrates with CIBIL, Experian, Equifax for credit bureau checks and

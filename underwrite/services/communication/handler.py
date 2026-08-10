@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Communication dispatch service.
 
 Sends notifications through configured channels (email, SMS, push).

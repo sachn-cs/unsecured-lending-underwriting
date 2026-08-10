@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """underwrite — nano-service platform for delegated underwriting.
 
 Each nano service is independently deployable (serverless / Modal) and

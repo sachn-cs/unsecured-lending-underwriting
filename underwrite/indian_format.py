@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Indian number formatting utilities.
 
 Provides lakh/crore-based formatting for display of monetary amounts

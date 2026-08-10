@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Generic, reusable utilities — free functions, no state, no classes.
 
 Each utility is small, single-purpose, and reused in 2+ places.

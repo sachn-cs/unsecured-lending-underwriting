@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Consent management - DPDPA 2023 compliant consent lifecycle.
 
 Records, tracks, and audits user consent for specific processing

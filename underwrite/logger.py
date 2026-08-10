@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Centralised logging for the underwrite platform.
 
 All services and infrastructure modules import ``logger`` from this

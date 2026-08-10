@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Distributed tracing — span propagation and export.
 
 Each event carries trace context.  Spans are created for handler

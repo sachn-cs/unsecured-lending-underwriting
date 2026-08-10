@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Pricing — RBI-compliant interest rate and fee computation.
 
 Computes interest rates, fees, and all-in-cost APR per RBI Master

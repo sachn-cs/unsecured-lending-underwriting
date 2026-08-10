@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """RBI regulatory reporting — generates reports from audit data.
 
 Tracks portfolio-level metrics and NPA bucket-wise breakdowns

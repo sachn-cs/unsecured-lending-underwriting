@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Generic store-backed repository for nano-service state persistence.
 
 Replaces manual __sync_store / __load_store boilerplate with a reusable,

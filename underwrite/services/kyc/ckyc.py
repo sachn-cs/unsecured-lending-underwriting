@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """CKYC registry search — CERSAI (Central KYC Records Registry).
 
 CKYC lookup is consumed through licensed CKYC Search Providers

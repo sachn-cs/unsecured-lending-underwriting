@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Pure domain model for the delegation-based underwriting graph.
 
 Encapsulates all graph state (seeds, parent-child relationships,

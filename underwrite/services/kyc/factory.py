@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Factory and config for KYC provider clients."""
 
 from __future__ import annotations

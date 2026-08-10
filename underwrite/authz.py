@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Access control for nano-service event bus.
 
 Policies define which services may emit or consume which event types.

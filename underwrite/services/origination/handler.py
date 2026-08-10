@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sachin
+
 """Loan origination service.
 
 Handles the intake, validation, and submission of loan applications.

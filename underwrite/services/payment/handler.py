@@ -82,15 +82,15 @@ class Handler(StatefulService):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.__clock: SystemClock = SystemClock()
-        self.__id_generator: IdGenerator = IdGenerator()
+        self.clock: SystemClock = SystemClock()
+        self.id_generator: IdGenerator = IdGenerator()
         self.handlers: dict[str, Any] = {
-            Type.PAYMENT_RECEIVE: self.__on_payment_receive,
-            Type.PAYMENT_SCHEDULE: self.__on_payment_schedule,
-            Type.PAYMENT_CHECK_OVERDUE: self.__on_payment_check_overdue,
-            Type.RAZORPAY_PAYMENT_CAPTURED: self.__on_razorpay_payment_captured,
-            Type.RAZORPAY_SUBSCRIPTION_CHARGED: self.__on_razorpay_subscription_charged,
-            Type.RAZORPAY_PAYMENT_REFUNDED: self.__on_razorpay_payment_refunded,
+            Type.PAYMENT_RECEIVE: self.on_payment_receive,
+            Type.PAYMENT_SCHEDULE: self.on_payment_schedule,
+            Type.PAYMENT_CHECK_OVERDUE: self.on_payment_check_overdue,
+            Type.RAZORPAY_PAYMENT_CAPTURED: self.on_razorpay_payment_captured,
+            Type.RAZORPAY_SUBSCRIPTION_CHARGED: self.on_razorpay_subscription_charged,
+            Type.RAZORPAY_PAYMENT_REFUNDED: self.on_razorpay_payment_refunded,
         }
 
     def handle(self, event: Message) -> None:
@@ -104,10 +104,10 @@ class Handler(StatefulService):
             handler(event)
 
     @staticmethod
-    def __to_money(amount: float) -> Money:
+    def to_money(amount: float) -> Money:
         return Money.from_rupees(Decimal(str(amount)))
 
-    def __on_payment_receive(self, event: Message) -> None:
+    def on_payment_receive(self, event: Message) -> None:
         """Record a payment received.
 
         Args:
@@ -117,13 +117,13 @@ class Handler(StatefulService):
         amount: float = PayloadValidator().finite(event.payload, "amount", 0.0)
         if not loan_id or amount <= 0:
             return
-        payment_id: str = f"pay_{loan_id}_{self.__id_generator.next()}"
-        money: Money = self.__to_money(amount)
+        payment_id: str = f"pay_{loan_id}_{self.id_generator.next()}"
+        money: Money = self.to_money(amount)
         receipt = {
             "loan_id": loan_id,
             "amount_paise": money.paise,
             "amount": amount,
-            "received_at": self.__clock.iso(),
+            "received_at": self.clock.iso(),
         }
         self.store.set(f"payment:{payment_id}", receipt)
         self.emit(
@@ -137,7 +137,7 @@ class Handler(StatefulService):
             correlation_id=event.correlation_id,
         )
 
-    def __on_payment_schedule(self, event: Message) -> None:
+    def on_payment_schedule(self, event: Message) -> None:
         """Schedule a future payment.
 
         Args:
@@ -149,7 +149,7 @@ class Handler(StatefulService):
         if not loan_id or not due_date:
             return
         schedule_key: str = f"schedule:{loan_id}:{due_date}"
-        money: Money = self.__to_money(amount)
+        money: Money = self.to_money(amount)
         schedule = {
             "loan_id": loan_id,
             "due_date": due_date,
@@ -169,7 +169,7 @@ class Handler(StatefulService):
             correlation_id=event.correlation_id,
         )
 
-    def __on_payment_check_overdue(self, event: Message) -> None:
+    def on_payment_check_overdue(self, event: Message) -> None:
         """Check for overdue payments and emit overdue events.
 
         Args:
@@ -178,7 +178,7 @@ class Handler(StatefulService):
         loan_id: str = event.payload.get("loan_id", "")
         if not loan_id:
             return
-        cutoff: datetime = self.__clock.utc_now() - timedelta(days=OVERDUE_CUTOFF_DAYS)
+        cutoff: datetime = self.clock.utc_now() - timedelta(days=OVERDUE_CUTOFF_DAYS)
         for key in self.store.keys(f"schedule:{loan_id}:"):
             raw = self.store.get(key)
             if raw is None:
@@ -201,7 +201,7 @@ class Handler(StatefulService):
                         correlation_id=event.correlation_id,
                     )
 
-    def __on_razorpay_payment_captured(self, event: Message) -> None:
+    def on_razorpay_payment_captured(self, event: Message) -> None:
         """Bridge a Razorpay payment captured event to PAYMENT_RECEIVED.
 
         Args:
@@ -212,7 +212,7 @@ class Handler(StatefulService):
         razorpay_payment_id: str = event.payload.get("payment_id", "")
         if not loan_id or amount <= 0:
             return
-        money: Money = self.__to_money(amount)
+        money: Money = self.to_money(amount)
         self.store.set(
             f"razorpay_payment:{razorpay_payment_id}",
             {
@@ -220,7 +220,7 @@ class Handler(StatefulService):
                 "amount_paise": money.paise,
                 "amount": amount,
                 "status": "captured",
-                "received_at": self.__clock.iso(),
+                "received_at": self.clock.iso(),
             },
         )
         self.emit(
@@ -235,7 +235,7 @@ class Handler(StatefulService):
             correlation_id=event.correlation_id,
         )
 
-    def __on_razorpay_subscription_charged(self, event: Message) -> None:
+    def on_razorpay_subscription_charged(self, event: Message) -> None:
         """Bridge a Razorpay subscription charge event to PAYMENT_RECEIVED.
 
         Args:
@@ -247,7 +247,7 @@ class Handler(StatefulService):
         payment_id: str = event.payload.get("payment_id", "")
         if not loan_id or amount <= 0:
             return
-        money: Money = self.__to_money(amount)
+        money: Money = self.to_money(amount)
         self.store.set(
             f"razorpay_subscription:{payment_id}",
             {
@@ -256,7 +256,7 @@ class Handler(StatefulService):
                 "amount_paise": money.paise,
                 "amount": amount,
                 "status": "charged",
-                "received_at": self.__clock.iso(),
+                "received_at": self.clock.iso(),
             },
         )
         self.emit(
@@ -272,7 +272,7 @@ class Handler(StatefulService):
             correlation_id=event.correlation_id,
         )
 
-    def __on_razorpay_payment_refunded(self, event: Message) -> None:
+    def on_razorpay_payment_refunded(self, event: Message) -> None:
         """Record a Razorpay payment refund.
 
         Args:
@@ -283,7 +283,7 @@ class Handler(StatefulService):
         razorpay_payment_id: str = event.payload.get("payment_id", "")
         if not loan_id or amount <= 0:
             return
-        money: Money = self.__to_money(amount)
+        money: Money = self.to_money(amount)
         self.store.set(
             f"razorpay_refund:{razorpay_payment_id}",
             {
@@ -291,7 +291,7 @@ class Handler(StatefulService):
                 "amount_paise": money.paise,
                 "amount": amount,
                 "status": "refunded",
-                "refunded_at": self.__clock.iso(),
+                "refunded_at": self.clock.iso(),
             },
         )
         logger.info(

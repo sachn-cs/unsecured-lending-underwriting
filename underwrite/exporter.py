@@ -42,36 +42,36 @@ class Exporter:
     ) -> None:
         if interval_seconds <= 0:
             raise ValueError("interval_seconds must be > 0")
-        self.__metrics: Collector = metrics
-        self.__interval_seconds: float = interval_seconds
-        self.__on_snapshot: Callable[[dict], None] | None = on_snapshot
-        self.__stop_event: threading.Event = threading.Event()
-        self.__thread: threading.Thread | None = None
+        self.metrics: Collector = metrics
+        self.interval_seconds: float = interval_seconds
+        self.on_snapshot: Callable[[dict], None] | None = on_snapshot
+        self.stop_event: threading.Event = threading.Event()
+        self.thread: threading.Thread | None = None
 
     def start(self) -> None:
-        if self.__thread is not None:
+        if self.thread is not None:
             return
-        self.__stop_event = threading.Event()
-        self.__thread = threading.Thread(target=self.__run, daemon=True, name="metrics-exporter")
-        self.__thread.start()
+        self.stop_event = threading.Event()
+        self.thread = threading.Thread(target=self.run, daemon=True, name="metrics-exporter")
+        self.thread.start()
 
-    def __run(self) -> None:
-        while not self.__stop_event.is_set():
-            self.__stop_event.wait(self.__interval_seconds)
-            if self.__stop_event.is_set():
+    def run(self) -> None:
+        while not self.stop_event.is_set():
+            self.stop_event.wait(self.interval_seconds)
+            if self.stop_event.is_set():
                 break
             try:
-                snap = self.__metrics.snapshot()
-                if self.__on_snapshot is not None:
-                    self.__on_snapshot(snap)
+                snap = self.metrics.snapshot()
+                if self.on_snapshot is not None:
+                    self.on_snapshot(snap)
             except (OSError, ValueError, TypeError) as exc:
                 logger.exception("metrics snapshot failed: {}", exc)
 
     def stop(self, timeout: float = 5.0) -> None:
-        self.__stop_event.set()
-        if self.__thread is not None:
-            self.__thread.join(timeout=timeout)
-            self.__thread = None
+        self.stop_event.set()
+        if self.thread is not None:
+            self.thread.join(timeout=timeout)
+            self.thread = None
 
 
 _redactor = PIISanitizer()
@@ -114,22 +114,22 @@ class Prometheus:
         lines: list[str] = []
 
         for name, data in snap.get("counters", {}).items():
-            safe = Prometheus.__sanitize(name)
-            tags = Prometheus.__format_tags(data.get("tags", {}))
+            safe = Prometheus.sanitize(name)
+            tags = Prometheus.format_tags(data.get("tags", {}))
             lines.append(f"# HELP {safe} Counter metric")
             lines.append(f"# TYPE {safe} counter")
             lines.append(f"{safe}{{{tags}}} {data['value']}")
 
         for name, data in snap.get("gauges", {}).items():
-            safe = Prometheus.__sanitize(name)
-            tags = Prometheus.__format_tags(data.get("tags", {}))
+            safe = Prometheus.sanitize(name)
+            tags = Prometheus.format_tags(data.get("tags", {}))
             lines.append(f"# HELP {safe} Gauge metric")
             lines.append(f"# TYPE {safe} gauge")
             lines.append(f"{safe}{{{tags}}} {data['value']}")
 
         for name, data in snap.get("timers", {}).items():
-            safe = Prometheus.__sanitize(name)
-            tags = Prometheus.__format_tags(data.get("tags", {}))
+            safe = Prometheus.sanitize(name)
+            tags = Prometheus.format_tags(data.get("tags", {}))
             lines.append(f"# HELP {safe} Timer metric")
             lines.append(f"# TYPE {safe} gauge")
             lines.append(f"{safe}_count{{{tags}}} {data['count']}")
@@ -140,12 +140,12 @@ class Prometheus:
         return "\n".join(lines) + "\n"
 
     @staticmethod
-    def __sanitize(name: str) -> str:
+    def sanitize(name: str) -> str:
         """Replace non-Prometheus-safe characters in metric names."""
         return name.replace(":", "_").replace(".", "_").replace("-", "_")
 
     @staticmethod
-    def __format_tags(tags: dict[str, str]) -> str:
+    def format_tags(tags: dict[str, str]) -> str:
         """Format a dict of tags as a Prometheus label string.
 
         Escapes backslashes, double-quotes, and newlines so a
@@ -157,7 +157,7 @@ class Prometheus:
         """
         parts: list[str] = []
         for k, v in sorted(tags.items()):
-            safe_k = Prometheus.__sanitize(str(k))
+            safe_k = Prometheus.sanitize(str(k))
             safe_v = _redact_tag_value(v).replace("\\", "\\\\").replace("\n", "\\n").replace('"', '\\"')
             parts.append(f'{safe_k}="{safe_v}"')
         return ",".join(parts)
@@ -186,14 +186,14 @@ class PrometheusMiddleware:
         self.runtime = runtime
         import os
 
-        self.__api_token: str = api_token or os.environ.get("UNDERWRITE_API_TOKEN", "") or ""
+        self.api_token: str = api_token or os.environ.get("UNDERWRITE_API_TOKEN", "") or ""
 
     async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
         if scope["type"] == "http" and scope.get("path") == "/metrics-prometheus":
             from fastapi.responses import JSONResponse, PlainTextResponse, Response
 
             response: Response
-            if self.__api_token:
+            if self.api_token:
                 import hmac
 
                 headers = scope.get("headers") or []
@@ -208,7 +208,7 @@ class PrometheusMiddleware:
                         except (UnicodeDecodeError, AttributeError, TypeError):
                             auth = ""
                         break
-                expected = f"Bearer {self.__api_token}"
+                expected = f"Bearer {self.api_token}"
                 if not hmac.compare_digest(auth, expected):
                     response = JSONResponse(
                         {"error": "unauthorized"},

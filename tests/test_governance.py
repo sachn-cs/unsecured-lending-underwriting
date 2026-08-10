@@ -1,4 +1,4 @@
-"""Tests for GovernanceHandler — protocol parameter management.
+"""Tests for Handler — protocol parameter management.
 
 Tests verify behavior through:
   - params property (returns copy of parameters)
@@ -10,12 +10,13 @@ from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.governance.handler import GovernanceHandler
 from underwrite.store import MemoryStore
+from underwrite.services.governance.handler import Handler
+from underwrite.services.governance.handler import Handler as GovHandler
 
 
-def gov(bus=None) -> GovernanceHandler:
-    return GovernanceHandler(service_id="gov", bus=bus or LocalBus(), store=MemoryStore())
+def gov(bus=None) -> Handler:
+    return GovHandler(service_id="gov", bus=bus or LocalBus(), store=MemoryStore())
 
 
 class TestGovernanceService:

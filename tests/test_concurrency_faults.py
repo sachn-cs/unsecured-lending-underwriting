@@ -18,6 +18,7 @@ from underwrite.saga import Orchestrator, SagaStep
 from underwrite.store import FileStore, MemoryStore
 from underwrite.tracer import Tracer
 from underwrite.services.audit.handler import Handler
+from underwrite.services.mechanism.handler import Handler as MechanismHandler
 
 NUM_THREADS: int = 10
 OPS_PER_THREAD: int = 100
@@ -279,7 +280,7 @@ class TestMechanismConcurrency:
     """Stress tests for Handler thread safety."""
 
     def test_concurrent_add_user(self) -> None:
-        svc = Handler(service_id="test-mech", store=MemoryStore(), bus=LocalBus())
+        svc = MechanismHandler(service_id="test-mech", store=MemoryStore(), bus=LocalBus())
         errors: list[Exception] = []
         err_lock = threading.Lock()
 
@@ -303,7 +304,7 @@ class TestMechanismConcurrency:
         assert "bank" in svc.seeds
 
     def test_concurrent_mixed_operations(self) -> None:
-        svc = Handler(service_id="test-mech", store=MemoryStore(), bus=LocalBus())
+        svc = MechanismHandler(service_id="test-mech", store=MemoryStore(), bus=LocalBus())
         errors: list[Exception] = []
         err_lock = threading.Lock()
 
@@ -350,7 +351,7 @@ class TestMechanismConcurrency:
 
     def test_concurrent_quote_queries(self) -> None:
         """Quote is read-only — safe to call concurrently from many threads."""
-        svc = Handler(service_id="test-mech", store=MemoryStore(), bus=LocalBus())
+        svc = MechanismHandler(service_id="test-mech", store=MemoryStore(), bus=LocalBus())
         errors: list[Exception] = []
         err_lock = threading.Lock()
 

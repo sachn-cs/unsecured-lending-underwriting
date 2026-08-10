@@ -12,7 +12,7 @@ export UNDERWRITE_LOG_OUTPUT=stdout    # or stderr
 
 When `log_format` is `"json"`, each log line is a JSON object with `timestamp`, `level`, `logger`, `message`, `module`, `line`, and optional `correlation_id`, `trace_id`, and `exception` fields. Sensitive fields (`password`, `secret`, `token`, `ssn`, `pan`, etc.) are automatically redacted to `***REDACTED***`.
 
-Logging runs through loguru; all code imports `logger` from `underwrite.__logger__`, and the formatters read the current thread's correlation ID from the shared context in `underwrite/__correlation__.py`. Set log level to `DEBUG` for detailed event dispatch tracing.
+Logging runs through loguru; all code imports `logger` from `underwrite.logger`, and the formatters read the current thread's correlation ID from the shared context in `underwrite/correlation.py`. Set log level to `DEBUG` for detailed event dispatch tracing.
 
 ---
 
@@ -44,7 +44,7 @@ psql $DATABASE_URL -c "SELECT * FROM dead_letters WHERE replayed=false ORDER BY 
 To clear the DLQ programmatically:
 
 ```python
-from underwrite.__bus__ import DeadLetterQueue
+from underwrite.bus import DeadLetterQueue
 
 dlq = DeadLetterQueue()
 dlq.clear()
@@ -123,9 +123,9 @@ HTTP endpoint: `GET /v1/metrics` (Prometheus text format, requires `underwrite[s
 Create a minimal test script that instantiates a `Runtime` with one service:
 
 ```python
-from underwrite.__config__ import Configuration
-from underwrite.__events__ import Event
-from underwrite.__runtime__ import Runtime
+from underwrite.config import Configuration
+from underwrite.message import Event
+from underwrite.runtime import Runtime
 
 cfg = Configuration.default()
 cfg.store.backend = "memory"
@@ -200,7 +200,7 @@ Or disable rate limiting: `rate_limit: 0` in config.
 Subscribe a wildcard handler to capture all events:
 
 ```python
-from underwrite.__bus__ import LocalBus
+from underwrite.bus import LocalBus
 
 bus = LocalBus()
 all_events: list = []
@@ -238,7 +238,7 @@ underwrite migrate
 
 The `migrations` table is created automatically. If auto-migrate is disabled in config (`migration.auto_migrate: false`), run `underwrite migrate` manually.
 
-Migration versions are defined in `underwrite/__migrate__.py` (`default_plan()`). Current versions:
+Migration versions are defined in `underwrite/migrate.py` (`default_plan()`). Current versions:
 
 | Version | Description |
 |---------|-------------|
@@ -268,7 +268,7 @@ When a circuit opens, operations fail with `CircuitBreakerOpenError`. Recovery i
 Check circuit state:
 
 ```python
-from underwrite.__circuit__ import CircuitBreaker
+from underwrite.circuit import CircuitBreaker
 
 cb = CircuitBreaker()
 print(cb.state)  # CircuitState.CLOSED / OPEN / HALF_OPEN

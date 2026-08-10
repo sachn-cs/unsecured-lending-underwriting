@@ -78,7 +78,7 @@ For production deployments, this is a core dependency and is always installed. T
 
 **Symptom**: `CircuitBreakerOpenError: circuit {name} is open` logged. Operations against a store or subscriber are rejected immediately without attempting the call. Failed events go to DLQ with error `"circuit_open"`.
 
-**Root cause**: The `CircuitBreaker` (in `underwrite/__circuit__.py`) has recorded `failure_threshold` consecutive failures (default 5 for bus subscribers, 3 for `PostgresStore`/`FileStore`). The circuit transitions from CLOSED → OPEN, rejecting all requests until `recovery_timeout` elapses (default 60s for bus, 15s for Postgres, 30s for FileStore).
+**Root cause**: The `CircuitBreaker` (in `underwrite/circuit.py`) has recorded `failure_threshold` consecutive failures (default 5 for bus subscribers, 3 for `PostgresStore`/`FileStore`). The circuit transitions from CLOSED → OPEN, rejecting all requests until `recovery_timeout` elapses (default 60s for bus, 15s for Postgres, 30s for FileStore).
 
 **Diagnostic steps**:
 1. Check circuit state via health endpoint:
@@ -111,7 +111,7 @@ For production deployments, this is a core dependency and is always installed. T
    ```sql
    SELECT * FROM migrations ORDER BY version;
    ```
-2. Check the failing migration SQL in `underwrite/__migrate__.py` (the `default_plan()` function).
+2. Check the failing migration SQL in `underwrite/migrate.py` (the `default_plan()` function).
 3. Check Postgres logs for the exact SQL error.
 
 **Resolution**:
@@ -146,7 +146,7 @@ For production deployments, this is a core dependency and is always installed. T
    # from the store:
    store.get("saga:{saga_id}")
    ```
-4. Verify service wiring — the emitter service must be started and subscribed to its own events (see `Runtime.wire()` in `__runtime__.py`).
+4. Verify service wiring — the emitter service must be started and subscribed to its own events (see `Runtime.wire()` in `runtime.py`).
 
 **Resolution**:
 - Enable sagas: `UNDERWRITE_SAGA_ENABLED=true`.
@@ -191,13 +191,13 @@ Inspect the `error` field — it contains the exception type and message.
 **Symptom**: A service's `handle()` method is never called for events it should process. Service stays idle.
 
 **Root cause**: The service is not wired to the event types it should receive. Either:
-- The service is not registered in `WIRING` in `underwrite/__service_registry__.py`.
+- The service is not registered in `WIRING` in `underwrite/handler.py`.
 - The service name is missing from the `WIRING` entry for the relevant `EventType`.
 - The service was not started with `runtime.start([...])`.
 - The service's `subscribe()` method found no matching entries in `WIRING`.
 
 **Diagnostic steps**:
-1. Check `WIRING` in `underwrite/__service_registry__.py` for the event type and service name.
+1. Check `WIRING` in `underwrite/handler.py` for the event type and service name.
 2. Verify the service is started:
    ```
    underwrite health  # check "services" section
@@ -307,7 +307,7 @@ Inspect the `error` field — it contains the exception type and message.
 **Resolution**:
 - Ensure the correct config file path is provided or `underwrite.json` exists in the working directory.
 - For env vars, set `UNDERWRITE_ENV=production` and place config in `config.production.json`.
-- Check the exact env var names in `__config__.py:__apply_env_overrides()`.
+- Check the exact env var names in `config.py:__apply_env_overrides()`.
 - Boolean env vars accept `"1"`, `"true"`, `"yes"` (case-insensitive).
 - Numeric env vars that fail coercion are logged and skipped (not fatal).
 
@@ -342,7 +342,7 @@ Inspect the `error` field — it contains the exception type and message.
 
 **Symptom**: POST `/v1/publish` returns `{"error": "unauthorized", "status_code": 401}`.
 
-**Root cause**: The `Authorization` header is missing, does not start with `Bearer `, or the token does not match `UNDERWRITE_API_TOKEN`. The `__serve__.py` auth middleware uses `hmac.compare_digest()` for constant-time comparison.
+**Root cause**: The `Authorization` header is missing, does not start with `Bearer `, or the token does not match `UNDERWRITE_API_TOKEN`. The `serve.py` auth middleware uses `hmac.compare_digest()` for constant-time comparison.
 
 **Diagnostic steps**:
 1. Check the request headers:

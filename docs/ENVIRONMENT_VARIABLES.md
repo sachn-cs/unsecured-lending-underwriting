@@ -9,7 +9,7 @@ loading, notification channels, and secrets backend access.
 ## Configuration Overrides
 
 Parsed by `Configuration.__apply_env_overrides()` in
-`underwrite/__config__.py:402`.
+`underwrite/config.py:402`.
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|

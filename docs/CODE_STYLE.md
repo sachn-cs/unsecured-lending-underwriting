@@ -112,7 +112,7 @@ Run: `mypy underwrite/`
 | Private attributes    | `__double_underscore` | `self.__service_id`, `self.__batch_lock` |
 | Public methods        | `snake_case`       | `safe_store_get()`, `force_sync()`    |
 | Abstract methods      | `snake_case`       | `handle()`, `do_sync_store()`         |
-| Modules               | `snake_case`       | `__store__.py`, `prometheus_export.py` |
+| Modules               | `snake_case`       | `store.py`, `prometheus_export.py` |
 | Type variables        | `_T` short form    | `_T = TypeVar("_T")`                  |
 
 ## Visibility
@@ -128,7 +128,7 @@ Run: `mypy underwrite/`
   def service_id(self) -> str:
       return self.__service_id
   ```
-- **`__all__`** explicitly in every public module to define the public surface:
+- **`all`** explicitly in every public module to define the public surface:
   ```python
   __all__ = ["Event", "EventType", "MAX_PAYLOAD_SIZE"]
   ```
@@ -152,15 +152,15 @@ Key ABCs in the codebase:
 
 | ABC                  | File             | Implementations                       |
 |----------------------|------------------|---------------------------------------|
-| `Store`              | `__store__.py`   | `MemoryStore`, `FileStore`, `PostgresStore` |
-| `EventBus`           | `__bus__.py`     | `LocalBus`, `AsyncLocalBus`           |
+| `Store`              | `store.py`   | `MemoryStore`, `FileStore`, `PostgresStore` |
+| `EventBus`           | `bus.py`     | `LocalBus`, `AsyncLocalBus`           |
 | `NanoService`        | `services/base.py` | 28 service classes                  |
 | `StatefulService`    | `services/base.py` | Services with mutable state         |
-| `SecretsBackend`     | `__secrets__.py` | `EnvSecretsBackend`, `VaultSecretsBackend`, `AwsSecretsBackend` |
+| `SecretsBackend`     | `secrets.py` | `EnvSecretsBackend`, `VaultSecretsBackend`, `AwsSecretsBackend` |
 
 ## Exception Hierarchy
 
-All exceptions inherit from `UnderwriteError` (defined in `__exceptions__.py`):
+All exceptions inherit from `UnderwriteError` (defined in `exceptions.py`):
 
 ```
 UnderwriteError
@@ -183,13 +183,13 @@ UnderwriteError
 ## Module Organization
 
 - **Core infrastructure**: Single-role modules prefixed `__` under `underwrite/`:
-  - `underwrite.__store__` — `Store` ABC and implementations
-  - `underwrite.__bus__` — `EventBus` ABC and implementations
-  - `underwrite.__config__` — Configuration loading and validation
-  - `underwrite.__runtime__` — Runtime lifecycle management
-  - `underwrite.__serve__` — FastAPI HTTP server
-  - `underwrite.__cli__` — Typer CLI entry point
-- **Services**: Each as a sub-package under `underwrite/services/<name>/` with `__init__.py` + `service.py`
+  - `underwrite.store` — `Store` ABC and implementations
+  - `underwrite.bus` — `EventBus` ABC and implementations
+  - `underwrite.config` — Configuration loading and validation
+  - `underwrite.runtime` — Runtime lifecycle management
+  - `underwrite.serve` — FastAPI HTTP server
+  - `underwrite.cli` — Typer CLI entry point
+- **Services**: Each as a sub-package under `underwrite/services/<name>/` with `init.py` + `service.py`
 - **Utilities**: Standalone modules like `validate.py`, `prometheus_export.py`
 
 ## Import Order
@@ -209,19 +209,19 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from underwrite.__bus__ import LocalBus
-from underwrite.__config__ import Configuration
+from underwrite.bus import LocalBus
+from underwrite.config import Configuration
 ```
 
 ruff with `select = ["I"]` enforces this automatically via `ruff check --fix`.
 
-## `__init__.py` Conventions
+## `init.py` Conventions
 
-Top-level `__init__.py` re-exports public API and defines `__all__`:
+Top-level `init.py` re-exports public API and defines `all`:
 
 ```python
-from underwrite.__bus__ import EventBus, LocalBus
-from underwrite.__exceptions__ import (
+from underwrite.bus import EventBus, LocalBus
+from underwrite.exceptions import (
     BusError,
     ConfigurationError,
     UnderwriteError,

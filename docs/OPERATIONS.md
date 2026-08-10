@@ -128,7 +128,7 @@ underwrite health
 Or programmatically:
 
 ```python
-from underwrite.__circuit__ import CircuitBreaker, CircuitState
+from underwrite.circuit import CircuitBreaker, CircuitState
 
 cb = CircuitBreaker(failure_threshold=3, recovery_timeout=15.0)
 # cb.state → CircuitState.CLOSED / OPEN / HALF_OPEN
@@ -200,7 +200,7 @@ psql $DATABASE_URL -c "SELECT * FROM migrations ORDER BY version;"
 
 ### Migration Plan
 
-Current migrations (defined in `__migrate__.py`):
+Current migrations (defined in `migrate.py`):
 
 | Version | Description |
 |---------|-------------|
@@ -393,7 +393,7 @@ pg_dump $DATABASE_URL -t store -t migrations -t dead_letters -t metrics_snapshot
 Sagas that were interrupted by a crash can be replayed:
 
 ```python
-from underwrite.__runtime__ import Runtime
+from underwrite.runtime import Runtime
 
 rt = Runtime()
 success = rt.replay_saga("saga-id-here")

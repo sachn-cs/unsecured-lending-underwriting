@@ -6,13 +6,13 @@
 
 ## 1. Runtime Initialization Flow
 
-Source: `underwrite/__runtime__.py`
+Source: `underwrite/runtime.py`
 
 ```python
 Runtime(config)             # or Runtime() loads defaults
   │
   ├─1. Configuration loaded from JSON file or defaults
-  │    (underwrite/__config__.py → Configuration)
+  │    (underwrite/config.py → Configuration)
   │
   ├─2. Store created
   │    ├─ config.store.backend == "filesystem" → FileStore(data_dir)
@@ -49,7 +49,7 @@ Runtime(config)             # or Runtime() loads defaults
 
 ## 2. Event Lifecycle
 
-Source: `underwrite/__events__.py`, `underwrite/__bus__.py`, `underwrite/services/base.py`
+Source: `underwrite/events.py`, `underwrite/bus.py`, `underwrite/services/base.py`
 
 ```
 External Trigger (CLI / HTTP POST /v1/publish / internal emit)
@@ -98,7 +98,7 @@ Service may emit downstream events inside handle()
 
 ## 3. Event Type Catalog
 
-Source: `underwrite/__events__.py` — 80+ event types in the `EventType` enum.
+Source: `underwrite/events.py` — 80+ event types in the `EventType` enum.
 
 | Domain | Events |
 |--------|--------|
@@ -136,7 +136,7 @@ Source: `underwrite/__events__.py` — 80+ event types in the `EventType` enum.
 
 ## 4. Service Wiring
 
-Source: `underwrite/__service_registry__.py`
+Source: `underwrite/handler.py`
 
 The `WIRING` dict maps each event type to the list of services that subscribe to it:
 
@@ -182,7 +182,7 @@ Each service also subscribes to its own name as an event type for direct command
 
 ## 5. Graceful Shutdown
 
-Source: `underwrite/__runtime__.py:559`, `underwrite/services/base.py:239`, `underwrite/__bus__.py:575`
+Source: `underwrite/runtime.py:559`, `underwrite/services/base.py:239`, `underwrite/bus.py:575`
 
 ```
 Runtime.stop()
@@ -211,7 +211,7 @@ Runtime.stop()
 
 ## 6. Saga Orchestration Flow
 
-Source: `underwrite/__saga__.py`
+Source: `underwrite/saga.py`
 
 ```
 start_saga(name, steps) → saga_id
@@ -475,7 +475,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client
-    participant FastAPI as FastAPI (__serve__.py)
+    participant FastAPI as FastAPI (serve.py)
     participant MW as Middlewares
     participant RT as Runtime
     participant Bus as EventBus
@@ -660,26 +660,26 @@ sequenceDiagram
 
 | Component | File | Responsibility |
 |---|---|---|
-| `Runtime` | `__runtime__.py` | Lifecycle management, service registration, wiring, start/stop |
-| `EventBus` / `LocalBus` | `__bus__.py` | In-process pub-sub with circuit breaker, rate limiter, DLQ |
+| `Runtime` | `runtime.py` | Lifecycle management, service registration, wiring, start/stop |
+| `EventBus` / `LocalBus` | `bus.py` | In-process pub-sub with circuit breaker, rate limiter, DLQ |
 | `NanoService` | `services/base.py` | Abstract base: signing, emit, subscribe, dispatch, tracing, idempotency |
 | `StatefulService` | `services/base.py` | Base with state lock and store repository helpers |
-| `Event` / `EventType` | `__events__.py` | Event envelope with UUID, timestamp, payload, Ed25519 signature |
-| `AccessControl` | `__authz__.py` | Policy evaluation + Ed25519 signature verification |
-| `Tracer` | `__tracer__.py` | Span lifecycle with Console/Otlp exporters |
-| `MetricsCollector` | `__metrics__.py` | Counters, timers, gauges with tag dimensions |
-| `SagaOrchestrator` | `__saga__.py` | Forward execution + compensating rollback, persisted to store |
-| `ServiceSupervisor` | `__supervisor__.py` | Failure tracking and auto-restart with exponential backoff |
-| `SecretsManager` | `__secrets__.py` | Secret rotation and retrieval |
-| `IdempotencyGuard` | `__bus__.py` | Duplicate event detection by (handler_id, event_id) |
-| `CircuitBreaker` | `__bus__.py` | Per-subscriber circuit breaker (CLOSED → OPEN → HALF_OPEN) |
-| `DeadLetterQueue` | `__bus__.py` | Bounded failed-event storage with optional Store persistence |
-| `RateLimiter` | `__bus__.py` | Token-bucket rate limiter per subscriber key |
-| `Store` | `__store__.py` | Abstract persistence (MemoryStore / FileStore / PostgresStore) |
-| `HealthRegistry` | `__health__.py` | Subsystem health check registration and status aggregation |
-| `Configuration` | `__config__.py` | JSON-driven config with typed subsections |
-| `create_app` | `__serve__.py` | FastAPI app factory with auth, rate-limit, middleware |
-| CLI | `__cli__.py` | Typer CLI for `run`, `serve`, `health`, `dlq`, `metrics`, `migrate` |
+| `Event` / `EventType` | `events.py` | Event envelope with UUID, timestamp, payload, Ed25519 signature |
+| `AccessControl` | `authz.py` | Policy evaluation + Ed25519 signature verification |
+| `Tracer` | `tracer.py` | Span lifecycle with Console/Otlp exporters |
+| `MetricsCollector` | `metrics.py` | Counters, timers, gauges with tag dimensions |
+| `SagaOrchestrator` | `saga.py` | Forward execution + compensating rollback, persisted to store |
+| `ServiceSupervisor` | `supervisor.py` | Failure tracking and auto-restart with exponential backoff |
+| `SecretsManager` | `secrets.py` | Secret rotation and retrieval |
+| `IdempotencyGuard` | `bus.py` | Duplicate event detection by (handler_id, event_id) |
+| `CircuitBreaker` | `bus.py` | Per-subscriber circuit breaker (CLOSED → OPEN → HALF_OPEN) |
+| `DeadLetterQueue` | `bus.py` | Bounded failed-event storage with optional Store persistence |
+| `RateLimiter` | `bus.py` | Token-bucket rate limiter per subscriber key |
+| `Store` | `store.py` | Abstract persistence (MemoryStore / FileStore / PostgresStore) |
+| `HealthRegistry` | `health.py` | Subsystem health check registration and status aggregation |
+| `Configuration` | `config.py` | JSON-driven config with typed subsections |
+| `create_app` | `serve.py` | FastAPI app factory with auth, rate-limit, middleware |
+| CLI | `cli.py` | Typer CLI for `run`, `serve`, `health`, `dlq`, `metrics`, `migrate` |
 | `PayloadValidator` | `validate.py` | Type-safe payload extraction with validation |
-| `Identity` | `__identity__.py` | Ed25519 key pair generation and signing |
+| `Identity` | `identity.py` | Ed25519 key pair generation and signing |
 | `DelegationGraph` | `services/mechanism/graph.py` | Protocol state machine (seeds, users, loans, edges) |

@@ -69,8 +69,8 @@ underwrite run audit
 Run this Python script to simulate a full lending flow:
 
 ```python
-from underwrite.__cli__ import load_config
-from underwrite.__runtime__ import Runtime
+from underwrite.cli import load_config
+from underwrite.runtime import Runtime
 
 config = load_config()
 with Runtime(config) as rt:

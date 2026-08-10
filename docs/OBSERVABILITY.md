@@ -8,11 +8,11 @@ health checks.  Every nano service inherits observability from
 
 ## Logging
 
-**Module:** `underwrite/__logger__.py`
+**Module:** `underwrite/logger.py`
 
-A single module-level `logger` imported from `underwrite.__logger__` is
+A single module-level `logger` imported from `underwrite.logger` is
 used throughout.  Configuration is managed by `Runtime.__configure_logging()`
-in `underwrite/__runtime__.py`.
+in `underwrite/runtime.py`.
 
 ### Levels
 
@@ -47,8 +47,8 @@ var (default: `INFO`).
 ### Correlation ID
 
 Attached per-thread via `correlation_context` in
-`underwrite/__correlation__.py`.  The formatters read it through
-`correlation_id()` in `underwrite/__logger__.py`.  `NanoService.__handle_event()`
+`underwrite/correlation.py`.  The formatters read it through
+`correlation_id()` in `underwrite/logger.py`.  `NanoService.__handle_event()`
 sets the correlation id from `event.correlation_id` before calling
 `handle()` and restores the previous value afterwards.
 
@@ -63,7 +63,7 @@ sets the correlation id from `event.correlation_id` before calling
 
 ## Metrics
 
-**Modules:** `underwrite/__metrics__.py`, `underwrite/prometheus_export.py`
+**Modules:** `underwrite/metrics.py`, `underwrite/prometheus_export.py`
 
 ### Collector
 
@@ -101,7 +101,7 @@ automatically record:
 `MetricsExporter.to_prometheus_text()` serialises the collector snapshot
 into the Prometheus exposition format (`text/plain; version=0.0.4`).
 
-**Endpoint:** `/v1/metrics` (via `__serve__.py`)
+**Endpoint:** `/v1/metrics` (via `serve.py`)
 
 **Middleware:** `PrometheusMiddleware` adds `/metrics-prometheus` to any
 Starlette/FastAPI application. When `UNDERWRITE_API_TOKEN` (or the
@@ -129,7 +129,7 @@ interval (only when OTLP exporter is configured).
 
 ## Tracing
 
-**Module:** `underwrite/__tracer__.py`
+**Module:** `underwrite/tracer.py`
 
 ### Spans
 
@@ -183,7 +183,7 @@ are exported and dropped.
 
 ## Health Checks
 
-**Modules:** `underwrite/__health__.py`, `underwrite/__runtime__.py`
+**Modules:** `underwrite/health.py`, `underwrite/runtime.py`
 
 ### HealthRegistry
 

@@ -9,7 +9,7 @@ header.
 
 Configured with `--require-auth` flag on `underwrite serve` or by setting
 `UNDERWRITE_API_TOKEN`.  Token comparison uses `hmac.compare_digest()` to
-prevent timing attacks (`__serve__.py:147`).
+prevent timing attacks (`serve.py:147`).
 
 ```python
 if not hmac.compare_digest(received, token):
@@ -23,7 +23,7 @@ with a `ValueError`.
 
 ## Authorization
 
-**Module:** `underwrite/__authz__.py`
+**Module:** `underwrite/authz.py`
 
 `AccessControl` implements a policy engine with allow/deny rules and
 **default-deny** semantics.
@@ -81,7 +81,7 @@ the payload is JSON-encoded with sorted keys so the signature is stable
 across dict iteration order. The signature and public key
 (`source_key`) are attached to the `Event` envelope.
 
-### Verification (`__authz__.py:155-203`)
+### Verification (`authz.py:155-203`)
 
 The receiving service reconstructs the canonical bytes and verifies:
 
@@ -117,7 +117,7 @@ path) and loaded on every restart. The new
 `Identity.to_pem()` / `Identity.persist()` helpers expose the private
 key for external storage.
 
-**Module:** `underwrite/__identity__.py`
+**Module:** `underwrite/identity.py`
 
 ### Key Generation
 
@@ -162,7 +162,7 @@ removing the old one.
 
 ## Secrets Management
 
-**Module:** `underwrite/__secrets__.py`
+**Module:** `underwrite/secrets.py`
 
 `SecretsManager` abstracts secret retrieval behind a `SecretsBackend`:
 
@@ -205,7 +205,7 @@ String values matching these regex patterns are redacted:
 
 ## Path Traversal Protection
 
-**File:** `underwrite/__store__.py:341-360`
+**File:** `underwrite/store.py:341-360`
 
 `FileStore.__path()` validates:
 
@@ -217,7 +217,7 @@ String values matching these regex patterns are redacted:
 
 ## SQL Injection Prevention
 
-**File:** `underwrite/__store__.py:372-500`
+**File:** `underwrite/store.py:372-500`
 
 `PostgresStore` uses **parameterized queries** for all values:
 
@@ -247,18 +247,18 @@ Joblib deserialisation (arbitrary pickle) is gated behind
 
 ## Rate Limiting
 
-### HTTP Level (`__serve__.py`)
+### HTTP Level (`serve.py`)
 
 Token-bucket rate limiter applied to all endpoints.  Configurable via
 `--rate-limit` (default 100 req/s).  Returns 429 when exhausted.
 
-### Event Bus Level (`__bus__.py:284-328`)
+### Event Bus Level (`bus.py:284-328`)
 
 `RateLimiter` implements a token-bucket per subscriber.  Configurable
 via `bus.rate_limit` in config.  `DistributedRateLimiter` extends this
 with store-backed counters for cross-process coordination.
 
-### Idempotency Guard (`__bus__.py:376-423`)
+### Idempotency Guard (`bus.py:376-423`)
 
 `IdempotencyGuard` prevents duplicate event processing.  Bounded per
 handler at `max_ids_per_handler=100000`.  Duplicates are silently dropped.

@@ -158,9 +158,9 @@ version available on the developer machine.
 Every service extends `NanoService` and processes events via `handle(event)`. Test by creating a service instance, calling `handle()` with an `Event`, then checking store state and emitted events.
 
 ```python
-from underwrite.__bus__ import LocalBus
-from underwrite.__events__ import Event, EventType
-from underwrite.__store__ import MemoryStore
+from underwrite.bus import LocalBus
+from underwrite.message import Event, EventType
+from underwrite.store import MemoryStore
 from underwrite.services.fee.service import FeeService
 
 
@@ -289,9 +289,9 @@ Fault injection test files:
 E2E tests use a `Runtime` instance backed by `MemoryStore`:
 
 ```python
-from underwrite.__config__ import Configuration
-from underwrite.__events__ import Event, EventType
-from underwrite.__runtime__ import Runtime
+from underwrite.config import Configuration
+from underwrite.message import Event, EventType
+from underwrite.runtime import Runtime
 
 
 def memory_runtime() -> Runtime:

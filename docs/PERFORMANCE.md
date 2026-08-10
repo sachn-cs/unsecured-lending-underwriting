@@ -7,7 +7,7 @@ and scaling considerations of the underwrite nano-service platform.
 
 ## Event Bus
 
-### LocalBus (`underwrite/__bus__.py`)
+### LocalBus (`underwrite/bus.py`)
 
 The in-process event bus has **zero serialisation overhead** — events are
 passed as Python objects via direct function calls, not serialised.
@@ -39,7 +39,7 @@ beyond a single process requires implementing an `EventBus` subclass.
 
 ## Store Performance
 
-### MemoryStore (`underwrite/__store__.py`)
+### MemoryStore (`underwrite/store.py`)
 
 `MemoryStore` is backed by a `dict`.  All operations are **O(1)**:
 
@@ -54,7 +54,7 @@ beyond a single process requires implementing an `EventBus` subclass.
 Bounded by `max_entries` (default 0 = unlimited).  When the limit is
 reached, the oldest key (by insertion order) is evicted.
 
-### FileStore (`underwrite/__store__.py`)
+### FileStore (`underwrite/store.py`)
 
 Each key maps to a `.json` file on disk.  Writes are atomic (`write` →
 `os.replace`):
@@ -74,7 +74,7 @@ stuck filesystems.
 **Path traversal protection:** `__path()` validates the resolved path is
 inside `data_dir` and that symlinks do not escape.
 
-### PostgresStore (`underwrite/__store__.py`)
+### PostgresStore (`underwrite/store.py`)
 
 Connection pool via `psycopg2.pool.ThreadedConnectionPool`:
 
@@ -127,7 +127,7 @@ reads the direct sponsor's delegation edge.
 
 ### 3. Saga Persistence — 7+ store writes per event
 
-**File:** `underwrite/__saga__.py`
+**File:** `underwrite/saga.py`
 
 Each `execute_step` call writes:
 - 1 idempotency key (`saga_step:{saga_id}:{step_index}`)
@@ -153,15 +153,15 @@ Two circuit breaker implementations:
 
 | Location | Threshold | Recovery | Use |
 |---|---|---|---|
-| `__circuit__.py` (store-level) | 5 failures | 30s | Guards store I/O |
-| `__bus__.py` (subscriber-level) | 5 failures | 60s | Per-subscriber dispatch gating |
+| `circuit.py` (store-level) | 5 failures | 30s | Guards store I/O |
+| `bus.py` (subscriber-level) | 5 failures | 60s | Per-subscriber dispatch gating |
 
 When a circuit is open, the subscriber is skipped and events go to the
 DLQ instead of blocking the publisher.
 
 ### Retry Policy
 
-`RetryPolicy` in `__circuit__.py` implements exponential backoff with
+`RetryPolicy` in `circuit.py` implements exponential backoff with
 jitter:
 
 ```

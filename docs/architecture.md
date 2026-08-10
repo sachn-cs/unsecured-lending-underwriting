@@ -11,7 +11,7 @@ graph TB
         HTTP["HTTP API (FastAPI)"]
     end
 
-    subgraph Runtime["Runtime (__runtime__.py)"]
+    subgraph Runtime["Runtime (runtime.py)"]
         CFG["Configuration"]
         BUS["EventBus"]
         STORE["Store"]
@@ -46,19 +46,19 @@ graph TB
 
 | Layer | Module | Responsibility |
 |-------|--------|---------------|
-| **HTTP Gateway** | `__serve__.py` | FastAPI app, auth middleware, rate limiting, health/metrics endpoints |
-| **CLI** | `__cli__.py` | Typer-based command interface (`run`, `list`, `health`, `dlq`, `metrics`) |
-| **Runtime** | `__runtime__.py` | Service lifecycle, factory wiring, migration orchestration, health aggregation |
-| **Event Bus** | `__bus__.py` | Publish/subscribe, dead-letter queue, rate limiter, idempotency guard |
-| **State Store** | `__store__.py` | Key-value persistence (Memory/File/Postgres), CQRS wrapper |
-| **Authz** | `__authz__.py` | Allow/deny policy evaluation, Ed25519 signature verification |
-| **Identity** | `__identity__.py` | Ed25519 keypair creation, rotation, TTL management |
-| **Saga** | `__saga__.py` | Multi-step transaction orchestration with compensating rollback |
-| **Tracing** | `__tracer__.py` | Span creation, parent/child propagation, console/OTLP export |
-| **Metrics** | `__metrics__.py` | Counters, timers, gauges, Prometheus-formatted export |
-| **Circuit Breaker** | `__circuit__.py` | Failure isolation (CLOSED/OPEN/HALF_OPEN), exponential backoff retry |
-| **Supervisor** | `__supervisor__.py` | Failure tracking, auto-restart with exponential backoff |
-| **Secrets** | `__secrets__.py` | Secret retrieval (env vars, Vault, AWS Secrets Manager) |
+| **HTTP Gateway** | `serve.py` | FastAPI app, auth middleware, rate limiting, health/metrics endpoints |
+| **CLI** | `cli.py` | Typer-based command interface (`run`, `list`, `health`, `dlq`, `metrics`) |
+| **Runtime** | `runtime.py` | Service lifecycle, factory wiring, migration orchestration, health aggregation |
+| **Event Bus** | `bus.py` | Publish/subscribe, dead-letter queue, rate limiter, idempotency guard |
+| **State Store** | `store.py` | Key-value persistence (Memory/File/Postgres), CQRS wrapper |
+| **Authz** | `authz.py` | Allow/deny policy evaluation, Ed25519 signature verification |
+| **Identity** | `identity.py` | Ed25519 keypair creation, rotation, TTL management |
+| **Saga** | `saga.py` | Multi-step transaction orchestration with compensating rollback |
+| **Tracing** | `tracer.py` | Span creation, parent/child propagation, console/OTLP export |
+| **Metrics** | `metrics.py` | Counters, timers, gauges, Prometheus-formatted export |
+| **Circuit Breaker** | `circuit.py` | Failure isolation (CLOSED/OPEN/HALF_OPEN), exponential backoff retry |
+| **Supervisor** | `supervisor.py` | Failure tracking, auto-restart with exponential backoff |
+| **Secrets** | `secrets.py` | Secret retrieval (env vars, Vault, AWS Secrets Manager) |
 | **Services** | `services/*/service.py` | Domain logic — 28 implementations |
 
 ## Event-Driven Communication
@@ -121,7 +121,7 @@ flowchart LR
 
 ## Service Wiring
 
-Service-to-event subscriptions are declared in the `WIRING` dictionary (`__service_registry__.py`). For example:
+Service-to-event subscriptions are declared in the `WIRING` dictionary (`handler.py`). For example:
 
 | Event Type | Subscribers |
 |-----------|-------------|

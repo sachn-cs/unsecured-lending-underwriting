@@ -48,31 +48,31 @@ pip install pre-commit && pre-commit install
 
 ```
 underwrite/
-├── __init__.py            # Public API exports
-├── __cli__.py             # Typer CLI (run, health, dlq, metrics, serve, etc.)
-├── __config__.py          # Configuration model (Pydantic)
-├── __runtime__.py         # Runtime — service lifecycle manager
-├── __service_registry__.py # SERVICE_MAP, SERVICE_CLASSES, WIRING constants
-├── __bus__.py             # Event bus (pub/sub, DLQ, idempotency)
-├── __events__.py          # Event envelope + EventType enum
-├── __store__.py           # Storage backends (memory, filesystem, postgres)
-├── __health__.py          # Health check registry
-├── __metrics__.py         # Metrics collector
-├── __tracer__.py          # Distributed tracing
-├── __saga__.py            # Saga orchestration
-├── __identity__.py        # Ed25519 identity management
-├── __authz__.py           # Access control
-├── __secrets__.py         # Secrets manager (env, Vault)
-├── __supervisor__.py      # Auto-recovery for failed services
-├── __migrate__.py         # Schema migration framework
+├── init.py            # Public API exports
+├── cli.py             # Typer CLI (run, health, dlq, metrics, serve, etc.)
+├── config.py          # Configuration model (Pydantic)
+├── runtime.py         # Runtime — service lifecycle manager
+├── handler.py # SERVICE_MAP, SERVICE_CLASSES, WIRING constants
+├── bus.py             # Event bus (pub/sub, DLQ, idempotency)
+├── events.py          # Event envelope + EventType enum
+├── store.py           # Storage backends (memory, filesystem, postgres)
+├── health.py          # Health check registry
+├── metrics.py         # Metrics collector
+├── tracer.py          # Distributed tracing
+├── saga.py            # Saga orchestration
+├── identity.py        # Ed25519 identity management
+├── authz.py           # Access control
+├── secrets.py         # Secrets manager (env, Vault)
+├── supervisor.py      # Auto-recovery for failed services
+├── migrate.py         # Schema migration framework
 ├── __pii.py               # PII redaction
-├── __schema__.py          # Schema validation
+├── schema.py          # Schema validation
 ├── validate.py            # Payload validation helpers
 ├── services/
 │   ├── base.py            # NanoService and StatefulService ABCs
 │   ├── persistence.py     # TypedStoreRepository, BatchedStoreRepository
 │   └── <service>/         # One directory per service
-│       ├── __init__.py
+│       ├── init.py
 │       └── service.py     # Service class extending NanoService
 ```
 
@@ -81,7 +81,7 @@ underwrite/
 Each nano service:
 
 - Lives in its own directory under `underwrite/services/<name>/`
-- Has an `__init__.py` (may be empty) and a `service.py`
+- Has an `init.py` (may be empty) and a `service.py`
 - Defines a class that extends `NanoService` (or `StatefulService` for stateful services)
 - Implements `handle(self, event: Event) -> None` to process incoming events
 - Uses `self.emit(event_type, payload, correlation_id=...)` to publish outgoing events
@@ -90,13 +90,13 @@ Each nano service:
 
 ### Event Bus Wiring
 
-The `WIRING` dictionary in `__service_registry__.py` maps each `EventType` to the list of services that should receive it. Services are automatically subscribed at startup by the `Runtime.wire()` method.
+The `WIRING` dictionary in `handler.py` maps each `EventType` to the list of services that should receive it. Services are automatically subscribed at startup by the `Runtime.wire()` method.
 
 ### Example Service
 
 ```python
-from underwrite.__events__ import Event, EventType
-from underwrite.__logger__ import logger
+from underwrite.message import Event, EventType
+from underwrite.logger import logger
 from underwrite.services.base import NanoService
 
 
@@ -119,16 +119,16 @@ class MyService(NanoService):
 
    ```bash
    mkdir underwrite/services/newservice
-   touch underwrite/services/newservice/__init__.py
+   touch underwrite/services/newservice/init.py
    ```
 
 2. **Write the service class** in `underwrite/services/newservice/service.py`, extending `NanoService` and implementing `handle()`.
 
-3. **Register in the service registry** (`__service_registry__.py`):
+3. **Register in the service registry** (`handler.py`):
    - Add an entry to `SERVICE_MAP`: `"newservice": "underwrite.services.newservice.service"`
    - Add an entry to `SERVICE_CLASSES`: `"newservice": "NewService"`
    - Add the service name to the subscriber list in `WIRING` for each `EventType` it should receive
-   - Optionally add the name to `SERVICE_NAMES` in `__config__.py` (required for CLI validation)
+   - Optionally add the name to `SERVICE_NAMES` in `config.py` (required for CLI validation)
 
 4. **Write tests** in `tests/` following existing patterns.
 

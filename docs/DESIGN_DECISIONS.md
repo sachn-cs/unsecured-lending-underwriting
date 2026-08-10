@@ -24,7 +24,7 @@
 
 **Context:** 28 services need to exchange ~80 distinct event types. A shared vocabulary is essential for wiring, documentation, and tooling.
 
-**Decision:** Define every event type as a member of a single `EventType` string enum in `__events__.py`. The `WIRING` dict in `__service_registry__.py` maps each event type to its subscriber list, acting as a centralized, declarative routing table.
+**Decision:** Define every event type as a member of a single `EventType` string enum in `events.py`. The `WIRING` dict in `handler.py` maps each event type to its subscriber list, acting as a centralized, declarative routing table.
 
 **Alternatives Considered:**
 - **Distributed contract (Protobuf / Avro schema registry):** Adds a build step, code generation, and a runtime dependency on a schema registry. Overkill for 80 types in a single Python package.
@@ -35,7 +35,7 @@
 - (+) Single source of truth: adding a new event type requires one enum entry and one wiring row.
 - (+) IDE completions: `EventType.RISK_SCORED` is discoverable and refactorable.
 - (-) Tight coupling of enum: every service imports the same module. A change to one event type requires rebuilding the package (acceptable for a monorepo).
-- (-) No versioning built into the enum: payload schema changes must be managed separately via `__schema__.py` (the `SchemaRegistry`).
+- (-) No versioning built into the enum: payload schema changes must be managed separately via `schema.py` (the `SchemaRegistry`).
 
 ---
 
@@ -229,4 +229,4 @@
 - (+) Fast failure: when the circuit is OPEN, calls fail immediately without I/O.
 - (+) Automatic recovery: after the cooldown, a probe request tests if the subsystem has recovered.
 - (-) Additional latency on failure: the retry policy waits between attempts, which can back up the handler thread pool.
-- (-) State mismatch: the `CircuitBreaker` in `__bus__.py` and the one in `__circuit__.py` are separate implementations. The bus's per-subscriber circuit breaker is hardcoded (no configuration), while the store's circuit breaker is configurable. This duplication should be consolidated.
+- (-) State mismatch: the `CircuitBreaker` in `bus.py` and the one in `circuit.py` are separate implementations. The bus's per-subscriber circuit breaker is hardcoded (no configuration), while the store's circuit breaker is configurable. This duplication should be consolidated.

@@ -260,7 +260,7 @@ DpdpaConfig top-level fields:
 
 Every configuration field can be overridden at runtime via
 `UNDERWRITE_<SECTION>_<FIELD>` environment variables. The
-`__apply_env_overrides()` method (`__config__.py:402`) iterates a hardcoded
+`__apply_env_overrides()` method (`config.py:402`) iterates a hardcoded
 mapping, coerces the string value to the target type, and updates the config
 object.
 
@@ -277,7 +277,7 @@ alphabetical listing.
 - **Schema-level**: Pydantic `field_validator` decorators enforce constrained
   values (e.g. `bus.backend` must be one of `local`, `sqs`, `modal`;
   `rate_limit` must be >= 0; `logging.level` must match a known log level).
-- **File-level**: `Configuration.__merge()` (`__config__.py:288`) validates
+- **File-level**: `Configuration.__merge()` (`config.py:288`) validates
   every section against its Pydantic model via `model_copy` + re-instantiation.
   Unknown top-level keys and unknown per-section fields raise
   `ConfigurationError` with a descriptive message.
@@ -299,7 +299,7 @@ config.save("path")  # → JSON file (creates parent directories)
 
 ## 6. Default Configuration
 
-`Configuration.default()` (`__config__.py:222`) provides:
+`Configuration.default()` (`config.py:222`) provides:
 
 ```python
 Configuration(
@@ -341,7 +341,7 @@ logging level=INFO, metrics enabled, etc.).
 
 ## Available Services
 
-The platform defines 28 nano services (`underwrite/__config__.py:461`):
+The platform defines 28 nano services (`underwrite/config.py:461`):
 
 `audit`, `collateral`, `collection`, `communication`, `consent`, `credit_bureau`,
 `decision`, `disbursement`, `document`, `dsr`, `fee`, `fraud`, `governance`,

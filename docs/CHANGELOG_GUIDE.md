@@ -84,7 +84,7 @@ Each entry is a bullet point starting with a capital letter, ending without a pe
 - Distributed tracing context propagation — `trace_id` and `parent_span_id` fields on `Event`
 
 ### Changed
-- `import random` moved from method body to module level in `__circuit__.py`
+- `import random` moved from method body to module level in `circuit.py`
 - British English → American English in all docstrings (`Initialises` → `Initializes`)
 
 ### Fixed
@@ -129,7 +129,7 @@ Repository URLs use: `https://github.com/sachncs/underwrite`
 - Distributed tracing context propagation — `trace_id` and `parent_span_id` fields on `Event`
 
 ### Changed
-- `import random` moved from method body to module level in `__circuit__.py`
+- `import random` moved from method body to module level in `circuit.py`
 - British English → American English in all docstrings (`Initialises` → `Initializes`)
 
 ### Fixed

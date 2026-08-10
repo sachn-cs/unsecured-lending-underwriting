@@ -443,7 +443,7 @@ Configure a separate read store for query side:
 
 ## Service Registration
 
-The Runtime discovers services via `SERVICE_MAP` in `__service_registry__`. Available services:
+The Runtime discovers services via `SERVICE_MAP` in `handler.py`. Available services:
 
 | Service | Description |
 |---------|-------------|

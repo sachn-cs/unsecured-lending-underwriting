@@ -8,7 +8,7 @@ underwrite uses **Semantic Versioning** via `setuptools-scm`. Version numbers ar
 - **Dev builds** (untagged commits): `0.1.dev65+gad81577c8.d20260608`
 - **Pre-release tags**: `v0.1.0-alpha`, `v0.2.0-beta`
 
-The version is auto-generated at build time and written to `underwrite/__version__.py`:
+The version is auto-generated at build time and written to `underwrite/version.py`:
 
 ```python
 __version__ = version = "0.1.dev65+gad81577c8.d20260608"
@@ -178,4 +178,4 @@ If a release introduces a critical issue:
 4. Update the Docker image tag to the patch version
 5. Notify downstream consumers
 
-For database schema migrations, use the migration engine (`__migrate__.py`) to apply rollback migrations if available.
+For database schema migrations, use the migration engine (`migrate.py`) to apply rollback migrations if available.

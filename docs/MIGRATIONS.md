@@ -7,7 +7,7 @@ changes.  Migrations are versioned, ordered, and applied in transactions.
 
 ## Architecture
 
-**Module:** `underwrite/__migrate__.py`
+**Module:** `underwrite/migrate.py`
 
 ### Migration
 
@@ -35,7 +35,7 @@ An ordered collection of `Migration` objects:
 
 ## Default Plan
 
-`default_plan()` in `__migrate__.py:74` defines three migrations:
+`default_plan()` in `migrate.py:74` defines three migrations:
 
 ### v1 — Initial Schema
 
@@ -95,7 +95,7 @@ underwrite migrate
 
 ### PostgresStore
 
-`PostgresStore.migrate()` (`__store__.py:515-563`):
+`PostgresStore.migrate()` (`store.py:515-563`):
 
 1. Creates the `migrations` tracking table if it doesn't exist.
 2. Reads the set of already-applied migration versions.
@@ -127,7 +127,7 @@ to migrate.
 
 ### CQRSStore
 
-`CQRSStore.migrate()` delegates to the **write store** (`__store__.py:627`):
+`CQRSStore.migrate()` delegates to the **write store** (`store.py:627`):
 
 ```python
 def migrate(self, plan):
@@ -141,7 +141,7 @@ def migrate(self, plan):
 To add a new migration, extend `default_plan()` or create your own plan:
 
 ```python
-from underwrite.__migrate__ import Migration, MigrationPlan, default_plan
+from underwrite.migrate import Migration, MigrationPlan, default_plan
 
 plan = default_plan()
 

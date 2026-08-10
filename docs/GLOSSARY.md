@@ -3,24 +3,24 @@
 | Term | Definition |
 |------|------------|
 | **Nano-service** | Lightweight, independently deployable service extending `NanoService` ABC (`services/base.py:93`). Each owns a single domain boundary and communicates only through typed events. |
-| **Event Bus** | In-process pub/sub backbone (`__bus__.py:426` — `EventBus` ABC). `LocalBus` is the default synchronous, thread-safe implementation. `AsyncLocalBus` provides an `asyncio` variant. |
-| **Event** | Typed envelope (`__events__.py:20` — `Event` dataclass, frozen + slots). Carries `event_id`, `event_type`, `source`, `source_key` (Ed25519 public key), `timestamp`, `payload` (≤1 MB, ≤1000 keys), `correlation_id`, `signature` (Ed25519), `trace_id`, `parent_span_id`. |
-| **Saga** | Distributed transaction pattern (`__saga__.py:68`). An ordered list of `SagaStep`s with forward actions and compensating rollbacks. Coordinated by `SagaOrchestrator` with store-backed persistence and idempotent replay. |
+| **Event Bus** | In-process pub/sub backbone (`bus.py:426` — `EventBus` ABC). `LocalBus` is the default synchronous, thread-safe implementation. `AsyncLocalBus` provides an `asyncio` variant. |
+| **Event** | Typed envelope (`events.py:20` — `Event` dataclass, frozen + slots). Carries `event_id`, `event_type`, `source`, `source_key` (Ed25519 public key), `timestamp`, `payload` (≤1 MB, ≤1000 keys), `correlation_id`, `signature` (Ed25519), `trace_id`, `parent_span_id`. |
+| **Saga** | Distributed transaction pattern (`saga.py:68`). An ordered list of `SagaStep`s with forward actions and compensating rollbacks. Coordinated by `SagaOrchestrator` with store-backed persistence and idempotent replay. |
 | **Delegation Graph** | Protocol state machine (`services/mechanism/graph.py` — `DelegationGraph`). Tracks seeds, users, delegations, loans, and edges. Pure domain model with no infrastructure dependencies. |
 | **Seed** | Root protocol participant with a `base_budget` (e.g., a bank providing capital). Added via `add_seed(user, budget)`. Seeds have unlimited credit limited only by their budget. |
 | **Credit Limit** | Available borrowing capacity: `budget + earned - outgoing_delegations`. For non-seeds, `budget` equals the incoming delegation amount. |
 | **NPA** | Non-Performing Asset — RBI classification for delinquent loans. Buckets: standard (0-90d), substandard (91-180d), doubtful (181-360d), loss (>360d). Classified by `NPAService` (`services/npa/service.py`). |
 | **DLG** | Delegated Loss Guarantee — trigger at 120+ days overdue (`services/npa/service.py:27`). Emits `npa.dlg.triggered` event. |
-| **CQRS** | Command Query Responsibility Segregation — separate read/write stores. Implemented via `CQRSStore` (`__store__.py`) wrapping a write `Store` and read `ReadStore` with lazy invalidation. |
-| **Circuit Breaker** | Failure isolation pattern with three states: CLOSED (normal), OPEN (failing fast), HALF_OPEN (probing recovery). Two implementations: `__bus__.py:223` (per-subscriber, hardcoded threshold of 5, 60s cooldown) and `__circuit__.py` (configurable, used by `FileStore`/`PostgresStore`). |
-| **DLQ** | Dead Letter Queue — bounded storage for failed events (`__bus__.py:48` — `DeadLetterQueue`). Default 10,000 entries, optional `Store` persistence, supports replay via `replay()`. |
+| **CQRS** | Command Query Responsibility Segregation — separate read/write stores. Implemented via `CQRSStore` (`store.py`) wrapping a write `Store` and read `ReadStore` with lazy invalidation. |
+| **Circuit Breaker** | Failure isolation pattern with three states: CLOSED (normal), OPEN (failing fast), HALF_OPEN (probing recovery). Two implementations: `bus.py:223` (per-subscriber, hardcoded threshold of 5, 60s cooldown) and `circuit.py` (configurable, used by `FileStore`/`PostgresStore`). |
+| **DLQ** | Dead Letter Queue — bounded storage for failed events (`bus.py:48` — `DeadLetterQueue`). Default 10,000 entries, optional `Store` persistence, supports replay via `replay()`. |
 | **LTV** | Loan-to-Value ratio — collateral requirement set at 75% (`services/collateral/service.py:19`). |
 | **KYC/AML** | Know Your Customer / Anti-Money Laundering. Validated by `ComplianceService` (`services/compliance/service.py`): PAN format `^[A-Z]{5}[0-9]{4}[A-Z]$`, Aadhaar format `^\d{12}$`. |
-| **OTLP** | OpenTelemetry Protocol — trace/metric export via gRPC. `OtlpSpanExporter` in `__tracer__.py` exports spans when `tracing.exporter == "otlp"`. Optional dependency: `underwrite[otlp]`. |
-| **Ed25519** | Elliptic curve signing algorithm (Curve25519) used for event signatures. Implemented via `cryptography` library in `__identity__.py`. Every `Event` is signed over `event_id:timestamp:event_type:payload` and verified by `AccessControl.verify_signature()`. |
-| **Idempotency Guard** | Duplicate event detection (`__bus__.py:376`). Tracks `(handler_id, event_id)` pairs, bounded at 100,000 IDs per handler. Evicts oldest entries via FIFO. |
-| **Rate Limiter** | Token-bucket algorithm (`__bus__.py:284`). Per-subscriber rate limiting in `LocalBus`. `DistributedRateLimiter` extends this with a `Store` backend for cross-process coordination. |
-| **Supervisor** | `ServiceSupervisor` (`__supervisor__.py:15`). Tracks consecutive failures per service, supports auto-restart with exponential backoff (up to 60s), and marks permanently unhealthy after `max_restarts` (default 3). |
-| **WIRING** | Static dict (`__service_registry__.py:80`) mapping each `EventType` to its list of subscriber service IDs. Acts as a centralized, declarative routing table. |
+| **OTLP** | OpenTelemetry Protocol — trace/metric export via gRPC. `OtlpSpanExporter` in `tracer.py` exports spans when `tracing.exporter == "otlp"`. Optional dependency: `underwrite[otlp]`. |
+| **Ed25519** | Elliptic curve signing algorithm (Curve25519) used for event signatures. Implemented via `cryptography` library in `identity.py`. Every `Event` is signed over `event_id:timestamp:event_type:payload` and verified by `AccessControl.verify_signature()`. |
+| **Idempotency Guard** | Duplicate event detection (`bus.py:376`). Tracks `(handler_id, event_id)` pairs, bounded at 100,000 IDs per handler. Evicts oldest entries via FIFO. |
+| **Rate Limiter** | Token-bucket algorithm (`bus.py:284`). Per-subscriber rate limiting in `LocalBus`. `DistributedRateLimiter` extends this with a `Store` backend for cross-process coordination. |
+| **Supervisor** | `ServiceSupervisor` (`supervisor.py:15`). Tracks consecutive failures per service, supports auto-restart with exponential backoff (up to 60s), and marks permanently unhealthy after `max_restarts` (default 3). |
+| **WIRING** | Static dict (`handler.py:80`) mapping each `EventType` to its list of subscriber service IDs. Acts as a centralized, declarative routing table. |
 | **MechanismService** | Core protocol service (`services/mechanism/service.py`). Owns `DelegationGraph`, processes commands (`add_seed`, `add_user`, `originate`, `repay`, `default`, `revoke`, `quote`). |
-| **SagaStep** | One step in a saga (`__saga__.py:38`). Has `name`, `forward_event_type`/`forward_payload` (the action), and `compensate_event_type`/`compensate_payload` (the rollback). |
+| **SagaStep** | One step in a saga (`saga.py:38`). Has `name`, `forward_event_type`/`forward_payload` (the action), and `compensate_event_type`/`compensate_payload` (the rollback). |

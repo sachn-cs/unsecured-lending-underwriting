@@ -83,7 +83,7 @@ erDiagram
 
 ## Domain Events
 
-All 80+ event types are defined as an `EventType` enum in `underwrite/__events__.py:62`. Convention: `<domain>.<action>[.<outcome>]`.
+All 80+ event types are defined as an `EventType` enum in `underwrite/events.py:62`. Convention: `<domain>.<action>[.<outcome>]`.
 
 ### Core
 | Event | Trigger |
@@ -222,7 +222,7 @@ All 80+ event types are defined as an `EventType` enum in `underwrite/__events__
 
 ### Recovery / Identity / Notification / Reporting / Underwriting / Document / Disbursement / Collection / Settlement / Origination / Servicing / Payment / Fee / Statement / Communication / Workflow / Decision / Graph / Mechanism / Saga / Idempotency
 
-Full registry in `underwrite/__events__.py`. Includes:
+Full registry in `underwrite/events.py`. Includes:
 - `identity.register`, `identity.rotate`
 - `underwrite.request`, `underwriter.approved`, `underwriter.rejected`
 - `payment.receive`, `payment.schedule`, `payment.check_overdue`
@@ -444,8 +444,8 @@ DLG (Default Loss Guarantee) triggers at 120+ days overdue, emitting `npa.dlg.tr
 | NPA loss bucket | > 360 days | `npa/service.py:103` |
 | DLG trigger | ≥ 120 days overdue | `npa/service.py:27` |
 | Required delegation max depth | 50 | `graph.py:57` |
-| Max payload keys | 1,000 | `__events__.py:46` |
-| Max payload size | 1 MB | `__events__.py:17` |
+| Max payload keys | 1,000 | `events.py:46` |
+| Max payload size | 1 MB | `events.py:17` |
 | Decision: any high signal | reject | `decision/service.py:75` |
 | Decision: ≥ 3 medium signals | escalate | `decision/service.py:78` |
 | Decision: 1–2 medium signals | review | `decision/service.py:80` |

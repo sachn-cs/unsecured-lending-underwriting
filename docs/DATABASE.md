@@ -81,7 +81,7 @@ connections are closed (`putconn(conn, close=True)`) on exception.
 
 ## Migration Tables
 
-Created by the `Store.migrate()` method in `__store__.py`:
+Created by the `Store.migrate()` method in `store.py`:
 
 ### `migrations` Table
 
@@ -157,7 +157,7 @@ self.__retry = RetryPolicy(max_retries=2, base_delay=0.05)
 
 ## CQRS
 
-`CQRSStore` (`underwrite/__store__.py:566-629`) separates read and write
+`CQRSStore` (`underwrite/store.py:566-629`) separates read and write
 stores:
 
 - **Writes** go to the primary (`write_store`).

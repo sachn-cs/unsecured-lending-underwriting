@@ -2,13 +2,13 @@
 
 ## Python API
 
-All public API symbols are importable from the `underwrite` top-level package. Full list at `underwrite/__init__.py:44`.
+All public API symbols are importable from the `underwrite` top-level package. Full list at `underwrite/init.py:44`.
 
 ### Runtime
 
 ```python
 from underwrite import Runtime
-from underwrite.__config__ import Configuration
+from underwrite.config import Configuration
 
 config = Configuration.load("underwrite.json")
 rt = Runtime(config)
@@ -50,7 +50,7 @@ Properties: `bus`, `store`, `health`, `metrics`, `authz`, `tracer`, `saga`, `sup
 ### Configuration
 
 ```python
-from underwrite.__config__ import Configuration
+from underwrite.config import Configuration
 
 # Loading
 config = Configuration.load()  # auto-discover: underwrite.json → config.{env}.json
@@ -85,7 +85,7 @@ config.audit.max_ledger  # 100000
 #   UNDERWRITE_STORE_DSN=postgresql://...
 #   UNDERWRITE_LOG_LEVEL=DEBUG
 #   UNDERWRITE_AUTHZ_ENABLED=false
-# (full list in __config__.py:403)
+# (full list in config.py:403)
 ```
 
 ### NanoService
@@ -264,7 +264,7 @@ EventType.GRAPH_CREDIT_LIMIT_RESULT  # "graph_credit_limit_result"
 EventType.GRAPH_USERS  # "graph_users"
 EventType.GRAPH_USERS_RESULT  # "graph_users_result"
 # + `*` commands (identity.register, identity.rotate, fee.assess, etc.)
-# Full 105+ type registry in underwrite/__events__.py:62
+# Full 105+ type registry in underwrite/events.py:62
 ```
 
 Convention: events ending in `.past_tense` (e.g. `loan.originated`) are **notifications** of something that happened. Events ending in a bare noun (e.g. `fee.assess`, `payment.receive`) are **commands** requesting an action.
@@ -300,7 +300,7 @@ file_store = FileStore(
 ### Identity
 
 ```python
-from underwrite.__identity__ import Identity
+from underwrite.identity import Identity
 
 # Create
 identity = Identity.create("mechanism")
@@ -319,7 +319,7 @@ identity.persist(secrets_manager)  # store through backend
 ### AccessControl
 
 ```python
-from underwrite.__authz__ import AccessControl
+from underwrite.authz import AccessControl
 
 acl = AccessControl()
 
@@ -353,7 +353,7 @@ Default policy when no file is loaded: `allow("*", "*")` (all services, all reso
 ### SagaOrchestrator
 
 ```python
-from underwrite.__saga__ import SagaOrchestrator, SagaStep
+from underwrite.saga import SagaOrchestrator, SagaStep
 
 saga = SagaOrchestrator(store=store)
 
@@ -388,7 +388,7 @@ Uses store-backed idempotency key per step (`saga_step:{saga_id}:{step_index}`) 
 ### CircuitBreaker
 
 ```python
-from underwrite.__circuit__ import CircuitBreaker, RetryPolicy
+from underwrite.circuit import CircuitBreaker, RetryPolicy
 
 cb = CircuitBreaker(failure_threshold=5, recovery_timeout=30.0, name="filestore")
 
@@ -407,7 +407,7 @@ States: `CLOSED` → `OPEN` (after `failure_threshold` consecutive failures) →
 ### Tracer
 
 ```python
-from underwrite.__tracer__ import Tracer, ConsoleSpanExporter, OtlpSpanExporter
+from underwrite.tracer import Tracer, ConsoleSpanExporter, OtlpSpanExporter
 
 tracer = Tracer(service_id="mechanism")
 tracer = Tracer(service_id="mechanism", exporter=ConsoleSpanExporter())
@@ -431,7 +431,7 @@ Exporters: `ConsoleSpanExporter` (stdout), `OtlpSpanExporter` (OpenTelemetry gRP
 ### MetricsCollector
 
 ```python
-from underwrite.__metrics__ import MetricsCollector
+from underwrite.metrics import MetricsCollector
 
 mc = MetricsCollector(max_metrics=10000)
 
@@ -458,7 +458,7 @@ mc.reset()         # clear all metrics
 ### Exceptions
 
 ```python
-from underwrite.__exceptions__ import (
+from underwrite.exceptions import (
     UnderwriteError,  # base
     ConfigurationError,  # invalid config
     ServiceNotFoundError,  # unknown service name
@@ -481,7 +481,7 @@ from underwrite.__exceptions__ import (
 
 ## HTTP API
 
-Served via FastAPI. Start with `underwrite serve` or programmatically via `__serve__.py`.
+Served via FastAPI. Start with `underwrite serve` or programmatically via `serve.py`.
 
 ### Starting the Server
 
@@ -494,8 +494,8 @@ underwrite serve --rate-limit 200 --shutdown-timeout 60
 
 ```python
 # Programmatic
-from underwrite.__serve__ import create_app
-from underwrite.__runtime__ import Runtime
+from underwrite.serve import create_app
+from underwrite.runtime import Runtime
 
 rt = Runtime()
 app = create_app(
@@ -656,7 +656,7 @@ No stack traces are leaked in production responses. Internal errors are logged v
 
 ## CLI API
 
-Entry point: `underwrite` (Typer app, defined in `underwrite/__cli__.py`).
+Entry point: `underwrite` (Typer app, defined in `underwrite/cli.py`).
 
 ### `underwrite init [PATH]`
 

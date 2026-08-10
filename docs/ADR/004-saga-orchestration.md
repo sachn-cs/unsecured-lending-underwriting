@@ -4,9 +4,9 @@
 
 ## Context
 
-Loan origination in `underwrite` spans multiple nano-services: risk scoring, fraud detection, KYC/AML compliance, document generation, and disbursement. A failure in step 3 (e.g., KYC rejected) must roll back steps 1 and 2 (risk score recorded, fraud alert logged). Each service is stateless with respect to the transaction — they respond to events and persist their own state through a `Store` (`__store__.py`).
+Loan origination in `underwrite` spans multiple nano-services: risk scoring, fraud detection, KYC/AML compliance, document generation, and disbursement. A failure in step 3 (e.g., KYC rejected) must roll back steps 1 and 2 (risk score recorded, fraud alert logged). Each service is stateless with respect to the transaction — they respond to events and persist their own state through a `Store` (`store.py`).
 
-The saga implementation lives in `__saga__.py`. The `SagaOrchestrator` class (`__saga__.py:129`) coordinates execution. The `SagaStep` dataclass (`__saga__.py:38`) defines forward and compensating actions. The `Emitter` Protocol (`__saga__.py:28`) bridges saga orchestration to `NanoService.emit()`.
+The saga implementation lives in `saga.py`. The `SagaOrchestrator` class (`saga.py:129`) coordinates execution. The `SagaStep` dataclass (`saga.py:38`) defines forward and compensating actions. The `Emitter` Protocol (`saga.py:28`) bridges saga orchestration to `NanoService.emit()`.
 
 ## Problem
 
@@ -17,11 +17,11 @@ How should multi-service transactions be coordinated with rollback capability, g
 Implement a **centralized saga orchestrator** (`SagaOrchestrator`) that:
 
 1. **Executes steps sequentially** — each step emits a forward event via `Emitter.emit()`
-2. **Compensates in reverse order** on failure — emits compensating events for each completed step, in reverse order (`__saga__.py:303`)
-3. **Persists state to `Store` after every mutation** — saga status, completed step indices, and error details are written to the store (`__saga__.py:165-171`)
-4. **Uses store-backed idempotency keys** — `saga_step:{saga_id}:{step_index}` is written to the store when a step completes. On replay, completed steps are skipped (`__saga__.py:226-230`)
-5. **Supports crash recovery** — `replay_saga(saga_id)` loads an incomplete saga, finds the next unexecuted step, and resumes execution (`__saga__.py:334-382`)
-6. **Uses per-saga locks** (`__saga__.py:144-148`) so different sagas execute concurrently
+2. **Compensates in reverse order** on failure — emits compensating events for each completed step, in reverse order (`saga.py:303`)
+3. **Persists state to `Store` after every mutation** — saga status, completed step indices, and error details are written to the store (`saga.py:165-171`)
+4. **Uses store-backed idempotency keys** — `saga_step:{saga_id}:{step_index}` is written to the store when a step completes. On replay, completed steps are skipped (`saga.py:226-230`)
+5. **Supports crash recovery** — `replay_saga(saga_id)` loads an incomplete saga, finds the next unexecuted step, and resumes execution (`saga.py:334-382`)
+6. **Uses per-saga locks** (`saga.py:144-148`) so different sagas execute concurrently
 
 ### Saga Definition
 
@@ -55,7 +55,7 @@ execute_all(saga_id):
 
 ### Wiring
 
-The saga emitter is registered via `SagaOrchestrator.register_emitter(saga_name, emitter)` (`__saga__.py:180`). `NanoService.__init__` automatically registers itself with the saga orchestrator if one is provided (`services/base.py:151-152`).
+The saga emitter is registered via `SagaOrchestrator.register_emitter(saga_name, emitter)` (`saga.py:180`). `NanoService.__init__` automatically registers itself with the saga orchestrator if one is provided (`services/base.py:151-152`).
 
 ## Alternatives Considered
 
@@ -63,7 +63,7 @@ The saga emitter is registered via `SagaOrchestrator.register_emitter(saga_name,
 
 - **Outbox pattern with CDC**: Appropriate for cross-service transactions with Kafka, but adds infrastructure complexity (Kafka cluster, Debezium, schema registry) not justified in a single-process system. The `LocalBus` already provides reliable in-process delivery with DLQ guarantees.
 
-- **Choreographed sagas (each service manages its own compensation)**: Each service would need to know which saga it belongs to and emit its own compensating events on failure. This makes the transaction boundary implicit and harder to reason about, debug, and test. The centralized orchestrator provides a single execution trace (`__saga__.py:262-285`) that can be logged and inspected.
+- **Choreographed sagas (each service manages its own compensation)**: Each service would need to know which saga it belongs to and emit its own compensating events on failure. This makes the transaction boundary implicit and harder to reason about, debug, and test. The centralized orchestrator provides a single execution trace (`saga.py:262-285`) that can be logged and inspected.
 
 ## Consequences
 
@@ -75,6 +75,6 @@ The saga emitter is registered via `SagaOrchestrator.register_emitter(saga_name,
 
 ### Negative
 - Eventual consistency — there is a window between step execution and completion persistence where the system is partially committed. A crash during `execute_step()` but before `persist_saga()` could result in a partially-executed step that `replay_saga()` must handle via idempotency
-- No ACID guarantees — sagas provide "compensating transaction" semantics, not atomicity. Compensations themselves can fail (handled by `__rollback()` at `__saga__.py:309-310`, which logs compensation errors but does not retry them)
+- No ACID guarantees — sagas provide "compensating transaction" semantics, not atomicity. Compensations themselves can fail (handled by `__rollback()` at `saga.py:309-310`, which logs compensation errors but does not retry them)
 - Compensation logic must be implemented per service — adding a saga step requires both forward handling and backward compensation in the target service. Skipping compensation is a `return` which silently no-ops (tracked as HD2 in TODO.md)
-- Currently in-memory only — `SagaOrchestrator.__init__()` defaults to `MemoryStore` (`__saga__.py:141`), meaning all sagas are lost on restart unless a durable `Store` (FileStore or PostgresStore) is provided. The `__load_sagas()` method exists but is only effective with persistent store backends
+- Currently in-memory only — `SagaOrchestrator.__init__()` defaults to `MemoryStore` (`saga.py:141`), meaning all sagas are lost on restart unless a durable `Store` (FileStore or PostgresStore) is provided. The `__load_sagas()` method exists but is only effective with persistent store backends

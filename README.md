@@ -54,14 +54,28 @@ the hardening pass:
 - **CI matrix 3.10-3.13**, coverage gate 80%, ruff format check,
   TruffleHog secret scan, mypy / bandit / pip-audit.
 
-Remaining work to reach v1.0:
+Deferred to v1.0 (tracked in `docs/ROADMAP.md`):
 
+- Live partner-sandbox validation for the KYC providers
+  (Karza / UIDAI KUA / CIBIL partner / CERSAI) — wire-protocol
+  clients ship with sandbox URLs by default; production endpoints
+  require a credentialed run against the real partners.
 - Video KYC provider integration (Digilocker, NSDL).
-- Helm chart for k8s deployment.
-- Pre-built multi-arch (amd64 + arm64) images.
+- e-NACH / UPI Autopay mandate collection through Razorpay.
+- Full RBAC beyond the basic policy-file allow/deny engine.
+- Pre-built multi-arch (amd64 + arm64) Docker images published
+  to GHCR — the `release.yml` workflow is wired for this and
+  ships on the first `v1.*` tag.
+- Production on-call runbook (incident response, Ed25519 key
+  rotation, DLQ replay, breach notification).
 - Read-only `underwrite` role for `psql` / Vault operations.
-- Production runbook for on-call (incident response, key
-  rotation, DLQ replay).
+
+Out of scope:
+
+- **Helm chart for Kubernetes** — not planned. Deploy the
+  multi-arch container directly or with a project-specific
+  compose / kustomize overlay; the maintainer does not maintain
+  a Helm chart.
 
 ## Installation
 

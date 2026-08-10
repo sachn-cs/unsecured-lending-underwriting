@@ -30,7 +30,7 @@ from underwrite.validate import PayloadValidator
 RATE_PERCENT_MULTIPLIER: int = 100 * DAYS_PER_YEAR
 
 
-class ServicingHandler(Core):
+class Handler(Core):
     """Tracks active loan state, status transitions, and outstanding balances.
 
     Uses actual/365 daily interest accrual for accurate outstanding

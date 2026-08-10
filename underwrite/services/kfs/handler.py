@@ -143,8 +143,8 @@ class Handler(Core):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.__clock: SystemClock = SystemClock()
-        self.__cooling_off_days: int = kwargs.get("cooling_off_days", DEFAULT_COOLING_OFF_DAYS)
+        self.clock: SystemClock = SystemClock()
+        self.cooling_off_days: int = kwargs.get("cooling_off_days", DEFAULT_COOLING_OFF_DAYS)
 
     def handle(self, event: Message) -> None:
         """Generate a KFS document on request.
@@ -153,9 +153,9 @@ class Handler(Core):
             event: The incoming domain event.
         """
         if event.event_type == Type.KFS_GENERATE:
-            self.__on_kfs_generate(event)
+            self.on_kfs_generate(event)
 
-    def __on_kfs_generate(self, event: Message) -> None:
+    def on_kfs_generate(self, event: Message) -> None:
         """Handle a KFS generation request.
 
         Args:
@@ -192,14 +192,14 @@ class Handler(Core):
             logger.error("KFS schedule generation failed for loan {}: {}", loan_id, exc)
             return
 
-        kfs = self.__build_kfs(loan_id, borrower, principal, annual_rate, tenure_months, sched, fees, sd)
+        kfs = self.build_kfs(loan_id, borrower, principal, annual_rate, tenure_months, sched, fees, sd)
         self.emit(
             Type.KFS_GENERATED,
             kfs,
             correlation_id=event.correlation_id,
         )
 
-    def __build_kfs(
+    def build_kfs(
         self,
         loan_id: str,
         borrower: str,
@@ -227,7 +227,7 @@ class Handler(Core):
         """
         total_fees = sum(f.get("amount", 0.0) for f in fees)
         apr = compute_apr(principal, sched.emi, tenure_months, Decimal(str(total_fees)))
-        generated_at = self.__clock.iso()
+        generated_at = self.clock.iso()
 
         kfs: dict[str, Any] = {
             "loan_id": loan_id,
@@ -242,7 +242,7 @@ class Handler(Core):
             "total_repayment": float(sched.total_repayment),
             "fees_and_charges": fees,
             "total_fees": round(total_fees, 2),
-            "cooling_off_days": self.__cooling_off_days,
+            "cooling_off_days": self.cooling_off_days,
         }
         if start_date:
             kfs["start_date"] = start_date.isoformat()

@@ -78,15 +78,15 @@ class Handler(StatefulService):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.__clock: SystemClock = SystemClock()
-        self.__signals: dict[str, list[dict[str, Any]]] = {}
+        self.clock: SystemClock = SystemClock()
+        self.signals: dict[str, list[dict[str, Any]]] = {}
         self.repo: TypedStoreRepository[dict[str, list[dict[str, Any]]]] = self.store_repo("signals", dict)
 
     def start(self) -> None:
         super().start()
         loaded = self.repo.load(default={})
         if loaded:
-            self.__signals = loaded
+            self.signals = loaded
 
     def handle(self, event: Message) -> None:
         """Process signal events and evaluate decisions.
@@ -100,7 +100,7 @@ class Handler(StatefulService):
 
         if event.event_type == Type.FRAUD_ALERT:
             with self.state_lock:
-                self.__signals.setdefault(entity_id, []).append(
+                self.signals.setdefault(entity_id, []).append(
                     {
                         "source": "fraud",
                         "type": "alert",
@@ -108,7 +108,7 @@ class Handler(StatefulService):
                         "detail": event.payload.get("reason", ""),
                     }
                 )
-                self.repo.save(self.__signals)
+                self.repo.save(self.signals)
 
         elif event.event_type == Type.RISK_SCORED:
             score: float = PayloadValidator().finite(event.payload, "score", 0.0)
@@ -124,8 +124,8 @@ class Handler(StatefulService):
             else:
                 signal["severity"] = "low"
             with self.state_lock:
-                self.__signals.setdefault(entity_id, []).append(signal)
-                self.repo.save(self.__signals)
+                self.signals.setdefault(entity_id, []).append(signal)
+                self.repo.save(self.signals)
 
         elif event.event_type == Type.DECISION_EVALUATE:
             self.evaluate(entity_id, event.correlation_id)
@@ -138,7 +138,7 @@ class Handler(StatefulService):
             correlation_id: Correlation ID for tracing.
         """
         with self.state_lock:
-            signals = list(self.__signals.get(entity_id, []))
+            signals = list(self.signals.get(entity_id, []))
         if not signals:
             return
         high_signals: int = 0
@@ -165,12 +165,12 @@ class Handler(StatefulService):
                 "entity_id": entity_id,
                 "action": action,
                 "signals": signals,
-                "decided_at": self.__clock.iso(),
+                "decided_at": self.clock.iso(),
             },
         )
         with self.state_lock:
-            self.__signals.pop(entity_id, None)
-            self.repo.save(self.__signals)
+            self.signals.pop(entity_id, None)
+            self.repo.save(self.signals)
         self.emit(
             Type.DECISION_MADE,
             {

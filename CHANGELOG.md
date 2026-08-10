@@ -4,6 +4,12 @@ All notable changes to this project are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+> **Note:** Historical entries (pre-v0.9) reference module filenames like
+> `underwrite/__bus__.py`. As of v0.9 the core infrastructure modules use bare
+> names (`underwrite/bus.py`, `underwrite/store.py`, etc.). The only remaining
+> `__<name>__.py` files in the package are `__init__.py`, `__main__.py`, and
+> the auto-generated `__version__.py`.
+
 > **WARNING**: This is a beta project. Not production-ready. Not developer-friendly.
 > Known gaps: no real PAN/Aadhaar/CIBIL API integrations (format validation only),
 > no video KYC, no e-NACH, incomplete RBAC, no DR procedures, rough DX.

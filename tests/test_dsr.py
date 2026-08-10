@@ -1,15 +1,16 @@
-"""Tests for DataSubjectRightsHandler — DPDPA-compliant DSR and grievance handling."""
+"""Tests for Handler — DPDPA-compliant DSR and grievance handling."""
 
 from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.dsr.handler import DataSubjectRightsHandler
 from underwrite.store import MemoryStore
+from underwrite.services.dsr.handler import Handler
+from underwrite.services.dsr.handler import Handler as DsrHandler
 
 
-def svc(**kw) -> DataSubjectRightsHandler:
-    return DataSubjectRightsHandler(service_id="dsr", bus=LocalBus(), store=MemoryStore(), **kw)
+def svc(**kw) -> Handler:
+    return DsrHandler(service_id="dsr", bus=LocalBus(), store=MemoryStore(), **kw)
 
 
 class TestDsrRequestCreation:
@@ -59,7 +60,7 @@ class TestDsrRequestCreation:
         bus = LocalBus()
         received: list = []
         bus.subscribe(Type.DSR_REQUESTED, lambda e: received.append(e))
-        s = DataSubjectRightsHandler(service_id="dsr", bus=bus, store=MemoryStore())
+        s = DsrHandler(service_id="dsr", bus=bus, store=MemoryStore())
         bus.start()
         s.handle(
             Message(event_type=Type.DSR_REQUEST, source="test", payload={"user_id": "u5", "request_type": "access"})

@@ -39,7 +39,7 @@ ESCALATION_THRESHOLD: int = 3
 
 @dataclass(frozen=True, slots=True)
 class RecoveryConfig:
-    """Typed configuration for RecoveryHandler.
+    """Typed configuration for Handler.
 
     Replaces the previous ``kwargs.pop("recovery_rate", ...)`` pattern:
     callers now pass a RecoveryConfig (or its fields are extracted
@@ -61,7 +61,7 @@ class RecoveryStage(str, Enum):
     SETTLEMENT = "settlement"
 
 
-class RecoveryHandler(StatefulService):
+class Handler(StatefulService):
     """Orchestrates multi-stage recovery after a default event.
 
     State is persisted to the store so in-flight recoveries survive

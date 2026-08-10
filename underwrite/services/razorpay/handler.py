@@ -45,7 +45,7 @@ DEFAULT_RAZORPAY_API_BASE_URL: str = "https://api.razorpay.com/v1"
 
 @dataclass(frozen=True, slots=True)
 class RazorpayConfig:
-    """Typed configuration for RazorpayHandler.
+    """Typed configuration for Handler.
 
     Replaces the previous
     ``{k: kwargs.pop(k) for k in ...}`` dict-comprehension pattern:
@@ -61,7 +61,7 @@ class RazorpayConfig:
     timeout_seconds: int = 30
 
 
-class RazorpayHandler(StatefulService):
+class Handler(StatefulService):
     """Manages Razorpay order/subscription/payment lifecycle.
 
     Handles creation of payment orders (one-time), payment links,

@@ -74,32 +74,32 @@ class Handler(Core):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.__executor: concurrent.futures.ThreadPoolExecutor | None = concurrent.futures.ThreadPoolExecutor(
+        self.thread_pool: concurrent.futures.ThreadPoolExecutor | None = concurrent.futures.ThreadPoolExecutor(
             max_workers=4
         )
         self.handlers: dict[str, Any] = {
-            Type.FRAUD_ALERT: self.__on_notify_event,
-            Type.WASH_FLAG: self.__on_notify_event,
-            Type.VELOCITY_FLAG: self.__on_notify_event,
-            Type.RISK_EARLY_WARNING: self.__on_notify_event,
-            Type.NPA_BUCKET_CHANGED: self.__on_notify_event,
-            Type.DLG_TRIGGERED: self.__on_notify_event,
+            Type.FRAUD_ALERT: self.on_notify_event,
+            Type.WASH_FLAG: self.on_notify_event,
+            Type.VELOCITY_FLAG: self.on_notify_event,
+            Type.RISK_EARLY_WARNING: self.on_notify_event,
+            Type.NPA_BUCKET_CHANGED: self.on_notify_event,
+            Type.DLG_TRIGGERED: self.on_notify_event,
         }
 
     @property
     def executor(self) -> concurrent.futures.ThreadPoolExecutor | None:
         """Test/extension hook for the notification thread pool."""
-        return self.__executor
+        return self.thread_pool
 
     @executor.setter
     def executor(self, value: concurrent.futures.ThreadPoolExecutor | None) -> None:
-        self.__executor = value
+        self.thread_pool = value
 
     def stop(self) -> None:
         """Shut down the thread pool executor."""
-        if self.__executor is not None:
-            self.__executor.shutdown(wait=True)
-            self.__executor = None
+        if self.thread_pool is not None:
+            self.thread_pool.shutdown(wait=True)
+            self.thread_pool = None
         super().stop()
 
     def handle(self, event: Message) -> None:
@@ -112,17 +112,17 @@ class Handler(Core):
         if handler is not None:
             handler(event)
 
-    def __on_notify_event(self, event: Message) -> None:
+    def on_notify_event(self, event: Message) -> None:
         """Submit a notification dispatch to the thread pool.
 
         Args:
             event: The event to notify about.
         """
-        if self.__executor is None:
+        if self.thread_pool is None:
             logger.warning("notification executor not available, dispatching synchronously")
-            self.__dispatch_notification(event)
+            self.dispatch_notification(event)
             return
-        self.__executor.submit(self.__dispatch_notification, event)
+        self.thread_pool.submit(self.dispatch_notification, event)
         self.emit(
             Type.NOTIFICATION_SENT,
             {
@@ -132,7 +132,7 @@ class Handler(Core):
             correlation_id=event.correlation_id,
         )
 
-    def __dispatch_notification(self, event: Message) -> None:
+    def dispatch_notification(self, event: Message) -> None:
         """Dispatch a notification through configured channels.
 
         Args:

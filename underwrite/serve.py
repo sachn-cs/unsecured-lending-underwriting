@@ -52,7 +52,7 @@ def try_instrument_fastapi(app: FastAPI) -> None:
 
 def try_register_prometheus(app: FastAPI, runtime: Any) -> None:
     try:
-        from underwrite.prometheus_export import PrometheusMiddleware
+        from underwrite.exporter import PrometheusMiddleware
 
         app.add_middleware(PrometheusMiddleware, runtime=runtime)
     except ImportError:
@@ -209,10 +209,10 @@ def create_app(
     )
     async def v1_metrics_endpoint():
         try:
-            from underwrite.prometheus_export import metrics_as_text
+            from underwrite.exporter import metrics_as_text
 
             return PlainTextResponse(
-                metrics_as_text(runtime),
+                prometheus_text(runtime),
                 media_type="text/plain; version=0.0.4",
             )
         except ImportError:
@@ -287,10 +287,10 @@ def create_app(
     )
     async def metrics_endpoint():
         try:
-            from underwrite.prometheus_export import metrics_as_text
+            from underwrite.exporter import metrics_as_text
 
             return PlainTextResponse(
-                metrics_as_text(runtime),
+                prometheus_text(runtime),
                 media_type="text/plain; version=0.0.4",
             )
         except ImportError:

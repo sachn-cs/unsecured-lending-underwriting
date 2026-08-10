@@ -9,7 +9,7 @@ from underwrite.services import Core
 from underwrite.validate import PayloadValidator
 
 
-class IdentityHandler(Core):
+class Handler(Core):
     """Manages nano-service identities: registration and key rotation."""
 
     def handle(self, event: Message) -> None:

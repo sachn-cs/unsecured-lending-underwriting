@@ -81,7 +81,7 @@ class Handler(StatefulService):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.__records: dict[str, deque[dict[str, Any]]] = {}
+        self.records_storage: dict[str, deque[dict[str, Any]]] = {}
         self.repo: BatchedStoreRepository[dict[str, list[dict[str, Any]]]] = self.batched_repo(
             "records", dict, sync_interval=self.SYNC_INTERVAL
         )
@@ -91,7 +91,7 @@ class Handler(StatefulService):
         super().start()
         loaded = self.repo.load(default={})
         if loaded:
-            self.__records = self.__deserialize_records(loaded)
+            self.records_storage = self.deserialize_records(loaded)
 
     @property
     def records(self) -> dict[str, deque[dict[str, Any]]]:
@@ -101,7 +101,7 @@ class Handler(StatefulService):
             Dict mapping borrower IDs to their activity deques.
         """
         with self.state_lock:
-            return {k: deque(v, maxlen=v.maxlen) for k, v in self.__records.items()}
+            return {k: deque(v, maxlen=v.maxlen) for k, v in self.records_storage.items()}
 
     def handle(self, event: Message) -> None:
         """Check loan origination and repayment events against fraud rules.
@@ -116,8 +116,8 @@ class Handler(StatefulService):
             borrower: str = PayloadValidator().non_empty(event.payload, "borrower")
             principal: float = PayloadValidator().finite(event.payload, "principal")
             with self.state_lock:
-                self.__record(borrower, "origination", principal)
-                self.__check_wash(borrower, event.correlation_id)
+                self.record(borrower, "origination", principal)
+                self.check_wash(borrower, event.correlation_id)
                 self.__check_burst(borrower, event.correlation_id)
             if principal > self.LARGE_PRINCIPAL_THRESHOLD:
                 self.emit(
@@ -133,10 +133,10 @@ class Handler(StatefulService):
             user: str = PayloadValidator().non_empty(event.payload, "user")
             delta: float = PayloadValidator().finite(event.payload, "delta_earned")
             with self.state_lock:
-                self.__record(user, "repayment", delta)
-                self.__check_wash(user, event.correlation_id)
+                self.record(user, "repayment", delta)
+                self.check_wash(user, event.correlation_id)
 
-    def __record(self, borrower: str, event_type: str, amount: float) -> None:
+    def record(self, borrower: str, event_type: str, amount: float) -> None:
         """Record an activity event for a borrower.
 
         Args:
@@ -144,14 +144,14 @@ class Handler(StatefulService):
             event_type: Type of event (origination or repayment).
             amount: Transaction amount.
         """
-        if borrower not in self.__records:
-            if len(self.__records) >= self.MAX_BORROWERS:
-                self.__records.pop(next(iter(self.__records)))
-            self.__records[borrower] = deque(maxlen=self.ACTIVITY_DEQUE_MAXLEN)
+        if borrower not in self.records_storage:
+            if len(self.records_storage) >= self.MAX_BORROWERS:
+                self.records_storage.pop(next(iter(self.records_storage)))
+            self.records_storage[borrower] = deque(maxlen=self.ACTIVITY_DEQUE_MAXLEN)
         else:
-            records = self.__records.pop(borrower)
-            self.__records[borrower] = records
-        records = self.__records[borrower]
+            records = self.records_storage.pop(borrower)
+            self.records_storage[borrower] = records
+        records = self.records_storage[borrower]
         records.append(
             {
                 "event_type": event_type,
@@ -161,14 +161,14 @@ class Handler(StatefulService):
         )
         self.repo.incr_and_maybe_sync(self.__serialize_records())
 
-    def __check_wash(self, borrower: str, correlation_id: str) -> None:
+    def check_wash(self, borrower: str, correlation_id: str) -> None:
         """Check for wash lending cycles (alternating origination/repayment).
 
         Args:
             borrower: The borrower identifier.
             correlation_id: Correlation ID for tracing.
         """
-        records = self.__records.get(borrower, deque(maxlen=self.ACTIVITY_DEQUE_MAXLEN))
+        records = self.records_storage.get(borrower, deque(maxlen=self.ACTIVITY_DEQUE_MAXLEN))
         if len(records) < 2:
             return
         types = {r["event_type"] for r in records}
@@ -200,7 +200,7 @@ class Handler(StatefulService):
             borrower: The borrower identifier.
             correlation_id: Correlation ID for tracing.
         """
-        records = self.__records.get(borrower, deque(maxlen=self.ACTIVITY_DEQUE_MAXLEN))
+        records = self.records_storage.get(borrower, deque(maxlen=self.ACTIVITY_DEQUE_MAXLEN))
         recent = [r for r in records if r["event_type"] == "origination"]
         if len(recent) > 3:
             self.emit(
@@ -218,7 +218,7 @@ class Handler(StatefulService):
         Returns:
             Serialized records suitable for storage.
         """
-        return {k: list(v) for k, v in self.__records.items()}
+        return {k: list(v) for k, v in self.records_storage.items()}
 
     @staticmethod
     def __deserialize_records(

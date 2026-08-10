@@ -18,7 +18,7 @@
 
 - **34 wired nano-services + 4 KYC provider clients** — KYC / AML (PAN + Aadhaar Verhoeff), CIBIL / Experian / Equifax credit bureau, CKYC registry, RBI rate-capped pricing, KFS generation, DPDPA consent + DSR, Razorpay PG, risk scoring, fraud detection, collections, recovery, notifications, governance
 - **Event-driven** — Typed events with Ed25519 signatures, saga orchestration, dead-letter queues, circuit breakers
-- **Pluggable backends** — Memory / filesystem / Postgres stores; local / SQS / Modal event bus; console / OTLP tracing
+- **Pluggable backends** — InMemory / Disk / Sqlite stores; local / Modal event bus; console / OTLP tracing
 - **1167 tests** — Rate limiting, idempotency guards, PII redaction, Prometheus metrics
 - **DPDPA 2023 + RBI DLG aligned** — Per-product rate caps, all-in-cost APR, penal-interest cap, KFS cooling-off, consent lifecycle, DSR fulfillment, breach notification, auto-purge
 
@@ -86,7 +86,7 @@ pip install -e ".[dev,risk,serve,postgres,otlp,vault,aws]"
 |-------|----------|
 | `risk` | NumPy, scikit-learn — ML risk models |
 | `serve` | Uvicorn, FastAPI — HTTP server |
-| `postgres` | psycopg2-binary — Postgres state store |
+| `postgres` | psycopg2-binary — Postgres state store (optional, legacy) |
 | `otlp` | OpenTelemetry SDK — distributed tracing |
 | `vault` | hvac — HashiCorp Vault secrets |
 | `aws` | boto3 — SES, SQS, Secrets Manager |
@@ -168,7 +168,7 @@ Each nano-service extends `NanoService` with a single `handle(event: Event) -> N
 1. **Subscribe** — declare interest in event types via config
 2. **Dispatch** — handler wrapped with authz, idempotency, tracing, metrics, timeout
 3. **Emit** — `self.emit(event)` signs with Ed25519 and publishes to the bus
-4. **Persist** — state via `Store` (MemoryStore / FileStore / PostgresStore)
+4. **Persist** — state via `Store` (InMemory / Disk / Sqlite)
 
 Cross-cutting concerns (authz, tracing, metrics, sagas, supervisor, circuit breaker) are injected by the bus and runtime — not inherited by services.
 
@@ -287,7 +287,7 @@ git tag vX.Y.Z && git push origin vX.Y.Z
 | Cryptography | `cryptography` (Ed25519) |
 | CLI | Typer |
 | Config | Pydantic |
-| State store | Memory / File / Postgres (psycopg2-binary) |
+| State store | InMemory / Disk / Sqlite (stdlib sqlite3) |
 | Tracing | OpenTelemetry SDK + OTLP |
 | HTTP | FastAPI + Uvicorn |
 | Secrets | HashiCorp Vault (hvac) |

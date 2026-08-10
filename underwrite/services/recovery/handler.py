@@ -100,9 +100,9 @@ class Handler(StatefulService):
             negotiation_days=kwargs.pop("negotiation_days", NEGOTIATION_DAYS),
             escalation_threshold=kwargs.pop("escalation_threshold", ESCALATION_THRESHOLD),
         )
-        self.__recovery_rate: float = config.recovery_rate
-        self.__negotiation_days: int = config.negotiation_days
-        self.__escalation_threshold: int = config.escalation_threshold
+        self.recovery_rate: float = config.recovery_rate
+        self.negotiation_days: int = config.negotiation_days
+        self.escalation_threshold: int = config.escalation_threshold
         deps = Dependencies(
             identity=identity,
             bus=bus,
@@ -129,8 +129,8 @@ class Handler(StatefulService):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.__clock: SystemClock = SystemClock()
-        self.__recoveries: dict[str, dict[str, Any]] = {}
+        self.clock: SystemClock = SystemClock()
+        self.recoveries: dict[str, dict[str, Any]] = {}
         self.repo: TypedStoreRepository[dict[str, dict[str, Any]]] = self.store_repo("recoveries", dict)
 
     def start(self) -> None:
@@ -138,8 +138,8 @@ class Handler(StatefulService):
         super().start()
         loaded = self.repo.load(default={})
         if loaded:
-            self.__recoveries = loaded
-            active = sum(1 for r in self.__recoveries.values() if r.get("stage") != RecoveryStage.SETTLEMENT.value)
+            self.recoveries = loaded
+            active = sum(1 for r in self.recoveries.values() if r.get("stage") != RecoveryStage.SETTLEMENT.value)
             if active > 0:
                 logger.info(
                     "loaded {} active recovery(s) from store",
@@ -153,13 +153,13 @@ class Handler(StatefulService):
             event: The incoming domain event.
         """
         if event.event_type == Type.DEFAULT_OCCURRED:
-            self.__start_recovery(event)
+            self.start_recovery(event)
         elif event.event_type == Type.PAYMENT_RECEIVED:
-            self.__on_payment_received(event)
+            self.on_payment_received(event)
         elif event.event_type == Type.RECOVERY_OFFER_RESPONSE.value:
-            self.__on_offer_response(event)
+            self.on_offer_response(event)
 
-    def __start_recovery(self, event: Message) -> None:
+    def start_recovery(self, event: Message) -> None:
         """Start a new recovery workflow for a defaulted borrower.
 
         Args:
@@ -169,7 +169,7 @@ class Handler(StatefulService):
         principal: float = PayloadValidator().finite(event.payload, "principal")
 
         with self.state_lock:
-            if borrower in self.__recoveries:
+            if borrower in self.recoveries:
                 logger.warning("recovery already active for {}, skipping", borrower)
                 return
 
@@ -177,14 +177,14 @@ class Handler(StatefulService):
                 "borrower": borrower,
                 "principal": principal,
                 "stage": RecoveryStage.NEGOTIATION.value,
-                "started_at": self.__clock.iso(),
+                "started_at": self.clock.iso(),
                 "offer_count": 0,
                 "plan_failures": 0,
                 "recovered": 0.0,
-                "last_action": self.__clock.iso(),
+                "last_action": self.clock.iso(),
             }
-            self.__recoveries[borrower] = recovery
-            self.__sync()
+            self.recoveries[borrower] = recovery
+            self.sync()
 
         logger.info("recovery started for {} (principal={:.2f})", borrower, principal)
         self.emit(
@@ -198,24 +198,24 @@ class Handler(StatefulService):
             correlation_id=event.correlation_id,
         )
 
-        offer_amount: float = principal * self.__recovery_rate
+        offer_amount: float = principal * self.recovery_rate
         with self.state_lock:
             recovery["offer_count"] += 1
-            recovery["last_action"] = self.__clock.iso()
-            self.__sync()
+            recovery["last_action"] = self.clock.iso()
+            self.sync()
 
         self.emit(
             Type.RECOVERY_OFFER.value,
             {
                 "borrower": borrower,
                 "offer_amount": offer_amount,
-                "due_by": (self.__clock.utc_now() + timedelta(days=self.__negotiation_days)).isoformat(),
+                "due_by": (self.clock.utc_now() + timedelta(days=self.negotiation_days)).isoformat(),
                 "stage": RecoveryStage.NEGOTIATION.value,
             },
             correlation_id=event.correlation_id,
         )
 
-    def __on_offer_response(self, event: Message) -> None:
+    def on_offer_response(self, event: Message) -> None:
         """Handle a borrower's response to a recovery offer.
 
         Args:
@@ -225,7 +225,7 @@ class Handler(StatefulService):
         accepted: bool = event.payload.get("accepted", False)
 
         with self.state_lock:
-            recovery = self.__recoveries.get(borrower)
+            recovery = self.recoveries.get(borrower)
             if not recovery:
                 return
             if recovery["stage"] in (
@@ -236,8 +236,8 @@ class Handler(StatefulService):
 
             if accepted:
                 recovery["stage"] = RecoveryStage.PAYMENT_PLAN.value
-                recovery["last_action"] = self.__clock.iso()
-                self.__sync()
+                recovery["last_action"] = self.clock.iso()
+                self.sync()
                 logger.info("recovery offer accepted for {}", borrower)
                 self.emit(
                     Type.RECOVERY_STARTED,
@@ -251,10 +251,10 @@ class Handler(StatefulService):
                 )
             else:
                 recovery["offer_count"] += 1
-                if recovery["offer_count"] >= self.__escalation_threshold:
+                if recovery["offer_count"] >= self.escalation_threshold:
                     recovery["stage"] = RecoveryStage.ESCALATION.value
-                    recovery["last_action"] = self.__clock.iso()
-                    self.__sync()
+                    recovery["last_action"] = self.clock.iso()
+                    self.sync()
                     logger.warning("recovery escalated for {}", borrower)
                     self.emit(
                         Type.RECOVERY_ESCALATED.value,
@@ -266,21 +266,21 @@ class Handler(StatefulService):
                         correlation_id=event.correlation_id,
                     )
                 else:
-                    recovery["last_action"] = self.__clock.iso()
-                    self.__sync()
-                    offer_amount = recovery["principal"] * self.__recovery_rate
+                    recovery["last_action"] = self.clock.iso()
+                    self.sync()
+                    offer_amount = recovery["principal"] * self.recovery_rate
                     self.emit(
                         Type.RECOVERY_OFFER.value,
                         {
                             "borrower": borrower,
                             "offer_amount": offer_amount,
-                            "due_by": (self.__clock.utc_now() + timedelta(days=self.__negotiation_days)).isoformat(),
+                            "due_by": (self.clock.utc_now() + timedelta(days=self.negotiation_days)).isoformat(),
                             "stage": RecoveryStage.NEGOTIATION.value,
                         },
                         correlation_id=event.correlation_id,
                     )
 
-    def __on_payment_received(self, event: Message) -> None:
+    def on_payment_received(self, event: Message) -> None:
         """Track a payment received during recovery.
 
         Args:
@@ -290,19 +290,19 @@ class Handler(StatefulService):
         amount: float = PayloadValidator().finite(event.payload, "amount")
 
         with self.state_lock:
-            recovery = self.__recoveries.get(borrower)
+            recovery = self.recoveries.get(borrower)
             if not recovery:
                 return
             if recovery["stage"] == RecoveryStage.SETTLEMENT.value:
                 return
 
             recovery["recovered"] += amount
-            recovery["last_action"] = self.__clock.iso()
+            recovery["last_action"] = self.clock.iso()
             outstanding: float = recovery["principal"] - recovery["recovered"]
 
             if outstanding <= 0:
                 recovery["stage"] = RecoveryStage.SETTLEMENT.value
-                self.__sync()
+                self.sync()
                 logger.info(
                     "recovery completed for {} (recovered={:.2f})",
                     borrower,
@@ -319,7 +319,7 @@ class Handler(StatefulService):
                     correlation_id=event.correlation_id,
                 )
             else:
-                self.__sync()
+                self.sync()
                 logger.info(
                     "recovery progress for {}: recovered={:.2f} outstanding={:.2f}",
                     borrower,
@@ -347,7 +347,7 @@ class Handler(StatefulService):
             Recovery dict or None if not found.
         """
         with self.state_lock:
-            return self.__recoveries.get(borrower)
+            return self.recoveries.get(borrower)
 
     def health_check(self) -> dict[str, Any]:
         """Return health metrics including recovery counts.
@@ -357,11 +357,11 @@ class Handler(StatefulService):
         """
         base = super().health_check()
         with self.state_lock:
-            active = sum(1 for r in self.__recoveries.values() if r.get("stage") != RecoveryStage.SETTLEMENT.value)
+            active = sum(1 for r in self.recoveries.values() if r.get("stage") != RecoveryStage.SETTLEMENT.value)
             base["active_recoveries"] = active
-            base["total_recoveries"] = len(self.__recoveries)
+            base["total_recoveries"] = len(self.recoveries)
         return base
 
-    def __sync(self) -> None:
+    def sync(self) -> None:
         """Persist recoveries to the store."""
-        self.repo.save(self.__recoveries)
+        self.repo.save(self.recoveries)

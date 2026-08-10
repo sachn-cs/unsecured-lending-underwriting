@@ -10,8 +10,8 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
 from helpers import MockReadStore, MockStore
+
 from underwrite.exceptions import StoreError
 from underwrite.metrics import Collector
 from underwrite.store import CQRSStore, Disk, InMemory, Store

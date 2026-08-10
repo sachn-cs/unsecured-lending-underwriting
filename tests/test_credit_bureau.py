@@ -10,7 +10,6 @@ from typing import cast
 import pytest
 
 from underwrite.local import LocalBus
-from underwrite.services.kyc.base import Provider
 from underwrite.message import Message, Type
 from underwrite.services.credit_bureau.client import (
     CkycResponse,
@@ -20,7 +19,7 @@ from underwrite.services.credit_bureau.client import (
 )
 from underwrite.services.credit_bureau.handler import Handler
 from underwrite.services.credit_bureau.handler import Handler as CreditBureauHandler
-from underwrite.services.kyc.base import ProviderResult, Verdict
+from underwrite.services.kyc.base import Provider, ProviderResult, Verdict
 from underwrite.store import InMemory
 
 
@@ -132,8 +131,12 @@ class TestCreditBureauCheck:
     def test_multiple_bureau_checks(self) -> None:
         s = svc()
         s.set_client(MockCreditBureauClient())
-        cast(MockCreditBureauClient, s.client).add_report("PAN1", CreditReport(bureau="cibil", pan="PAN1", name="A", dob="1990-01-01", score=750))
-        cast(MockCreditBureauClient, s.client).add_report("PAN2", CreditReport(bureau="experian", pan="PAN2", name="B", dob="1991-02-02", score=680))
+        cast(MockCreditBureauClient, s.client).add_report(
+            "PAN1", CreditReport(bureau="cibil", pan="PAN1", name="A", dob="1990-01-01", score=750)
+        )
+        cast(MockCreditBureauClient, s.client).add_report(
+            "PAN2", CreditReport(bureau="experian", pan="PAN2", name="B", dob="1991-02-02", score=680)
+        )
         s.handle(
             Message(event_type=Type.CREDIT_BUREAU_CHECK, source="test", payload={"pan": "PAN1", "bureau": "cibil"})
         )
@@ -351,7 +354,9 @@ class TestHealthCheck:
     def test_health_returns_counts(self) -> None:
         s = svc()
         s.set_client(MockCreditBureauClient())
-        cast(MockCreditBureauClient, s.client).add_report("PAN1", CreditReport(bureau="cibil", pan="PAN1", name="A", dob="1990-01-01", score=750))
+        cast(MockCreditBureauClient, s.client).add_report(
+            "PAN1", CreditReport(bureau="cibil", pan="PAN1", name="A", dob="1990-01-01", score=750)
+        )
         s.handle(
             Message(event_type=Type.CREDIT_BUREAU_CHECK, source="test", payload={"pan": "PAN1", "bureau": "cibil"})
         )

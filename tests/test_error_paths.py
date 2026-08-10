@@ -11,8 +11,8 @@ from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
-
 from helpers import BadStr, BrokenStore, ConcreteService, RaisingStrategy
+
 from underwrite.bus import EventBus
 from underwrite.config import AuthzConfig, Configuration
 from underwrite.exceptions import ProtocolError

@@ -49,9 +49,7 @@ class Registry:
         """
         with self.lock:
             for event_type in list(self.handlers):
-                self.handlers[event_type] = [
-                    (sid, h) for sid, h in self.handlers[event_type] if sid != subscription_id
-                ]
+                self.handlers[event_type] = [(sid, h) for sid, h in self.handlers[event_type] if sid != subscription_id]
 
     def handlers_for(self, event_type: str) -> list[tuple[str, Callable[[Message], None]]]:
         """Return a snapshot of (sid, handler) tuples for the given event type.

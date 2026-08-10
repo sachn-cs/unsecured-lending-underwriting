@@ -253,8 +253,6 @@ class RiskModel:
             logger.exception("risk model predict failed: {}", exc)
             return HeuristicStrategy().predict(principal, term)
 
-
-
     @staticmethod
     def load_strategy(model_path: str) -> RiskScoringStrategy:
         """Load a model file and return the appropriate strategy.

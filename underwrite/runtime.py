@@ -334,16 +334,6 @@ class Runtime:
         logger.remove()
         logger.add(sink, level=cfg.level, format=loguru_sink_format(formatter), colorize=False)
 
-
-
-
-
-
-
-
-
-
-
     def register(self, service_name: str, identity: Keypair | None = None) -> Core:
         """Instantiates a nano service by name and registers it."""
         module_path = HANDLER_MAP.get(service_name)

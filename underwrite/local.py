@@ -63,8 +63,6 @@ class LocalBus:
         self.rate_limiter: Limiter | None = Limiter(rate_limit) if rate_limit > 0 else None
         self.dispatcher: Dispatcher = Dispatcher(max_workers, max_futures)
 
-
-
     def publish(self, event: Message) -> str:
         """Publishes an event to all matching subscribers.
 

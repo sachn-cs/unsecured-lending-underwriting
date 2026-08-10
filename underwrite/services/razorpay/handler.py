@@ -23,10 +23,10 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.local import LocalBus
 from underwrite.constants import PAISE_PER_RUPEE
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
+from underwrite.local import LocalBus
 from underwrite.logger import logger
 from underwrite.message import Message, Type
 from underwrite.metrics import Collector
@@ -39,7 +39,7 @@ from underwrite.services.razorpay.client import (
     RazorpayClient,
     RazorpayError,
 )
-from underwrite.store import Store, InMemory, Disk, Sqlite
+from underwrite.store import Disk, InMemory, Sqlite, Store
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
 from underwrite.validate import PayloadValidator
@@ -317,7 +317,9 @@ class Handler(StatefulService):
             logger.warning("webhook missing payload or signature, skipped")
             return
 
-        configured_secret = self.payment_client.webhook_secret() if hasattr(self.payment_client, "webhook_secret") else None
+        configured_secret = (
+            self.payment_client.webhook_secret() if hasattr(self.payment_client, "webhook_secret") else None
+        )
         if not configured_secret:
             logger.error("razorpay webhook secret not configured; rejecting webhook")
             return

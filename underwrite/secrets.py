@@ -124,7 +124,6 @@ class Manager:
     def __init__(self, backend: Backend | None = None, config: Any | None = None) -> None:
         self.backend = backend or self.build_backend(config)
 
-
     @staticmethod
     def build_backend(config: Any) -> Backend:
         if config is None:

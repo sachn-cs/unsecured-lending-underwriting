@@ -14,9 +14,9 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
-from underwrite.local import LocalBus
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
+from underwrite.local import LocalBus
 from underwrite.logger import logger
 from underwrite.message import Message, Type
 from underwrite.metrics import Collector
@@ -32,7 +32,7 @@ from underwrite.services.underwriter.engine import (
     RuleSeverity,
     UnderwritingDecision,
 )
-from underwrite.store import Store, InMemory, Disk, Sqlite
+from underwrite.store import Disk, InMemory, Sqlite, Store
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
 from underwrite.validate import PayloadValidator

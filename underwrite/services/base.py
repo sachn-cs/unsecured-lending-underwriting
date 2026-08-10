@@ -33,7 +33,6 @@ if TYPE_CHECKING:
 
 from underwrite.authz import AccessControl, AuthzError
 from underwrite.bus import EventBus
-from underwrite.local import LocalBus
 from underwrite.correlation import (
     correlation_context,
 )
@@ -42,6 +41,7 @@ from underwrite.correlation import (
 )
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
+from underwrite.local import LocalBus
 from underwrite.logger import logger
 from underwrite.message import Message
 from underwrite.metrics import Collector

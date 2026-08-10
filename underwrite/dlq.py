@@ -50,7 +50,9 @@ class Queue:
     durability across restarts.
     """
 
-    def __init__(self, max_records: int = 10000, store: Store | InMemory | Disk | Sqlite | None = None, sync_interval: int = 10) -> None:
+    def __init__(
+        self, max_records: int = 10000, store: Store | InMemory | Disk | Sqlite | None = None, sync_interval: int = 10
+    ) -> None:
         self.lock: threading.Lock = threading.Lock()
         self.records: deque[Record] = deque(maxlen=max_records)
         self.max_records: int = max_records

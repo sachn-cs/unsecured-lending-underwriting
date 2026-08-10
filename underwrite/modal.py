@@ -96,8 +96,6 @@ class ModalBus(EventBus):
         with self.lock:
             self.handlers.clear()
 
-
-
     def poll_loop(self) -> None:
         while self.running:
             try:

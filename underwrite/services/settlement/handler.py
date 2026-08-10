@@ -23,7 +23,7 @@ from underwrite.tracer import Tracer
 from underwrite.validate import PayloadValidator
 
 
-class SettlementHandler(StatefulService):
+class Handler(StatefulService):
     """Handles final settlement and loss recognition."""
 
     def __init__(

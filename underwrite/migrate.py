@@ -37,7 +37,7 @@ class MigrationPlan:
     """Ordered sequence of schema migrations."""
 
     def __init__(self) -> None:
-        self.__migrations: dict[int, Migration] = {}
+        self.migrations: dict[int, Migration] = {}
 
     def add(self, migration: Migration) -> None:
         """Registers a migration.
@@ -48,9 +48,9 @@ class MigrationPlan:
         Raises:
             MigrationError: If a migration with the same version already exists.
         """
-        if migration.version in self.__migrations:
+        if migration.version in self.migrations:
             raise MigrationError(f"duplicate migration version {migration.version}")
-        self.__migrations[migration.version] = migration
+        self.migrations[migration.version] = migration
 
     def pending(self, applied: set[int]) -> list[Migration]:
         """Returns migrations that have not yet been applied, in version order.
@@ -61,12 +61,12 @@ class MigrationPlan:
         Returns:
             Sorted list of pending migrations.
         """
-        return [self.__migrations[v] for v in sorted(self.__migrations) if v not in applied]
+        return [self.migrations[v] for v in sorted(self.migrations) if v not in applied]
 
     @property
     def latest_version(self) -> int:
         """Returns the highest registered migration version, or 0."""
-        return max(self.__migrations.keys()) if self.__migrations else 0
+        return max(self.migrations.keys()) if self.migrations else 0
 
 
 def default_plan() -> MigrationPlan:

@@ -108,7 +108,7 @@ class Handler(StatefulService):
             max_concurrent=deps.max_concurrent,
         )
         self.__kyc_providers: dict[str, Provider] = dict(kyc_providers or {})
-        self.__client: CreditBureauClient = self.build_client(
+        self.bureau_client: CreditBureauClient = self.build_client(
             cibil_api_key=cibil_api_key,
             allow_mock=allow_mock,
         )
@@ -123,11 +123,11 @@ class Handler(StatefulService):
     @property
     def client(self) -> CreditBureauClient:
         """Read-only access to the bureau client for test wiring."""
-        return self.__client
+        return self.bureau_client
 
     @client.setter
     def client(self, value: CreditBureauClient) -> None:
-        self.__client = value
+        self.bureau_client = value
 
     @staticmethod
     def dict_to_report(d: dict[str, Any]) -> CreditReport:
@@ -299,7 +299,7 @@ class Handler(StatefulService):
             )
             return
         try:
-            report = self.__client.fetch_credit_report(pan, bureau)
+            report = self.bureau_client.fetch_credit_report(pan, bureau)
         except Exception as exc:
             logger.error("credit_bureau.check failed for {}: {}", pan, exc)
             self.emit(
@@ -343,7 +343,7 @@ class Handler(StatefulService):
             logger.warning("ckyc.verify missing ckyc_number or aadhaar")
             return
         try:
-            response = self.__client.verify_ckyc(ckyc_number, aadhaar)
+            response = self.bureau_client.verify_ckyc(ckyc_number, aadhaar)
         except Exception as exc:
             logger.error("ckyc.verify failed for {}: {}", ckyc_number, exc)
             self.emit(

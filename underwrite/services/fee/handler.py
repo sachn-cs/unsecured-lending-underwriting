@@ -41,7 +41,7 @@ MAX_FEE_PER_LOAN: float = 1000.0
 
 @dataclass(frozen=True, slots=True)
 class FeeConfig:
-    """Typed configuration for FeeHandler.
+    """Typed configuration for Handler.
 
     Replaces the previous ``kwargs.pop("penal_interest_daily_rate", ...)``
     pattern: callers now pass a FeeConfig (or its fields are extracted
@@ -55,7 +55,7 @@ class FeeConfig:
     max_penal_interest_per_loan: float = 0.0
 
 
-class FeeHandler(StatefulService):
+class Handler(StatefulService):
     """Manages fee assessment, tracking, and lifecycle.
 
     Supports Indian lending fee structures:

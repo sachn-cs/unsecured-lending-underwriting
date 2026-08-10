@@ -1,4 +1,4 @@
-"""Tests for ReportingHandler — regulatory report generation.
+"""Tests for Handler — regulatory report generation.
 
 Tests verify behavior through the public generate_report() method.
 """
@@ -7,11 +7,12 @@ from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.reporting.handler import ReportingHandler
 from underwrite.store import MemoryStore
+from underwrite.services.reporting.handler import Handler
+from underwrite.services.reporting.handler import Handler as ReportingHandler
 
 
-def reporting() -> ReportingHandler:
+def reporting() -> Handler:
     return ReportingHandler(service_id="reporting", bus=LocalBus(), store=MemoryStore())
 
 

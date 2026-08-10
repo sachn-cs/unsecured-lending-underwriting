@@ -28,7 +28,7 @@ class TestRuntimeOtlpTracer:
         rt = Runtime(config)
         mock_exporter = MagicMock()
         assert rt.tracer is not None
-        rt.tracer.exporter = mock_exporter
+        rt.tracer.set_exporter(mock_exporter)
 
         span = rt.tracer.start_span("test-op", tags={"key": "val"})
         rt.tracer.end_span(span)

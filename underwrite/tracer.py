@@ -59,27 +59,27 @@ class Tracer:
     """Creates and manages spans for a service."""
 
     def __init__(self, name: str, exporter: SpanExporter | None = None, max_spans: int = 10000) -> None:
-        self.__name: str = name
-        self.__exporter: SpanExporter = exporter or SpanExporter()
-        self.__lock: threading.Lock = threading.Lock()
-        self.__spans: list[Span] = []
-        self.__max_spans: int = max_spans
+        self.name: str = name
+        self.exporter_storage: SpanExporter = exporter or SpanExporter()
+        self.tracer_lock: threading.Lock = threading.Lock()
+        self.span_storage: list[Span] = []
+        self.max_spans_limit: int = max_spans
 
     @property
     def spans(self) -> list[Span]:
         """Returns a snapshot of all completed spans."""
-        with self.__lock:
-            return list(self.__spans)
+        with self.tracer_lock:
+            return list(self.span_storage)
 
     @property
     def exporter(self) -> SpanExporter:
         """Returns the exporter (test-accessible hook)."""
-        return self.__exporter
+        return self.exporter_storage
 
-    @exporter.setter
-    def exporter(self, exporter: SpanExporter) -> None:
-        with self.__lock:
-            self.__exporter = exporter
+    def set_exporter(self, exporter: SpanExporter) -> None:
+        """Swap the span exporter (for tests)."""
+        with self.tracer_lock:
+            self.exporter_storage = exporter
 
     def start_span(
         self, operation: str, trace_id: str = "", parent_span_id: str = "", tags: dict[str, str] | None = None
@@ -99,7 +99,7 @@ class Tracer:
             trace_id=trace_id or str(uuid.uuid4()),
             span_id=str(uuid.uuid4()),
             parent_span_id=parent_span_id,
-            name=self.__name,
+            name=self.name,
             operation=operation,
             start_ms=time.perf_counter() * 1000.0,
             tags=tags or {},
@@ -115,13 +115,13 @@ class Tracer:
         """
         span.end_ms = time.perf_counter() * 1000.0
         span.error = error
-        with self.__lock:
-            self.__spans.append(span)
-            if len(self.__spans) > self.__max_spans:
-                overflow = self.__spans[: -self.__max_spans]
-                self.__spans = self.__spans[-self.__max_spans :]
+        with self.tracer_lock:
+            self.span_storage.append(span)
+            if len(self.span_storage) > self.max_spans_limit:
+                overflow = self.span_storage[: -self.max_spans_limit]
+                self.span_storage = self.span_storage[-self.max_spans_limit :]
                 logger.warning("tracer span overflow: dropping {} spans", len(overflow))
-        self.__exporter.export([span])
+        self.exporter_storage.export([span])
 
     def trace(
         self, operation: str, trace_id: str = "", parent_span_id: str = "", tags: dict[str, str] | None = None
@@ -146,29 +146,29 @@ class SpanContext:
     def __init__(
         self, tracer: Tracer, operation: str, trace_id: str, parent_span_id: str, tags: dict[str, str]
     ) -> None:
-        self.__tracer = tracer
-        self.__operation = operation
-        self.__trace_id = trace_id
-        self.__parent_span_id = parent_span_id
-        self.__tags = tags
-        self.__span: Span | None = None
+        self.tracer = tracer
+        self.operation = operation
+        self.trace_id = trace_id
+        self.parent_span_id = parent_span_id
+        self.tags = tags
+        self.span: Span | None = None
 
     def __enter__(self) -> Span:
-        self.__span = self.__tracer.start_span(
-            self.__operation,
-            self.__trace_id,
-            self.__parent_span_id,
-            self.__tags,
+        self.span = self.tracer.start_span(
+            self.operation,
+            self.trace_id,
+            self.parent_span_id,
+            self.tags,
         )
-        return self.__span
+        return self.span
 
     def __exit__(self, *args: Any) -> None:
-        if self.__span is None:
+        if self.span is None:
             return
         error = ""
         if args[0] is not None:
             error = str(args[1]) if args[1] else str(args[0])
-        self.__tracer.end_span(self.__span, error=error)
+        self.tracer.end_span(self.span, error=error)
 
 
 class Console(SpanExporter):
@@ -210,21 +210,21 @@ class Otlp(SpanExporter):
         insecure: bool = True,
         headers: dict[str, str] | None = None,
     ) -> None:
-        self.__endpoint = endpoint
-        self.__service_name = service_name
-        self.__insecure = insecure
-        self.__headers = dict(headers) if headers else {}
+        self.endpoint = endpoint
+        self.service_name = service_name
+        self.insecure = insecure
+        self.headers = dict(headers) if headers else {}
         if endpoint.startswith("http://") and not insecure:
             raise ValueError(
                 "endpoint uses plaintext http but insecure=False; "
                 "either change the endpoint to https or pass insecure=True"
             )
-        self.__provider: Any = None
-        self.__tracer: Any = None
-        self.__processor: Any = None
+        self.provider: Any = None
+        self.tracer: Any = None
+        self.processor: Any = None
 
-    def __lazy_init(self) -> bool:
-        if self.__provider is not None:
+    def lazy_init(self) -> bool:
+        if self.provider is not None:
             return True
         try:
             from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
@@ -237,23 +237,23 @@ class Otlp(SpanExporter):
             logger.warning("OTLP exporter not available; install with: pip install underwrite[otlp]")
             return False
 
-        resource = Resource.create({"service.name": self.__service_name})
-        self.__provider = SdkTracerProvider(resource=resource)
-        otlp_kwargs: dict[str, Any] = {"endpoint": self.__endpoint, "insecure": self.__insecure}
-        if self.__headers:
-            otlp_kwargs["headers"] = self.__headers
+        resource = Resource.create({"service.name": self.service_name})
+        self.provider = SdkTracerProvider(resource=resource)
+        otlp_kwargs: dict[str, Any] = {"endpoint": self.endpoint, "insecure": self.insecure}
+        if self.headers:
+            otlp_kwargs["headers"] = self.headers
         otlp_exporter = OTLPSpanExporter(**otlp_kwargs)
-        self.__processor = BatchSpanProcessor(otlp_exporter)
-        self.__provider.add_span_processor(self.__processor)
-        self.__tracer = self.__provider.get_tracer(__name__)
+        self.processor = BatchSpanProcessor(otlp_exporter)
+        self.provider.add_span_processor(self.processor)
+        self.tracer = self.provider.get_tracer(__name__)
         return True
 
     def export(self, spans: list[Span]) -> None:
-        if not self.__lazy_init():
+        if not self.lazy_init():
             return
 
         for span in spans:
-            sdk_span = self.__tracer.start_span(
+            sdk_span = self.tracer.start_span(
                 span.operation,
                 attributes={
                     **span.tags,
@@ -269,4 +269,4 @@ class Otlp(SpanExporter):
                 sdk_span.set_status(trace.Status(trace.StatusCode.ERROR, span.error))
             sdk_span.end()
 
-        self.__processor.force_flush()
+        self.processor.force_flush()

@@ -27,7 +27,7 @@ HIGH_RISK_THRESHOLD: float = 0.7
 MEDIUM_RISK_THRESHOLD: float = 0.4
 
 
-class DecisionHandler(StatefulService):
+class Handler(StatefulService):
     """Consolidates multi-signal inputs into a single decision recommendation.
 
     Collects fraud alerts, risk scores, and compliance outcomes to

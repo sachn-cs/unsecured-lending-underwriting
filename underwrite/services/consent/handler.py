@@ -29,7 +29,7 @@ DEFAULT_CONSENT_VALIDITY_DAYS: int = 365
 
 @dataclass(frozen=True, slots=True)
 class ConsentConfig:
-    """Typed configuration for ConsentHandler.
+    """Typed configuration for Handler.
 
     Replaces the previous ``kwargs.pop("required_purposes", ...)``
     pattern: callers now pass a ConsentConfig (or its fields are
@@ -41,7 +41,7 @@ class ConsentConfig:
     consent_validity_days: int = DEFAULT_CONSENT_VALIDITY_DAYS
 
 
-class ConsentHandler(StatefulService):
+class Handler(StatefulService):
     """Manages the full consent lifecycle per DPDPA 2023.
 
     Each consent record captures:

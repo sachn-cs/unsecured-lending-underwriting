@@ -192,8 +192,8 @@ class Handler(Core):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.__rate_cap: float = config.rate_cap
-        self.__penal_interest_cap: float = config.penal_interest_cap
+        self.rate_cap: float = config.rate_cap
+        self.penal_interest_cap: float = config.penal_interest_cap
         self.handlers: dict[str, Any] = {
             Type.PRICING_REQUEST: self.compute_pricing,
             Type.PRICING_PENAL_INTEREST.value: self.compute_penal_interest,
@@ -264,7 +264,7 @@ class Handler(Core):
             "risk_premium": round(risk_premium, 4),
             "rate_cap_applied": interest_rate >= rate_cap,
             "loan_type": loan_type,
-            "penal_interest_annual_rate": self.__penal_interest_cap,
+            "penal_interest_annual_rate": self.penal_interest_cap,
         }
 
         if credit_score > 0:
@@ -287,7 +287,7 @@ class Handler(Core):
         overdue_amount: float = PayloadValidator().finite(p, "overdue_amount", 0.0)
         overdue_days: int = int(PayloadValidator().finite(p, "overdue_days", 0))
 
-        daily_penal_rate = self.__penal_interest_cap / float(DAYS_PER_YEAR)
+        daily_penal_rate = self.penal_interest_cap / float(DAYS_PER_YEAR)
         penal_amount = overdue_amount * daily_penal_rate * overdue_days
 
         self.emit(
@@ -296,7 +296,7 @@ class Handler(Core):
                 "borrower": borrower,
                 "overdue_amount": overdue_amount,
                 "overdue_days": overdue_days,
-                "penal_interest_rate": self.__penal_interest_cap,
+                "penal_interest_rate": self.penal_interest_cap,
                 "penal_interest_amount": round(penal_amount, 2),
             },
             correlation_id=event.correlation_id,

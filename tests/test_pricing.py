@@ -1,4 +1,4 @@
-"""Tests for PricingHandler — RBI-compliant rate and fee computation."""
+"""Tests for Handler — RBI-compliant rate and fee computation."""
 
 from __future__ import annotations
 
@@ -10,13 +10,14 @@ from underwrite.services.pricing.handler import (
     HOME_LOAN_CAP,
     MICRO_LOAN_CAP,
     PERSONAL_LOAN_CAP,
-    PricingHandler,
+    Handler as PricingHandler,
     compute_rate_cap,
 )
 from underwrite.store import MemoryStore
+from underwrite.services.pricing.handler import Handler
 
 
-def svc(**kwargs) -> PricingHandler:
+def svc(**kwargs) -> Handler:
     kwargs.setdefault("bus", LocalBus())
     kwargs.setdefault("store", MemoryStore())
     return PricingHandler(service_id="pricing", **kwargs)

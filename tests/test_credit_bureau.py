@@ -1,4 +1,4 @@
-"""Tests for CreditBureauHandler — credit bureau checks and CKYC verification."""
+"""Tests for Handler — credit bureau checks and CKYC verification."""
 
 from __future__ import annotations
 
@@ -12,9 +12,10 @@ from underwrite.services.credit_bureau.client import (
     HttpCreditBureauClient,
     MockCreditBureauClient,
 )
-from underwrite.services.credit_bureau.handler import CreditBureauHandler
 from underwrite.services.kyc.base import ProviderResult, Verdict
 from underwrite.store import MemoryStore
+from underwrite.services.credit_bureau.handler import Handler as CreditBureauHandler
+from underwrite.services.credit_bureau.handler import Handler
 
 
 class CibilProviderStub:
@@ -47,7 +48,7 @@ class CibilProviderStub:
         )
 
 
-def svc(**kw) -> CreditBureauHandler:
+def svc(**kw) -> Handler:
     kw.setdefault("allow_mock", True)
     kw.setdefault("bus", LocalBus())
     kw.setdefault("store", MemoryStore())
@@ -293,7 +294,7 @@ class TestCibilProviderIntegration:
         received: list = []
         bus.subscribe(Type.CREDIT_BUREAU_CHECKED, lambda e: received.append(e))
         provider = CibilProviderStub()
-        s = CreditBureauHandler(
+        s = Handler(
             service_id="credit_bureau", bus=bus, kyc_providers={"cibil": provider}, allow_mock=True, store=MemoryStore()
         )
         bus.start()
@@ -314,7 +315,7 @@ class TestCibilProviderIntegration:
         assert report.defaults == ["LATE_PAYMENT"]
 
     def test_check_bureau_persists_and_reloads_credit_report_fields(self) -> None:
-        s = CreditBureauHandler(
+        s = Handler(
             service_id="credit_bureau",
             bus=LocalBus(),
             kyc_providers={"cibil": CibilProviderStub()},
@@ -328,7 +329,7 @@ class TestCibilProviderIntegration:
                 payload={"pan": "ABCDE1234F", "bureau": "cibil", "consumer_id": "consumer-1"},
             )
         )
-        reloaded = CreditBureauHandler(
+        reloaded = Handler(
             service_id="credit_bureau",
             bus=LocalBus(),
             kyc_providers={"cibil": CibilProviderStub()},
@@ -359,7 +360,7 @@ class TestClientSelection:
         import pytest
 
         with pytest.raises(RuntimeError, match="no credit bureau credentials"):
-            CreditBureauHandler(
+            Handler(
                 service_id="credit_bureau",
                 bus=LocalBus(),
                 store=MemoryStore(),

@@ -39,8 +39,8 @@ class StrategyRegistry:
     """
 
     def __init__(self) -> None:
-        self.__strategies: dict[str, type[RiskScoringStrategy]] = {}
-        self.__lock: threading.Lock = threading.Lock()
+        self.strategies: dict[str, type[RiskScoringStrategy]] = {}
+        self.lock: threading.Lock = threading.Lock()
 
     def register(self, name: str, strategy_cls: type[RiskScoringStrategy]) -> None:
         """Register a strategy class under *name*.
@@ -55,8 +55,8 @@ class StrategyRegistry:
         """
         if not (isinstance(strategy_cls, type) and issubclass(strategy_cls, RiskScoringStrategy)):
             raise TypeError(f"{strategy_cls} is not a RiskScoringStrategy subclass")
-        with self.__lock:
-            self.__strategies[name] = strategy_cls
+        with self.lock:
+            self.strategies[name] = strategy_cls
 
     def get(self, name: str) -> type[RiskScoringStrategy] | None:
         """Return the strategy registered under *name*, or ``None``.
@@ -67,8 +67,8 @@ class StrategyRegistry:
         Returns:
             The registered strategy class, or None.
         """
-        with self.__lock:
-            return self.__strategies.get(name)
+        with self.lock:
+            return self.strategies.get(name)
 
 
 module_strategy_registry: StrategyRegistry = StrategyRegistry()
@@ -131,8 +131,8 @@ class JsonModelStrategy(RiskScoringStrategy):
     """Minimal linear model reconstructed from JSON-serialized parameters."""
 
     def __init__(self, params: dict[str, Any]) -> None:
-        self.__coef: list[float] = params.get("coef_", [0.0, 0.0])
-        self.__intercept: float = params.get("intercept_", 0.0)
+        self.coef: list[float] = params.get("coef_", [0.0, 0.0])
+        self.intercept: float = params.get("intercept_", 0.0)
 
     def predict(self, principal: float, term: float) -> float:
         """Predict using a linear model from JSON parameters.
@@ -144,7 +144,7 @@ class JsonModelStrategy(RiskScoringStrategy):
         Returns:
             A score in [0.0, 1.0].
         """
-        score = principal * self.__coef[0] + term * self.__coef[1] + self.__intercept
+        score = principal * self.coef[0] + term * self.coef[1] + self.intercept
         return min(max(score, 0.0), 1.0)
 
 
@@ -152,7 +152,7 @@ class JoblibModelStrategy(RiskScoringStrategy):
     """Wraps a joblib-loaded sklearn-compatible model."""
 
     def __init__(self, model: Any) -> None:
-        self.__model = model
+        self.model = model
 
     def predict(self, principal: float, term: float) -> float:
         """Predict using a joblib-loaded sklearn model.
@@ -164,7 +164,7 @@ class JoblibModelStrategy(RiskScoringStrategy):
         Returns:
             The model's prediction as a float.
         """
-        result = self.__model.predict([[principal, term]])
+        result = self.model.predict([[principal, term]])
         return float(result[0])
 
 
@@ -192,17 +192,17 @@ class RiskModel:
             strategy: An optional ``RiskScoringStrategy`` instance.  When
                 provided, *model_path* is ignored.
         """
-        self.__strategy: RiskScoringStrategy
+        self.strategy: RiskScoringStrategy
         if strategy is not None:
-            self.__strategy = strategy
+            self.strategy = strategy
         elif model_path and Path(model_path).exists():
-            self.__verify_integrity(model_path)
-            self.__strategy = self.load_strategy(model_path)
+            self.verify_integrity(model_path)
+            self.strategy = self.load_strategy(model_path)
         else:
-            self.__strategy = HeuristicStrategy()
+            self.strategy = HeuristicStrategy()
 
     @staticmethod
-    def __verify_integrity(model_path: str) -> None:
+    def verify_integrity(model_path: str) -> None:
         """Verify model file integrity using SHA-256.
 
         Args:
@@ -248,19 +248,12 @@ class RiskModel:
             principal = max(principal, 0.0) if math_mod.isfinite(principal) else 0.0
             term = max(term, 1.0) if math_mod.isfinite(term) else 1.0
         try:
-            return self.__strategy.predict(principal, term)
+            return self.strategy.predict(principal, term)
         except Exception as exc:
             logger.exception("risk model predict failed: {}", exc)
             return HeuristicStrategy().predict(principal, term)
 
-    @property
-    def strategy(self) -> RiskScoringStrategy:
-        """Active scoring strategy. Test extension point."""
-        return self.__strategy
 
-    @strategy.setter
-    def strategy(self, value: RiskScoringStrategy) -> None:
-        self.__strategy = value
 
     @staticmethod
     def load_strategy(model_path: str) -> RiskScoringStrategy:

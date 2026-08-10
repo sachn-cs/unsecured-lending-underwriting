@@ -130,15 +130,6 @@ class CkycSearchClient(Provider):
         return self.parse(response)
 
     def request_search(self, body: dict[str, Any]) -> dict[str, Any]:
-        """Public transport hook so tests can inject a mock.
-
-        Default delegates to the private __request_search. Override
-        via ``client.request_search = lambda b: {...}`` to inject a
-        canned response without name-mangled private access.
-        """
-        return self.request_search(body)
-
-    def request_search(self, body: dict[str, Any]) -> dict[str, Any]:
         try:
             import httpx
         except ImportError as exc:  # pragma: no cover - requires httpx

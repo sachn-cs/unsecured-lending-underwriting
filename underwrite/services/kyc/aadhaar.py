@@ -149,15 +149,6 @@ class AadhaarEKycClient(Provider):
         return self.parse(response)
 
     def send_kyc_request(self, body: dict[str, Any]) -> dict[str, Any]:
-        """Public transport hook so tests can inject a mock.
-
-        Default delegates to the private __send_kyc_request. Override
-        via ``client.send_kyc_request = lambda b: {...}`` to inject a
-        canned response without name-mangled private access.
-        """
-        return self.send_kyc_request(body)
-
-    def send_kyc_request(self, body: dict[str, Any]) -> dict[str, Any]:
         """Submit a decrypted eKYC auth request to the KUA.
 
         Production deployments override this method to plug in

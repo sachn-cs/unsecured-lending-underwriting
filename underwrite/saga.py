@@ -26,7 +26,7 @@ from typing import Any, Protocol
 from underwrite.exceptions import ProtocolError
 from underwrite.logger import logger
 from underwrite.message import Message
-from underwrite.store import InMemory, Store, StoreBackend
+from underwrite.store import Disk, InMemory, Sqlite, Store, StoreBackend
 
 
 class Emitter(Protocol):

@@ -138,15 +138,6 @@ class CibilBureauClient(Provider):
         return self.parse(response)
 
     def request_score(self, body: dict[str, Any]) -> dict[str, Any]:
-        """Public transport hook so tests can inject a mock.
-
-        Default delegates to the private __request_score. Override
-        via ``client.request_score = lambda b: {...}`` to inject a
-        canned response without name-mangled private access.
-        """
-        return self.request_score(body)
-
-    def request_score(self, body: dict[str, Any]) -> dict[str, Any]:
         try:
             import httpx
         except ImportError as exc:  # pragma: no cover - requires httpx

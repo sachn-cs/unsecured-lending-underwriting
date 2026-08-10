@@ -160,15 +160,6 @@ class PanVerificationClient(Provider):
 
         return self.parse(pan, response)
 
-    def http_post(self, payload: str, signature: str) -> dict[str, Any]:
-        """Public transport hook so tests can inject a mock.
-
-        Default delegates to the private __http_post. Override this
-        via ``client.http_post = lambda p, s: {...}`` to inject a
-        canned response without name-mangled private access.
-        """
-        return self.http_post(payload, signature)
-
     def sign(self, payload: str) -> str:
         digest = hmac.new(
             self.client_secret.encode("utf-8"),

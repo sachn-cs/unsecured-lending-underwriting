@@ -14,6 +14,7 @@ from underwrite.local import LocalBus
 from underwrite.message import Message
 from underwrite.store import MemoryStore
 from underwrite.services.audit.handler import Handler
+from underwrite.services.mechanism.handler import Handler as MechanismHandler
 
 
 class TestLocalBusConcurrency:
@@ -80,7 +81,7 @@ class TestMechanismServiceConcurrency:
     def __make_mechanism(self, store):
         
         bus = LocalBus()
-        return Handler(
+        return MechanismHandler(
             service_id="mechanism",
             bus=bus,
             store=store,

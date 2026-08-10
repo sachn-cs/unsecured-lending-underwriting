@@ -26,4 +26,4 @@ class TestCLIIdentityEdgeCases:
         except ImportError:
             pytest.skip("cryptography not installed")
         ident = Keypair.create("test-service")
-        assert ident.service_id == "test-service"
+        assert ident.name == "test-service"

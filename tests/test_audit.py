@@ -12,8 +12,8 @@ from typing import Any
 
 from underwrite.local import LocalBus
 from underwrite.message import Message
-from underwrite.store import MemoryStore
 from underwrite.services.audit.handler import Handler as AuditHandler
+from underwrite.store import MemoryStore
 
 
 def audit() -> Handler:

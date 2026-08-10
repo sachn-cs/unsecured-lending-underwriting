@@ -12,9 +12,9 @@ import pytest
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.store import MemoryStore
 from underwrite.services.collateral.handler import Handler
 from underwrite.services.collateral.handler import Handler as CollateralHandler
+from underwrite.store import MemoryStore
 
 
 def collateral(bus=None) -> Handler:

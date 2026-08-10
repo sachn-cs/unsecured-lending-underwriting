@@ -16,11 +16,10 @@ from underwrite.exceptions import ProtocolError
 from underwrite.local import LocalBus
 from underwrite.message import Message
 from underwrite.runtime import Runtime, build_authz
-from underwrite.services.risk.model import RiskModel
-from underwrite.store import CQRSStore, MemoryStore, PostgresStore, ReadStore, Store
-from underwrite.services.audit.handler import Handler
 from underwrite.services.audit.handler import Handler as AuditHandler
 from underwrite.services.mechanism.handler import Handler as MechanismHandler
+from underwrite.services.risk.model import RiskModel
+from underwrite.store import CQRSStore, MemoryStore, PostgresStore, ReadStore, Store
 
 # ---------------------------------------------------------------------------
 # 1) Core.safe_store_get returns default on store error

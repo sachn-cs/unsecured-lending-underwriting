@@ -12,10 +12,10 @@ from underwrite.services.credit_bureau.client import (
     HttpCreditBureauClient,
     MockCreditBureauClient,
 )
+from underwrite.services.credit_bureau.handler import Handler
+from underwrite.services.credit_bureau.handler import Handler as CreditBureauHandler
 from underwrite.services.kyc.base import ProviderResult, Verdict
 from underwrite.store import MemoryStore
-from underwrite.services.credit_bureau.handler import Handler as CreditBureauHandler
-from underwrite.services.credit_bureau.handler import Handler
 
 
 class CibilProviderStub:

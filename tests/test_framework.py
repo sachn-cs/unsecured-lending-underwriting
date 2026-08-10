@@ -79,7 +79,7 @@ class TestConfiguration:
 class TestIdentity:
     def test_create_generates_keypair(self) -> None:
         identity: Keypair = Keypair.create("test-svc")
-        assert identity.service_id == "test-svc"
+        assert identity.name == "test-svc"
         assert len(identity.public_key) > 0
 
     def test_sign_and_verify(self) -> None:

@@ -10,11 +10,13 @@ from underwrite.services.pricing.handler import (
     HOME_LOAN_CAP,
     MICRO_LOAN_CAP,
     PERSONAL_LOAN_CAP,
-    Handler as PricingHandler,
+    Handler,
     compute_rate_cap,
 )
+from underwrite.services.pricing.handler import (
+    Handler as PricingHandler,
+)
 from underwrite.store import MemoryStore
-from underwrite.services.pricing.handler import Handler
 
 
 def svc(**kwargs) -> Handler:

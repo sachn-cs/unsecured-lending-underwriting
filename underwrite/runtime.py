@@ -317,7 +317,7 @@ class Runtime:
         self.__metrics = Collector() if self.__config.metrics.enabled else None
         self.__authz = build_authz(self.__config.authz)
         if self.__authz is not None and self.__runtime_identity is not None:
-            self.__authz.trust(self.__runtime_identity.service_id, self.__runtime_identity.public_key)
+            self.__authz.trust(self.__runtime_identity.name, self.__runtime_identity.public_key)
         self.__supervisor = build_supervisor(self.__config)
         self.__metrics_exporter = None
 
@@ -627,7 +627,7 @@ class Runtime:
         identity = self.__identity_for(source)
         event = Message(
             event_type=event_type,
-            source=identity.service_id,
+            source=identity.name,
             source_key=identity.public_key,
             payload=payload,
             correlation_id=correlation_id or "",
@@ -635,7 +635,7 @@ class Runtime:
         signed = identity.sign(event.canonical_sign_bytes().decode("utf-8"))
         event = dataclasses.replace(event, signature=signed)
         if self.__authz is not None:
-            self.__authz.trust(identity.service_id, identity.public_key)
+            self.__authz.trust(identity.name, identity.public_key)
         return self.__bus.publish(event)
 
     def __identity_for(self, service_id: str) -> Keypair:
@@ -659,7 +659,7 @@ class Runtime:
             )
         event = Message(
             event_type=event_type,
-            source=identity.service_id,
+            source=identity.name,
             source_key=identity.public_key,
             payload=payload,
             correlation_id=correlation_id or "",
@@ -667,7 +667,7 @@ class Runtime:
         signed = identity.sign(event.canonical_sign_bytes().decode("utf-8"))
         event = dataclasses.replace(event, signature=signed)
         if self.__authz is not None:
-            self.__authz.trust(identity.service_id, identity.public_key)
+            self.__authz.trust(identity.name, identity.public_key)
         return event
 
     async def async_publish(self, event_type: str, payload: dict[str, Any], correlation_id: str = "") -> str:

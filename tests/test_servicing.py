@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.store import MemoryStore
-from underwrite.services.servicing.handler import Handler
 from underwrite.services.servicing.handler import Handler as ServicingHandler
+from underwrite.store import MemoryStore
 
 
 class TestServicingService:

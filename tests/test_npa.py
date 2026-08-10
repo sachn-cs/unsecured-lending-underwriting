@@ -12,9 +12,9 @@ from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.store import MemoryStore
 from underwrite.services.npa.handler import Handler
 from underwrite.services.npa.handler import Handler as NpaHandler
+from underwrite.store import MemoryStore
 
 
 def npa(bus=None) -> Handler:

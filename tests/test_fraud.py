@@ -16,9 +16,9 @@ import pytest
 from underwrite.exceptions import ProtocolError
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.store import MemoryStore
 from underwrite.services.fraud.handler import Handler
 from underwrite.services.fraud.handler import Handler as FraudHandler
+from underwrite.store import MemoryStore
 
 
 def fraud(bus=None) -> Handler:

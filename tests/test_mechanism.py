@@ -12,9 +12,9 @@ import pytest
 from underwrite.exceptions import ProtocolError
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.store import MemoryStore
 from underwrite.services.mechanism.handler import Handler
 from underwrite.services.mechanism.handler import Handler as MechHandler
+from underwrite.store import MemoryStore
 
 
 def make_svc() -> Handler:

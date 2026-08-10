@@ -42,9 +42,10 @@ def generate_id() -> str:
     """
     timestamp = struct.pack(">I", int(time.time()))
     machine = socket.gethostname().encode()[:3].ljust(3, b"\x00")
-    pid = struct.pack(">H", os.getpid())
+    pid = os.getpid() & 0xFFFF  # truncate to 16 bits to fit ">H" format
+    pid_bytes = struct.pack(">H", pid)
     counter = os.urandom(3)
-    return (timestamp + machine + pid + counter).hex()
+    return (timestamp + machine + pid_bytes + counter).hex()
 
 
 def now_iso() -> str:

@@ -10,9 +10,9 @@ from unittest.mock import patch
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.store import MemoryStore
 from underwrite.services.notification.handler import Handler
 from underwrite.services.notification.handler import Handler as NotificationHandler
+from underwrite.store import MemoryStore
 
 
 def notify(bus=None) -> Handler:

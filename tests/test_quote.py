@@ -9,9 +9,9 @@ import pytest
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.store import MemoryStore
 from underwrite.services.quote.handler import Handler
 from underwrite.services.quote.handler import Handler as QuoteHandler
+from underwrite.store import MemoryStore
 
 
 def quote(bus=None) -> Handler:

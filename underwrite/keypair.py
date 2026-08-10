@@ -12,8 +12,7 @@ __all__ = [
 
 import base64
 import threading
-import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol
 
 from cryptography.exceptions import InvalidSignature
@@ -21,6 +20,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
 from underwrite.exceptions import IdentityError
+from underwrite.utils import generate_id, now_iso
 
 
 class PrivateKeyBackend(Protocol):
@@ -42,17 +42,21 @@ class Keypair:
     the risk of key material leaking in memory dumps / core dumps.
     """
 
-    service_id: str
-    public_key: str
+    name: str
+    id: str = field(default_factory=generate_id)
+    type: str = "keypair"
+    ref: str = ""
+    public_key: str = ""
     private_key: str = ""
     encrypted: bool = False
-    created_at: float = 0.0
-    sign_lock: threading.Lock = threading.Lock()
+    created_at: str = ""
+    updated_at: str = ""
+    sign_lock: threading.Lock = field(default_factory=threading.Lock)
 
     @classmethod
     def create(
         cls,
-        service_id: str,
+        name: str,
         private_key_pem: str = "",
         secrets_manager: PrivateKeyBackend | None = None,
         encryption_passphrase: str | None = None,
@@ -60,7 +64,7 @@ class Keypair:
         """Creates or derives an identity.
 
         Args:
-            service_id: Unique name for this service.
+            name: Unique name for this service.
             private_key_pem: Optional PEM-encoded private key.
             secrets_manager: Optional Manager. When provided, the
                 private key is loaded from the configured backend on
@@ -73,10 +77,9 @@ class Keypair:
             A new Keypair instance.
         """
         if not private_key_pem and secrets_manager is not None:
-            loaded = secrets_manager.load_private_key(service_id)
+            loaded = secrets_manager.load_private_key(name)
             if loaded:
                 private_key_pem = loaded
-        now = time.time()
         if private_key_pem:
             private = serialization.load_pem_private_key(
                 private_key_pem.encode("utf-8") if isinstance(private_key_pem, str) else private_key_pem,
@@ -104,13 +107,16 @@ class Keypair:
                 format=serialization.PublicFormat.Raw,
             )
         ).decode()
+        now: str = now_iso()
         identity = cls(
-            service_id=service_id,
+            name=name,
+            type="keypair",
+            ref=f"underwrite/{name}/private_key",
             public_key=encoded_public,
             private_key=encoded_private,
             encrypted=encryption_passphrase is not None,
             created_at=now,
-            sign_lock=threading.Lock(),
+            updated_at=now,
         )
         if secrets_manager is not None and not private_key_pem:
             identity.persist(secrets_manager)
@@ -151,7 +157,7 @@ class Keypair:
             pk = self.private_key
         if not pk:
             raise IdentityError("private key not loaded")
-        secrets_manager.store_private_key(self.service_id, self.to_pem())
+        secrets_manager.store_private_key(self.name, self.to_pem())
 
     def sign(self, payload: str, passphrase: str | None = None) -> str:
         """Signs a string payload and returns a base64-encoded signature.

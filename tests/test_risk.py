@@ -12,9 +12,9 @@ import pytest
 from underwrite.exceptions import ProtocolError
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.store import MemoryStore
 from underwrite.services.risk.handler import Handler
 from underwrite.services.risk.handler import Handler as RiskHandler
+from underwrite.store import MemoryStore
 
 
 def risk(bus=None) -> Handler:

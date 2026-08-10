@@ -7,9 +7,9 @@ from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.store import MemoryStore
 from underwrite.services.reporting.handler import Handler
 from underwrite.services.reporting.handler import Handler as ReportingHandler
+from underwrite.store import MemoryStore
 
 
 def reporting() -> Handler:

@@ -84,7 +84,7 @@ class Message:
     @classmethod
     def signed(
         cls,
-        keypair: "Keypair",
+        keypair: Keypair,
         *,
         type: str,
         source: str,
@@ -93,7 +93,7 @@ class Message:
         correlation_id: str = "",
         trace_id: str = "",
         parent_span_id: str = "",
-    ) -> "Message":
+    ) -> Message:
         """Construct a Message and sign it with *keypair* in one step.
 
         Returns:

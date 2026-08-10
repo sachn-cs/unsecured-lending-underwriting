@@ -15,10 +15,10 @@ from underwrite.health import Checks
 from underwrite.local import LocalBus
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator, SagaStep
-from underwrite.store import FileStore, MemoryStore
-from underwrite.tracer import Tracer
 from underwrite.services.audit.handler import Handler
 from underwrite.services.mechanism.handler import Handler as MechanismHandler
+from underwrite.store import FileStore, MemoryStore
+from underwrite.tracer import Tracer
 
 NUM_THREADS: int = 10
 OPS_PER_THREAD: int = 100

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.store import MemoryStore
 from underwrite.services.underwriter.handler import Handler
 from underwrite.services.underwriter.handler import Handler as UnderwriterHandler
+from underwrite.store import MemoryStore
 
 
 def svc(bus=None) -> Handler:

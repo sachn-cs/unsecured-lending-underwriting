@@ -13,6 +13,7 @@ from typing import Any
 
 from underwrite.authz import AccessControl
 from underwrite.bus import EventBus
+from underwrite.local import LocalBus
 from underwrite.health import Checks
 from underwrite.keypair import Keypair
 from underwrite.logger import logger
@@ -28,7 +29,7 @@ from underwrite.services.credit_bureau.client import (
 )
 from underwrite.services.kyc.base import Provider
 from underwrite.services.persistence import TypedStoreRepository
-from underwrite.store import Store
+from underwrite.store import Store, InMemory, Disk, Sqlite
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
 
@@ -43,8 +44,8 @@ class Handler(StatefulService):
     def __init__(
         self,
         name: str,
-        bus: EventBus,
-        store: Store,
+        bus: EventBus | LocalBus,
+        store: Store | InMemory | Disk | Sqlite,
         cibil_api_key: str = "",
         allow_mock: bool = False,
         kyc_providers: dict[str, Provider] | None = None,

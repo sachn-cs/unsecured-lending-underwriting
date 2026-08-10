@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.collection.handler import CollectionHandler
-from underwrite.services.disbursement.handler import DisbursementHandler
-from underwrite.services.document.handler import DocumentHandler
-from underwrite.services.pricing.handler import PricingHandler
-from underwrite.services.settlement.handler import SettlementHandler
-from underwrite.services.underwriter.handler import UnderwriterHandler
 from underwrite.store import MemoryStore
+from underwrite.services.collection.handler import Handler
+from underwrite.services.disbursement.handler import Handler as DisbursementHandler
+from underwrite.services.document.handler import Handler as DocumentHandler
+from underwrite.services.collection.handler import Handler as CollectionHandler
+from underwrite.services.settlement.handler import Handler as SettlementHandler
+from underwrite.services.pricing.handler import Handler as PricingHandler
+from underwrite.services.underwriter.handler import Handler as UnderwriterHandler
 
 
 class TestUnderwriterService:

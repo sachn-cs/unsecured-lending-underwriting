@@ -1,11 +1,12 @@
-"""Exhaustive tests for WorkflowHandler."""
+"""Exhaustive tests for Handler."""
 
 from __future__ import annotations
 
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.services.workflow.handler import WorkflowHandler
 from underwrite.store import MemoryStore
+from underwrite.services.workflow.handler import Handler
+from underwrite.services.workflow.handler import Handler as WorkflowHandler
 
 
 class TestWorkflowService:

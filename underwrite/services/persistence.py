@@ -150,15 +150,15 @@ class BatchedStoreRepository(TypedStoreRepository[T]):
                 calls. Minimum value is 1.
         """
         super().__init__(store, key, expected_type)
-        self.__batch_lock: threading.Lock = threading.Lock()
-        self.__sync_interval: int = max(sync_interval, 1)
-        self.__sync_counter: int = 0
+        self.batch_lock: threading.Lock = threading.Lock()
+        self.sync_interval: int = max(sync_interval, 1)
+        self.sync_counter: int = 0
         # Cache the most recent data so a force_sync on shutdown
         # persists the latest state even if the interval was
         # never reached. incr_and_maybe_sync() updates this on
         # every call and saves the latest value when the counter
         # trips.
-        self.__pending: T | None = None
+        self.pending: T | None = None
 
     def incr_and_maybe_sync(self, data: T) -> bool:
         """Increment the counter and trigger sync if threshold reached.
@@ -175,13 +175,13 @@ class BatchedStoreRepository(TypedStoreRepository[T]):
         Returns:
             True if a sync was triggered, False otherwise.
         """
-        with self.__batch_lock:
-            self.__pending = data
-            self.__sync_counter += 1
-            if self.__sync_counter >= self.__sync_interval:
-                self.__sync_counter = 0
+        with self.batch_lock:
+            self.pending = data
+            self.sync_counter += 1
+            if self.sync_counter >= self.sync_interval:
+                self.sync_counter = 0
                 pending = data
-                self.__pending = None
+                self.pending = None
                 self.save(pending)
                 return True
         return False
@@ -192,11 +192,11 @@ class BatchedStoreRepository(TypedStoreRepository[T]):
         Args:
             data: The state to persist.
         """
-        with self.__batch_lock:
-            self.__sync_counter = 0
+        with self.batch_lock:
+            self.sync_counter = 0
             self.save(data)
 
     def reset_counter(self) -> None:
         """Reset the internal sync counter without persisting."""
-        with self.__batch_lock:
-            self.__sync_counter = 0
+        with self.batch_lock:
+            self.sync_counter = 0

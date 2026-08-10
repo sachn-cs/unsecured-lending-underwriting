@@ -85,13 +85,13 @@ class PanVerificationClient(Provider):
         api_base_url: str = SANDBOX_BASE_URL,
         timeout_seconds: int = 30,
     ) -> None:
-        self.__client_id: str = client_id or ""
-        self.__client_secret: str = client_secret or ""
-        self.__api_base_url: str = api_base_url.rstrip("/")
-        self.__timeout: int = timeout_seconds
+        self.client_id: str = client_id or ""
+        self.client_secret: str = client_secret or ""
+        self.api_base_url: str = api_base_url.rstrip("/")
+        self.timeout: int = timeout_seconds
 
     def is_configured(self) -> bool:
-        return bool(self.__client_id and self.__client_secret)
+        return bool(self.client_id and self.client_secret)
 
     def verify(
         self,
@@ -150,7 +150,7 @@ class PanVerificationClient(Provider):
         if dob:
             body["dob"] = dob
         payload = json.dumps(body, separators=(",", ":"))
-        signature = self.__sign(payload)
+        signature = self.sign(payload)
 
         try:
             response = self.http_post(payload, signature)
@@ -158,7 +158,7 @@ class PanVerificationClient(Provider):
             logger.exception("PAN verification transport error")
             return ProviderResult(verdict=Verdict.ERROR, provider=self.name, error=str(exc))
 
-        return self.__parse(pan, response)
+        return self.parse(pan, response)
 
     def http_post(self, payload: str, signature: str) -> dict[str, Any]:
         """Public transport hook so tests can inject a mock.
@@ -169,34 +169,34 @@ class PanVerificationClient(Provider):
         """
         return self.http_post(payload, signature)
 
-    def __sign(self, payload: str) -> str:
+    def sign(self, payload: str) -> str:
         digest = hmac.new(
-            self.__client_secret.encode("utf-8"),
+            self.client_secret.encode("utf-8"),
             payload.encode("utf-8"),
             hashlib.sha256,
         ).digest()
         return base64.b64encode(digest).decode("ascii")
 
-    def __http_post(self, payload: str, signature: str) -> dict[str, Any]:
+    def http_post(self, payload: str, signature: str) -> dict[str, Any]:
         try:
             import httpx
         except ImportError as exc:  # pragma: no cover - requires httpx
             raise RuntimeError("httpx is required for PAN verification; install underwrite[serve]") from exc
         headers = {
             "Content-Type": "application/json",
-            "x-client-id": self.__client_id,
+            "x-client-id": self.client_id,
             "x-signature": signature,
         }
-        with httpx.Client(timeout=self.__timeout) as client:
+        with httpx.Client(timeout=self.timeout) as client:
             response = client.post(
-                f"{self.__api_base_url}{VERIFICATION_PATH}",
+                f"{self.api_base_url}{VERIFICATION_PATH}",
                 content=payload,
                 headers=headers,
             )
         response.raise_for_status()
         return response.json()
 
-    def __parse(self, pan: str, response: dict[str, Any]) -> ProviderResult:
+    def parse(self, pan: str, response: dict[str, Any]) -> ProviderResult:
         status: str = (response.get("status") or response.get("pan_status") or "").upper()
         verdict = _STATUS_TO_VERDICT.get(status, Verdict.ERROR)
         return ProviderResult(

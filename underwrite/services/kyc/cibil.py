@@ -68,13 +68,13 @@ class CibilBureauClient(Provider):
         api_base_url: str = SANDBOX_BASE_URL,
         timeout_seconds: int = 30,
     ) -> None:
-        self.__partner_id: str = partner_id
-        self.__partner_key: str = partner_key
-        self.__api_base_url: str = api_base_url.rstrip("/")
-        self.__timeout: int = timeout_seconds
+        self.partner_id: str = partner_id
+        self.partner_key: str = partner_key
+        self.api_base_url: str = api_base_url.rstrip("/")
+        self.timeout: int = timeout_seconds
 
     def is_configured(self) -> bool:
-        return bool(self.__partner_id and self.__partner_key)
+        return bool(self.partner_id and self.partner_key)
 
     def verify(
         self,
@@ -135,7 +135,7 @@ class CibilBureauClient(Provider):
         except (OSError, ValueError, TypeError, RuntimeError, json.JSONDecodeError) as exc:
             logger.exception("CIBIL bureau pull transport error")
             return ProviderResult(verdict=Verdict.ERROR, provider=self.name, error=str(exc))
-        return self.__parse(response)
+        return self.parse(response)
 
     def request_score(self, body: dict[str, Any]) -> dict[str, Any]:
         """Public transport hook so tests can inject a mock.
@@ -146,26 +146,26 @@ class CibilBureauClient(Provider):
         """
         return self.request_score(body)
 
-    def __request_score(self, body: dict[str, Any]) -> dict[str, Any]:
+    def request_score(self, body: dict[str, Any]) -> dict[str, Any]:
         try:
             import httpx
         except ImportError as exc:  # pragma: no cover - requires httpx
             raise RuntimeError("httpx is required for CIBIL; install underwrite[serve]") from exc
         headers = {
             "Content-Type": "application/json",
-            "X-Partner-ID": self.__partner_id,
-            "X-Partner-Key": self.__partner_key,
+            "X-Partner-ID": self.partner_id,
+            "X-Partner-Key": self.partner_key,
         }
-        with httpx.Client(timeout=self.__timeout) as client:
+        with httpx.Client(timeout=self.timeout) as client:
             response = client.post(
-                f"{self.__api_base_url}{SCORE_PATH}",
+                f"{self.api_base_url}{SCORE_PATH}",
                 json=body,
                 headers=headers,
             )
         response.raise_for_status()
         return response.json()
 
-    def __parse(self, response: dict[str, Any]) -> ProviderResult:
+    def parse(self, response: dict[str, Any]) -> ProviderResult:
         score = response.get("score")
         if score is None:
             return ProviderResult(

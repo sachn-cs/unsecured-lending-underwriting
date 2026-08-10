@@ -65,13 +65,13 @@ class CkycSearchClient(Provider):
         api_base_url: str = SANDBOX_BASE_URL,
         timeout_seconds: int = 30,
     ) -> None:
-        self.__sp_id: str = search_provider_id
-        self.__sp_key: str = search_provider_key
-        self.__api_base_url: str = api_base_url.rstrip("/")
-        self.__timeout: int = timeout_seconds
+        self.sp_id: str = search_provider_id
+        self.sp_key: str = search_provider_key
+        self.api_base_url: str = api_base_url.rstrip("/")
+        self.timeout: int = timeout_seconds
 
     def is_configured(self) -> bool:
-        return bool(self.__sp_id and self.__sp_key)
+        return bool(self.sp_id and self.sp_key)
 
     def verify(
         self,
@@ -127,7 +127,7 @@ class CkycSearchClient(Provider):
         except (OSError, ValueError, TypeError, RuntimeError, json.JSONDecodeError) as exc:
             logger.exception("CKYC search transport error")
             return ProviderResult(verdict=Verdict.ERROR, provider=self.name, error=str(exc))
-        return self.__parse(response)
+        return self.parse(response)
 
     def request_search(self, body: dict[str, Any]) -> dict[str, Any]:
         """Public transport hook so tests can inject a mock.
@@ -138,26 +138,26 @@ class CkycSearchClient(Provider):
         """
         return self.request_search(body)
 
-    def __request_search(self, body: dict[str, Any]) -> dict[str, Any]:
+    def request_search(self, body: dict[str, Any]) -> dict[str, Any]:
         try:
             import httpx
         except ImportError as exc:  # pragma: no cover - requires httpx
             raise RuntimeError("httpx is required for CKYC search; install underwrite[serve]") from exc
         headers = {
             "Content-Type": "application/json",
-            "X-SP-ID": self.__sp_id,
-            "X-SP-Key": self.__sp_key,
+            "X-SP-ID": self.sp_id,
+            "X-SP-Key": self.sp_key,
         }
-        with httpx.Client(timeout=self.__timeout) as client:
+        with httpx.Client(timeout=self.timeout) as client:
             response = client.post(
-                f"{self.__api_base_url}{SEARCH_PATH}",
+                f"{self.api_base_url}{SEARCH_PATH}",
                 json=body,
                 headers=headers,
             )
         response.raise_for_status()
         return response.json()
 
-    def __parse(self, response: dict[str, Any]) -> ProviderResult:
+    def parse(self, response: dict[str, Any]) -> ProviderResult:
         if response.get("kyc_status") == "VERIFIED" or response.get("ckyc_number"):
             return ProviderResult(
                 verdict=Verdict.VERIFIED,

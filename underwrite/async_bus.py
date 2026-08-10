@@ -87,7 +87,7 @@ class AsyncLocalBus(AsyncEventBus):
         while not self.async_queue.empty():
             try:
                 event = self.async_queue.get_nowait()
-                await self.__dispatch(event)
+                await self.dispatch(event)
                 drained += 1
             except asyncio.QueueEmpty:
                 break
@@ -137,13 +137,13 @@ class AsyncLocalBus(AsyncEventBus):
                 break
             event: Message = getter.result()
             try:
-                await self.__dispatch(event)
+                await self.dispatch(event)
             except asyncio.CancelledError:
                 break
             except (RuntimeError, ValueError, TypeError, OSError, AttributeError, KeyError):
                 logger.exception("dispatch loop: unexpected error processing {}", event.event_id)
 
-    async def __dispatch(self, event: Message) -> None:
+    async def dispatch(self, event: Message) -> None:
         async with self.async_subscription_lock:
             handlers = list(self.async_subscribers.get(event.event_type, []))
             wild_handlers = list(self.async_subscribers.get("*", []))
@@ -152,13 +152,13 @@ class AsyncLocalBus(AsyncEventBus):
             return
         if self.async_semaphore is not None:
 
-            async def __bounded(h, e):
+            async def bounded(h, e):
                 async with self.async_semaphore:
-                    await self.__safe_dispatch(h, e)
+                    await self.safe_dispatch(h, e)
 
             coros = [__bounded(h, event) for h in handlers]
         else:
-            coros = [self.__safe_dispatch(h, event) for h in handlers]
+            coros = [self.safe_dispatch(h, event) for h in handlers]
         try:
             results = await asyncio.wait_for(
                 asyncio.gather(*coros, return_exceptions=True),
@@ -175,7 +175,7 @@ class AsyncLocalBus(AsyncEventBus):
             if isinstance(result, Exception):
                 logger.warning("async handler {} failed: {}", getattr(handler, "__name__", str(handler)), result)
 
-    async def __safe_dispatch(self, handler: Callable[[Message], Any], event: Message) -> None:
+    async def safe_dispatch(self, handler: Callable[[Message], Any], event: Message) -> None:
         try:
             result = handler(event)
             if inspect.isawaitable(result):

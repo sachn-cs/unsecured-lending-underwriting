@@ -106,10 +106,10 @@ class Handler(StatefulService):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.__max_ledger: int = max_ledger
+        self.max_ledger: int = max_ledger
         self.records: deque = deque(maxlen=max_ledger)
-        self.__event_index: dict[str, list[dict[str, Any]]] = {}
-        self.__export_url: str = export_url
+        self.event_index: dict[str, list[dict[str, Any]]] = {}
+        self.export_url: str = export_url
         self.repo: BatchedStoreRepository[list[dict[str, Any]]] = self.batched_repo(
             "ledger", list, sync_interval=self.SYNC_INTERVAL
         )
@@ -127,7 +127,7 @@ class Handler(StatefulService):
             for r in loaded:
                 et = r.get("event_type")
                 if et:
-                    self.__event_index.setdefault(et, []).append(r)
+                    self.event_index.setdefault(et, []).append(r)
 
     def handle(self, event: Message) -> None:
         """Record a redacted version of event to the audit ledger.
@@ -147,12 +147,12 @@ class Handler(StatefulService):
                 "recorded_at": datetime.now(timezone.utc).isoformat(),
             }
             self.records.append(record)
-            self.__event_index.setdefault(record["event_type"], []).append(record)
-            if len(self.__event_index) > self.__max_ledger * 2:
-                excess = len(self.__event_index) - self.__max_ledger
+            self.event_index.setdefault(record["event_type"], []).append(record)
+            if len(self.event_index) > self.max_ledger * 2:
+                excess = len(self.event_index) - self.max_ledger
                 for _ in range(excess):
                     try:
-                        self.__event_index.pop(next(iter(self.__event_index)))
+                        self.event_index.pop(next(iter(self.event_index)))
                     except StopIteration:
                         break
             self.repo.incr_and_maybe_sync(list(self.records))
@@ -174,7 +174,7 @@ class Handler(StatefulService):
 
         """
         with self.state_lock:
-            return list(self.__event_index.get(event_type, []))
+            return list(self.event_index.get(event_type, []))
 
     def export(self) -> None:
         """Export the audit ledger to the configured export_url.
@@ -183,19 +183,19 @@ class Handler(StatefulService):
         gs://bucket/path (requires google-cloud-storage).
         No-op if export_url is not set.
         """
-        if not self.__export_url:
+        if not self.export_url:
             return
         lines: list[str] = [json.dumps(r, sort_keys=True) for r in self.records]
         body: str = "\n".join(lines) + "\n"
 
-        if self.__export_url.startswith("s3://"):
-            self.__export_s3(body)
-        elif self.__export_url.startswith("gs://"):
-            self.__export_gcs(body)
+        if self.export_url.startswith("s3://"):
+            self.export_s3(body)
+        elif self.export_url.startswith("gs://"):
+            self.export_gcs(body)
         else:
-            logger.warning("unsupported export URL scheme: {}", self.__export_url.split("://")[0])
+            logger.warning("unsupported export URL scheme: {}", self.export_url.split("://")[0])
 
-    def __export_s3(self, body: str) -> None:
+    def export_s3(self, body: str) -> None:
         """Export audit data to S3.
 
         Args:
@@ -207,7 +207,7 @@ class Handler(StatefulService):
         except ImportError:
             logger.warning("boto3 not available; install with: pip install underwrite[aws]")
             return
-        path = self.__export_url.removeprefix("s3://")
+        path = self.export_url.removeprefix("s3://")
         bucket, _, key = path.partition("/")
         try:
             client = boto3.client("s3")
@@ -216,7 +216,7 @@ class Handler(StatefulService):
         except (OSError, ValueError, TypeError):
             logger.exception("audit S3 export failed")
 
-    def __export_gcs(self, body: str) -> None:
+    def export_gcs(self, body: str) -> None:
         """Export audit data to GCS.
 
         Args:
@@ -228,7 +228,7 @@ class Handler(StatefulService):
         except ImportError:
             logger.warning("google-cloud-storage not available; install with: pip install google-cloud-storage")
             return
-        path = self.__export_url.removeprefix("gs://")
+        path = self.export_url.removeprefix("gs://")
         bucket, _, key = path.partition("/")
         try:
             client = storage.Client()
@@ -279,10 +279,10 @@ class Handler(StatefulService):
                     except json.JSONDecodeError as exc:
                         corrupted += 1
                         logger.warning("corrupted audit line {} in {}: {}", i, path, exc)
-        self.__event_index.clear()
+        self.event_index.clear()
         for r in self.records:
             et = r.get("event_type")
             if et:
-                self.__event_index.setdefault(et, []).append(r)
+                self.event_index.setdefault(et, []).append(r)
         if corrupted:
             logger.warning("audit load skipped {} corrupted line(s) from {}", corrupted, path)

@@ -125,8 +125,8 @@ class Handler(StatefulService):
         """Read-only access to the bureau client for test wiring."""
         return self.bureau_client
 
-    @client.setter
-    def client(self, value: CreditBureauClient) -> None:
+    def set_client(self, value: CreditBureauClient) -> None:
+        """Swap the bureau client (for tests)."""
         self.bureau_client = value
 
     @staticmethod

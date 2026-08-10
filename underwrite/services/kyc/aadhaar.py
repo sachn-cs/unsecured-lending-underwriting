@@ -68,13 +68,13 @@ class AadhaarEKycClient(Provider):
         api_base_url: str = SANDBOX_BASE_URL,
         timeout_seconds: int = 30,
     ) -> None:
-        self.__kua_id: str = kua_id
-        self.__kua_license_key: str = kua_license_key
-        self.__api_base_url: str = api_base_url.rstrip("/")
-        self.__timeout: int = timeout_seconds
+        self.kua_id: str = kua_id
+        self.kua_license_key: str = kua_license_key
+        self.api_base_url: str = api_base_url.rstrip("/")
+        self.timeout: int = timeout_seconds
 
     def is_configured(self) -> bool:
-        return bool(self.__kua_id and self.__kua_license_key)
+        return bool(self.kua_id and self.kua_license_key)
 
     def verify(
         self,
@@ -146,7 +146,7 @@ class AadhaarEKycClient(Provider):
         except (OSError, ValueError, TypeError, RuntimeError, json.JSONDecodeError) as exc:
             logger.exception("Aadhaar eKYC transport error")
             return ProviderResult(verdict=Verdict.ERROR, provider=self.name, error=str(exc))
-        return self.__parse(response)
+        return self.parse(response)
 
     def send_kyc_request(self, body: dict[str, Any]) -> dict[str, Any]:
         """Public transport hook so tests can inject a mock.
@@ -157,7 +157,7 @@ class AadhaarEKycClient(Provider):
         """
         return self.send_kyc_request(body)
 
-    def __send_kyc_request(self, body: dict[str, Any]) -> dict[str, Any]:
+    def send_kyc_request(self, body: dict[str, Any]) -> dict[str, Any]:
         """Submit a decrypted eKYC auth request to the KUA.
 
         Production deployments override this method to plug in
@@ -173,19 +173,19 @@ class AadhaarEKycClient(Provider):
             raise RuntimeError("httpx is required for Aadhaar eKYC; install underwrite[serve]") from exc
         headers = {
             "Content-Type": "application/json",
-            "X-KUA-ID": self.__kua_id,
-            "X-KUA-License-Key": self.__kua_license_key,
+            "X-KUA-ID": self.kua_id,
+            "X-KUA-License-Key": self.kua_license_key,
         }
-        with httpx.Client(timeout=self.__timeout) as client:
+        with httpx.Client(timeout=self.timeout) as client:
             response = client.post(
-                f"{self.__api_base_url}{E_KYC_PATH}",
+                f"{self.api_base_url}{E_KYC_PATH}",
                 json=body,
                 headers=headers,
             )
         response.raise_for_status()
         return response.json()
 
-    def __parse(self, response: dict[str, Any]) -> ProviderResult:
+    def parse(self, response: dict[str, Any]) -> ProviderResult:
         status: str = (response.get("status") or "").upper()
         if status == "Y":
             return ProviderResult(

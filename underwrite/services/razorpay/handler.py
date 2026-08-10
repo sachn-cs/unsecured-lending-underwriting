@@ -130,24 +130,24 @@ class Handler(StatefulService):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.__client: RazorpayClient = self.build_client(
+        self.payment_client: RazorpayClient = self.build_client(
             key_id=config.key_id,
             key_secret=config.key_secret,
             webhook_secret=config.webhook_secret,
             api_base_url=config.api_base_url,
         )
-        self.__records: dict[str, dict[str, Any]] = {}
+        self.records_dict: dict[str, dict[str, Any]] = {}
         self.repo: BatchedStoreRepository[dict[str, dict[str, Any]]] = self.batched_repo(
             "razorpay", dict, sync_interval=10
         )
         loaded = self.repo.load(default={})
         if loaded:
-            self.__records = loaded
+            self.records_dict = loaded
 
         self.handlers: dict[str, Any] = {
-            Type.RAZORPAY_ORDER_CREATE: self.__on_order_create,
-            Type.RAZORPAY_SUBSCRIBE: self.__on_subscription_create,
-            Type.RAZORPAY_WEBHOOK_RECEIVED: self.__on_webhook_received,
+            Type.RAZORPAY_ORDER_CREATE: self.on_order_create,
+            Type.RAZORPAY_SUBSCRIBE: self.on_subscription_create,
+            Type.RAZORPAY_WEBHOOK_RECEIVED: self.on_webhook_received,
         }
 
     def build_client(self, **kwargs: Any) -> RazorpayClient:
@@ -179,7 +179,7 @@ class Handler(StatefulService):
     @property
     def client(self) -> RazorpayClient:
         """Expose the underlying client for testing."""
-        return self.__client
+        return self.payment_client
 
     def handle(self, event: Message) -> None:
         """Dispatch an event to the appropriate handler.
@@ -191,7 +191,7 @@ class Handler(StatefulService):
         if handler is not None:
             handler(event)
 
-    def __on_order_create(self, event: Message) -> None:
+    def on_order_create(self, event: Message) -> None:
         """Handle a RAZORPAY_ORDER_CREATE event.
 
         Creates a Razorpay payment order and emits RAZORPAY_ORDER_CREATED.
@@ -210,7 +210,7 @@ class Handler(StatefulService):
         notes: dict[str, str] = {"loan_id": loan_id}
 
         try:
-            order = self.__client.create_order(
+            order = self.payment_client.create_order(
                 amount=amount_paise,
                 currency=currency,
                 receipt=receipt,
@@ -245,7 +245,7 @@ class Handler(StatefulService):
             correlation_id=event.correlation_id,
         )
 
-    def __on_subscription_create(self, event: Message) -> None:
+    def on_subscription_create(self, event: Message) -> None:
         """Handle a RAZORPAY_SUBSCRIBE event.
 
         Creates a Razorpay subscription and emits RAZORPAY_SUBSCRIPTION_CREATED.
@@ -266,7 +266,7 @@ class Handler(StatefulService):
         notes: dict[str, str] = {"loan_id": loan_id}
 
         try:
-            sub = self.__client.create_subscription(
+            sub = self.payment_client.create_subscription(
                 plan_id=plan_id,
                 total_count=total_count,
                 customer_notify=True,
@@ -300,7 +300,7 @@ class Handler(StatefulService):
             correlation_id=event.correlation_id,
         )
 
-    def __on_webhook_received(self, event: Message) -> None:
+    def on_webhook_received(self, event: Message) -> None:
         """Process an incoming Razorpay webhook event.
 
         Validates the signature against the configured client secret
@@ -316,13 +316,13 @@ class Handler(StatefulService):
             logger.warning("webhook missing payload or signature, skipped")
             return
 
-        configured_secret = self.__client.webhook_secret() if hasattr(self.__client, "webhook_secret") else None
+        configured_secret = self.payment_client.webhook_secret() if hasattr(self.payment_client, "webhook_secret") else None
         if not configured_secret:
             logger.error("razorpay webhook secret not configured; rejecting webhook")
             return
 
         payload_bytes = payload_bytes_str.encode("utf-8")
-        valid = self.__client.verify_webhook(payload_bytes, signature, configured_secret)
+        valid = self.payment_client.verify_webhook(payload_bytes, signature, configured_secret)
         if not valid:
             logger.warning("invalid webhook signature, dropped")
             return
@@ -600,8 +600,8 @@ class Handler(StatefulService):
         with self.state_lock:
             store_key = f"razorpay:{key}"
             self.store.set(store_key, record)
-            self.__records[store_key] = record
-            self.repo.incr_and_maybe_sync(self.__records)
+            self.records_dict[store_key] = record
+            self.repo.incr_and_maybe_sync(self.records_dict)
 
     def health_check(self) -> dict[str, Any]:
         """Return health metrics including Razorpay record count.
@@ -612,5 +612,5 @@ class Handler(StatefulService):
         with self.state_lock:
             return {
                 **super().health_check(),
-                "razorpay_records": len(self.__records),
+                "razorpay_records": len(self.records_dict),
             }

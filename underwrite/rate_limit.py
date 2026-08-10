@@ -84,7 +84,7 @@ class DistributedLimiter(Limiter):
             prefix: Key prefix in the store.
         """
         super().__init__(max_rate=max_rate, interval=interval)
-        self.store: Store | None = store
+        self.store: Store | InMemory | Disk | Sqlite | None = store
         self.prefix: str = prefix
         if store is None:
             logger.warning("DistributedRateLimiter created without store, falling back to in-memory rate limiter")

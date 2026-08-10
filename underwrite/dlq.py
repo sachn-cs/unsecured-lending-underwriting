@@ -54,7 +54,7 @@ class Queue:
         self.lock: threading.Lock = threading.Lock()
         self.records: deque[Record] = deque(maxlen=max_records)
         self.max_records: int = max_records
-        self.store: Store | None = store
+        self.store: Store | InMemory | Disk | Sqlite | None = store
         self.sync_interval: int = max(sync_interval, 1)
         self.sync_counter: int = 0
         if store is not None:

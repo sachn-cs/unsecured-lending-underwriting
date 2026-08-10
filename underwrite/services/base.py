@@ -65,8 +65,8 @@ class Dependencies:
     """
 
     identity: Keypair | None = None
-    bus: EventBus | None = None
-    store: Store | None = None
+    bus: EventBus | LocalBus | None = None
+    store: Store | InMemory | Disk | Sqlite | None = None
     metrics: Collector | None = None
     health: Checks | None = None
     authz: AccessControl | None = None
@@ -157,8 +157,8 @@ class Core(ABC):
         self,
         name: str,
         identity: Keypair | None = None,
-        bus: EventBus | None = None,
-        store: Store | None = None,
+        bus: EventBus | LocalBus | None = None,
+        store: Store | InMemory | Disk | Sqlite | None = None,
         metrics: Collector | None = None,
         health: Checks | None = None,
         authz: AccessControl | None = None,

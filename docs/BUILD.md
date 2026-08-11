@@ -41,7 +41,7 @@ The `Dockerfile` uses a multi-stage build:
 python:3.12-slim (builder)  →  python:3.12-slim (runtime)
 ```
 
-- **Builder**: installs build deps, builds the wheel, installs it with `[serve,postgres,otlp]` extras
+- **Builder**: installs build deps, builds the wheel, installs it with `[serve,otlp]` extras
 - **Runtime**: copies only installed site-packages and the `underwrite` binary, creates a non-root `underwrite` user (uid 1001), exposes port 8080, and runs `underwrite serve --host 0.0.0.0 --port 8080`
 
 Build:
@@ -56,7 +56,7 @@ The `.dockerignore` excludes `.git/`, `.venv/`, `tests/`, `__pycache__/`, build 
 
 Defined in `.github/workflows/ci.yml`:
 
-- **lint job**: Python 3.12 — install with `[dev,risk,serve,postgres,otlp,vault,aws]` extras, then run ruff, mypy, bandit, pip-audit, and pytest
+- **lint job**: Python 3.12 — install with `[dev,risk,serve,otlp,vault,aws]` extras, then run ruff, mypy, bandit, pip-audit, and pytest
 - **docker job**: Python 3.12 — build the Docker image, run a container in background, curl `/healthz` as a smoke test, then stop the container
 
 ## Dependencies
@@ -79,7 +79,7 @@ pip install -e ".[dev]"
 For production deployment, install from the built wheel or from PyPI:
 
 ```bash
-pip install underwrite[serve,postgres]
+pip install underwrite[serve,otlp,vault]
 ```
 
 To publish to PyPI (requires PyPI credentials):

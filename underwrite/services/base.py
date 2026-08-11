@@ -47,7 +47,7 @@ from underwrite.message import Message
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
 from underwrite.secrets import Manager
-from underwrite.store import Sqlite, Store
+from underwrite.store import StoreBackend
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
 from underwrite.utils import generate_id, now_iso
@@ -67,7 +67,7 @@ class Dependencies:
 
     identity: Keypair | None = None
     bus: EventBus | LocalBus | None = None
-    store: Store | Sqlite | Store | Sqlite | Store | Sqlite | Store | Sqlite | None = None
+    store: StoreBackend | None = None
     metrics: Collector | None = None
     health: Checks | None = None
     authz: AccessControl | None = None
@@ -159,7 +159,7 @@ class Core(ABC):
         name: str,
         identity: Keypair | None = None,
         bus: EventBus | LocalBus | None = None,
-        store: Store | Sqlite | Store | Sqlite | Store | Sqlite | Store | Sqlite | None = None,
+        store: StoreBackend | None = None,
         metrics: Collector | None = None,
         health: Checks | None = None,
         authz: AccessControl | None = None,
@@ -177,7 +177,7 @@ class Core(ABC):
                 timestamp at construction.
             identity: Ed25519 identity for signing events. Created if omitted.
             bus: Message bus for pub/sub. Uses EventBus if omitted.
-            store: State persistence backend. UsesStore | Sqliteif omitted.
+            store: State persistence backend. Uses an in-memory Sqlite store if omitted.
             metrics: Optional metrics collector for instrumentation.
             health: Optional health registry for liveness checks.
             authz: Optional access control for authorization gating.
@@ -209,7 +209,7 @@ class Core(ABC):
                 f"{type(self).__name__}({name!r}) requires store; construct one with Runtime as the composition root."
             )
         self.bus: EventBus | LocalBus = bus
-        self.store: Store | Sqlite | Store | Sqlite | Store | Sqlite | Store | Sqlite = store
+        self.store: StoreBackend = store
         self.metrics: Collector | None = metrics
         self.health: Checks | None = health
         self.authz: AccessControl | None = authz
@@ -264,7 +264,7 @@ class Core(ABC):
         """Get a value from the store, returning default on failure.
 
         Args:
-            key: Store | Sqlitekey to retrieve.
+            key: store key to retrieve.
             default: Value returned when the key is missing or the read
                 fails.
 
@@ -282,7 +282,7 @@ class Core(ABC):
         """Write a value to the store, returning False on failure.
 
         Args:
-            key: Store | Sqlitekey for the value.
+            key: store key for the value.
             value: Value to persist.
 
         Returns:

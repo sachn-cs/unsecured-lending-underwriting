@@ -52,9 +52,9 @@ underwrite/
 ├── cli.py             # Typer CLI (run, health, dlq, metrics, serve, etc.)
 ├── config.py          # Configuration model (Pydantic)
 ├── runtime.py         # Runtime — service lifecycle manager
-├── handler.py # SERVICE_MAP, SERVICE_CLASSES, WIRING constants
+├── handler.py # HANDLER_MAP, HANDLER_CLASSES, WIRING constants
 ├── bus.py             # Event bus (pub/sub, DLQ, idempotency)
-├── events.py          # Event envelope + EventType enum
+├── message.py          # Message envelope + Type enum
 ├── store.py           # Sqlite store (stdlib sqlite3) with WAL + busy_timeout
 ├── health.py          # Health check registry
 ├── metrics.py         # Metrics collector
@@ -69,11 +69,11 @@ underwrite/
 ├── schema.py          # Schema validation
 ├── validate.py            # Payload validation helpers
 ├── services/
-│   ├── base.py            # NanoService and StatefulService ABCs
+│   ├── base.py            # Core and StatefulService ABCs
 │   ├── persistence.py     # TypedStoreRepository, BatchedStoreRepository
 │   └── <service>/         # One directory per service
 │       ├── init.py
-│       └── service.py     # Service class extending NanoService
+│       └── service.py     # Service class extending Core
 ```
 
 ### Service Conventions
@@ -82,30 +82,30 @@ Each nano service:
 
 - Lives in its own directory under `underwrite/services/<name>/`
 - Has an `init.py` (may be empty) and a `service.py`
-- Defines a class that extends `NanoService` (or `StatefulService` for stateful services)
-- Implements `handle(self, event: Event) -> None` to process incoming events
+- Defines a class that extends `Core` (or `StatefulService` for stateful services)
+- Implements `handle(self, event: Message) -> None` to process incoming events
 - Uses `self.emit(event_type, payload, correlation_id=...)` to publish outgoing events
 - Can override `health_check(self) -> dict[str, Any]` for service-specific health
 - Uses `self.store` for persistence and `self.state_lock` for thread-safe state mutation
 
 ### Event Bus Wiring
 
-The `WIRING` dictionary in `handler.py` maps each `EventType` to the list of services that should receive it. Services are automatically subscribed at startup by the `Runtime.wire()` method.
+The `WIRING` dictionary in `handler.py` maps each `Type` to the list of services that should receive it. Services are automatically subscribed at startup by the `Runtime.wire()` method.
 
 ### Example Service
 
 ```python
-from underwrite.message import Event, EventType
+from underwrite.message import Message, Type
 from underwrite.logger import logger
-from underwrite.services.base import NanoService
+from underwrite.services.base import Core
 
 
-class MyService(NanoService):
+class MyService(Core):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def handle(self, event: Event) -> None:
-        if event.event_type == EventType.SOME_EVENT:
+    def handle(self, event: Message) -> None:
+        if event.event_type == Type.SOME_EVENT:
             result = do_work(event.payload)
             self.emit("my.event.processed", {"result": result}, correlation_id=event.correlation_id)
 
@@ -133,13 +133,14 @@ class MyService(NanoService):
 
    ```python
    from underwrite.services.newservice.newservice import Handler
+
    __all__ = ["Handler"]
    ```
 
 3. **Register in the service registry** (`handler.py`):
    - Add an entry to `HANDLER_MAP`: `"newservice": "underwrite.services.newservice"` (flat) or `"underwrite.services.newservice"` (package — the `__init__.py` re-exports `Handler`).
    - Add an entry to `HANDLER_CLASSES`: `"newservice": "Handler"`
-   - Add the service name to the subscriber list in `WIRING` for each `EventType` it should receive.
+   - Add the service name to the subscriber list in `WIRING` for each `Type` it should receive.
    - Optionally add the name to `HANDLER_NAMES` (auto-derived from `HANDLER_CLASSES.keys()` in `config.py`).
 
 4. **Write tests** in `tests/` following existing patterns.

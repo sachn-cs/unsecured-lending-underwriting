@@ -19,7 +19,7 @@ from underwrite.message import Message, Type
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
 from underwrite.services.base import Core, Dependencies
-from underwrite.store import Sqlite, Store
+from underwrite.store import StoreBackend
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
 
@@ -36,7 +36,7 @@ class Handler(Core):
         self,
         name: str,
         bus: EventBus | LocalBus,
-        store: Store | Sqlite | Store | Sqlite | Store | Sqlite | Store | Sqlite,
+        store: StoreBackend,
         identity: Keypair | None = None,
         metrics: Collector | None = None,
         health: Checks | None = None,

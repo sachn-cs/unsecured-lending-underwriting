@@ -52,7 +52,6 @@ dev = [
     "mypy>=1.10",
     "bandit>=1.7",
     "pip-audit>=2.7",
-    "testcontainers>=4.0",
     "httpx>=0.27",
 ]
 security = [
@@ -75,16 +74,12 @@ risk = [
 mutation = [
     "mutmut>=3.0",
 ]
-postgres = [
-    "psycopg2-binary>=2.9",
-]
 serve = ["uvicorn[standard]>=0.24", "fastapi>=0.104"]
 vault = ["hvac>=2.0"]
 notify = ["twilio>=8.0"]
 aws = ["boto3>=1.33"]
 modal = ["modal>=0.60"]
 all = [
-    "underwrite[postgres]",
     "underwrite[otlp]",
     "underwrite[serve]",
     "underwrite[vault]",
@@ -155,8 +150,6 @@ module = [
     "boto3.*",
     "joblib",
     "joblib.*",
-    "psycopg2",
-    "psycopg2.*",
     "google.cloud",
     "google.cloud.*",
     "twilio",
@@ -165,8 +158,6 @@ module = [
     "opentelemetry.*",
     "opentelemetry.exporter.otlp.proto.grpc.trace_exporter",
     "opentelemetry.instrumentation.fastapi",
-    "testcontainers",
-    "testcontainers.*",
     "underwrite.__version__",
     "loguru",
 ]

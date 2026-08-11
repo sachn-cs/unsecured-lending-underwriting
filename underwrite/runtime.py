@@ -18,7 +18,6 @@ __all__ = [
     "build_authz",
     "build_event_bus",
     "build_kyc_provider_config",
-    "build_read_store",
     "build_secrets",
     "build_store",
     "build_supervisor",
@@ -108,22 +107,9 @@ def build_tracer(config: Configuration) -> Tracer | None:
 
 def build_store(config: Configuration) -> Store:
     cfg = config.store
-    if cfg.backend == "filesystem":
-        return Store(type=Store.DISK, data_dir=config.data_dir)
-    elif cfg.backend == "memory":
+    if cfg.backend == "memory":
         return Store(type=Store.MEMORY)
-    logger.warning("unrecognized store backend {!r}, falling back to Disk", cfg.backend)
-    return Store(type=Store.DISK, data_dir=config.data_dir)
-
-
-def build_read_store(config: Configuration) -> Store | None:
-    cfg = config.store
-    if not cfg.read_backend:
-        return None
-    if cfg.read_backend == "filesystem":
-        return Store(type=Store.DISK, data_dir=config.data_dir)
-    logger.warning("unrecognized read store backend {!r}, falling back to InMemory", cfg.read_backend)
-    return Store(type=Store.MEMORY)
+    return Store(type=Store.SQLITE, path=cfg.path, busy_timeout=cfg.busy_timeout)
 
 
 def start_metrics_export(metrics_collector: Collector | None, config: Configuration) -> Exporter | None:
@@ -175,9 +161,6 @@ def register_subsystem_health(runtime: Runtime) -> None:
 
     runtime.health.register("bus", __bus_health)
     runtime.health.register("store", lambda: runtime.store.health())
-    read_store = runtime.read_store
-    if read_store is not None:
-        runtime.health.register("read_store", lambda: read_store.health())
     runtime.health.register(
         "services",
         lambda: {
@@ -264,7 +247,6 @@ class Runtime:
     """Manages lifecycle of all nano services with health, metrics, authz, migration, tracing, and saga."""
 
     __store: Store
-    __read_store: Store | None
     __services: dict[str, Core]
     __bus: EventBus
     __health: Checks
@@ -292,7 +274,6 @@ class Runtime:
         self.config: Configuration = config or Configuration.load()
         self.configure_logging()
         self.store = build_store(self.config)
-        self.read_store = build_read_store(self.config)
         self.services: dict[str, Core] = {}
         self.lock: threading.RLock = threading.RLock()
         self.runtime_identity = None
@@ -508,11 +489,6 @@ class Runtime:
             self.store.shutdown()
         except Exception as exc:
             errors.append(f"store: {exc}")
-        if self.read_store is not None:
-            try:
-                self.read_store.shutdown()
-            except Exception as exc:
-                errors.append(f"read_store: {exc}")
         if self.supervisor is not None:
             try:
                 self.supervisor.shutdown()

@@ -25,7 +25,7 @@ from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
 from underwrite.services.base import Dependencies, StatefulService
 from underwrite.services.persistence import TypedStoreRepository
-from underwrite.store import Disk, InMemory, Sqlite, Store
+from underwrite.store import Sqlite, Store
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
 from underwrite.value_objects import IdGenerator
@@ -62,7 +62,7 @@ class Handler(StatefulService):
         self,
         name: str,
         bus: EventBus | LocalBus,
-        store: Store | InMemory | Disk | Sqlite,
+        store: Store | Sqlite | Store | Sqlite | Store | Sqlite | Store | Sqlite,
         identity: Keypair | None = None,
         metrics: Collector | None = None,
         health: Checks | None = None,

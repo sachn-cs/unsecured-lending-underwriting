@@ -15,12 +15,10 @@ Runtime(config)             # or Runtime() loads defaults
   │    (underwrite/config.py → Configuration)
   │
   ├─2. Store created
-  │    ├─ config.store.backend == "filesystem" → FileStore(data_dir)
-  │    ├─ config.store.backend == "memory"     → MemoryStore()
-  │    └─ config.store.backend == "postgres"   → PostgresStore(dsn, pool_size)
+  │    ├─ config.store.backend == "sqlite"    → Sqlite(path, busy_timeout)
+  │    └─ config.store.backend == "memory"    → Sqlite(":memory:")
   │
-  ├─3. Optional read-store (CQRS)
-  │    └─ config.store.read_backend set        → separate read Store
+  ├─3. (no separate read-store — CQRS is not supported in this revision)
   │
   ├─4. EventBus created
   │    └─ LocalBus(rate_limit, max_workers, max_futures, store)
@@ -277,7 +275,7 @@ sequenceDiagram
     Config-->>RT: config
 
     RT->>Store: __build_store()
-    Store-->>RT: FileStore|MemoryStore|PostgresStore
+    Store-->>RT: Sqlite(file_path)|Sqlite(":memory:")
 
     RT->>Bus: LocalBus(rate_limit, max_workers, store)
     Bus-->>RT: bus
@@ -675,7 +673,7 @@ sequenceDiagram
 | `CircuitBreaker` | `bus.py` | Per-subscriber circuit breaker (CLOSED → OPEN → HALF_OPEN) |
 | `DeadLetterQueue` | `bus.py` | Bounded failed-event storage with optional Store persistence |
 | `RateLimiter` | `bus.py` | Token-bucket rate limiter per subscriber key |
-| `Store` | `store.py` | Abstract persistence (MemoryStore / FileStore / PostgresStore) |
+| `Store` | `store.py` | SQLite persistence (file path or `:memory:`) |
 | `HealthRegistry` | `health.py` | Subsystem health check registration and status aggregation |
 | `Configuration` | `config.py` | JSON-driven config with typed subsections |
 | `create_app` | `serve.py` | FastAPI app factory with auth, rate-limit, middleware |

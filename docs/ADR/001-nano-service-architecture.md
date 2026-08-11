@@ -4,35 +4,35 @@
 
 ## Context
 
-The `underwrite` platform models 28 distinct business domains (mechanism, risk, fraud, compliance, decision, payment, collection, NPA, collateral, recovery, governance, identity, etc.) that must coexist in a single Python process while preserving the logical separation normally associated with microservices.
+The `underwrite` platform models 34 distinct business domains (mechanism, risk, fraud, compliance, decision, payment, collection, NPA, collateral, recovery, governance, identity, etc.) that must coexist in a single Python process while preserving the logical separation normally associated with microservices.
 
-The codebase is a single Python package (`pyproject.toml` defines the package as `underwrite`). All source lives under `underwrite/` with services under `underwrite/services/`. The `NanoService` base class is at `services/base.py:93`.
+The codebase is a single Python package (`pyproject.toml` defines the package as `underwrite`). All source lives under `underwrite/` with services under `underwrite/services/`. The `Core` base class is at `services/base.py:149`.
 
 ## Problem
 
-How should these 28 business domains be structured for independent development, testability, and future deployability without the operational overhead of a distributed system?
+How should these 34 business domains be structured for independent development, testability, and future deployability without the operational overhead of a distributed system?
 
 ## Decision
 
-Decompose the monolith into **nano-services** — lightweight `NanoService` ABC subclasses that communicate exclusively through an in-process event bus (`EventBus` at `bus.py:426`).
+Decompose the monolith into **nano-services** — lightweight `Core` ABC subclasses that communicate exclusively through an in-process event bus (`EventBus` at `bus.py:426`).
 
-Each `NanoService` (`services/base.py:93`):
+Each `Core` (`services/base.py:149`):
 - Owns exactly one domain boundary (e.g., `fraud`, `pricing`, `disbursement`)
 - Has its own `Identity` (Ed25519 keypair at `identity.py:30`) for signing emitted events
 - Persists state through a `Store` ABC (`store.py:52`)
-- Implements a single `handle(event: Event) -> None` method
+- Implements a single `handle(event: Message) -> None` method
 - Can be independently started via `Runtime.start(["risk", "fraud"])` or `underwrite run risk`
 - Supports optional `max_concurrent` thread-pool dispatch for I/O-bound handlers
 
-Cross-cutting concerns (authz, tracing, metrics, idempotency, saga, supervision) are injected transparently in `NanoService.__dispatch()` and `__handle_event()` at `services/base.py:291-317`.
+Cross-cutting concerns (authz, tracing, metrics, idempotency, saga, supervision) are injected transparently in `Core.dispatch()` and `Core.handle_event()` at `services/base.py:353-460`.
 
-Wiring is declarative: the `WIRING` dict in `handler.py:80` maps each `EventType` to its subscriber list. On startup, `Runtime.wire()` iterates this map and subscribes each listed service.
+Wiring is declarative: the `WIRING` dict in `handler.py:95` maps each `Type` to its subscriber list. On startup, `Runtime.wire()` iterates this map and subscribes each listed service.
 
 ## Alternatives Considered
 
-- **True microservices (HTTP/gRPC)**: Network overhead, serialization cost, and deployment complexity. Rejected because ~80% of interactions across 28 services are sub-millisecond state queries (e.g., `graph_credit_limit`). The nano-service model keeps them in-process with zero serialization overhead.
+- **True microservices (HTTP/gRPC)**: Network overhead, serialization cost, and deployment complexity. Rejected because ~80% of interactions across 34 services are sub-millisecond state queries (e.g., `graph_credit_limit`). The nano-service model keeps them in-process with zero serialization overhead.
 
-- **Monolithic service with internal modules**: Module-level separation does not enforce an event-driven contract. Nothing prevents a fraud module from calling a pricing module's internal function, creating implicit coupling. The `NanoService` ABC enforces that the only communication path is `EventBus.publish()`.
+- **Monolithic service with internal modules**: Module-level separation does not enforce an event-driven contract. Nothing prevents a fraud module from calling a pricing module's internal function, creating implicit coupling. The `Core` ABC enforces that the only communication path is `EventBus.publish()`.
 
 - **Actor model (Akka, Thespian)**: Over-engineered for a single-process Python system. The actor lifecycle and supervision primitives overlap with what `ThreadPoolExecutor` + `ServiceSupervisor` (`supervisor.py:15`) already provide.
 

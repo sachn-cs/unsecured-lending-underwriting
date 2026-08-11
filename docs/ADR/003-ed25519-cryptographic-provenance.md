@@ -14,11 +14,11 @@ How can the platform provide cryptographic proof of event provenance that surviv
 
 ## Decision
 
-Every emitted `Event` carries an Ed25519 signature computed by the emitting service's `Identity` (`identity.py:30`).
+Every emitted `Message` carries an Ed25519 signature computed by the emitting service's `Identity` (`identity.py:30`).
 
 ### Signing Protocol
 
-1. Each `NanoService` is assigned an `Identity` containing an Ed25519 keypair (`services/base.py:129`)
+1. Each `Core` is assigned an `Identity` containing an Ed25519 keypair (`services/base.py:157`)
 2. On `emit()`, the payload is serialized with `json.dumps(payload, sort_keys=True)` (`authz.py:166`)
 3. The canonical string is constructed as:
    ```

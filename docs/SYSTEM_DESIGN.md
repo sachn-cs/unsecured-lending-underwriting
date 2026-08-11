@@ -47,7 +47,7 @@ Runtime(config)             # or Runtime() loads defaults
 
 ## 2. Event Lifecycle
 
-Source: `underwrite/events.py`, `underwrite/bus.py`, `underwrite/services/base.py`
+Source: `underwrite/message.py`, `underwrite/bus.py`, `underwrite/services/base.py`
 
 ```
 External Trigger (CLI / HTTP POST /v1/publish / internal emit)
@@ -68,13 +68,13 @@ EventBus.publish(event)
   │     └─ Dispatch (sync or threadpool):
   │           │
   │           ▼
-  │     NanoService.__dispatch(event)
+  │     Core.dispatch(event)
   │       ├─ not running? → return
   │       ├─ Authz: AccessControl.assert_verified(event)
   │       │    └─ FAIL → log + metrics, return
   │       ├─ Idempotency: is_duplicate(service_id, event_id)?
   │       │    └─ YES → log + return
-  │       └─ __handle_event(event)
+  │       └─ handle_event(event)
   │             ├─ Tracer: start span "handle.{event_type}"
   │             ├─ correlation_context: set correlation_id
   │             ├─ handle(event)         ← domain logic (subclass)
@@ -87,7 +87,7 @@ EventBus.publish(event)
   │
   ▼
 Service may emit downstream events inside handle()
-  └─ Event signed with Ed25519 identity
+  └─ Message signed with Ed25519 identity
   └─ Authz.assert_publish + trust registered
   └─ bus.publish(signed)
 ```
@@ -96,7 +96,7 @@ Service may emit downstream events inside handle()
 
 ## 3. Event Type Catalog
 
-Source: `underwrite/events.py` — 80+ event types in the `EventType` enum.
+Source: `underwrite/message.py` — 132 event types in the `Type` enum.
 
 | Domain | Events |
 |--------|--------|
@@ -227,7 +227,7 @@ execute_all(saga_id)
   │  For i in range(len(steps)):
   │    ├─ execute_step(saga_id, i)
   │    │    ├─ Check idempotency: saga_step:{saga_id}:{i} exists? → skip
-  │    │    ├─ Get emitter (NanoService) for saga name
+  │    │    ├─ Get emitter (Core) for saga name
   │    │    ├─ emitter.emit(step.forward_event_type, step.forward_payload)
   │    │    ├─ Record completed_step index
   │    │    ├─ Persist to Store
@@ -268,7 +268,7 @@ sequenceDiagram
     participant A as AccessControl
     participant S as SagaOrchestrator
     participant Sup as ServiceSupervisor
-    participant Svcs as NanoService[]
+    participant Svcs as Core[]
 
     Caller->>RT: Runtime(config)
     RT->>Config: Configuration.load()
@@ -322,7 +322,7 @@ sequenceDiagram
     participant DLQ as DeadLetterQueue
     participant CB as CircuitBreaker
     participant RL as RateLimiter
-    participant Sub as NanoService.__dispatch
+    participant Sub as Core.dispatch
     participant Authz as AccessControl
     participant Idem as IdempotencyGuard
     participant Tracer as Tracer
@@ -372,15 +372,15 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Bus as LocalBus.__flush
-    participant Sub as NanoService.__dispatch
+    participant Sub as Core.dispatch
     participant Authz as AccessControl
     participant Idem as IdempotencyGuard
     participant Tracer as Tracer
     participant Sup as ServiceSupervisor
     participant Metrics as MetricsCollector
-    participant Handler as NanoService.handle()
+    participant Handler as Core.handle()
 
-    Bus->>Sub: __dispatch(event)
+    Bus->>Sub: dispatch(event)
     Note over Sub: Cross-cutting pipeline (ordered)
 
     alt service not running
@@ -426,7 +426,7 @@ sequenceDiagram
     participant Caller as Client
     participant Saga as SagaOrchestrator
     participant Store as Store
-    participant Emitter as NanoService
+    participant Emitter as Core
     participant Bus as EventBus
 
     Note over Caller,Bus: Happy Path
@@ -488,7 +488,7 @@ sequenceDiagram
     Note over MW: Bearer token check (401)<br/>Token-bucket rate limit (429)
 
     MW->>RT: async_publish(event_type, payload, correlation_id)
-    RT->>RT: Event(event_type, source="runtime", payload)
+    RT->>RT: Message(event_type, source="runtime", payload)
     RT->>Bus: bus.publish(event)
     Bus->>Bus: buffer.append(event), flush()
     Bus-->>RT: event_id
@@ -521,8 +521,8 @@ sequenceDiagram
     participant Signal as SIGTERM/SIGINT
     participant RT as Runtime
     participant MThread as Metrics Thread
-    participant Svc1 as NanoService (audit)
-    participant Svc2 as NanoService (risk)
+    participant Svc1 as Core (audit)
+    participant Svc2 as Core (risk)
     participant Bus as LocalBus
     participant Store as Store
 
@@ -660,9 +660,9 @@ sequenceDiagram
 |---|---|---|
 | `Runtime` | `runtime.py` | Lifecycle management, service registration, wiring, start/stop |
 | `EventBus` / `LocalBus` | `bus.py` | In-process pub-sub with circuit breaker, rate limiter, DLQ |
-| `NanoService` | `services/base.py` | Abstract base: signing, emit, subscribe, dispatch, tracing, idempotency |
+| `Core` | `services/base.py` | Abstract base: signing, emit, subscribe, dispatch, tracing, idempotency |
 | `StatefulService` | `services/base.py` | Base with state lock and store repository helpers |
-| `Event` / `EventType` | `events.py` | Event envelope with UUID, timestamp, payload, Ed25519 signature |
+| `Message` / `Type` | `message.py` | Message envelope with UUID, timestamp, payload, Ed25519 signature |
 | `AccessControl` | `authz.py` | Policy evaluation + Ed25519 signature verification |
 | `Tracer` | `tracer.py` | Span lifecycle with Console/Otlp exporters |
 | `MetricsCollector` | `metrics.py` | Counters, timers, gauges with tag dimensions |

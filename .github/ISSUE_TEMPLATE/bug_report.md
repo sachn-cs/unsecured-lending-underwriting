@@ -15,9 +15,9 @@ A concise description of the bug.
 - **OS**: (e.g. macOS 14.4, Ubuntu 22.04)
 - **Python**: (output of `python --version`)
 - **underwrite version**: (output of `python -c "import underwrite; print(underwrite.__version__)"`)
-- **Store backend**: (memory / disk / sqlite / postgres)
-- **Bus backend**: (local / sqs / modal)
-- **Extras installed**: (e.g. `underwrite[risk,serve,postgres]`)
+- **Store backend**: (sqlite / memory)
+- **Bus backend**: (local / modal)
+- **Extras installed**: (e.g. `underwrite[risk,serve,otlp]`)
 
 ## Reproduction
 

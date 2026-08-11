@@ -2,7 +2,7 @@
 
 The underwrite platform provides integrated logging, metrics, tracing, and
 health checks.  Every nano service inherits observability from
-`NanoService` — no per-service instrumentation boilerplate.
+`Core` — no per-service instrumentation boilerplate.
 
 ---
 
@@ -48,7 +48,7 @@ var (default: `INFO`).
 
 Attached per-thread via `correlation_context` in
 `underwrite/correlation.py`.  The formatters read it through
-`correlation_id()` in `underwrite/logger.py`.  `NanoService.__handle_event()`
+`correlation_id()` in `underwrite/logger.py`.  `Core.handle_event()`
 sets the correlation id from `event.correlation_id` before calling
 `handle()` and restores the previous value afterwards.
 
@@ -86,7 +86,7 @@ oldest entries across all metric types are evicted (O(1) per eviction).
 
 ### Auto-collected Metrics
 
-`NanoService.__handle_event()` and `emit()` in `services/base.py`
+`Core.handle_event()` and `emit()` in `services/base.py`
 automatically record:
 
 | Metric | Type | Tags |
@@ -155,7 +155,7 @@ Tracer(service_id="runtime", exporter=ConsoleSpanExporter())
 
 ### Auto-tracing
 
-`NanoService.__handle_event()` wraps every `self.handle()` call in a
+`Core.handle_event()` wraps every `self.handle()` call in a
 trace span:
 
 ```python
@@ -164,7 +164,7 @@ with self.__tracer.trace(f"handle.{event.event_type}", trace_id=..., parent_span
 ```
 
 Trace context (`trace_id`, `parent_span_id`) propagates through the
-`Event` envelope — emitted events carry the current trace IDs, forming
+`Message` envelope — emitted events carry the current trace IDs, forming
 a distributed trace across services.
 
 ### Span Bounds
@@ -243,7 +243,7 @@ Checks:
 
 ```mermaid
 flowchart LR
-    subgraph NanoService
+    subgraph Core
         H[handle event]
         E[emit event]
     end
@@ -289,5 +289,5 @@ flowchart LR
     HR --> RZ
     HR --> VH
 
-    Event((Event<br/>envelope)) -.->|trace_id<br/>parent_span_id<br/>correlation_id| TR
+    Message((Message<br/>envelope)) -.->|trace_id<br/>parent_span_id<br/>correlation_id| TR
 ```

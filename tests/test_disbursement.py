@@ -9,11 +9,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.disbursement import Handler
 from underwrite.services.disbursement import Handler as DisbursementHandler
-from underwrite.store import InMemory
+from underwrite.store import Sqlite
 
 
 def svc(bus=None) -> Handler:
-    return DisbursementHandler(name="disbursement", bus=bus or LocalBus(), store=InMemory())
+    return DisbursementHandler(name="disbursement", bus=bus or LocalBus(), store=Sqlite(":memory:"))
 
 
 class TestDisbursementService:

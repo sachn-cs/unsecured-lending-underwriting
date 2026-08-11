@@ -107,7 +107,7 @@ Target: **80+ production readiness score** (currently 57/100).
 - Saga persistence (not in-memory)
 - Distributed event bus support (SQS/Modal) — at least one production backend
 - Pre-commit hooks configured
-- `docker-compose.yml` for local Postgres + Vault + OTLP
+- `docker-compose.yml` for local Vault + OTLP
 - 80%+ test coverage with concurrency stress tests
 
 ### Nice-to-have for v1.0.0

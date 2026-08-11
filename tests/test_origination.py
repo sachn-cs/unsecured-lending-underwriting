@@ -8,12 +8,12 @@ from __future__ import annotations
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.origination import Handler as OriginationHandler
-from underwrite.store import InMemory
+from underwrite.store import Sqlite
 
 
 class TestOriginationService:
     def test_creates_application_with_valid_data(self) -> None:
-        svc = OriginationHandler(name="origination", bus=LocalBus(), store=InMemory())
+        svc = OriginationHandler(name="origination", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(
             Message(event_type="origination.create", source="test", payload={"borrower": "alice", "principal": 50000})
         )
@@ -29,7 +29,7 @@ class TestOriginationService:
         bus = LocalBus()
         received: list = []
         bus.subscribe(Type.ORIGINATION_CREATED, lambda e: received.append(e))
-        svc = OriginationHandler(name="origination", bus=bus, store=InMemory())
+        svc = OriginationHandler(name="origination", bus=bus, store=Sqlite(":memory:"))
         bus.start()
         svc.handle(
             Message(event_type="origination.create", source="test", payload={"borrower": "bob", "principal": 30000})
@@ -39,21 +39,21 @@ class TestOriginationService:
         assert received[0].payload["principal"] == 30000
 
     def test_rejects_empty_borrower(self) -> None:
-        svc = OriginationHandler(name="origination", bus=LocalBus(), store=InMemory())
+        svc = OriginationHandler(name="origination", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(
             Message(event_type="origination.create", source="test", payload={"borrower": "", "principal": 50000})
         )
         assert len(svc.store.keys("origination:")) == 0
 
     def test_rejects_zero_principal(self) -> None:
-        svc = OriginationHandler(name="origination", bus=LocalBus(), store=InMemory())
+        svc = OriginationHandler(name="origination", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(
             Message(event_type="origination.create", source="test", payload={"borrower": "alice", "principal": 0})
         )
         assert len(svc.store.keys("origination:")) == 0
 
     def test_submit_transitions_to_submitted(self) -> None:
-        svc = OriginationHandler(name="origination", bus=LocalBus(), store=InMemory())
+        svc = OriginationHandler(name="origination", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(
             Message(event_type="origination.create", source="test", payload={"borrower": "carol", "principal": 10000})
         )
@@ -65,12 +65,12 @@ class TestOriginationService:
         assert "submitted_at" in rec
 
     def test_submit_unknown_application_noop(self) -> None:
-        svc = OriginationHandler(name="origination", bus=LocalBus(), store=InMemory())
+        svc = OriginationHandler(name="origination", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(Message(event_type="origination.submit", source="test", payload={"application_id": "nonexistent"}))
         assert len(svc.store.keys("origination:")) == 0
 
     def test_submit_already_submitted_noop(self) -> None:
-        svc = OriginationHandler(name="origination", bus=LocalBus(), store=InMemory())
+        svc = OriginationHandler(name="origination", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(
             Message(event_type="origination.create", source="test", payload={"borrower": "dave", "principal": 1000})
         )
@@ -83,7 +83,7 @@ class TestOriginationService:
 
     def test_submit_emits_origination_submitted(self) -> None:
         bus = LocalBus()
-        store = InMemory()
+        store = Sqlite(":memory:")
         received: list = []
         bus.subscribe(Type.ORIGINATION_SUBMITTED, lambda e: received.append(e))
         svc = OriginationHandler(name="origination", bus=bus, store=store)
@@ -94,12 +94,12 @@ class TestOriginationService:
         assert received[0].payload["application_id"] == "app_1"
 
     def test_ignores_unrelated_events(self) -> None:
-        svc = OriginationHandler(name="origination", bus=LocalBus(), store=InMemory())
+        svc = OriginationHandler(name="origination", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(Message(event_type="seed.added", source="test", payload={}))
         assert len(svc.store.keys("origination:")) == 0
 
     def test_multiple_applications_independent(self) -> None:
-        svc = OriginationHandler(name="origination", bus=LocalBus(), store=InMemory())
+        svc = OriginationHandler(name="origination", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(Message(event_type="origination.create", source="test", payload={"borrower": "a", "principal": 100}))
         svc.handle(Message(event_type="origination.create", source="test", payload={"borrower": "b", "principal": 200}))
         assert len(svc.store.keys("origination:app_a_")) == 1
@@ -109,7 +109,7 @@ class TestOriginationService:
         bus = LocalBus()
         received: list = []
         bus.subscribe("*", lambda e: received.append(e))
-        svc = OriginationHandler(name="origination", bus=bus, store=InMemory())
+        svc = OriginationHandler(name="origination", bus=bus, store=Sqlite(":memory:"))
         bus.start()
         svc.handle(
             Message(
@@ -124,7 +124,7 @@ class TestOriginationService:
         assert emitted[0].correlation_id == "corr-1"
 
     def test_health_check(self) -> None:
-        svc = OriginationHandler(name="origination", bus=LocalBus(), store=InMemory())
+        svc = OriginationHandler(name="origination", bus=LocalBus(), store=Sqlite(":memory:"))
         h = svc.health_check()
         assert h["ok"] is False
         svc.start()

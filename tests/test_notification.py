@@ -15,11 +15,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.notification import Handler
 from underwrite.services.notification import Handler as NotificationHandler
-from underwrite.store import InMemory
+from underwrite.store import Sqlite
 
 
 def notify(bus=None) -> Handler:
-    return NotificationHandler(name="notification", bus=bus or LocalBus(), store=InMemory())
+    return NotificationHandler(name="notification", bus=bus or LocalBus(), store=Sqlite(":memory:"))
 
 
 class TestNotificationService:

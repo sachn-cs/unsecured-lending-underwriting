@@ -13,6 +13,8 @@ Tests verify behavior through:
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.npa import Handler
@@ -155,6 +157,79 @@ class TestLoanTracking:
         )
         assert len(dlg) == 1  # only x exceeds threshold
         assert dlg[0].payload["loan_id"] == "x"
+
+
+class TestPaymentOverdue:
+    def test_overdue_loan_classifies_account(self) -> None:
+        bus = LocalBus()
+        bucket: list[Message] = []
+        bus.subscribe(Type.NPA_BUCKET_CHANGED, lambda e: bucket.append(e))
+        svc = npa(bus=bus)
+        bus.start()
+        svc.handle(
+            Message(
+                event_type=Type.LOAN_ORIGINATED,
+                source="test",
+                payload={"borrower": "alice", "loan_id": "L1", "principal": 100000},
+            )
+        )
+        due = (datetime.now(timezone.utc) - timedelta(days=120)).isoformat()
+        svc.handle(
+            Message(
+                event_type=Type.PAYMENT_OVERDUE,
+                source="payment",
+                payload={"loan_id": "L1", "due_date": due, "amount": 5000},
+            )
+        )
+        assert len(bucket) == 1
+        assert bucket[0].payload["borrower"] == "alice"
+        assert bucket[0].payload["bucket"] == "substandard"
+
+    def test_overdue_loan_triggers_dlg(self) -> None:
+        bus = LocalBus()
+        dlg: list[Message] = []
+        bus.subscribe(Type.DLG_TRIGGERED, lambda e: dlg.append(e))
+        svc = npa(bus=bus)
+        bus.start()
+        svc.handle(
+            Message(
+                event_type=Type.LOAN_ORIGINATED,
+                source="test",
+                payload={"borrower": "bob", "loan_id": "L2", "principal": 50000},
+            )
+        )
+        due = (datetime.now(timezone.utc) - timedelta(days=150)).isoformat()
+        svc.handle(
+            Message(
+                event_type=Type.PAYMENT_OVERDUE,
+                source="payment",
+                payload={"loan_id": "L2", "due_date": due, "amount": 3000},
+            )
+        )
+        assert len(dlg) == 1
+        assert dlg[0].payload["recovery_amount"] == 3000.0
+
+    def test_overdue_unknown_loan_does_not_crash(self) -> None:
+        bus = LocalBus()
+        svc = npa(bus=bus)
+        bus.start()
+        due = (datetime.now(timezone.utc) - timedelta(days=100)).isoformat()
+        svc.handle(
+            Message(
+                event_type=Type.PAYMENT_OVERDUE,
+                source="payment",
+                payload={"loan_id": "UNKNOWN", "due_date": due, "amount": 1000},
+            )
+        )
+
+    def test_overdue_without_loan_id_ignored(self) -> None:
+        bus = LocalBus()
+        bucket: list[Message] = []
+        bus.subscribe(Type.NPA_BUCKET_CHANGED, lambda e: bucket.append(e))
+        svc = npa(bus=bus)
+        bus.start()
+        svc.handle(Message(event_type=Type.PAYMENT_OVERDUE, source="payment", payload={"due_date": "2025-01-01"}))
+        assert len(bucket) == 0
 
 
 class TestSmaClassification:

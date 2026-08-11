@@ -57,11 +57,9 @@ class TestConfiguration:
             "metrics": {"enabled": False},
             "migration": {"auto_migrate": False},
             "store": {
-                "backend": "postgres",
-                "dsn": "host=localhost",
-                "pool_size": 10,
-                "read_backend": "filesystem",
-                "read_dsn": "/tmp/read",
+                "backend": "sqlite",
+                "path": "/tmp/store.db",
+                "busy_timeout": 10.0,
             },
             "tracing": {"enabled": True, "exporter": "console"},
             "saga": {"enabled": False},
@@ -75,11 +73,9 @@ class TestConfiguration:
         assert config.bus.max_workers == 4
         assert config.metrics.enabled is False
         assert config.migration.auto_migrate is False
-        assert config.store.backend == "postgres"
-        assert config.store.dsn == "host=localhost"
-        assert config.store.pool_size == 10
-        assert config.store.read_backend == "filesystem"
-        assert config.store.read_dsn == "/tmp/read"
+        assert config.store.backend == "sqlite"
+        assert config.store.path == "/tmp/store.db"
+        assert config.store.busy_timeout == 10.0
         assert config.tracing.enabled is True
         assert config.tracing.exporter == "console"
         assert config.saga.enabled is False
@@ -89,8 +85,8 @@ class TestConfiguration:
         d = config.to_dict()
         assert "max_workers" in d["bus"]
         assert d["bus"]["max_workers"] == 0
-        assert "pool_size" in d["store"]
-        assert "read_backend" in d["store"]
+        assert "path" in d["store"]
+        assert "busy_timeout" in d["store"]
         assert "key_ttl" in d["identity"]
         assert "key_grace" in d["identity"]
         assert "tracing" in d
@@ -176,7 +172,7 @@ class TestConfiguration:
     def test_valid_config_passes_schema(self, tmp_path: Path) -> None:
         valid = {
             "bus": {"backend": "local", "rate_limit": 100, "max_workers": 4},
-            "store": {"backend": "filesystem"},
+            "store": {"backend": "sqlite", "path": "./store.db"},
             "logging": {"level": "INFO", "format": "text"},
             "metrics": {"enabled": True, "export_interval": 60},
             "tracing": {"enabled": False, "exporter": "console"},

@@ -2,7 +2,7 @@
 
 ## Test Suite Overview
 
-59 test files with 828 passing tests. One file per service (`test_<service>.py`), plus infrastructure tests for bus, store, circuit, saga, health, metrics, schema, configuration, identity, authz, tracing, and concurrency. Fault-injection tests are grouped by subsystem.
+72 test files with 1276 passing tests. One file per service (`test_<service>.py`), plus infrastructure tests for bus, store, circuit, saga, health, metrics, schema, configuration, identity, authz, tracing, and concurrency. Fault-injection tests are grouped by subsystem.
 
 ### Test Structure
 
@@ -38,7 +38,7 @@ All shared fixtures are defined in `tests/conftest.py`:
 | `sqlite_store` | `Sqlite` | File-backed store with a temp path; cleaned up after the test |
 | `bus` | `LocalBus` | Fresh local event bus per test |
 | `client` | `TestClient` | FastAPI `TestClient` wrapping `create_app()` (requires `serve` extra) |
-| `event` | `Event` | Minimal `LOAN_ORIGINATED` event with known payload |
+| `event` | `Message` | Minimal `LOAN_ORIGINATED` event with known payload |
 | `tmp_config` | `dict` | Temporary JSON config file + parsed data |
 
 The earlier `fail_store` and `injecting_bus` fixtures were removed
@@ -153,11 +153,11 @@ version available on the developer machine.
 
 ### Pattern: Instantiate, Handle, Assert Store
 
-Every service extends `NanoService` and processes events via `handle(event)`. Test by creating a service instance, calling `handle()` with an `Event`, then checking store state and emitted events.
+Every service extends `Core` and processes events via `handle(event)`. Test by creating a service instance, calling `handle()` with a `Message`, then checking store state and emitted events.
 
 ```python
 from underwrite.bus import LocalBus
-from underwrite.message import Event, EventType
+from underwrite.message import Message, Type
 from underwrite.store import Sqlite(":memory:")
 from underwrite.services.fee.service import FeeService
 
@@ -165,7 +165,7 @@ from underwrite.services.fee.service import FeeService
 def test_fee_assessed_and_stored():
     svc = FeeService(service_id="fee")
     svc.handle(
-        Event(
+        Message(
             event_type="fee.assess",
             source="test",
             payload={"loan_id": "L1", "fee_type": "late_payment"},
@@ -185,11 +185,11 @@ Use a `LocalBus` with a wildcard `"*"` subscriber to capture all events:
 ```python
 def test_fee_assess_emits_fee_assessed():
     bus = LocalBus()
-    received: list[Event] = []
-    bus.subscribe(EventType.FEE_ASSESSED, lambda e: received.append(e))
+    received: list[Message] = []
+    bus.subscribe(Type.FEE_ASSESSED, lambda e: received.append(e))
     svc = FeeService(service_id="fee", bus=bus)
     bus.start()
-    svc.handle(Event(event_type="fee.assess", source="test", payload={"loan_id": "L2", "fee_type": "service"}))
+    svc.handle(Message(event_type="fee.assess", source="test", payload={"loan_id": "L2", "fee_type": "service"}))
     assert len(received) == 1
     assert received[0].payload["fee_type"] == "service"
     assert received[0].payload["amount"] == 5.0
@@ -202,7 +202,7 @@ Assert the service ignores bad payloads (no store mutations):
 ```python
 def test_rejects_empty_loan_id():
     svc = FeeService(service_id="fee")
-    svc.handle(Event(event_type="fee.assess", source="test", payload={"loan_id": "", "fee_type": "late_payment"}))
+    svc.handle(Message(event_type="fee.assess", source="test", payload={"loan_id": "", "fee_type": "late_payment"}))
     assert len(svc.store.keys("fee:")) == 0
 ```
 
@@ -211,9 +211,9 @@ def test_rejects_empty_loan_id():
 ```python
 def test_submit_transitions_to_submitted():
     svc = OriginationService(service_id="origination")
-    svc.handle(Event(event_type="origination.create", source="test", payload={"borrower": "carol", "principal": 10000}))
+    svc.handle(Message(event_type="origination.create", source="test", payload={"borrower": "carol", "principal": 10000}))
     app_id = svc.store.keys("origination:app_carol_")[0].replace("origination:", "")
-    svc.handle(Event(event_type="origination.submit", source="test", payload={"application_id": app_id}))
+    svc.handle(Message(event_type="origination.submit", source="test", payload={"application_id": app_id}))
     rec = svc.store.get(f"origination:{app_id}")
     assert rec["status"] == "submitted"
     assert "submitted_at" in rec
@@ -224,12 +224,12 @@ def test_submit_transitions_to_submitted():
 ```python
 def test_correlation_id_preserved():
     bus = LocalBus()
-    received: list[Event] = []
+    received: list[Message] = []
     bus.subscribe("*", lambda e: received.append(e))
     svc = OriginationService(service_id="origination", bus=bus)
     bus.start()
     svc.handle(
-        Event(
+        Message(
             event_type="origination.create",
             source="test",
             payload={"borrower": "f", "principal": 100},
@@ -263,7 +263,7 @@ Fault injection tests live in `tests/test_*_faults.py`. Use `fail_store` or `inj
 def test_store_failure_on_event(fail_store):
     svc = FeeService(service_id="fee", store=fail_store)
     # First set() works, second fails → service should not crash
-    svc.handle(Event(event_type="fee.assess", source="test", payload={"loan_id": "L1", "fee_type": "late_payment"}))
+    svc.handle(Message(event_type="fee.assess", source="test", payload={"loan_id": "L1", "fee_type": "late_payment"}))
     # Event was handled; store error is logged, service continues
 ```
 
@@ -288,7 +288,7 @@ E2E tests use a `Runtime` instance backed by `Sqlite(":memory:")`:
 
 ```python
 from underwrite.config import Configuration
-from underwrite.message import Event, EventType
+from underwrite.message import Message, Type
 from underwrite.runtime import Runtime
 
 
@@ -310,7 +310,7 @@ def test_full_flow():
     rt.start(["mechanism"])
     svc = rt.get("mechanism")
     svc.handle(
-        Event(
+        Message(
             event_type="mechanism",
             source="test",
             payload={"command": "add_seed", "user": "bank", "base_budget": 100000},
@@ -327,7 +327,7 @@ def test_full_flow():
 ## Tips
 
 - Every service test file uses the naming convention `tests/test_<service>.py` with a `Test<Service>Service` class.
-- Use `Event(source="test", source_key="test")` for test events; the actual `source` and `source_key` are set by the emitting service.
+- Use `Message(source="test", source_key="test")` for test events; the actual `source` and `source_key` are set by the emitting service.
 - The `event` fixture provides a `LOAN_ORIGINATED` event with `borrower="alice"`, `principal=10000`, `term=12`.
 - Store keys follow the pattern `<service_id>:<suffix>_<id>_` (e.g., `fee:fee_L1_late_payment_`).
 - Bus subscriptions with `"*"` wildcard capture all event types for assertion.

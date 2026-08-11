@@ -29,7 +29,7 @@ from underwrite.services.credit_bureau.client import (
 )
 from underwrite.services.persistence import TypedStoreRepository
 from underwrite.services.providers import ProvidersConfig
-from underwrite.store import Disk, InMemory, Sqlite, Store
+from underwrite.store import Sqlite, Store
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
 
@@ -45,7 +45,7 @@ class Handler(StatefulService):
         self,
         name: str,
         bus: EventBus | LocalBus,
-        store: Store | InMemory | Disk | Sqlite,
+        store: Store | Sqlite | Store | Sqlite | Store | Sqlite | Store | Sqlite,
         cibil_api_key: str = "",
         allow_mock: bool = False,
         kyc_provider_config: ProvidersConfig | None = None,

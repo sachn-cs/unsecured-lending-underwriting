@@ -9,8 +9,8 @@ Implements a multi-stage recovery process with store-backed persistence:
   3. ESCALATION — flagged if too many offers rejected
   4. SETTLEMENT — recovery completed or loss recognized
 
-State is persisted via the Store backend (InMemory, Disk, or
-Sqlite) so in-flight recoveries survive service restarts.
+State is persisted via the Sqlite store so in-flight recoveries
+survive service restarts.
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ from underwrite.metrics import Collector, SystemClock
 from underwrite.saga import Orchestrator
 from underwrite.services.base import Dependencies, StatefulService
 from underwrite.services.persistence import TypedStoreRepository
-from underwrite.store import Disk, InMemory, Sqlite, Store
+from underwrite.store import Sqlite, Store
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
 from underwrite.validate import PayloadValidator
@@ -77,7 +77,7 @@ class Handler(StatefulService):
         self,
         name: str,
         bus: EventBus | LocalBus,
-        store: Store | InMemory | Disk | Sqlite,
+        store: Store | Sqlite | Store | Sqlite | Store | Sqlite | Store | Sqlite,
         identity: Keypair | None = None,
         metrics: Collector | None = None,
         health: Checks | None = None,

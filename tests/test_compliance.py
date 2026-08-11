@@ -28,6 +28,7 @@ from underwrite.services.compliance import (
     pan_category,
     verify_aadhaar_checksum,
 )
+from underwrite.services.providers import Provider, ProviderResult, ProvidersConfig, Verdict
 from underwrite.store import Sqlite
 
 
@@ -35,6 +36,42 @@ def compliance(bus=None) -> ComplianceHandler:
     svc = ComplianceHandler(name="compliance", bus=bus, store=Sqlite(":memory:"))
     svc.repo.save({})
     return svc
+
+
+class PanProviderStub(Provider):
+    """Minimal PAN provider stub returning a fixed verdict."""
+
+    name = "pan"
+
+    def __init__(self, verdict: Verdict) -> None:
+        self._verdict = verdict
+
+    def verify(
+        self,
+        *,
+        name: str = "",
+        dob: str = "",
+        consent: str = "Y",
+        **unused: object,
+    ) -> ProviderResult:
+        return ProviderResult(
+            verdict=self._verdict,
+            provider="pan",
+            reference="req-1",
+            details={"pan_status": "PROVIDER_STUB"},
+            error="upstream timeout" if self._verdict == Verdict.ERROR else "",
+        )
+
+
+class _StubPanConfig(ProvidersConfig):
+    """ProvidersConfig subclass whose resolve_pan returns a stub."""
+
+    def __init__(self, stub: PanProviderStub, **kwargs: object) -> None:
+        super().__init__(**kwargs)
+        self._stub = stub
+
+    def resolve_pan(self, pan: str, secrets: object = None) -> PanProviderStub:  # type: ignore[override]
+        return self._stub
 
 
 class TestAadhaarChecksum:
@@ -298,6 +335,77 @@ class TestComplianceService:
             )
         )
         assert len(flagged) == 1
+
+    def test_medium_risk_does_not_emit_aml_cleared(self) -> None:
+        bus = LocalBus()
+        flagged: list[Message] = []
+        cleared: list[Message] = []
+        bus.subscribe("aml.flagged", lambda e: flagged.append(e))
+        bus.subscribe(Type.AML_CLEARED, lambda e: cleared.append(e))
+        svc = compliance(bus=bus)
+        bus.start()
+        svc.handle(
+            Message(
+                event_type=Type.USER_ADDED,
+                source="test",
+                payload={
+                    "user": "pep_medium",
+                    "pan": "ABCDE1234F",
+                    "aadhaar": "123456789012",
+                    "name": "Local PEP Contact",
+                },
+            )
+        )
+        assert len(flagged) == 1
+        assert len(cleared) == 0
+
+    def test_pan_provider_error_rejects_kyc(self) -> None:
+        bus = LocalBus()
+        rejected: list[Message] = []
+        verified: list[Message] = []
+        bus.subscribe(Type.KYC_REJECTED, lambda e: rejected.append(e))
+        bus.subscribe(Type.KYC_VERIFIED, lambda e: verified.append(e))
+        svc = ComplianceHandler(
+            name="compliance",
+            bus=bus,
+            kyc_provider_config=_StubPanConfig(PanProviderStub(Verdict.ERROR)),
+            store=Sqlite(":memory:"),
+        )
+        bus.start()
+        svc.handle(
+            Message(
+                event_type=Type.USER_ADDED,
+                source="test",
+                payload={"user": "err_user", "pan": "ABCDE1234F", "aadhaar": "123456789012"},
+            )
+        )
+        assert len(verified) == 0
+        assert len(rejected) == 1
+        assert rejected[0].payload["reason"] == "pan_provider_error"
+
+    def test_pan_provider_ambiguous_rejects_kyc(self) -> None:
+        bus = LocalBus()
+        rejected: list[Message] = []
+        verified: list[Message] = []
+        bus.subscribe(Type.KYC_REJECTED, lambda e: rejected.append(e))
+        bus.subscribe(Type.KYC_VERIFIED, lambda e: verified.append(e))
+        svc = ComplianceHandler(
+            name="compliance",
+            bus=bus,
+            kyc_provider_config=_StubPanConfig(PanProviderStub(Verdict.AMBIGUOUS)),
+            store=Sqlite(":memory:"),
+        )
+        bus.start()
+        svc.handle(
+            Message(
+                event_type=Type.USER_ADDED,
+                source="test",
+                payload={"user": "amb_user", "pan": "ABCDE1234F", "aadhaar": "123456789012"},
+            )
+        )
+        assert len(verified) == 0
+        assert len(rejected) == 1
+        assert rejected[0].payload["reason"] == "pan_ambiguous"
 
     def test_pan_category_in_kyc_verified(self) -> None:
         bus = LocalBus()

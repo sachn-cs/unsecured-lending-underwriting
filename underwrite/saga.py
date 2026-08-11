@@ -26,7 +26,7 @@ from typing import Any, Protocol
 from underwrite.exceptions import ProtocolError
 from underwrite.logger import logger
 from underwrite.message import Message
-from underwrite.store import Disk, InMemory, Sqlite, Store, StoreBackend
+from underwrite.store import Sqlite, Store, StoreBackend
 
 
 class Emitter(Protocol):
@@ -133,12 +133,12 @@ class Orchestrator:
     so that in-flight sagas survive process restarts.
     """
 
-    def __init__(self, store: Store | InMemory | Disk | Sqlite | None = None) -> None:
+    def __init__(self, store: Store | Sqlite | None = None) -> None:
         self.global_lock: threading.RLock = threading.RLock()
         self.saga_locks: dict[str, threading.RLock] = {}
         self.sagas: dict[str, Saga] = {}
         self.emitters: dict[str, Emitter] = {}
-        self.store: StoreBackend = store or InMemory()
+        self.store: StoreBackend = store or Sqlite()
         self.compensation_executor: concurrent.futures.ThreadPoolExecutor | None = None
         self.load_sagas()
 

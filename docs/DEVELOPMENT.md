@@ -23,7 +23,7 @@ This bootstraps the entire environment. See [INSTALLATION.md](INSTALLATION.md) f
 | Target       | Command                                    | Description                          |
 |--------------|--------------------------------------------|--------------------------------------|
 | `make install` | `pip install -e .`                       | Minimal editable install             |
-| `make dev`   | `pip install -e ".[dev,risk,postgres]"`    | Install with dev, risk, and postgres |
+| `make dev`   | `pip install -e ".[dev,risk,serve,otlp,vault,aws]"`    | Install dev, risk, serve and integrations |
 | `make test`  | `python -m pytest tests/ -v --tb=short -q` | Run the test suite                   |
 | `make lint`  | `ruff check underwrite/`                   | Lint with ruff                       |
 | `make typecheck` | `mypy underwrite/`                     | Static type checking                 |
@@ -55,7 +55,7 @@ underwrite/
 ├── handler.py # SERVICE_MAP, SERVICE_CLASSES, WIRING constants
 ├── bus.py             # Event bus (pub/sub, DLQ, idempotency)
 ├── events.py          # Event envelope + EventType enum
-├── store.py           # Storage backends (memory, filesystem, postgres)
+├── store.py           # Sqlite store (stdlib sqlite3) with WAL + busy_timeout
 ├── health.py          # Health check registry
 ├── metrics.py         # Metrics collector
 ├── tracer.py          # Distributed tracing

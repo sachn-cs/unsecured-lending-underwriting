@@ -149,7 +149,7 @@ WIRING: dict[str, list[str]] = {
     Type.ORIGINATION_SUBMITTED.value: ["audit", "risk", "fraud", "compliance"],
     Type.PAYMENT_RECEIVED.value: ["audit", "collection", "servicing", "statement"],
     Type.PAYMENT_DUE.value: ["audit", "notification", "communication"],
-    Type.PAYMENT_OVERDUE.value: ["audit", "collection", "fee", "notification"],
+    Type.PAYMENT_OVERDUE.value: ["audit", "collection", "fee", "npa", "notification"],
     Type.FEE_ASSESSED.value: ["audit", "statement"],
     Type.PENAL_INTEREST_ASSESSED.value: ["audit", "fee", "statement"],
     Type.PREPAYMENT_REQUEST.value: ["audit", "prepayment"],

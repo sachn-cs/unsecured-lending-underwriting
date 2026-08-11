@@ -9,12 +9,12 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.consent import Handler
 from underwrite.services.consent import Handler as ConsentHandler
-from underwrite.store import InMemory
+from underwrite.store import Sqlite
 
 
 def svc(**kw) -> Handler:
     kw.setdefault("bus", LocalBus())
-    kw.setdefault("store", InMemory())
+    kw.setdefault("store", Sqlite(":memory:"))
     return ConsentHandler(name="consent", **kw)
 
 

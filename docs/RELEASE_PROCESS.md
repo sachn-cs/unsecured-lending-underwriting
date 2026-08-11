@@ -23,7 +23,7 @@ python -c "import underwrite; print(underwrite.__version__)"
 ## Current Status
 
 **Version**: `0.9.x` (post-hardening)
-**Tests**: 1167 across 78 test files
+**Tests**: 1276 across 72 test files
 **Services**: 34 wired nano-services + 4 KYC provider clients
 **CI gates**: mypy strict (0 errors), ruff format + check, bandit, pip-audit, TruffleHog, coverage ≥ 80%
 
@@ -52,7 +52,7 @@ git checkout -b release/v0.1.0
 ### 2. Run Full Validation
 
 ```bash
-# Full test suite (828+ tests)
+# Full test suite (1276 tests)
 python -m pytest tests/ -v --tb=short --cov=underwrite --cov-report=term-missing
 
 # Lint

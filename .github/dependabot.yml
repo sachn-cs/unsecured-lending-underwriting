@@ -22,7 +22,6 @@ updates:
           - "mypy"
           - "bandit"
           - "pip-audit"
-          - "testcontainers"
           - "httpx"
       integrations:
         patterns:
@@ -30,7 +29,6 @@ updates:
           - "opentelemetry*"
           - "numpy"
           - "scikit-learn"
-          - "psycopg2-binary"
           - "uvicorn*"
           - "fastapi"
           - "hvac"

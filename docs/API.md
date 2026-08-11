@@ -16,8 +16,8 @@ rt = Runtime(config)
 # Lifecycle
 rt.start(["mechanism", "audit", "risk"])  # starts bus, registers & wires services
 rt.stop()  # stops all services, bus, metrics loop
-rt.get("mechanism")  # → NanoService | None
-rt.services  # → dict[str, NanoService]
+rt.get("mechanism")  # → Core | None
+rt.services  # → dict[str, Core]
 
 # Event publishing
 rt.publish(event_type="loan.originated", payload={...}, correlation_id="...")
@@ -40,9 +40,9 @@ with Runtime(config) as rt:
 | `stop()` | `None` | Graceful shutdown of all subsystems |
 | `publish(event_type, payload, correlation_id)` | `str` | Publishes domain event, returns `event_id` |
 | `async_publish(event_type, payload, correlation_id)` | `str` | Async variant for ASGI contexts |
-| `register(service_name)` | `NanoService` | Instantiates a service by name |
+| `register(service_name)` | `Core` | Instantiates a service by name |
 | `wire(service_name)` | `None` | Subscribes service to its event types |
-| `get(service_name)` | `NanoService | None` | Returns registered service |
+| `get(service_name)` | `Core | None` | Returns registered service |
 | `replay_saga(saga_id)` | `bool` | Replays incomplete saga for crash recovery |
 
 Properties: `bus`, `store`, `health`, `metrics`, `authz`, `tracer`, `saga`, `supervisor`, `secrets`.
@@ -89,18 +89,18 @@ config.audit.max_ledger  # 100000
 # (full list in config.py)
 ```
 
-### NanoService
+### Core
 
 ```python
-from underwrite.services import NanoService
+from underwrite.services import Core
 
 
-class MyService(NanoService):
+class MyService(Core):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.subscribe("my.event.type")
 
-    def handle(self, event: Event) -> None:
+    def handle(self, event: Message) -> None:
         self.emit("response.event", {"key": "value"})
 
 
@@ -110,7 +110,7 @@ svc.stop()  # stops, unsubscribes all handlers
 
 # Event emission
 svc.emit(event_type="my.event", payload={...}, correlation_id="...")
-# → Event (auto-signed, published to bus)
+# → Message (auto-signed, published to bus)
 
 # Subscriptions
 svc.subscribe("some.event.type")  # register handler
@@ -128,22 +128,22 @@ svc.safe_store_set(key, value)  # → bool
 svc.sign_event(payload_str)  # → str (signature)
 ```
 
-All 28 services extend `NanoService`. Stateful services extend `StatefulService` which adds a `state_lock` and `store_repo()` / `batched_repo()` factory helpers for typed persistence.
+All 34 services extend `Core`. Stateful services extend `StatefulService` which adds a `state_lock` and `store_repo()` / `batched_repo()` factory helpers for typed persistence.
 
-### Event & EventType
+### Message & Type
 
 ```python
-from underwrite import Event, EventType
+from underwrite import Message, Type
 
 # Create an event
-event = Event(
+event = Message(
     event_type="loan.originated",
     source="mechanism",
     payload={"borrower": "alice", "principal": 50000},
     correlation_id="corr-123",
 )
 
-# Event fields (frozen dataclass)
+# Message fields (frozen dataclass)
 event.event_id  # "uuid-string"
 event.event_type  # "loan.originated"
 event.source  # "mechanism"
@@ -156,116 +156,116 @@ event.trace_id  # distributed tracing ID
 event.parent_span_id  # parent span for nesting
 
 # Event type enum
-EventType.SEED_ADDED  # "seed.added"
-EventType.USER_ADDED  # "user.added"
-EventType.LOAN_ORIGINATED  # "loan.originated"
-EventType.REPAID  # "repaid"
-EventType.DEFAULT_OCCURRED  # "default.occurred"
-EventType.REVOKED  # "revoked"
-EventType.QUOTE  # "quote"
-EventType.QUOTE_CALCULATED  # "quote.calculated"
-EventType.PRICING_REQUEST  # "pricing.request"
-EventType.PRICING_COMPUTED  # "pricing.computed"
-EventType.PENAL_INTEREST_ASSESSED  # "penal_interest.assessed"
-EventType.FORECLOSURE_COMPUTED  # "foreclosure.computed"
-EventType.PREPAYMENT_REQUEST  # "prepayment.request"
-EventType.PREPAYMENT_PROCESSED  # "prepayment.processed"
-EventType.KYC_VERIFIED  # "kyc.verified"
-EventType.KYC_REJECTED  # "kyc.rejected"
-EventType.AML_CLEARED  # "aml.cleared"
-EventType.AML_FROZEN  # "aml.frozen"
-EventType.CKYC_VERIFY  # "ckyc.verify"
-EventType.CKYC_VERIFIED  # "ckyc.verified"
-EventType.CKYC_REJECTED  # "ckyc.rejected"
-EventType.CREDIT_BUREAU_CHECK  # "credit_bureau.check"
-EventType.CREDIT_BUREAU_CHECKED  # "credit_bureau.checked"
-EventType.CREDIT_BUREAU_CHECK_FAILED  # "credit_bureau.check_failed"
-EventType.CONSENT_RECORDED  # "consent.recorded"
-EventType.CONSENT_WITHDRAWN  # "consent.withdrawn"
-EventType.CONSENT_EXPIRED  # "consent.expired"
-EventType.DSR_REQUEST  # "dsr.request"
-EventType.DSR_REQUESTED  # "dsr.requested"
-EventType.DSR_FULFILLED  # "dsr.fulfilled"
-EventType.DSR_REJECTED  # "dsr.rejected"
-EventType.KFS_GENERATE  # "kfs.generate"
-EventType.KFS_GENERATED  # "kfs.generated"
-EventType.BREACH_DETECTED  # "breach.detected"
-EventType.BREACH_NOTIFIED  # "breach.notified"
-EventType.BREACH_CLOSED  # "breach.closed"
-EventType.GRIEVANCE_LOGGED  # "grievance.logged"
-EventType.GRIEVANCE_RESOLVED  # "grievance.resolved"
-EventType.DATA_PURGED  # "data.purged"
-EventType.DATA_ARCHIVED  # "data.archived"
-EventType.PROVISIONING_COMPUTED  # "provisioning.computed"
-EventType.SMA_CLASSIFIED  # "sma.classified"
-EventType.INCOME_RECOGNITION_SUSPENDED  # "income_recognition.suspended"
-EventType.RAZORPAY_ORDER_CREATE  # "razorpay.order.create"
-EventType.RAZORPAY_ORDER_CREATED  # "razorpay.order.created"
-EventType.RAZORPAY_PAYMENT_CAPTURED  # "razorpay.payment.captured"
-EventType.RAZORPAY_PAYMENT_FAILED  # "razorpay.payment.failed"
-EventType.RAZORPAY_PAYMENT_REFUNDED  # "razorpay.payment.refunded"
-EventType.RAZORPAY_SUBSCRIBE  # "razorpay.subscribe"
-EventType.RAZORPAY_SUBSCRIPTION_CREATED  # "razorpay.subscription.created"
-EventType.RAZORPAY_SUBSCRIPTION_CHARGED  # "razorpay.subscription.charged"
-EventType.RAZORPAY_SUBSCRIPTION_FAILED  # "razorpay.subscription.failed"
-EventType.RAZORPAY_MANDATE_ACTIVE  # "razorpay.mandate.active"
-EventType.RAZORPAY_MANDATE_INACTIVE  # "razorpay.mandate.inactive"
-EventType.RAZORPAY_WEBHOOK_RECEIVED  # "razorpay.webhook.received"
-EventType.FRAUD_ALERT  # "fraud.alert"
-EventType.WASH_FLAG  # "fraud.wash.flag"
-EventType.VELOCITY_FLAG  # "fraud.velocity.flag"
-EventType.RISK_SCORED  # "risk.scored"
-EventType.RISK_EARLY_WARNING  # "risk.early_warning"
-EventType.NPA_BUCKET_CHANGED  # "npa.bucket.changed"
-EventType.DLG_TRIGGERED  # "npa.dlg.triggered"
-EventType.COLLATERAL_MARKED  # "collateral.marked"
-EventType.COLLATERAL_LIQUIDATED  # "collateral.liquidated"
-EventType.GOVERNANCE_PROPOSAL  # "governance.proposal"
-EventType.GOVERNANCE_EXECUTED  # "governance.executed"
-EventType.RECOVERY_STARTED  # "recovery.started"
-EventType.RECOVERY_COMPLETED  # "recovery.completed"
-EventType.IDENTITY_REGISTERED  # "identity.registered"
-EventType.IDENTITY_ROTATED  # "identity.rotated"
-EventType.NOTIFICATION_SENT  # "notification.sent"
-EventType.REPORT_GENERATED  # "report.generated"
-EventType.UNDERWRITER_APPROVED  # "underwriter.approved"
-EventType.UNDERWRITER_REJECTED  # "underwriter.rejected"
-EventType.UNDERWRITER_ESCALATED  # "underwriter.escalated"
-EventType.UNDERWRITER_CONDITIONAL_APPROVED  # "underwriter.conditional_approved"
-EventType.UNDERWRITER_REVIEW  # "underwriter.review"
-EventType.UNDERWRITE_REQUEST  # "underwrite.request"
-EventType.UNDERWRITE_RULE_VIOLATED  # "underwrite.rule.violated"
-EventType.DOCUMENT_GENERATED  # "document.generated"
-EventType.DISBURSEMENT_PROCESSED  # "disbursement.processed"
-EventType.COLLECTION_UPDATED  # "collection.updated"
-EventType.SETTLEMENT_COMPLETED  # "settlement.completed"
-EventType.ORIGINATION_CREATED  # "origination.created"
-EventType.ORIGINATION_SUBMITTED  # "origination.submitted"
-EventType.SERVICING_STARTED  # "servicing.started"
-EventType.PAYMENT_RECEIVED  # "payment.received"
-EventType.PAYMENT_DUE  # "payment.due"
-EventType.PAYMENT_OVERDUE  # "payment.overdue"
-EventType.FEE_ASSESSED  # "fee.assessed"
-EventType.STATEMENT_GENERATED  # "statement.generated"
-EventType.COMMUNICATION_SENT  # "communication.sent"
-EventType.WORKFLOW_STARTED  # "workflow.started"
-EventType.WORKFLOW_COMPLETED  # "workflow.completed"
-EventType.DECISION_MADE  # "decision.made"
-EventType.SAGA_STARTED  # "saga.started"
-EventType.SAGA_COMPLETED  # "saga.completed"
-EventType.SAGA_ROLLED_BACK  # "saga.rolled_back"
-EventType.SAGA_COMPENSATE  # "saga.compensate"
-EventType.DUPLICATE_DROPPED  # "idempotency.duplicate_dropped"
-EventType.UNDERWRITE_REQUEST  # "underwrite.request"
-EventType.MECHANISM_REJECTED  # "mechanism.rejected"
-EventType.GRAPH_PATH  # "graph_path"
-EventType.GRAPH_PATH_RESULT  # "graph_path_result"
-EventType.GRAPH_CREDIT_LIMIT  # "graph_credit_limit"
-EventType.GRAPH_CREDIT_LIMIT_RESULT  # "graph_credit_limit_result"
-EventType.GRAPH_USERS  # "graph_users"
-EventType.GRAPH_USERS_RESULT  # "graph_users_result"
+Type.SEED_ADDED  # "seed.added"
+Type.USER_ADDED  # "user.added"
+Type.LOAN_ORIGINATED  # "loan.originated"
+Type.REPAID  # "repaid"
+Type.DEFAULT_OCCURRED  # "default.occurred"
+Type.REVOKED  # "revoked"
+Type.QUOTE  # "quote"
+Type.QUOTE_CALCULATED  # "quote.calculated"
+Type.PRICING_REQUEST  # "pricing.request"
+Type.PRICING_COMPUTED  # "pricing.computed"
+Type.PENAL_INTEREST_ASSESSED  # "penal_interest.assessed"
+Type.FORECLOSURE_COMPUTED  # "foreclosure.computed"
+Type.PREPAYMENT_REQUEST  # "prepayment.request"
+Type.PREPAYMENT_PROCESSED  # "prepayment.processed"
+Type.KYC_VERIFIED  # "kyc.verified"
+Type.KYC_REJECTED  # "kyc.rejected"
+Type.AML_CLEARED  # "aml.cleared"
+Type.AML_FROZEN  # "aml.frozen"
+Type.CKYC_VERIFY  # "ckyc.verify"
+Type.CKYC_VERIFIED  # "ckyc.verified"
+Type.CKYC_REJECTED  # "ckyc.rejected"
+Type.CREDIT_BUREAU_CHECK  # "credit_bureau.check"
+Type.CREDIT_BUREAU_CHECKED  # "credit_bureau.checked"
+Type.CREDIT_BUREAU_CHECK_FAILED  # "credit_bureau.check_failed"
+Type.CONSENT_RECORDED  # "consent.recorded"
+Type.CONSENT_WITHDRAWN  # "consent.withdrawn"
+Type.CONSENT_EXPIRED  # "consent.expired"
+Type.DSR_REQUEST  # "dsr.request"
+Type.DSR_REQUESTED  # "dsr.requested"
+Type.DSR_FULFILLED  # "dsr.fulfilled"
+Type.DSR_REJECTED  # "dsr.rejected"
+Type.KFS_GENERATE  # "kfs.generate"
+Type.KFS_GENERATED  # "kfs.generated"
+Type.BREACH_DETECTED  # "breach.detected"
+Type.BREACH_NOTIFIED  # "breach.notified"
+Type.BREACH_CLOSED  # "breach.closed"
+Type.GRIEVANCE_LOGGED  # "grievance.logged"
+Type.GRIEVANCE_RESOLVED  # "grievance.resolved"
+Type.DATA_PURGED  # "data.purged"
+Type.DATA_ARCHIVED  # "data.archived"
+Type.PROVISIONING_COMPUTED  # "provisioning.computed"
+Type.SMA_CLASSIFIED  # "sma.classified"
+Type.INCOME_RECOGNITION_SUSPENDED  # "income_recognition.suspended"
+Type.RAZORPAY_ORDER_CREATE  # "razorpay.order.create"
+Type.RAZORPAY_ORDER_CREATED  # "razorpay.order.created"
+Type.RAZORPAY_PAYMENT_CAPTURED  # "razorpay.payment.captured"
+Type.RAZORPAY_PAYMENT_FAILED  # "razorpay.payment.failed"
+Type.RAZORPAY_PAYMENT_REFUNDED  # "razorpay.payment.refunded"
+Type.RAZORPAY_SUBSCRIBE  # "razorpay.subscribe"
+Type.RAZORPAY_SUBSCRIPTION_CREATED  # "razorpay.subscription.created"
+Type.RAZORPAY_SUBSCRIPTION_CHARGED  # "razorpay.subscription.charged"
+Type.RAZORPAY_SUBSCRIPTION_FAILED  # "razorpay.subscription.failed"
+Type.RAZORPAY_MANDATE_ACTIVE  # "razorpay.mandate.active"
+Type.RAZORPAY_MANDATE_INACTIVE  # "razorpay.mandate.inactive"
+Type.RAZORPAY_WEBHOOK_RECEIVED  # "razorpay.webhook.received"
+Type.FRAUD_ALERT  # "fraud.alert"
+Type.WASH_FLAG  # "fraud.wash.flag"
+Type.VELOCITY_FLAG  # "fraud.velocity.flag"
+Type.RISK_SCORED  # "risk.scored"
+Type.RISK_EARLY_WARNING  # "risk.early_warning"
+Type.NPA_BUCKET_CHANGED  # "npa.bucket.changed"
+Type.DLG_TRIGGERED  # "npa.dlg.triggered"
+Type.COLLATERAL_MARKED  # "collateral.marked"
+Type.COLLATERAL_LIQUIDATED  # "collateral.liquidated"
+Type.GOVERNANCE_PROPOSAL  # "governance.proposal"
+Type.GOVERNANCE_EXECUTED  # "governance.executed"
+Type.RECOVERY_STARTED  # "recovery.started"
+Type.RECOVERY_COMPLETED  # "recovery.completed"
+Type.IDENTITY_REGISTERED  # "identity.registered"
+Type.IDENTITY_ROTATED  # "identity.rotated"
+Type.NOTIFICATION_SENT  # "notification.sent"
+Type.REPORT_GENERATED  # "report.generated"
+Type.UNDERWRITER_APPROVED  # "underwriter.approved"
+Type.UNDERWRITER_REJECTED  # "underwriter.rejected"
+Type.UNDERWRITER_ESCALATED  # "underwriter.escalated"
+Type.UNDERWRITER_CONDITIONAL_APPROVED  # "underwriter.conditional_approved"
+Type.UNDERWRITER_REVIEW  # "underwriter.review"
+Type.UNDERWRITE_REQUEST  # "underwrite.request"
+Type.UNDERWRITE_RULE_VIOLATED  # "underwrite.rule.violated"
+Type.DOCUMENT_GENERATED  # "document.generated"
+Type.DISBURSEMENT_PROCESSED  # "disbursement.processed"
+Type.COLLECTION_UPDATED  # "collection.updated"
+Type.SETTLEMENT_COMPLETED  # "settlement.completed"
+Type.ORIGINATION_CREATED  # "origination.created"
+Type.ORIGINATION_SUBMITTED  # "origination.submitted"
+Type.SERVICING_STARTED  # "servicing.started"
+Type.PAYMENT_RECEIVED  # "payment.received"
+Type.PAYMENT_DUE  # "payment.due"
+Type.PAYMENT_OVERDUE  # "payment.overdue"
+Type.FEE_ASSESSED  # "fee.assessed"
+Type.STATEMENT_GENERATED  # "statement.generated"
+Type.COMMUNICATION_SENT  # "communication.sent"
+Type.WORKFLOW_STARTED  # "workflow.started"
+Type.WORKFLOW_COMPLETED  # "workflow.completed"
+Type.DECISION_MADE  # "decision.made"
+Type.SAGA_STARTED  # "saga.started"
+Type.SAGA_COMPLETED  # "saga.completed"
+Type.SAGA_ROLLED_BACK  # "saga.rolled_back"
+Type.SAGA_COMPENSATE  # "saga.compensate"
+Type.DUPLICATE_DROPPED  # "idempotency.duplicate_dropped"
+Type.UNDERWRITE_REQUEST  # "underwrite.request"
+Type.MECHANISM_REJECTED  # "mechanism.rejected"
+Type.GRAPH_PATH  # "graph_path"
+Type.GRAPH_PATH_RESULT  # "graph_path_result"
+Type.GRAPH_CREDIT_LIMIT  # "graph_credit_limit"
+Type.GRAPH_CREDIT_LIMIT_RESULT  # "graph_credit_limit_result"
+Type.GRAPH_USERS  # "graph_users"
+Type.GRAPH_USERS_RESULT  # "graph_users_result"
 # + `*` commands (identity.register, identity.rotate, fee.assess, etc.)
-# Full 105+ type registry in underwrite/events.py:62
+# Full 132 type registry in underwrite/message.py:140
 ```
 
 Convention: events ending in `.past_tense` (e.g. `loan.originated`) are **notifications** of something that happened. Events ending in a bare noun (e.g. `fee.assess`, `payment.receive`) are **commands** requesting an action.
@@ -289,6 +289,7 @@ Sqlite(path="./store.db")  # persistent on disk
 
 # Migration runner
 from underwrite.migrate import default_plan
+
 store.migrate(default_plan())  # idempotent; runs pending versions in BEGIN IMMEDIATE
 ```
     operation_timeout=5.0,  # timeout per I/O op
@@ -684,7 +685,7 @@ Validates service names against known list. Uses `SIGTERM` handler for graceful 
 
 ### `underwrite list`
 
-List all 28 registered nano services.
+List all 34 registered nano services.
 
 ```bash
 $ underwrite list

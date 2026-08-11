@@ -18,7 +18,7 @@ from underwrite.services.audit import Handler as AuditHandler
 
 
 def memory_runtime(enable_metrics: bool = True) -> Runtime:
-    """Returns a Runtime backed by InMemory for test isolation."""
+    """Returns a Runtime backed by Sqlite for test isolation."""
     cfg = Configuration.default()
     cfg.store.backend = "memory"
     cfg.metrics.enabled = enable_metrics

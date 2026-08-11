@@ -50,7 +50,7 @@ Alternatively, manually:
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev,risk,postgres]"
+pip install -e ".[dev,risk,serve,otlp,vault,aws]"
 ```
 
 Helper scripts are available:
@@ -99,7 +99,7 @@ The current test suite has **828+ tests** across **59 test files** covering all 
 
 ```
 feat: add SQS event bus implementation
-fix: prevent path traversal via triple-dot sequences in FileStore
+fix: prevent path traversal via triple-dot sequences in underwrite.store.Sqlite
 refactor: extract factory methods from Runtime into dedicated module
 test: add property-based tests for DelegationGraph
 docs: update CONTRIBUTING with review expectations

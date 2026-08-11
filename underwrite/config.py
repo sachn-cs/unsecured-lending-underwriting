@@ -92,19 +92,23 @@ class BusConfig(ForbidExtra):
 
 
 class StoreConfig(ForbidExtra):
-    """Configuration for the persistence store (memory, filesystem, or postgres)."""
+    """Configuration for the SQLite persistence store.
 
-    backend: str = "memory"
-    dsn: str = ""
-    pool_size: int = Field(default=5, ge=1)
-    read_backend: str = ""
-    read_dsn: str = ""
-    data_residency: str = "india"  # "india" or "global" - restricts data storage to Indian regions
+    The platform ships with one backend: SQLite (stdlib ``sqlite3``).
+    ``backend`` accepts only ``"sqlite"``; the legacy ``"memory"``
+    alias is mapped to an in-memory SQLite database. ``path``
+    names the database file (default ``./store.db``); use the
+    well-known ``":memory:"`` path for an ephemeral database.
+    """
+
+    backend: str = "sqlite"
+    path: str = "./store.db"
+    busy_timeout: float = Field(default=30.0, ge=0.0, le=600.0)
 
     @field_validator("backend")
     @classmethod
     def check_backend(cls, v: str) -> str:
-        allowed = {"memory", "filesystem", "postgres"}
+        allowed = {"sqlite", "memory"}
         if v not in allowed:
             raise ValueError(f"store.backend must be one of {allowed}, got {v!r}")
         return v
@@ -430,7 +434,7 @@ class Configuration(ForbidExtra):
     @classmethod
     def default(cls) -> Configuration:
         config = Configuration()
-        config.store.backend = "filesystem"
+        config.store.backend = "sqlite"
         for service_name in HANDLER_NAMES:
             config.services[service_name] = ServiceConfig(enabled=False)
         return config
@@ -655,10 +659,8 @@ class Configuration(ForbidExtra):
             "UNDERWRITE_BUS_MAX_WORKERS": ("bus", "max_workers", int),
             "UNDERWRITE_BUS_MAX_FUTURES": ("bus", "max_futures", int),
             "UNDERWRITE_STORE_BACKEND": ("store", "backend", str),
-            "UNDERWRITE_STORE_DSN": ("store", "dsn", str),
-            "UNDERWRITE_STORE_POOL_SIZE": ("store", "pool_size", int),
-            "UNDERWRITE_STORE_READ_BACKEND": ("store", "read_backend", str),
-            "UNDERWRITE_STORE_READ_DSN": ("store", "read_dsn", str),
+            "UNDERWRITE_STORE_PATH": ("store", "path", str),
+            "UNDERWRITE_STORE_BUSY_TIMEOUT": ("store", "busy_timeout", float),
             "UNDERWRITE_LOG_LEVEL": ("logging", "level", str),
             "UNDERWRITE_LOG_OUTPUT": ("logging", "output", str),
             "UNDERWRITE_LOG_FORMAT": ("logging", "log_format", str),

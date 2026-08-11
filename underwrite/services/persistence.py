@@ -19,7 +19,7 @@ import threading
 from typing import Any, Generic, TypeVar
 
 from underwrite.logger import logger
-from underwrite.store import Sqlite, Store
+from underwrite.store import StoreBackend
 
 T = TypeVar("T")
 
@@ -32,12 +32,12 @@ class StoreRepository(Generic[T]):
     concurrency control (use the service's own lock).
     """
 
-    def __init__(self, store: Store | Sqlite | Store | Sqlite | Store | Sqlite | Store | Sqlite, key: str) -> None:
+    def __init__(self, store: StoreBackend, key: str) -> None:
         """Initialize the repository.
 
         Args:
-            store: The shared Store | Sqlitebackend.
-            key: Store | Sqlitekey to read/write state under.
+            store: The shared store backend.
+            key: store key to read/write state under.
         """
         self.store = store
         self.key = key
@@ -91,15 +91,15 @@ class TypedStoreRepository(StoreRepository[T]):
 
     def __init__(
         self,
-        store: Store | Sqlite | Store | Sqlite | Store | Sqlite | Store | Sqlite,
+        store: StoreBackend,
         key: str,
         expected_type: type[T] | tuple[type[T], ...],
     ) -> None:
         """Initialize the typed repository.
 
         Args:
-            store: The shared Store | Sqlitebackend.
-            key: Store | Sqlitekey to read/write state under.
+            store: The shared store backend.
+            key: store key to read/write state under.
             expected_type: Type or tuple of types that loaded values
                 must be instances of.
         """
@@ -135,7 +135,7 @@ class BatchedStoreRepository(TypedStoreRepository[T]):
 
     def __init__(
         self,
-        store: Store | Sqlite | Store | Sqlite | Store | Sqlite | Store | Sqlite,
+        store: StoreBackend,
         key: str,
         expected_type: type | tuple[type, ...],
         sync_interval: int = 10,
@@ -143,8 +143,8 @@ class BatchedStoreRepository(TypedStoreRepository[T]):
         """Initialize the batched repository.
 
         Args:
-            store: The shared Store | Sqlitebackend.
-            key: Store | Sqlitekey to read/write state under.
+            store: The shared store backend.
+            key: store key to read/write state under.
             expected_type: Type constraint for loaded values.
             sync_interval: Persist only every N incr_and_maybe_sync()
                 calls. Minimum value is 1.

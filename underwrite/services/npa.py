@@ -12,6 +12,7 @@ Extends the base NPA service with:
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 from underwrite.authz import AccessControl
@@ -25,7 +26,7 @@ from underwrite.metrics import Collector, SystemClock
 from underwrite.saga import Orchestrator
 from underwrite.services.base import Dependencies, StatefulService
 from underwrite.services.persistence import TypedStoreRepository
-from underwrite.store import Sqlite, Store
+from underwrite.store import StoreBackend
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
 from underwrite.validate import PayloadValidator
@@ -69,7 +70,7 @@ class Handler(StatefulService):
         self,
         name: str,
         bus: EventBus | LocalBus,
-        store: Store | Sqlite | Store | Sqlite | Store | Sqlite | Store | Sqlite,
+        store: StoreBackend,
         identity: Keypair | None = None,
         metrics: Collector | None = None,
         health: Checks | None = None,
@@ -110,6 +111,7 @@ class Handler(StatefulService):
         )
         self.clock: SystemClock = SystemClock()
         self.accounts: dict[str, dict[str, Any]] = {}
+        self.loan_borrowers: dict[str, str] = {}
         self.trigger_days: int = kwargs.get("dlg_trigger_days", DLG_TRIGGER_DAYS_DEFAULT)
         self.npa_days: int = kwargs.get("npa_days", NPA_DAYS_DEFAULT)
         self.provisioning_rates: dict[str, float] = {
@@ -126,6 +128,9 @@ class Handler(StatefulService):
         loaded = self.repo.load(default={})
         if loaded:
             self.accounts = loaded
+            self.loan_borrowers = {
+                record["loan_id"]: borrower for borrower, record in loaded.items() if record.get("loan_id")
+            }
 
     def handle(self, event: Message) -> None:
         """Process loan-originated and default-occurred events.
@@ -137,6 +142,7 @@ class Handler(StatefulService):
             if event.event_type == Type.LOAN_ORIGINATED:
                 borrower: str = PayloadValidator().non_empty(event.payload, "borrower")
                 principal: float = PayloadValidator().finite(event.payload, "principal", 0.0)
+                loan_id: str = event.payload.get("loan_id", "")
                 self.accounts[borrower] = {
                     "originated_at": self.clock.iso(),
                     "days_overdue": 0,
@@ -148,6 +154,9 @@ class Handler(StatefulService):
                     "provisioning_amount": 0.0,
                     "income_suspended": False,
                 }
+                if loan_id:
+                    self.accounts[borrower]["loan_id"] = loan_id
+                    self.loan_borrowers[loan_id] = borrower
                 self.sync()
             elif event.event_type == Type.DEFAULT_OCCURRED:
                 borrower = event.payload.get("borrower", "")
@@ -160,6 +169,8 @@ class Handler(StatefulService):
                 days: int = record.get("days_overdue", self.trigger_days)
                 event_principal: float = PayloadValidator().finite(event.payload, "principal", 0.0)
                 self.classify_and_provision(borrower, record, days, event.correlation_id, event_principal)
+            elif event.event_type == Type.PAYMENT_OVERDUE:
+                self.on_payment_overdue(event)
 
     def mark_overdue(self, borrower: str, days: int) -> None:
         """Update the days-past-due counter for a borrower.
@@ -172,6 +183,40 @@ class Handler(StatefulService):
             if borrower in self.accounts:
                 self.accounts[borrower]["days_overdue"] = days
                 self.sync()
+
+    def on_payment_overdue(self, event: Message) -> None:
+        """Resolve the borrower for an overdue payment and classify the account.
+
+        ``PAYMENT_OVERDUE`` events are keyed by ``loan_id`` while the
+        NPA ledger is keyed by ``borrower``; the loan->borrower map is
+        populated from ``LOAN_ORIGINATED`` so overdue schedules can be
+        attributed to the correct account.
+
+        Args:
+            event: The PAYMENT_OVERDUE event with loan_id, due_date,
+                and amount payload.
+        """
+        loan_id: str = event.payload.get("loan_id", "")
+        if not loan_id:
+            logger.warning("dropping PAYMENT_OVERDUE with missing loan_id")
+            return
+        borrower: str = self.loan_borrowers.get(loan_id, loan_id)
+        record = self.accounts.get(borrower)
+        if record is None:
+            logger.debug("no NPA account for loan {} (borrower {})", loan_id, borrower)
+            return
+        days: int = int(record.get("days_overdue", 0))
+        due_str: str = event.payload.get("due_date", "")
+        if due_str:
+            try:
+                due = datetime.fromisoformat(str(due_str))
+                overdue = max(0, (self.clock.utc_now() - due).days)
+                days = max(days, overdue)
+            except (ValueError, TypeError):
+                logger.debug("invalid due_date {} on PAYMENT_OVERDUE for loan {}", due_str, loan_id)
+        self.mark_overdue(borrower, days)
+        event_principal: float = PayloadValidator().finite(event.payload, "amount", 0.0)
+        self.classify_and_provision(borrower, record, days, event.correlation_id, event_principal)
 
     def classify_and_provision(
         self,

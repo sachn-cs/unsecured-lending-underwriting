@@ -48,13 +48,24 @@ Plugin discovery is also supported via `importlib.metadata.entry_points` under t
 
 ### 5. What state store should I use?
 
-| Backend | Class | Use Case |
-|---------|-------|----------|
-| `memory` | `MemoryStore` | Development, testing, single-process. Data is lost on restart. |
-| `filesystem` | `FileStore` | Local development with persistence. Atomic writes with `fsync`. Circuit breaker optional. |
-| `postgres` | `PostgresStore` | Production. Connection pooling, circuit breaker, retry policy, migration engine. |
+There is one store backend — `Sqlite` (stdlib `sqlite3`). Pick the
+path that matches the use case:
 
-Configured via `store.backend` in `underwrite.json` or `UNDERWRITE_STORE_BACKEND` env var. CQRS is supported via `CQRSStore` — separate read and write stores (`underwrite/store.py:566`). Read replica is configured via `store.read_backend` and `store.read_dsn`.
+| Backend selector | Path | Use Case |
+|------------------|------|----------|
+| `sqlite` | `./store.db` (default) | Production single-node. WAL journal, `busy_timeout`. |
+| `sqlite` | `":memory:"` | Tests, ephemeral workloads. |
+| `memory`   | `":memory:"` (alias) | Tests, ephemeral workloads. |
+
+Configure via `store.backend` and `store.path` in `underwrite.json`
+or via `UNDERWRITE_STORE_BACKEND` / `UNDERWRITE_STORE_PATH` env vars.
+The migration engine is idempotent and runs SQLite-native
+`BEGIN IMMEDIATE` transactions.
+
+> Earlier releases shipped with separate `MemoryStore`, `FileStore`
+> and `PostgresStore` classes plus a `CQRSStore` wrapper. Those have
+> been removed in this revision. Existing data on those backends is
+> not migrated automatically.
 
 ---
 
@@ -103,8 +114,13 @@ The `ServiceSupervisor` (`underwrite/supervisor.py`) tracks handler failures:
 Underwrite is designed for **local-first, scale-up** (single process). Scaling strategies:
 
 - **Vertical**: Increase worker threads via `bus.max_workers` and `NanoService` `max_concurrent`.
-- **Backend swap**: Replace `LocalBus` and `MemoryStore`/`FileStore` with SQS + Postgres for cross-process deployments.
-- **CQRS**: Use `CQRSStore` with a read replica to offload query traffic.
+- **Backend swap**: Replace `LocalBus` with `SqsBus` / `ModalBus`
+  for cross-process deployments. The state store stays on SQLite in
+  this revision — multi-node deployments should run one SQLite file
+  per process and let the bus fan out work.
+- **CQRS**: Not supported in this revision. Read replicas can be
+  wired by adding a custom `Store` subclass that proxies writes to
+  the primary and reads from a replica path.
 - **Service segregation**: Run separate underwrite processes for different service groups (e.g. one for risk/fraud, another for servicing/collections).
 - **Plugin services** run in the same process but are independently deployable via `discover_plugins()`.
 
@@ -232,7 +248,7 @@ Migrations are defined in `underwrite/migrate.py` using the `MigrationPlan` and 
 The project uses standard Python tooling:
 
 ```bash
-pip install -e ".[dev,risk,postgres]"
+pip install -e ".[dev,risk,serve,otlp,vault,aws]"
 make test        # Runs pytest with coverage
 make lint        # Runs ruff
 make typecheck   # Runs mypy
@@ -251,7 +267,8 @@ make typecheck   # Runs mypy
 
 - **Python**: 3.10, 3.11, 3.12, or 3.13 (declared in `pyproject.toml` `requires-python = ">=3.10"`).
 - **OS**: Linux, macOS, or Windows (pure Python, no platform-specific dependencies).
-- **Optional**: PostgreSQL (for `PostgresStore`), Docker (for `testcontainers` in integration tests).
+- **Optional**: PostgreSQL is no longer required — SQLite ships with
+  Python. Docker remains useful for local compose.
 - **No external message broker required** — `LocalBus` is fully in-process.
 
 ---

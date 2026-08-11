@@ -10,7 +10,7 @@ The saga implementation lives in `saga.py`. The `SagaOrchestrator` class (`saga.
 
 ## Problem
 
-How should multi-service transactions be coordinated with rollback capability, given that there is no distributed transaction coordinator, no two-phase commit, and services use different `Store` backends (MemoryStore, FileStore, PostgresStore)?
+How should multi-service transactions be coordinated with rollback capability, given that there is no distributed transaction coordinator and no two-phase commit, and all services share a single `Sqlite` store?
 
 ## Decision
 
@@ -59,7 +59,7 @@ The saga emitter is registered via `SagaOrchestrator.register_emitter(saga_name,
 
 ## Alternatives Considered
 
-- **Distributed transactions (XA / two-phase commit)**: Adds a transaction coordinator, database lock contention, and is impractical across different `Store` backends (FileStore and PostgresStore have no common coordination protocol). Two-phase commit also holds locks for the transaction duration, which conflicts with the `NanoService` pattern of emitting events and letting subscribers process asynchronously.
+- **Distributed transactions (XA / two-phase commit)**: Adds a transaction coordinator, database lock contention, and is impractical for the `Sqlite` store. Two-phase commit also holds locks for the transaction duration, which conflicts with the `NanoService` pattern of emitting events and letting subscribers process asynchronously.
 
 - **Outbox pattern with CDC**: Appropriate for cross-service transactions with Kafka, but adds infrastructure complexity (Kafka cluster, Debezium, schema registry) not justified in a single-process system. The `LocalBus` already provides reliable in-process delivery with DLQ guarantees.
 
@@ -77,4 +77,4 @@ The saga emitter is registered via `SagaOrchestrator.register_emitter(saga_name,
 - Eventual consistency — there is a window between step execution and completion persistence where the system is partially committed. A crash during `execute_step()` but before `persist_saga()` could result in a partially-executed step that `replay_saga()` must handle via idempotency
 - No ACID guarantees — sagas provide "compensating transaction" semantics, not atomicity. Compensations themselves can fail (handled by `__rollback()` at `saga.py:309-310`, which logs compensation errors but does not retry them)
 - Compensation logic must be implemented per service — adding a saga step requires both forward handling and backward compensation in the target service. Skipping compensation is a `return` which silently no-ops — tracked in `docs/REFACTORING_PLAN.md`.
-- Currently in-memory only — `SagaOrchestrator.__init__()` defaults to `MemoryStore` (`saga.py:141`), meaning all sagas are lost on restart unless a durable `Store` (FileStore or PostgresStore) is provided. The `__load_sagas()` method exists but is only effective with persistent store backends
+- Default in-memory only — `SagaOrchestrator.__init__()` defaults to `Sqlite(":memory:")` (`saga.py:141`), meaning all sagas are lost on restart unless a durable `Sqlite` path is provided. The `__load_sagas()` method restores the in-flight sagas on startup from the configured path.

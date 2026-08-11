@@ -18,8 +18,8 @@
 
 - **34 wired nano-services + 4 KYC provider clients** — KYC / AML (PAN + Aadhaar Verhoeff), CIBIL / Experian / Equifax credit bureau, CKYC registry, RBI rate-capped pricing, KFS generation, DPDPA consent + DSR, Razorpay PG, risk scoring, fraud detection, collections, recovery, notifications, governance
 - **Event-driven** — Typed events with Ed25519 signatures, saga orchestration, dead-letter queues, circuit breakers
-- **Pluggable backends** — InMemory / Disk / Sqlite stores; local / Modal event bus; console / OTLP tracing
-- **1167 tests** — Rate limiting, idempotency guards, PII redaction, Prometheus metrics
+- **Pluggable backends** — Sqlite store (file or `:memory:`); local / Modal event bus; console / OTLP tracing
+- **1313 tests** — Rate limiting, idempotency guards, PII redaction, Prometheus metrics
 - **DPDPA 2023 + RBI DLG aligned** — Per-product rate caps, all-in-cost APR, penal-interest cap, KFS cooling-off, consent lifecycle, DSR fulfillment, breach notification, auto-purge
 
 ## Status
@@ -83,7 +83,7 @@ Out of scope:
 
 ```bash
 pip install underwrite
-pip install "underwrite[risk,serve,postgres,otlp,vault,aws]"
+pip install "underwrite[risk,serve,otlp,vault,aws]"
 ```
 
 ### From source
@@ -93,25 +93,23 @@ git clone https://github.com/sachncs/underwrite.git
 cd underwrite
 ./setup.sh
 source .venv/bin/activate
-pip install -e ".[dev,risk,serve,postgres,otlp,vault,aws]"
+pip install -e ".[dev,risk,serve,otlp,vault,aws]"
 ```
 
 | Extra | Provides |
 |-------|----------|
 | `risk` | NumPy, scikit-learn — ML risk models |
 | `serve` | Uvicorn, FastAPI — HTTP server |
-| `postgres` | psycopg2-binary — Postgres state store (optional, legacy) |
 | `otlp` | OpenTelemetry SDK — distributed tracing |
 | `vault` | hvac — HashiCorp Vault secrets |
 | `aws` | boto3 — SES, SQS, Secrets Manager |
 | `security` | bandit, pip-audit — vulnerability scanning |
-| `dev` | pytest, ruff, mypy, hypothesis, testcontainers |
+| `dev` | pytest, ruff, mypy, hypothesis |
 
 ### Prerequisites
 
 - **Python 3.10+**
-- **PostgreSQL 14+** (optional — memory / filesystem backends work without it)
-- **Docker** (optional — for `docker compose up` with Postgres + Vault + OTLP)
+- **Docker** (optional — for `docker compose up` with Vault + OTLP)
 
 ## Quick Start
 
@@ -120,7 +118,7 @@ git clone https://github.com/sachncs/underwrite.git
 cd underwrite
 ./setup.sh
 source .venv/bin/activate
-python -m pytest tests/ --tb=short -q   # 1167 tests
+python -m pytest tests/ --tb=short -q   # 1313 tests
 ```
 
 To run an Indian lending scenario:
@@ -169,8 +167,8 @@ Configure via **JSON file** (created with `underwrite init`), **env vars**, or b
 
 | Setting | Env Variable | Default | Description |
 |---------|--------------|---------|-------------|
-| State backend | `UNDERWRITE_STORE_BACKEND` | `memory` | `memory` / `file` / `postgres` |
-| Store DSN | `UNDERWRITE_STORE_DSN` | — | e.g. `postgresql://user:pass@localhost:5432/underwrite` |
+| State backend | `UNDERWRITE_STORE_BACKEND` | `sqlite` | `sqlite` / `memory` |
+| Store path | `UNDERWRITE_STORE_PATH` | `./store.db` | SQLite database path (use `:memory:` for ephemeral) |
 | Personal-loan rate cap | `UNDERWRITE_PERSONAL_LOAN_RATE_CAP` | `0.28` | RBI cap |
 | Penal interest cap | `UNDERWRITE_PENAL_INTEREST_CAP` | `0.24` | RBI cap |
 | Bearer auth | `UNDERWRITE_REQUIRE_AUTH` | `false` | Require bearer token on `/v1/*` |
@@ -182,7 +180,7 @@ Each nano-service extends `NanoService` with a single `handle(event: Event) -> N
 1. **Subscribe** — declare interest in event types via config
 2. **Dispatch** — handler wrapped with authz, idempotency, tracing, metrics, timeout
 3. **Emit** — `self.emit(event)` signs with Ed25519 and publishes to the bus
-4. **Persist** — state via `Store` (InMemory / Disk / Sqlite)
+4. **Persist** — state via `Sqlite` (file path or `:memory:`)
 
 Cross-cutting concerns (authz, tracing, metrics, sagas, supervisor, circuit breaker) are injected by the bus and runtime — not inherited by services.
 
@@ -200,7 +198,7 @@ Cross-cutting concerns (authz, tracing, metrics, sagas, supervisor, circuit brea
 |--------|------|-------------|
 | `underwrite.Core` | ABC | Base class; implement `handle(event)` |
 | `underwrite.bus` | module | Event bus — pub/sub, DLQ, rate limiter |
-| `underwrite.store` | module | State store — InMemory / Disk / Sqlite |
+| `underwrite.store` | module | State store — Sqlite (file path or `:memory:`) |
 | `underwrite.saga` | module | Saga orchestrator |
 | `underwrite.authz` | module | Access control + Ed25519 verification |
 | `underwrite.keypair` | module | Ed25519 key management |
@@ -217,7 +215,7 @@ underwrite/
 ├── underwrite/                    # Source (90+ modules, fully typed)
 │   ├── config.py                 # Pydantic configuration (28 sections)
 │   ├── bus.py                    # Event bus — pub/sub, DLQ, rate limiter
-│   ├── store.py                  # State store — InMemory / Disk / Sqlite
+│   ├── store.py                  # State store — Sqlite (file path or :memory:)
 │   ├── saga.py                   # Saga orchestrator
 │   ├── authz.py                  # Access control & Ed25519 verification
 │   ├── keypair.py                # Ed25519 key management
@@ -257,7 +255,7 @@ underwrite/
 ## Development
 
 ```bash
-pip install -e ".[dev,risk,serve,postgres,otlp,vault,aws]"
+pip install -e ".[dev,risk,serve,otlp,vault,aws]"
 pytest tests/ --tb=short -q
 ruff check underwrite/
 ruff format underwrite/
@@ -275,7 +273,7 @@ pytest tests/ -x --timeout=30
 pytest --cov=underwrite --cov-report=term-missing
 ```
 
-The suite contains **1167 tests** across rate limiting, idempotency, PII redaction, RBAC, saga orchestration, and Prometheus metrics.
+The suite contains **1313 tests** across rate limiting, idempotency, PII redaction, RBAC, saga orchestration, and Prometheus metrics.
 
 ## Build
 
@@ -301,7 +299,7 @@ git tag vX.Y.Z && git push origin vX.Y.Z
 | Cryptography | `cryptography` (Ed25519) |
 | CLI | Typer |
 | Config | Pydantic |
-| State store | InMemory / Disk / Sqlite (stdlib sqlite3) |
+| State store | Sqlite (stdlib `sqlite3`) |
 | Tracing | OpenTelemetry SDK + OTLP |
 | HTTP | FastAPI + Uvicorn |
 | Secrets | HashiCorp Vault (hvac) |
@@ -309,13 +307,13 @@ git tag vX.Y.Z && git push origin vX.Y.Z
 | ML risk | NumPy, scikit-learn |
 | Lint / format | ruff |
 | Type check | mypy |
-| Tests | pytest, pytest-asyncio, pytest-cov, hypothesis, testcontainers |
+| Tests | pytest, pytest-asyncio, pytest-cov, hypothesis |
 | Security | bandit, pip-audit |
 | Mutation testing | mutmut |
 
 ## Roadmap
 
-- **v0.8.x** — Current beta: 34 wired nano-services + 4 KYC provider clients, 1167 tests, Ed25519 event provenance, RBI/DPDPA-aligned defaults.
+- **v0.8.x** — Current beta: 34 wired nano-services + 4 KYC provider clients, 1313 tests, Ed25519 event provenance, RBI/DPDPA-aligned defaults.
 - **v0.9.0** — Planned: real PAN (NSDL/ITD) and Aadhaar (UIDAI) integrations; CKYC live lookup; CIBIL production keys.
 - **v1.0.0** — Planned: live KYC partner-sandbox validation; e-NACH / UPI Autopay mandate collection; full RBAC; documented on-call runbook; pre-built multi-arch Docker images. A Helm chart is not planned.
 

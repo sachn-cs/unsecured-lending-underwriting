@@ -8,7 +8,7 @@ from __future__ import annotations
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.decision import Handler as DecisionHandler
-from underwrite.store import InMemory
+from underwrite.store import Sqlite
 
 
 class TestDecisionService:
@@ -16,7 +16,7 @@ class TestDecisionService:
         bus = LocalBus()
         received: list = []
         bus.subscribe(Type.DECISION_MADE, lambda e: received.append(e))
-        svc = DecisionHandler(name="decision", bus=bus, store=InMemory())
+        svc = DecisionHandler(name="decision", bus=bus, store=Sqlite(":memory:"))
         bus.start()
         svc.handle(
             Message(event_type=Type.RISK_SCORED, source="test", payload={"application_id": "app_1", "score": 0.2})
@@ -29,7 +29,7 @@ class TestDecisionService:
         bus = LocalBus()
         received: list = []
         bus.subscribe(Type.DECISION_MADE, lambda e: received.append(e))
-        svc = DecisionHandler(name="decision", bus=bus, store=InMemory())
+        svc = DecisionHandler(name="decision", bus=bus, store=Sqlite(":memory:"))
         bus.start()
         svc.handle(
             Message(
@@ -45,7 +45,7 @@ class TestDecisionService:
         bus = LocalBus()
         received: list = []
         bus.subscribe(Type.DECISION_MADE, lambda e: received.append(e))
-        svc = DecisionHandler(name="decision", bus=bus, store=InMemory())
+        svc = DecisionHandler(name="decision", bus=bus, store=Sqlite(":memory:"))
         bus.start()
         for _ in range(3):
             svc.handle(
@@ -58,7 +58,7 @@ class TestDecisionService:
         bus = LocalBus()
         received: list = []
         bus.subscribe(Type.DECISION_MADE, lambda e: received.append(e))
-        svc = DecisionHandler(name="decision", bus=bus, store=InMemory())
+        svc = DecisionHandler(name="decision", bus=bus, store=Sqlite(":memory:"))
         bus.start()
         svc.handle(
             Message(event_type=Type.RISK_SCORED, source="test", payload={"application_id": "app_4", "score": 0.5})
@@ -70,7 +70,7 @@ class TestDecisionService:
         bus = LocalBus()
         received: list = []
         bus.subscribe(Type.DECISION_MADE, lambda e: received.append(e))
-        svc = DecisionHandler(name="decision", bus=bus, store=InMemory())
+        svc = DecisionHandler(name="decision", bus=bus, store=Sqlite(":memory:"))
         bus.start()
         svc.handle(
             Message(event_type=Type.RISK_SCORED, source="test", payload={"application_id": "app_5", "score": 0.2})
@@ -79,7 +79,7 @@ class TestDecisionService:
         assert received[0].payload["action"] == "approve"
 
     def test_stores_decision(self) -> None:
-        svc = DecisionHandler(name="decision", bus=LocalBus(), store=InMemory())
+        svc = DecisionHandler(name="decision", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(
             Message(event_type=Type.FRAUD_ALERT, source="test", payload={"application_id": "app_6", "severity": "high"})
         )
@@ -90,7 +90,7 @@ class TestDecisionService:
         assert len(rec["signals"]) == 1
 
     def test_clears_signals_after_evaluation(self) -> None:
-        svc = DecisionHandler(name="decision", bus=LocalBus(), store=InMemory())
+        svc = DecisionHandler(name="decision", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(
             Message(event_type=Type.RISK_SCORED, source="test", payload={"application_id": "app_7", "score": 0.3})
         )
@@ -101,13 +101,13 @@ class TestDecisionService:
         assert rec["action"] == "approve"
 
     def test_ignores_events_without_entity_id(self) -> None:
-        svc = DecisionHandler(name="decision", bus=LocalBus(), store=InMemory())
+        svc = DecisionHandler(name="decision", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(Message(event_type=Type.FRAUD_ALERT, source="test", payload={}))
         svc.handle(Message(event_type="decision.evaluate", source="test", payload={}))
         assert len(svc.store.keys("decision:")) == 0
 
     def test_ignores_unrelated_events(self) -> None:
-        svc = DecisionHandler(name="decision", bus=LocalBus(), store=InMemory())
+        svc = DecisionHandler(name="decision", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(Message(event_type="seed.added", source="test", payload={"application_id": "x"}))
         svc.handle(Message(event_type=Type.RISK_SCORED, source="test", payload={"application_id": "x", "score": 0.2}))
         svc.handle(Message(event_type="decision.evaluate", source="test", payload={"application_id": "x"}))
@@ -119,7 +119,7 @@ class TestDecisionService:
         bus = LocalBus()
         received: list = []
         bus.subscribe(Type.DECISION_MADE, lambda e: received.append(e))
-        svc = DecisionHandler(name="decision", bus=bus, store=InMemory())
+        svc = DecisionHandler(name="decision", bus=bus, store=Sqlite(":memory:"))
         bus.start()
         svc.handle(
             Message(event_type=Type.RISK_SCORED, source="test", payload={"application_id": "app_8", "score": 0.5})
@@ -133,7 +133,7 @@ class TestDecisionService:
 
 class TestDecisionServiceConcurrency:
     def test_concurrent_evaluate_does_not_lose_signals(self) -> None:
-        svc = DecisionHandler(name="decision", bus=LocalBus(), store=InMemory())
+        svc = DecisionHandler(name="decision", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(
             Message(event_type=Type.RISK_SCORED, source="test", payload={"application_id": "app_conc", "score": 0.5})
         )

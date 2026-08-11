@@ -1,7 +1,9 @@
 # Migrations
 
-underwrite has a lightweight, store-agnostic migration engine for schema
-changes.  Migrations are versioned, ordered, and applied in transactions.
+underwrite has a lightweight SQLite-native migration engine for schema
+changes. Migrations are versioned, ordered, and applied in single
+transactions. Idempotency is enforced through a `migrations` table
+that records every version the runner has applied.
 
 ---
 
@@ -18,8 +20,7 @@ A single schema migration:
 class Migration:
     version: int
     description: str
-    statements: list[str]  # SQL statements (for SQL stores)
-    fn: Callable[[Any], None] | None  # callable (for any store)
+    statements: tuple[str, ...]  # SQLite SQL statements
 ```
 
 ### MigrationPlan
@@ -35,21 +36,20 @@ An ordered collection of `Migration` objects:
 
 ## Default Plan
 
-`default_plan()` in `migrate.py:74` defines three migrations:
+`default_plan()` in `migrate.py:84` defines three migrations:
 
 ### v1 — Initial Schema
 
 ```sql
 CREATE TABLE IF NOT EXISTS store (
-    key         TEXT PRIMARY KEY,
-    value       TEXT NOT NULL,
-    updated_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    key   TEXT PRIMARY KEY,
+    value BLOB NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS migrations (
     version     INTEGER PRIMARY KEY,
     description TEXT NOT NULL,
-    applied_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    applied_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 ```
 
@@ -57,14 +57,14 @@ CREATE TABLE IF NOT EXISTS migrations (
 
 ```sql
 CREATE TABLE IF NOT EXISTS dead_letters (
-    id          SERIAL PRIMARY KEY,
-    event_id    TEXT NOT NULL,
-    event_type  TEXT NOT NULL,
-    source      TEXT NOT NULL,
-    payload     TEXT,
-    error       TEXT NOT NULL,
-    failed_at   TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    replayed    BOOLEAN NOT NULL DEFAULT FALSE
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id   TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    source     TEXT NOT NULL,
+    payload    TEXT,
+    error      TEXT NOT NULL,
+    failed_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    replayed   INTEGER NOT NULL DEFAULT 0
 );
 ```
 
@@ -72,9 +72,9 @@ CREATE TABLE IF NOT EXISTS dead_letters (
 
 ```sql
 CREATE TABLE IF NOT EXISTS metrics_snapshots (
-    id           SERIAL PRIMARY KEY,
-    data         JSONB NOT NULL,
-    captured_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    data        TEXT NOT NULL,
+    captured_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 ```
 
@@ -93,46 +93,39 @@ The `underwrite migrate` CLI command also runs pending migrations:
 underwrite migrate
 ```
 
-### PostgresStore
+### `Sqlite.migrate()`
 
-`PostgresStore.migrate()` (`store.py:515-563`):
+`Sqlite.migrate(plan)` (`store.py`):
 
 1. Creates the `migrations` tracking table if it doesn't exist.
 2. Reads the set of already-applied migration versions.
 3. For each pending migration:
+   - Begins an immediate write transaction (`BEGIN IMMEDIATE`).
    - Executes each SQL statement.
    - Inserts a row into `migrations`.
-   - Entire migration runs in a **single transaction**.
-   - On failure: **transaction rolled back**, `MigrationError` raised.
-4. Connection is returned to the pool in the `finally` block.
+   - Commits. On failure: rolls back and raises `MigrationError`.
+4. The whole plan runs serially — a single failed migration aborts
+   the rest. Re-running `migrate()` after a fix only applies the
+   versions that were not previously recorded.
 
 ```python
-# Pseudocode
-conn.autocommit = False
 for migration in plan.pending(applied):
-    try:
-        for stmt in migration.statements:
-            cur.execute(stmt)
-        cur.execute("INSERT INTO migrations ...", (version, description))
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise MigrationError(...)
+    conn.execute("BEGIN IMMEDIATE")
+    for stmt in migration.statements:
+        conn.execute(stmt)
+    conn.execute(
+        "INSERT OR IGNORE INTO migrations (version, description) VALUES (?, ?)",
+        (migration.version, migration.description),
+    )
+    conn.commit()
 ```
 
-### MemoryStore / FileStore
+### Idempotency
 
-`Store.migrate()` is a **no-op** by default.  These stores have no schema
-to migrate.
-
-### CQRSStore
-
-`CQRSStore.migrate()` delegates to the **write store** (`store.py:627`):
-
-```python
-def migrate(self, plan):
-    self.__write.migrate(plan)
-```
+The runner reads existing versions from `migrations` before applying
+anything. A version that is already present is skipped. The
+`INSERT OR IGNORE` on the bookkeeping row means that even a manually
+inserted migration row does not cause a duplicate-key error.
 
 ---
 
@@ -149,13 +142,13 @@ plan.add(
     Migration(
         version=4,
         description="Interest rate cache",
-        statements=[
+        statements=(
             "CREATE TABLE IF NOT EXISTS rate_cache ("
             "  borrower TEXT PRIMARY KEY,"
-            "  rate FLOAT NOT NULL,"
-            "  computed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()"
+            "  rate REAL NOT NULL,"
+            "  computed_at TEXT NOT NULL DEFAULT (datetime('now'))"
             ")",
-        ],
+        ),
     )
 )
 ```
@@ -176,9 +169,9 @@ store.migrate(plan)
 
 ## Rollback
 
-There is no automated rollback.  To revert a migration:
+There is no automated rollback. To revert a migration:
 
-1. Manually undo the schema changes with `ALTER TABLE` / `DROP TABLE`.
+1. Manually undo the schema changes with `DROP TABLE` / `ALTER TABLE`.
 2. Delete the version record:
 
 ```sql
@@ -216,11 +209,8 @@ on construction if `auto_migrate` is true) and exits.
 
 ---
 
-## Store-Agnostic Design
+## SQLite-Only
 
 | Store | `migrate()` | Behaviour |
 |---|---|---|
-| `MemoryStore` | No-op | No schema to manage |
-| `FileStore` | No-op | No schema to manage |
-| `PostgresStore` | SQL | Executes `statements` in transactions |
-| `CQRSStore` | Delegates | Forwards to write `Store.migrate()` |
+| `Sqlite` | SQL | Executes `statements` in `BEGIN IMMEDIATE` transactions, idempotent via `migrations` table |

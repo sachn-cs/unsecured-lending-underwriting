@@ -8,12 +8,12 @@ from __future__ import annotations
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.statement import Handler as StatementHandler
-from underwrite.store import InMemory
+from underwrite.store import Sqlite
 
 
 class TestStatementService:
     def test_generates_statement(self) -> None:
-        store = InMemory()
+        store = Sqlite(":memory:")
         store.set("loan:L1", {"outstanding": 50000})
         svc = StatementHandler(name="statement", store=store, bus=LocalBus())
         svc.handle(
@@ -30,7 +30,7 @@ class TestStatementService:
 
     def test_generate_emits_statement_generated(self) -> None:
         bus = LocalBus()
-        store = InMemory()
+        store = Sqlite(":memory:")
         store.set("loan:L2", {"outstanding": 30000})
         received: list = []
         bus.subscribe(Type.STATEMENT_GENERATED, lambda e: received.append(e))
@@ -45,17 +45,17 @@ class TestStatementService:
         assert received[0].payload["outstanding"] == 30000
 
     def test_rejects_missing_loan_id(self) -> None:
-        svc = StatementHandler(name="statement", bus=LocalBus(), store=InMemory())
+        svc = StatementHandler(name="statement", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(Message(event_type="statement.generate", source="test", payload={"period_start": "2025-01-01"}))
         assert len(svc.store.keys("statement:")) == 0
 
     def test_rejects_missing_period_start(self) -> None:
-        svc = StatementHandler(name="statement", bus=LocalBus(), store=InMemory())
+        svc = StatementHandler(name="statement", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(Message(event_type="statement.generate", source="test", payload={"loan_id": "L3"}))
         assert len(svc.store.keys("statement:")) == 0
 
     def test_deduplicates_by_statement_id(self) -> None:
-        store = InMemory()
+        store = Sqlite(":memory:")
         store.set("loan:L4", {"outstanding": 10000})
         svc = StatementHandler(name="statement", store=store, bus=LocalBus())
         svc.handle(
@@ -71,7 +71,7 @@ class TestStatementService:
         assert len(store.keys("statement:stmt_L4_2025-03-01")) == 1
 
     def test_includes_total_paid(self) -> None:
-        store = InMemory()
+        store = Sqlite(":memory:")
         store.set("loan:L5", {"outstanding": 20000})
         store.set("payment:pay_L5_1", {"loan_id": "L5", "amount": 1000})
         store.set("payment:pay_L5_2", {"loan_id": "L5", "amount": 500})
@@ -88,24 +88,24 @@ class TestStatementService:
         assert rec["transaction_count"] == 2
 
     def test_tracks_collection_update(self) -> None:
-        svc = StatementHandler(name="statement", bus=LocalBus(), store=InMemory())
+        svc = StatementHandler(name="statement", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(Message(event_type=Type.COLLECTION_UPDATED, source="test", payload={"loan_id": "L6"}))
         keys = svc.store.keys("stmt_trigger:L6:")
         assert len(keys) == 1
 
     def test_tracks_payment_received(self) -> None:
-        svc = StatementHandler(name="statement", bus=LocalBus(), store=InMemory())
+        svc = StatementHandler(name="statement", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(Message(event_type=Type.PAYMENT_RECEIVED, source="test", payload={"loan_id": "L7"}))
         keys = svc.store.keys("stmt_trigger:L7:")
         assert len(keys) == 1
 
     def test_ignores_unrelated_events(self) -> None:
-        svc = StatementHandler(name="statement", bus=LocalBus(), store=InMemory())
+        svc = StatementHandler(name="statement", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(Message(event_type="seed.added", source="test", payload={}))
         assert len(svc.store.keys("statement:")) == 0
 
     def test_period_end_defaults_to_now(self) -> None:
-        store = InMemory()
+        store = Sqlite(":memory:")
         store.set("loan:L8", {"outstanding": 0})
         svc = StatementHandler(name="statement", store=store, bus=LocalBus())
         svc.handle(

@@ -15,11 +15,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.governance import Handler
 from underwrite.services.governance import Handler as GovHandler
-from underwrite.store import InMemory
+from underwrite.store import Sqlite
 
 
 def gov(bus=None) -> Handler:
-    return GovHandler(name="gov", bus=bus or LocalBus(), store=InMemory())
+    return GovHandler(name="gov", bus=bus or LocalBus(), store=Sqlite(":memory:"))
 
 
 class TestGovernanceService:

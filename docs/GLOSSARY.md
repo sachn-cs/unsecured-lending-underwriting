@@ -11,8 +11,8 @@
 | **Credit Limit** | Available borrowing capacity: `budget + earned - outgoing_delegations`. For non-seeds, `budget` equals the incoming delegation amount. |
 | **NPA** | Non-Performing Asset — RBI classification for delinquent loans. Buckets: standard (0-90d), substandard (91-180d), doubtful (181-360d), loss (>360d). Classified by `NPAService` (`services/npa.py`). |
 | **DLG** | Delegated Loss Guarantee — trigger at 120+ days overdue (`services/npa.py:27`). Emits `npa.dlg.triggered` event. |
-| **CQRS** | Command Query Responsibility Segregation — separate read/write stores. Implemented via `CQRSStore` (`store.py`) wrapping a write `Store` and read `ReadStore` with lazy invalidation. |
-| **Circuit Breaker** | Failure isolation pattern with three states: CLOSED (normal), OPEN (failing fast), HALF_OPEN (probing recovery). Two implementations: `bus.py:223` (per-subscriber, hardcoded threshold of 5, 60s cooldown) and `circuit.py` (configurable, used by `FileStore`/`PostgresStore`). |
+| **Circuit Breaker** | Failure isolation pattern with three states: CLOSED (normal), OPEN (failing fast), HALF_OPEN (probing recovery). Two implementations: `bus.py:223` (per-subscriber, hardcoded threshold of 5, 60s cooldown) and `circuit.py` (configurable, available for callers who want to wrap their own I/O). |
+| **Sqlite Store** | The only persistence backend shipped with `underwrite`. Backed by the Python standard library `sqlite3` module. Configurable via `Configuration.store.path` and `Configuration.store.busy_timeout`. |
 | **DLQ** | Dead Letter Queue — bounded storage for failed events (`bus.py:48` — `DeadLetterQueue`). Default 10,000 entries, optional `Store` persistence, supports replay via `replay()`. |
 | **LTV** | Loan-to-Value ratio — collateral requirement set at 75% (`services/collateral.py:19`). |
 | **KYC/AML** | Know Your Customer / Anti-Money Laundering. Validated by `ComplianceService` (`services/compliance.py`): PAN format `^[A-Z]{5}[0-9]{4}[A-Z]$`, Aadhaar format `^\d{12}$`. |

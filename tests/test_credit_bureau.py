@@ -20,7 +20,7 @@ from underwrite.services.credit_bureau.client import (
     MockCreditBureauClient,
 )
 from underwrite.services.providers import Provider, ProviderResult, ProvidersConfig, Verdict
-from underwrite.store import InMemory
+from underwrite.store import Sqlite
 
 
 class CibilProviderStub(Provider):
@@ -79,7 +79,7 @@ class _StubCibilConfig(ProvidersConfig):
 def svc(**kw) -> Handler:
     kw.setdefault("allow_mock", True)
     kw.setdefault("bus", LocalBus())
-    kw.setdefault("store", InMemory())
+    kw.setdefault("store", Sqlite(":memory:"))
     return CreditBureauHandler(name="credit_bureau", **kw)
 
 
@@ -330,7 +330,9 @@ class TestCibilProviderIntegration:
             cibil_partner_id="stub",
             cibil_partner_key="stub",
         )
-        s = Handler(name="credit_bureau", bus=bus, kyc_provider_config=config, allow_mock=True, store=InMemory())
+        s = Handler(
+            name="credit_bureau", bus=bus, kyc_provider_config=config, allow_mock=True, store=Sqlite(":memory:")
+        )
         bus.start()
         s.handle(
             Message(
@@ -358,7 +360,7 @@ class TestCibilProviderIntegration:
             name="credit_bureau",
             bus=LocalBus(),
             kyc_provider_config=config,
-            store=InMemory(),
+            store=Sqlite(":memory:"),
             allow_mock=True,
         )
         s.handle(
@@ -404,7 +406,7 @@ class TestClientSelection:
             Handler(
                 name="credit_bureau",
                 bus=LocalBus(),
-                store=InMemory(),
+                store=Sqlite(":memory:"),
                 allow_mock=False,
             )
 

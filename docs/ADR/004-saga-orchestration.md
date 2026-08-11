@@ -6,7 +6,7 @@
 
 Loan origination in `underwrite` spans multiple nano-services: risk scoring, fraud detection, KYC/AML compliance, document generation, and disbursement. A failure in step 3 (e.g., KYC rejected) must roll back steps 1 and 2 (risk score recorded, fraud alert logged). Each service is stateless with respect to the transaction — they respond to events and persist their own state through a `Store` (`store.py`).
 
-The saga implementation lives in `saga.py`. The `SagaOrchestrator` class (`saga.py:129`) coordinates execution. The `SagaStep` dataclass (`saga.py:38`) defines forward and compensating actions. The `Emitter` Protocol (`saga.py:28`) bridges saga orchestration to `NanoService.emit()`.
+The saga implementation lives in `saga.py`. The `SagaOrchestrator` class (`saga.py:129`) coordinates execution. The `SagaStep` dataclass (`saga.py:38`) defines forward and compensating actions. The `Emitter` Protocol (`saga.py:28`) bridges saga orchestration to `Core.emit()`.
 
 ## Problem
 
@@ -55,11 +55,11 @@ execute_all(saga_id):
 
 ### Wiring
 
-The saga emitter is registered via `SagaOrchestrator.register_emitter(saga_name, emitter)` (`saga.py:180`). `NanoService.__init__` automatically registers itself with the saga orchestrator if one is provided (`services/base.py:151-152`).
+The saga emitter is registered via `SagaOrchestrator.register_emitter(saga_name, emitter)` (`saga.py:180`). `Core.__init__` automatically registers itself with the saga orchestrator if one is provided (`services/base.py:157`).
 
 ## Alternatives Considered
 
-- **Distributed transactions (XA / two-phase commit)**: Adds a transaction coordinator, database lock contention, and is impractical for the `Sqlite` store. Two-phase commit also holds locks for the transaction duration, which conflicts with the `NanoService` pattern of emitting events and letting subscribers process asynchronously.
+- **Distributed transactions (XA / two-phase commit)**: Adds a transaction coordinator, database lock contention, and is impractical for the `Sqlite` store. Two-phase commit also holds locks for the transaction duration, which conflicts with the `Core` pattern of emitting events and letting subscribers process asynchronously.
 
 - **Outbox pattern with CDC**: Appropriate for cross-service transactions with Kafka, but adds infrastructure complexity (Kafka cluster, Debezium, schema registry) not justified in a single-process system. The `LocalBus` already provides reliable in-process delivery with DLQ guarantees.
 

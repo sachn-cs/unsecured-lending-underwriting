@@ -152,7 +152,7 @@ Key ABCs in the codebase:
 
 | ABC                  | File             | Implementations                       |
 |----------------------|------------------|---------------------------------------|
-| `Store`              | `store.py`   | `MemoryStore`, `FileStore`, `PostgresStore` |
+| `Store`              | `store.py`   | `Sqlite` (file path or `:memory:`), `Store` façade |
 | `EventBus`           | `bus.py`     | `LocalBus`, `AsyncLocalBus`           |
 | `NanoService`        | `services/base.py` | 28 service classes                  |
 | `StatefulService`    | `services/base.py` | Services with mutable state         |

@@ -1,8 +1,18 @@
 # Database
 
-underwrite uses a key-value abstraction (`Store`) with multiple backends.
-`PostgresStore` is the production-grade backend; `MemoryStore` and
-`FileStore` are for development and testing.
+underwrite persists all state through a single backend: SQLite
+(``sqlite3`` from the Python standard library). The platform has no
+PostgreSQL, no filesystem, no in-memory dict backend — there is one
+store type with two path modes (``":memory:"`` for ephemeral,
+file path for persistent). See `MIGRATIONS.md` for the schema and
+`docs/CONFIGURATION.md` for the configuration surface.
+
+> **Breaking change.** Earlier releases shipped with separate
+> Memory, File and Postgres backends. Those have been removed in
+> this revision. Existing Postgres data and on-disk JSON files
+> are not migrated automatically — operators must extract data
+> with their own tooling before upgrading, and start fresh on
+> SQLite.
 
 ---
 
@@ -10,78 +20,51 @@ underwrite uses a key-value abstraction (`Store`) with multiple backends.
 
 ### `store` Table
 
-Created by migration v1.  The primary key-value table used by all
+Created by migration v1. The primary key-value table used by all
 nano services:
 
 ```sql
 CREATE TABLE IF NOT EXISTS store (
-    key         TEXT PRIMARY KEY,
-    value       TEXT NOT NULL,
-    updated_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    key   TEXT PRIMARY KEY,
+    value BLOB NOT NULL
 );
 ```
 
 | Column | Type | Notes |
 |---|---|---|
-| `key` | `TEXT PK` | Namespaced key, e.g. `protocol:state`, `audit:ledger`, `saga:<uuid>` |
-| `value` | `TEXT` | JSON-serialised payload |
-| `updated_at` | `TIMESTAMPTZ` | Set to `NOW()` on every UPSERT |
+| `key`   | `TEXT PK` | Namespaced key, e.g. `protocol:state`, `audit:ledger`, `saga:<uuid>` |
+| `value` | `BLOB`    | JSON-serialised payload |
 
-### Access Pattern
-
-`PostgresStore` uses parameterized UPSERT for writes:
-
-```sql
-INSERT INTO store (key, value, updated_at)
-VALUES (%s, %s, NOW())
-ON CONFLICT (key) DO UPDATE
-  SET value = EXCLUDED.value, updated_at = NOW();
-```
-
-Table name is regex-validated (`^[a-zA-Z_][a-zA-Z0-9_]*$`) to prevent
-SQL injection.
+The migration runner keeps a companion `migrations` table that
+records every version it has applied; pending versions are applied
+on the next `Sqlite.migrate()` call inside a single `BEGIN IMMEDIATE`
+transaction. Migrations are idempotent — re-running on a database
+that already has all rows is a no-op.
 
 ---
 
-## Connection Pool
+## Connection Setup
 
-`PostgresStore` uses `psycopg2.pool.ThreadedConnectionPool`:
+`Sqlite` opens a `sqlite3.Connection` per operation (file-backed) or
+keeps a single shared connection (`:memory:`) since SQLite gives each
+private in-memory connection its own anonymous database. Every
+connection is configured with:
 
-| Config | Default | Description |
+| PRAGMA | Value | Reason |
 |---|---|---|
-| `pool_size` | 5 | `maxconn = pool_size`, `minconn = pool_size // 2` |
-| `dsn` | `""` | Postgres connection string (e.g. `postgresql://user:pass@host:5432/db`) |
-| `operation_timeout` | `30.0` | Seconds, converted to `statement_timeout` ms |
+| `journal_mode`   | `WAL`         | Readers do not block writers |
+| `synchronous`    | `NORMAL`      | Durable enough for WAL |
+| `foreign_keys`   | `ON`          | Enforce relational constraints |
+| `busy_timeout`   | `30 s` (default) | Ride out transient locks |
 
-### Connection Configuration
-
-```python
-pgpool.ThreadedConnectionPool(
-    minconn=max(1, pool_size // 2),
-    maxconn=pool_size,
-    dsn=dsn,
-    connect_timeout=10,
-    keepalives=1,
-    keepalives_idle=30,
-    keepalives_interval=10,
-    keepalives_count=5,
-)
-```
-
-### Per-Connection Settings
-
-```sql
-SET statement_timeout = <operation_timeout_ms>;
-```
-
-Connections are returned to the pool with `pool.putconn()`.  Faulty
-connections are closed (`putconn(conn, close=True)`) on exception.
+`busy_timeout` is configurable through `Configuration.store.busy_timeout`
+or `UNDERWRITE_STORE_BUSY_TIMEOUT`. The default is 30 s.
 
 ---
 
 ## Migration Tables
 
-Created by the `Store.migrate()` method in `store.py`:
+Created by the `Sqlite.migrate()` method in `store.py`:
 
 ### `migrations` Table
 
@@ -91,115 +74,78 @@ Tracks which schema versions have been applied:
 CREATE TABLE IF NOT EXISTS migrations (
     version     INTEGER PRIMARY KEY,
     description TEXT NOT NULL,
-    applied_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    applied_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 ```
 
 | Column | Notes |
 |---|---|
-| `version` | Sequential integer, e.g. 1, 2, 3 |
+| `version`     | Sequential integer, e.g. 1, 2, 3 |
 | `description` | Human-readable, e.g. `"Event dead-letter queue"` |
-| `applied_at` | Set to `NOW()` when the migration runs |
+| `applied_at`  | Set to `datetime('now')` when the migration runs |
 
 ### `dead_letters` Table
 
-Created by migration v2.  Captures failed events for replay:
+Created by migration v2. Captures failed events for replay:
 
 ```sql
 CREATE TABLE IF NOT EXISTS dead_letters (
-    id          SERIAL PRIMARY KEY,
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
     event_id    TEXT NOT NULL,
     event_type  TEXT NOT NULL,
     source      TEXT NOT NULL,
     payload     TEXT,
     error       TEXT NOT NULL,
-    failed_at   TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    replayed    BOOLEAN NOT NULL DEFAULT FALSE
+    failed_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    replayed    INTEGER NOT NULL DEFAULT 0
 );
 ```
 
 ### `metrics_snapshots` Table
 
-Created by migration v3.  Stores periodic metrics dumps:
+Created by migration v3. Stores periodic metrics dumps:
 
 ```sql
 CREATE TABLE IF NOT EXISTS metrics_snapshots (
-    id           SERIAL PRIMARY KEY,
-    data         JSONB NOT NULL,
-    captured_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    data        TEXT NOT NULL,
+    captured_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 ```
 
 ---
 
-## Circuit Breaker & Retry
-
-`PostgresStore` wraps all queries in a two-layer resilience pattern:
-
-### Circuit Breaker
-
-- **Threshold:** 3 consecutive failures
-- **Recovery:** 15 seconds (half-open → closed on success)
-- **State:** exposed in `health()` as `"circuit": "closed"|"open"|"half_open"`
-
-### Retry Policy
-
-- **Max retries:** 2 (3 total attempts including initial)
-- **Base delay:** 50ms
-- **Backoff:** Exponential with jitter:
-  `delay = min(0.05 * 2^attempt + random(0, 0.01), max_delay)`
-
-```python
-self.__retry = RetryPolicy(max_retries=2, base_delay=0.05)
-```
-
----
-
-## CQRS
-
-`CQRSStore` (`underwrite/store.py:566-629`) separates read and write
-stores:
-
-- **Writes** go to the primary (`write_store`).
-- **Reads** go to the read replica (`read_store`).
-- On write, the read store key is **invalidated** (deleted) to prevent
-  stale reads.
-
-Configured in Runtime via `store.read_backend` and `store.read_dsn`.
-
-Example: write to Postgres, read from MemoryStore:
-
-```python
-CQRSStore(write_store=PostgresStore(dsn=...), read_store=MemoryStore())
-```
-
----
-
-## Dead-Letter Queue Persistence
-
-The in-memory `DeadLetterQueue` optionally persists to a `Store`:
-
-- Store key: `bus:dlq`
-- Format: `list[dict]` — each entry is a serialised `DeadLetterRecord`
-- Sync interval: configurable (default every 10 `put()` calls)
-- On startup, persisted records are loaded back into memory
-
----
-
 ## Health Check
 
-`PostgresStore.health()` executes `SELECT 1` against the pool and
-returns circuit-breaker state:
+`Sqlite.health()` opens a connection and runs `SELECT 1`:
 
 ```json
-{"ok": true, "circuit": "closed"}
+{"ok": true, "path": "./store.db"}
 ```
 
-On failure:
+If the path is corrupted or unreadable:
 
 ```json
-{"ok": false, "detail": "Postgres health check failed", "circuit": "open"}
+{"ok": false, "path": "./store.db", "detail": "file is not a database"}
 ```
+
+When SQLite reports a malformed-image error, `Sqlite` translates it
+into a `StoreError` so the caller can treat the database as a hard
+failure rather than a missing key. The translation also covers
+SQLite's `database disk image is malformed` text.
+
+---
+
+## Concurrency
+
+`Sqlite` is safe for multi-threaded use in a single process:
+
+- A `threading.Lock` serialises writes and the in-memory DB connection.
+- File-backed mode opens a fresh connection per operation and closes it
+  in a `finally`, so the global interpreter lock plus `busy_timeout`
+  cover cross-thread contention.
+- `BEGIN IMMEDIATE` is used during migrations to acquire the write
+  lock up front.
 
 ---
 
@@ -208,17 +154,14 @@ On failure:
 ```json
 {
   "store": {
-    "backend": "postgres",
-    "dsn": "postgresql://user:pass@localhost:5432/underwrite",
-    "pool_size": 5,
-    "read_backend": "memory",
-    "read_dsn": ""
+    "backend": "sqlite",
+    "path": "./store.db",
+    "busy_timeout": 30.0
   }
 }
 ```
 
 | Env Var | Config Key | Default |
 |---|---|---|
-| `UNDERWRITE_STORE_DSN` | `store.dsn` | `""` |
-| `UNDERWRITE_STORE_POOL_SIZE` | `store.pool_size` | `5` |
-| `UNDERWRITE_STORE_READ_DSN` | `store.read_dsn` | `""` |
+| `UNDERWRITE_STORE_PATH`        | `store.path`        | `"./store.db"` |
+| `UNDERWRITE_STORE_BUSY_TIMEOUT` | `store.busy_timeout` | `30.0`         |

@@ -74,7 +74,7 @@ Helper scripts are available:
 - **Linter**: ruff with `select = ["E", "F", "I", "UP", "B"]`.
 - **Type checker**: mypy with `--ignore-missing-imports`.
 - **Visibility**: Double-underscore name mangling (`self.__private_attr`) for implementation details; `@property` accessors to expose them.
-- **ABCs**: Abstract base classes for all extensible interfaces (`Store`, `EventBus`, `NanoService`, `SecretsBackend`).
+- **ABCs**: Abstract base classes for all extensible interfaces (`Store`, `EventBus`, `Core`, `SecretsBackend`).
 
 ## Testing Requirements
 
@@ -86,7 +86,7 @@ Helper scripts are available:
 - Property-based tests with Hypothesis are encouraged for stateful logic (e.g., delegation graph operations).
 - Mutation testing via mutmut is available: `mutmut run`.
 
-The current test suite has **828+ tests** across **59 test files** covering all 28 services, the runtime, bus, store, authz, saga, identity, PII, metrics, configuration, and CLI.
+The current test suite has **1276 tests** across **72 test files** covering all 34 services, the runtime, bus, store, authz, saga, identity, PII, metrics, configuration, and CLI.
 
 ## Documentation
 

@@ -42,7 +42,7 @@ Edit `underwrite.json` to enable the services needed for an Indian lending flow:
 
 ```bash
 make test
-# 1167+ tests pass (KYC validation, RBI caps, AML, CKYC, DPDPA consent)
+# 1276 tests pass (KYC validation, RBI caps, AML, CKYC, DPDPA consent)
 ```
 
 ## 4. Start Indian Lending Services

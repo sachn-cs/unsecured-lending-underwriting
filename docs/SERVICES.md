@@ -51,7 +51,7 @@ Default is sandbox / mock; live mode engages via configured credentials +
 |---|---|---|
 | `compliance` | PAN regex / Aadhaar Verhoeff / AML keywords | KYC provider clients in `services/providers.py` (PAN, Aadhaar, CIBIL, CKYC) |
 | `credit_bureau` | `MockCreditBureauClient` | `HttpCreditBureauClient` (httpx) against CIBIL / Experian / Equifax / CKYC endpoints |
-| `consent` | In-process consent lifecycle | Persisted via `Store` (Vault / Postgres for production keys) |
+| `consent` | In-process consent lifecycle | Persisted via `Store` (Vault for secrets; SQLite for state) |
 | `dsr` | In-process DSR fulfillment | Network delivery to data principal via configured channel |
 | `razorpay` | `MockRazorpayClient` | `HttpRazorpayClient` (httpx) with HMAC webhook verification |
 | `notification` | In-process dispatch | SES / SendGrid / Twilio / SNS via configured channel |

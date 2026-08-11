@@ -22,32 +22,50 @@ class TestUnderwriterService:
         svc.handle(Message(event_type="other", source="test", payload={}))
 
     def test_rejects_high_default_probability(self) -> None:
-        svc = UnderwriterHandler(name="underwriter", bus=LocalBus(), store=Sqlite(":memory:"))
+        bus = LocalBus()
+        rejected: list[Message] = []
+        bus.subscribe(Type.UNDERWRITER_REJECTED, lambda e: rejected.append(e))
+        svc = UnderwriterHandler(name="underwriter", bus=bus, store=Sqlite(":memory:"))
+        bus.start()
         svc.handle(
             Message(
                 event_type=Type.UNDERWRITE_REQUEST,
                 source="test",
                 payload={
+                    "application_id": "APP2",
                     "borrower": "bob",
                     "principal": 50000.0,
                     "default_probability": 0.5,
                 },
             )
         )
+        assert len(rejected) == 1
+        assert "default_probability_max" in rejected[0].payload["reasons"][0]
 
     def test_approves_low_risk_loan(self) -> None:
-        svc = UnderwriterHandler(name="underwriter", bus=LocalBus(), store=Sqlite(":memory:"))
+        bus = LocalBus()
+        approved: list[Message] = []
+        bus.subscribe(Type.UNDERWRITER_APPROVED, lambda e: approved.append(e))
+        svc = UnderwriterHandler(name="underwriter", bus=bus, store=Sqlite(":memory:"))
+        bus.start()
         svc.handle(
             Message(
                 event_type=Type.UNDERWRITE_REQUEST,
                 source="test",
                 payload={
+                    "application_id": "APP1",
                     "borrower": "alice",
                     "principal": 10000.0,
-                    "default_probability": 0.1,
+                    "default_probability": 0.05,
+                    "credit_score": 720,
+                    "aml_status": "cleared",
+                    "kyc_status": "verified",
                 },
             )
         )
+        assert len(approved) == 1
+        assert approved[0].payload["outcome"] == "approved"
+        assert approved[0].payload["application_id"] == "APP1"
 
 
 class TestPricingService:
@@ -56,7 +74,11 @@ class TestPricingService:
         svc.handle(Message(event_type="other", source="test", payload={}))
 
     def test_computes_pricing(self) -> None:
-        svc = PricingHandler(name="pricing", bus=LocalBus(), store=Sqlite(":memory:"))
+        bus = LocalBus()
+        computed: list[Message] = []
+        bus.subscribe(Type.PRICING_COMPUTED, lambda e: computed.append(e))
+        svc = PricingHandler(name="pricing", bus=bus, store=Sqlite(":memory:"))
+        bus.start()
         svc.handle(
             Message(
                 event_type=Type.PRICING_REQUEST,
@@ -68,6 +90,12 @@ class TestPricingService:
                 },
             )
         )
+        assert len(computed) == 1
+        p = computed[0].payload
+        assert p["borrower"] == "alice"
+        assert p["principal"] == 10000.0
+        assert p["interest_rate"] > 0
+        assert p["tenure_months"] == 12
 
 
 class TestDocumentService:

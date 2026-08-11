@@ -5,14 +5,12 @@ services:
     ports:
       - "8000:8080"
     depends_on:
-      postgres:
-        condition: service_healthy
       vault:
         condition: service_started
     environment:
-      - UNDERWRITE_STORE_BACKEND=postgres
-      - UNDERWRITE_STORE_DSN=postgresql://underwrite:underwrite@postgres:5432/underwrite
-      - UNDERWRITE_STORE_POOL_SIZE=10
+      - UNDERWRITE_STORE_BACKEND=sqlite
+      - UNDERWRITE_STORE_PATH=/data/store.db
+      - UNDERWRITE_STORE_BUSY_TIMEOUT=30
       - UNDERWRITE_BUS_BACKEND=local
       - UNDERWRITE_BUS_RATE_LIMIT=500
       - UNDERWRITE_BUS_MAX_WORKERS=8
@@ -30,8 +28,6 @@ services:
       - UNDERWRITE_API_TOKEN=${UNDERWRITE_API_TOKEN:-}
       - UNDERWRITE_REQUIRE_AUTH=${UNDERWRITE_REQUIRE_AUTH:-true}
       - UNDERWRITE_AUTHZ_ENABLED=true
-      # KYC provider secrets — pulled from Vault in production.
-      # In sandbox mode the clients use the public UAT endpoints.
       - UNDERWRITE_PAN_PRODUCTION=${UNDERWRITE_PAN_PRODUCTION:-false}
       - UNDERWRITE_AADHAAR_PRODUCTION=${UNDERWRITE_AADHAAR_PRODUCTION:-false}
       - UNDERWRITE_CIBIL_PRODUCTION=${UNDERWRITE_CIBIL_PRODUCTION:-false}
@@ -39,23 +35,6 @@ services:
     volumes:
       - underwrite_data:/data
     command: ["serve", "--host", "0.0.0.0", "--port", "8080", "--services", "mechanism,audit,risk,fraud,compliance,consent,kfs,pricing,recovery,credit_bureau,dsr,governance,npa,collection,servicing,payment,fee,notification,origination,underwriter,disbursement,settlement"]
-
-  postgres:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: underwrite
-      POSTGRES_PASSWORD: underwrite
-      POSTGRES_DB: underwrite
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U underwrite"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   vault:
     image: hashicorp/vault:1.18
@@ -85,4 +64,3 @@ services:
 
 volumes:
   underwrite_data:
-  postgres_data:

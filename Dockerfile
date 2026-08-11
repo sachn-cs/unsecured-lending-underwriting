@@ -10,7 +10,7 @@
 #       underwrite:local --config /app/underwrite.json
 
 ARG PYTHON_VERSION=3.12
-ARG EXTRAS="serve,postgres,otlp,vault"
+ARG EXTRAS="serve,otlp,vault"
 
 # =============================================================================
 # Stage 1: builder — install build tooling, build the wheel.

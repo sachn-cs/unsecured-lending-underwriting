@@ -17,7 +17,8 @@ from underwrite.message import Message, Type
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
 from underwrite.services.base import Core, Dependencies
-from underwrite.store import Sqlite, Store
+from underwrite.services.mechanism.graph import to_money
+from underwrite.store import StoreBackend
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
 
@@ -33,7 +34,7 @@ class Handler(Core):
         self,
         name: str,
         bus: EventBus | LocalBus,
-        store: Store | Sqlite | Store | Sqlite | Store | Sqlite | Store | Sqlite,
+        store: StoreBackend,
         identity: Keypair | None = None,
         metrics: Collector | None = None,
         health: Checks | None = None,
@@ -131,24 +132,27 @@ class Handler(Core):
         if state is None:
             logger.warning("graph credit-limit query for {}: protocol state not available", user)
             state = {}
-        earned: dict[str, float] = state.get("earned", {})
-        base_budget: dict[str, float] = state.get("base_budget", {})
+        earned: dict[str, Any] = state.get("earned", {})
+        base_budget: dict[str, Any] = state.get("base_budget", {})
         parent: dict[str, str] = state.get("parent", {})
-        delegation_raw: dict[str, float] = state.get("delegation", {})
+        delegation_raw: dict[str, Any] = state.get("delegation", {})
         children_raw: dict[str, list[str]] = state.get("children", {})
         seeds: list[str] = state.get("seeds", [])
 
-        budget: float = base_budget.get(user, 0.0) + earned.get(user, 0.0)
+        budget = to_money(base_budget.get(user, "0")) + to_money(earned.get(user, "0"))
         if user not in seeds and user in parent:
             sponsor: str = parent[user]
             edge_key: str = f"{sponsor}->{user}"
-            budget = delegation_raw.get(edge_key, 0.0) + earned.get(user, 0.0)
-        outgoing: float = sum(delegation_raw.get(f"{user}->{child}", 0.0) for child in children_raw.get(user, []))
+            budget = to_money(delegation_raw.get(edge_key, "0")) + to_money(earned.get(user, "0"))
+        outgoing = sum(
+            (to_money(delegation_raw.get(f"{user}->{child}", "0")) for child in children_raw.get(user, [])),
+            to_money("0"),
+        )
         self.emit(
             Type.GRAPH_CREDIT_LIMIT_RESULT,
             {
                 "user": user,
-                "credit_limit": budget - outgoing,
+                "credit_limit": float(budget - outgoing),
             },
             correlation_id=event.correlation_id,
         )

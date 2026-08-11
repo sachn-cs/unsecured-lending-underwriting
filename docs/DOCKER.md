@@ -19,7 +19,7 @@ Build args:
 | Arg | Default | Description |
 |-----|---------|-------------|
 | `PYTHON_VERSION` | `3.12` | Python base image |
-| `EXTRAS` | `serve,postgres,otlp,vault` | pip extras to install |
+| `EXTRAS` | `serve,otlp,vault` | pip extras to install |
 | `BUILD_VERSION` | `0.1.0` | OCI image version label |
 | `GIT_COMMIT` | `dev` | OCI image revision label |
 | `BUILD_DATE` | `unknown` | OCI image created label |
@@ -74,11 +74,12 @@ docker run --rm --entrypoint underwrite underwrite:dev run mechanism audit
 ## docker-compose
 
 `docker-compose.yml` is the reference local-deployment
-manifest: it brings up the runtime plus Postgres 16, HashiCorp
-Vault 1.18 in dev mode, and an OpenTelemetry Collector. The
-runtime connects to the in-network Postgres and Vault via the
-service names; environment variables on the `underwrite` service
-mirror the `UNDERWRITE_*` namespace in the runtime config.
+manifest: it brings up the runtime plus HashiCorp Vault 1.18 in
+dev mode and an OpenTelemetry Collector. The runtime uses a
+file-backed SQLite database mounted at `/data` and connects to
+the in-network Vault via the service name; environment variables
+on the `underwrite` service mirror the `UNDERWRITE_*` namespace
+in the runtime config.
 
 ```bash
 docker compose up -d

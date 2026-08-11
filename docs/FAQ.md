@@ -6,13 +6,13 @@ Answers based on the actual underwrite codebase at `underwrite/` and `pyproject.
 
 ### 1. What is underwrite?
 
-Underwrite is a **nano-service platform** for unsecured lending underwriting, implementing a Delegated Underwriting Protocol. It provides 28 purpose-built nano-services (risk scoring, fraud detection, KYC/AML, collateral management, loan origination, collections, recovery, governance, and more) that communicate over an in-process event bus with Ed25519 cryptographic attestation. The project is defined in `pyproject.toml` as *"Delegated Underwriting Protocol — nano-service platform for unsecured lending"*.
+Underwrite is a **nano-service platform** for unsecured lending underwriting, implementing a Delegated Underwriting Protocol. It provides 34 purpose-built nano-services (risk scoring, fraud detection, KYC/AML, collateral management, loan origination, collections, recovery, governance, and more) that communicate over an in-process event bus with Ed25519 cryptographic attestation. The project is defined in `pyproject.toml` as *"Delegated Underwriting Protocol — nano-service platform for unsecured lending"*.
 
 ---
 
 ### 2. What is a nano-service?
 
-A nano-service is a lightweight, independently deployable service that extends the `NanoService` abstract base class (`underwrite/services/base.py:93`). Each service:
+A nano-service is a lightweight, independently deployable service that extends the `Core` abstract base class (`underwrite/services/base.py:149`). Each service:
 
 - Has a unique `service_id` and an Ed25519 `Identity` for signing emitted events.
 - Subscribes to typed domain events on a shared `EventBus`.
@@ -20,24 +20,24 @@ A nano-service is a lightweight, independently deployable service that extends t
 - Emits events via `emit(event_type, payload)` which auto-signs.
 - Participates in saga orchestration and idempotency.
 
-The 28 services are listed in `SERVICE_NAMES` in `underwrite/config.py:461`.
+The 34 services are listed in `HANDLER_MAP` in `underwrite/handler.py:21`.
 
 ---
 
 ### 3. How do services communicate?
 
-Exclusively through **typed domain events** over the event bus. A service calls `self.emit(event_type, payload)` which creates an `Event` dataclass (`underwrite/events.py:22`), signs it with the service's Ed25519 private key, and publishes it to the bus. Subscribers registered in the `WIRING` dict (`underwrite/handler.py:80`) receive matching events. The bus supports wildcard `"*"` subscriptions. Backends are pluggable: `LocalBus` (in-process, default), SQS, or Modal queues.
+Exclusively through **typed domain events** over the event bus. A service calls `self.emit(event_type, payload)` which creates a `Message` dataclass (`underwrite/message.py:28`), signs it with the service's Ed25519 private key, and publishes it to the bus. Subscribers registered in the `WIRING` dict (`underwrite/handler.py:95`) receive matching events. The bus supports wildcard `"*"` subscriptions. Backends are pluggable: `LocalBus` (in-process, default), SQS, or Modal queues.
 
 ---
 
 ### 4. How do I add a new service?
 
 1. Create a new sub-package under `underwrite/services/<name>/` with `init.py` and `service.py`.
-2. In `service.py`, create a class extending `NanoService` (or `StatefulService`) and implement `handle(self, event)`.
+2. In `service.py`, create a class extending `Core` (or `StatefulService`) and implement `handle(self, event)`.
 3. Register the service in three places:
-   - `SERVICE_MAP` in `underwrite/handler.py:18` — maps name to `module.class`.
-   - `SERVICE_CLASSES` in `underwrite/handler.py:49` — maps name to class name.
-   - `SERVICE_NAMES` in `underwrite/config.py:461` — adds to the known service list.
+   - `HANDLER_MAP` in `underwrite/handler.py:21` — maps name to `module`.
+   - `HANDLER_CLASSES` in `underwrite/handler.py:58` — maps name to class name.
+   - `HANDLER_NAMES` in `underwrite/config.py:727` — adds to the known service list.
 4. Add wiring entries in `WIRING` dict to subscribe the service to relevant event types.
 5. Configuration: add a `ServiceConfig(enabled=True)` entry under `services` in `underwrite.json`.
 6. Run: `underwrite run <name>`.
@@ -80,7 +80,7 @@ A saga is a distributed transaction with compensating rollbacks. Defined in `und
 5. Each step is idempotent via store key `saga_step:{saga_id}:{step_index}` — safe replay after crashes.
 6. Incomplete sagas can be resumed with `orchestrator.replay_saga(saga_id)`.
 
-The orchestrator registers itself with `NanoService` instances as emitters. Persisted sagas survive restarts.
+The orchestrator registers itself with `Core` instances as emitters. Persisted sagas survive restarts.
 
 ---
 
@@ -90,7 +90,7 @@ Every emitted event carries an Ed25519 signature:
 
 1. The emitting service holds an `Identity` (Ed25519 keypair), created via `Identity.create()` (`underwrite/identity.py:48`).
 2. On `emit()`, the payload is serialised and signed: `sign(f"{event_id}:{timestamp}:{event_type}:{payload}")` (`underwrite/services/base.py:266`).
-3. The signature and `source_key` (public key) are embedded in the `Event` envelope.
+3. The signature and `source_key` (public key) are embedded in the `Message` envelope.
 4. On delivery, `AccessControl.assert_verified()` verifies the signature against the trusted key for `event.source` (`underwrite/authz.py:207`).
 5. ACL policies control which services may publish/subscribe to which event types.
 6. Keys are rotated manually by generating a new `Identity.create(...)` and updating the runtime; rely on `AccessControl.set_replay_window(...)` to keep recent signatures verifiable.
@@ -101,7 +101,7 @@ Every emitted event carries an Ed25519 signature:
 
 The `ServiceSupervisor` (`underwrite/supervisor.py`) tracks handler failures:
 
-- On exception in `NanoService.__handle_event()`, `supervisor.record_failure(service_id)` is called.
+- On exception in `Core.handle_event()`, `supervisor.record_failure(service_id)` is called.
 - If failures exceed `max_restarts` (default 3), the service is permanently marked unhealthy.
 - `Runtime.restart_failing_services()` stops, re-registers, rewires, and restarts the service with exponential backoff.
 - Crashed handler events go to the `DeadLetterQueue` for later inspection and replay.
@@ -113,7 +113,7 @@ The `ServiceSupervisor` (`underwrite/supervisor.py`) tracks handler failures:
 
 Underwrite is designed for **local-first, scale-up** (single process). Scaling strategies:
 
-- **Vertical**: Increase worker threads via `bus.max_workers` and `NanoService` `max_concurrent`.
+- **Vertical**: Increase worker threads via `bus.max_workers` and `Core` `max_concurrent`.
 - **Backend swap**: Replace `LocalBus` with `SqsBus` / `ModalBus`
   for cross-process deployments. The state store stays on SQLite in
   this revision — multi-node deployments should run one SQLite file
@@ -205,7 +205,7 @@ Multiple observability mechanisms built-in:
    underwrite dlq --replay
    ```
 
-The `Event` envelope carries `correlation_id`, `trace_id`, and `parent_span_id` for cross-service trace correlation.
+The `Message` envelope carries `correlation_id`, `trace_id`, and `parent_span_id` for cross-service trace correlation.
 
 ---
 

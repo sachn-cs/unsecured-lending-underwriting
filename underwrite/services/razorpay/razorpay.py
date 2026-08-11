@@ -39,7 +39,7 @@ from underwrite.services.razorpay.client import (
     RazorpayClient,
     RazorpayError,
 )
-from underwrite.store import Disk, InMemory, Sqlite, Store
+from underwrite.store import Sqlite, Store
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
 from underwrite.validate import PayloadValidator
@@ -77,7 +77,7 @@ class Handler(StatefulService):
         self,
         name: str,
         bus: EventBus | LocalBus,
-        store: Store | InMemory | Disk | Sqlite,
+        store: Store | Sqlite | Store | Sqlite | Store | Sqlite | Store | Sqlite,
         identity: Keypair | None = None,
         metrics: Collector | None = None,
         health: Checks | None = None,

@@ -203,30 +203,18 @@ String values matching these regex patterns are redacted:
 
 ---
 
-## Path Traversal Protection
-
-**File:** `underwrite/store.py:341-360`
-
-`FileStore.__path()` validates:
-
-1. The key does not contain `..` or start with `/`.
-2. The resolved absolute path is inside `data_dir`.
-3. Symlinks are resolved and checked not to escape `data_dir`.
-
----
-
 ## SQL Injection Prevention
 
-**File:** `underwrite/store.py:372-500`
+**File:** `underwrite/store.py`
 
-`PostgresStore` uses **parameterized queries** for all values:
+`Sqlite` uses **parameterized queries** for all values:
 
 ```python
-cur.execute("SELECT value FROM store WHERE key = %s", (key,))
+cur.execute("SELECT value FROM store WHERE key = ?", (key,))
 ```
 
-Table names are validated against a strict regex (`^[a-zA-Z_][a-zA-Z0-9_]*$`)
-before interpolation — never user-supplied.
+Table and column names are baked into the SQL strings at module
+load — they are never built from caller-supplied data.
 
 ---
 
@@ -320,7 +308,7 @@ DPO contact information is configured via `dpdpa.dsr.dpo_email` and `dpdpa.dsr.d
 ### Data Localization
 
 All data is stored in-context:
-- **Store backend**: Postgres or Filesystem — no cross-border data transfer
+- **Store backend**: SQLite file — keep the database on a volume attached to Indian-region compute to avoid cross-border data transfer
 - **Audit ledger**: In-process event ledger with optional export
 - **Logging**: Structured JSON logs with PII redaction before output
 - **No external analytics**: No third-party analytics or tracking SDKs
@@ -372,8 +360,9 @@ flowchart TD
 
 - [ ] **Enable authorization**: Set `authz.enabled=true` in config.
 - [ ] **Set an API token**: `UNDERWRITE_API_TOKEN` and `--require-auth`.
-- [ ] **Use Postgres backend**: FileStore and MemoryStore provide no
-      access controls.
+- [ ] **Use a persistent Sqlite path on a durable volume**: the
+      `:memory:` backend is for tests. Production deployments need a
+      SQLite file on durable storage in the Indian region.
 - [ ] **Rotate signing keys**: Generate a new `Identity.create(...)` for
       the new rotation, update the runtime, and rely on
       `AccessControl.set_replay_window(...)` to keep recent

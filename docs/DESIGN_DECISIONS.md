@@ -2,12 +2,12 @@
 
 ## 1. Nano-Service Architecture
 
-**Context:** The underwrite platform needs to model 28 distinct business domains (mechanism, risk, fraud, compliance, decision, payment, collection, etc.) in a single Python process while preserving the logical separation normally achieved with microservices.
+**Context:** The underwrite platform needs to model 34 distinct business domains (mechanism, risk, fraud, compliance, decision, payment, collection, etc.) in a single Python process while preserving the logical separation normally achieved with microservices.
 
-**Decision:** Decompose the monolith into nano-services — lightweight `NanoService` subclasses that communicate exclusively via an in-process event bus. Each service owns its slice of domain logic, has its own `Identity` for signing events, and can be independently enabled, disabled, or deployed (via `Runtime.start(["risk", "fraud"])` or CLI `underwrite run risk fraud`).
+**Decision:** Decompose the monolith into nano-services — lightweight `Core` subclasses that communicate exclusively via an in-process event bus. Each service owns its slice of domain logic, has its own `Identity` for signing events, and can be independently enabled, disabled, or deployed (via `Runtime.start(["risk", "fraud"])` or CLI `underwrite run risk fraud`).
 
 **Alternatives Considered:**
-- **True microservices (HTTP/gRPC):** Network overhead, serialization cost, deployment complexity, no shared memory for delegation graph. Rejected for a 28-service footprint where ~80 % of interactions are sub-millisecond state queries.
+- **True microservices (HTTP/gRPC):** Network overhead, serialization cost, deployment complexity, no shared memory for delegation graph. Rejected for a 34-service footprint where ~80 % of interactions are sub-millisecond state queries.
 - **Monolithic service with internal modules:** Tempting but eliminated by the requirement that services be independently deployable to serverless platforms (Modal) and independently testable. Module-level separation does not enforce the event-driven contract.
 - **Actor model (Akka, Thespian):** Over-engineered for a single-process Python system. The actor lifecycle and supervision primitives overlap with what a simple `ThreadPoolExecutor` + `ServiceSupervisor` provide.
 
@@ -22,18 +22,18 @@
 
 ## 2. Event-Driven Communication with Typed Enum
 
-**Context:** 28 services need to exchange ~80 distinct event types. A shared vocabulary is essential for wiring, documentation, and tooling.
+**Context:** 34 services need to exchange 132 distinct event types. A shared vocabulary is essential for wiring, documentation, and tooling.
 
-**Decision:** Define every event type as a member of a single `EventType` string enum in `events.py`. The `WIRING` dict in `handler.py` maps each event type to its subscriber list, acting as a centralized, declarative routing table.
+**Decision:** Define every event type as a member of a single `Type` string enum in `message.py`. The `WIRING` dict in `handler.py` maps each event type to its subscriber list, acting as a centralized, declarative routing table.
 
 **Alternatives Considered:**
-- **Distributed contract (Protobuf / Avro schema registry):** Adds a build step, code generation, and a runtime dependency on a schema registry. Overkill for 80 types in a single Python package.
+- **Distributed contract (Protobuf / Avro schema registry):** Adds a build step, code generation, and a runtime dependency on a schema registry. Overkill for 132 types in a single Python package.
 - **Decentralized event registries (each service defines its own events):** Would make cross-service wiring implicit and harder to audit. The `WIRING` dict provides a single-file view of all communication paths.
-- **Class-based event types (subclasses of Event):** Adds import overhead and prevents the clean `EventType.QUOTE_CALCULATED.value` pattern used throughout.
+- **Class-based event types (subclasses of Message):** Adds import overhead and prevents the clean `Type.QUOTE_CALCULATED.value` pattern used throughout.
 
 **Consequences:**
 - (+) Single source of truth: adding a new event type requires one enum entry and one wiring row.
-- (+) IDE completions: `EventType.RISK_SCORED` is discoverable and refactorable.
+- (+) IDE completions: `Type.RISK_SCORED` is discoverable and refactorable.
 - (-) Tight coupling of enum: every service imports the same module. A change to one event type requires rebuilding the package (acceptable for a monorepo).
 - (-) No versioning built into the enum: payload schema changes must be managed separately via `schema.py` (the `SchemaRegistry`).
 
@@ -43,7 +43,7 @@
 
 **Context:** The platform certifies financial events (loan origination, disbursement, default). Non-repudiation and provenance are audit requirements.
 
-**Decision:** Every `Event` carries a cryptographic signature created by the emitting service's `Identity` (Ed25519 private key). The `AccessControl` system verifies the signature in `assert_verified()` before the event reaches any subscriber. The signature is computed over `event_id:timestamp:event_type:payload_json(sorted)`.
+**Decision:** Every `Message` carries a cryptographic signature created by the emitting service's `Identity` (Ed25519 private key). The `AccessControl` system verifies the signature in `assert_verified()` before the event reaches any subscriber. The signature is computed over `event_id:timestamp:event_type:payload_json(sorted)`.
 
 **Alternatives Considered:**
 - **HMAC with shared secret:** Simpler but lacks non-repudiation — any service holding the shared secret could forge events from another service.
@@ -167,11 +167,11 @@ else points at a file on a persistent volume.
 
 ---
 
-## 9. Thread Pool Dispatch in NanoService
+## 9. Thread Pool Dispatch in Core
 
 **Context:** Some handlers perform I/O (store reads, model inference, external API calls). Synchronous dispatch blocks the bus and other subscribers.
 
-**Decision:** `NanoService` accepts a `max_concurrent` parameter. When > 0, `__dispatch` submits the handler to a `ThreadPoolExecutor` instead of executing on the calling thread. The `LocalBus` also supports `max_workers` for cross-service concurrency. The bus's `CircuitBreaker` and `DeadLetterQueue` operate at the subscriber level regardless of dispatch mode.
+**Decision:** `Core` accepts a `max_concurrent` parameter. When > 0, `dispatch` submits the handler to a `ThreadPoolExecutor` instead of executing on the calling thread. The `LocalBus` also supports `max_workers` for cross-service concurrency. The bus's `CircuitBreaker` and `DeadLetterQueue` operate at the subscriber level regardless of dispatch mode.
 
 **Alternatives Considered:**
 - **Asyncio everywhere:** Would require all services to be async, which is a significant refactor. The hybrid approach (sync services, optional thread pool) avoids async adoption friction.

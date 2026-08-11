@@ -5,8 +5,8 @@ underwrite/                          # Main package (49 source modules + 34 wire
 ├── init.py                     # Public API exports (Runtime, NanoService, LocalBus, Store, etc.)
 ├── bus.py                      # Event bus: LocalBus, AsyncLocalBus, DeadLetterQueue,
 │                                   #   IdempotencyGuard, RateLimiter, CircuitBreaker (per-subscriber)
-├── store.py                    # State store ABC + implementations: MemoryStore, FileStore,
-│                                   #   PostgresStore, CQRSStore wrapper
+├── store.py                    # State store ABC + implementations: Sqlite(":memory:"), underwrite.store.Sqlite,
+│                                   #   SQLite store (file path or :memory:)
 ├── saga.py                     # Saga orchestration: Saga, SagaStep, SagaOrchestrator
 │                                   #   with store-backed persistence and idempotent step execution
 ├── authz.py                    # Access control: Policy, AccessControl with allow/deny rules
@@ -207,7 +207,7 @@ uv.lock                             # Dependency lockfile
 |------|---------|
 | `pyproject.toml` | PEP 621 build config. Single-source of truth for dependencies, scripts, and tool config (ruff, mypy, pytest, bandit, mutmut). Uses `setuptools-scm` for versioning. No `requirements.txt`. |
 | `Dockerfile` | Container build for the underwrite runtime |
-| `docker-compose.yml` | Orchestrates underwrite + Postgres + optional Vault/Prometheus |
+| `docker-compose.yml` | Orchestrates underwrite + Vault + OpenTelemetry Collector |
 | `Makefile` | Targets: `install`, `test`, `lint`, `typecheck`, `security`, `clean`, `build`, `serve` |
 | `tox.ini` | Test matrix across Python 3.10–3.13 |
 | `mkdocs.yml` | MkDocs config for documentation site generation |
@@ -225,6 +225,5 @@ uv.lock                             # Dependency lockfile
 
 | Path | Purpose |
 |------|---------|
-| `data/audit/ledger.json` | Append-only event ledger written by the AuditService |
-| `data/bus/dlq.json` | Dead-letter queue persistence via FileStore |
-| `data/protocol/state.json` | Mechanism delegation graph state persisted by FileStore |
+| `data/store.db` | SQLite store file containing the `store`, `migrations`, `dead_letters` and `metrics_snapshots` tables |
+| `data/store.db-wal`, `data/store.db-shm` | Write-ahead log and shared-memory file when WAL mode is active |

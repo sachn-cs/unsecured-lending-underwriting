@@ -19,7 +19,7 @@
 - **34 wired nano-services + 4 KYC provider clients** — KYC / AML (PAN + Aadhaar Verhoeff), CIBIL / Experian / Equifax credit bureau, CKYC registry, RBI rate-capped pricing, KFS generation, DPDPA consent + DSR, Razorpay PG, risk scoring, fraud detection, collections, recovery, notifications, governance
 - **Event-driven** — Typed events with Ed25519 signatures, saga orchestration, dead-letter queues, circuit breakers
 - **Pluggable backends** — Sqlite store (file or `:memory:`); local / Modal event bus; console / OTLP tracing
-- **1313 tests** — Rate limiting, idempotency guards, PII redaction, Prometheus metrics
+- **1276 tests** — Rate limiting, idempotency guards, PII redaction, Prometheus metrics
 - **DPDPA 2023 + RBI DLG aligned** — Per-product rate caps, all-in-cost APR, penal-interest cap, KFS cooling-off, consent lifecycle, DSR fulfillment, breach notification, auto-purge
 
 ## Status
@@ -118,7 +118,7 @@ git clone https://github.com/sachncs/underwrite.git
 cd underwrite
 ./setup.sh
 source .venv/bin/activate
-python -m pytest tests/ --tb=short -q   # 1313 tests
+python -m pytest tests/ --tb=short -q   # 1276 tests
 ```
 
 To run an Indian lending scenario:
@@ -175,7 +175,7 @@ Configure via **JSON file** (created with `underwrite init`), **env vars**, or b
 
 ## Architecture
 
-Each nano-service extends `NanoService` with a single `handle(event: Event) -> None`:
+Each nano-service extends `Core` with a single `handle(event: Message) -> None`:
 
 1. **Subscribe** — declare interest in event types via config
 2. **Dispatch** — handler wrapped with authz, idempotency, tracing, metrics, timeout
@@ -202,7 +202,7 @@ Cross-cutting concerns (authz, tracing, metrics, sagas, supervisor, circuit brea
 | `underwrite.saga` | module | Saga orchestrator |
 | `underwrite.authz` | module | Access control + Ed25519 verification |
 | `underwrite.keypair` | module | Ed25519 key management |
-| `underwrite.message` | module | 105+ event types (`Type` enum, `Message` envelope) |
+| `underwrite.message` | module | 132 event types (`Type` enum, `Message` envelope) |
 | `underwrite.pii` | module | PII redaction (Aadhaar, PAN, etc.) |
 | `underwrite.config` | module | Pydantic configuration (28 sections) |
 | `underwrite.cli:main` | function | `underwrite` CLI entry |
@@ -219,10 +219,10 @@ underwrite/
 │   ├── saga.py                   # Saga orchestrator
 │   ├── authz.py                  # Access control & Ed25519 verification
 │   ├── keypair.py                # Ed25519 key management
-│   ├── message.py                # 105+ event types (`Type` enum, `Message` envelope)
+│   ├── message.py                # 132 event types (`Type` enum, `Message` envelope)
 │   ├── pii.py                    # PII redaction (Aadhaar, PAN, etc.)
 │   └── services/                  # 34 wired nano-services + 4 KYC provider clients
-│       ├── base.py                # NanoService ABC
+│       ├── base.py                # Core ABC
 │       ├── mechanism/             # Delegation state machine (core)
 │       ├── compliance/            # KYC/AML — PAN category, Aadhaar Verhoeff, risk score
 │       ├── pricing/               # RBI caps, APR, EMI, penal interest, foreclosure
@@ -237,7 +237,7 @@ underwrite/
 │       ├── npa/                   # Asset classification (SMA/NPA/DLG)
 │       ├── recovery/              # Default recovery (store-backed)
 │       └── ...                    # 17 more services
-├── tests/                         # 58 test files, 1167 tests
+├── tests/                         # 72 test files, 1276 tests
 └── docs/                          # 9 updated docs for Indian market
 ```
 
@@ -273,7 +273,7 @@ pytest tests/ -x --timeout=30
 pytest --cov=underwrite --cov-report=term-missing
 ```
 
-The suite contains **1313 tests** across rate limiting, idempotency, PII redaction, RBAC, saga orchestration, and Prometheus metrics.
+The suite contains **1276 tests** across rate limiting, idempotency, PII redaction, RBAC, saga orchestration, and Prometheus metrics.
 
 ## Build
 
@@ -313,7 +313,7 @@ git tag vX.Y.Z && git push origin vX.Y.Z
 
 ## Roadmap
 
-- **v0.8.x** — Current beta: 34 wired nano-services + 4 KYC provider clients, 1313 tests, Ed25519 event provenance, RBI/DPDPA-aligned defaults.
+- **v0.8.x** — Current beta: 34 wired nano-services + 4 KYC provider clients, 1276 tests, Ed25519 event provenance, RBI/DPDPA-aligned defaults.
 - **v0.9.0** — Planned: real PAN (NSDL/ITD) and Aadhaar (UIDAI) integrations; CKYC live lookup; CIBIL production keys.
 - **v1.0.0** — Planned: live KYC partner-sandbox validation; e-NACH / UPI Autopay mandate collection; full RBAC; documented on-call runbook; pre-built multi-arch Docker images. A Helm chart is not planned.
 

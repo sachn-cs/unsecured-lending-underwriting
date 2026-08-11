@@ -31,13 +31,13 @@ underwrite dlq --replay
 underwrite dlq --replay --max 10
 ```
 
-The DLQ records are stored in `data/bus/dlq.json` when using `FileStore`, or in the `dead_letters` table when using `PostgresStore`. To inspect directly:
+The DLQ records are stored in `data/bus/dlq.json` when using `underwrite.store.Sqlite`, or in the `dead_letters` table when using `underwrite.store.Sqlite`. To inspect directly:
 
 ```bash
-# FileStore:
+# underwrite.store.Sqlite:
 cat data/bus/dlq.json | python -m json.tool
 
-# PostgresStore:
+# underwrite.store.Sqlite:
 psql $DATABASE_URL -c "SELECT * FROM dead_letters WHERE replayed=false ORDER BY failed_at DESC LIMIT 10;"
 ```
 
@@ -166,7 +166,7 @@ Set `UNDERWRITE_STORE_BACKEND=memory` for ephemeral use or ensure `data/` exists
 |----------|-------------|
 | `UNDERWRITE_API_TOKEN` | `underwrite serve --require-auth` |
 | `VAULT_TOKEN` | Secrets backend `vault` |
-| `UNDERWRITE_STORE_DSN` | Store backend `postgres` |
+| `UNDERWRITE_STORE_PATH` | Sqlite database path (default `./store.db`) |
 
 ### Signature Mismatch
 
@@ -226,7 +226,7 @@ Every response includes an `X-Request-ID` header for correlation.
 ## Migration Debugging
 
 ```bash
-# Check applied migrations (PostgresStore)
+# Check applied migrations (underwrite.store.Sqlite)
 psql $DATABASE_URL -c "SELECT * FROM migrations ORDER BY version;"
 
 # Manual rollback
@@ -261,8 +261,8 @@ When a circuit opens, operations fail with `CircuitBreakerOpenError`. Recovery i
 
 | Component | Failure Threshold | Recovery Timeout |
 |-----------|-------------------|------------------|
-| PostgresStore circuit | 3 failures | 15 seconds |
-| FileStore circuit | 3 failures | 30 seconds |
+| underwrite.store.Sqlite circuit | 3 failures | 15 seconds |
+| underwrite.store.Sqlite circuit | 3 failures | 30 seconds |
 | Bus per-subscriber circuit | 5 failures | 60 seconds |
 
 Check circuit state:

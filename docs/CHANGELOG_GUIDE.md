@@ -81,7 +81,7 @@ Each entry is a bullet point starting with a capital letter, ending without a pe
 ### Added
 - Event payload size validation — payloads exceeding 1 MB raise `ProtocolError`
 - Per-handler timeout (30s) in `AsyncLocalBus` — slow handlers are sent to DLQ
-- Distributed tracing context propagation — `trace_id` and `parent_span_id` fields on `Event`
+- Distributed tracing context propagation — `trace_id` and `parent_span_id` fields on `Message`
 
 ### Changed
 - `import random` moved from method body to module level in `circuit.py`
@@ -126,7 +126,7 @@ Repository URLs use: `https://github.com/sachncs/underwrite`
 ### Added
 - Event payload size validation — payloads exceeding 1 MB raise `ProtocolError`
 - Per-handler timeout (30s) in `AsyncLocalBus` — slow handlers are sent to DLQ
-- Distributed tracing context propagation — `trace_id` and `parent_span_id` fields on `Event`
+- Distributed tracing context propagation — `trace_id` and `parent_span_id` fields on `Message`
 
 ### Changed
 - `import random` moved from method body to module level in `circuit.py`

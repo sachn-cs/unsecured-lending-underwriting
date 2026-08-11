@@ -21,11 +21,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.fraud import Handler
 from underwrite.services.fraud import Handler as FraudHandler
-from underwrite.store import InMemory
+from underwrite.store import Sqlite
 
 
 def fraud(bus=None) -> Handler:
-    return FraudHandler(name="fraud", bus=bus or LocalBus(), store=InMemory())
+    return FraudHandler(name="fraud", bus=bus or LocalBus(), store=Sqlite(":memory:"))
 
 
 def originate(svc: Handler, borrower: str, principal: int = 1000) -> None:

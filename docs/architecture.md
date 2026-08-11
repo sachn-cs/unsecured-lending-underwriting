@@ -50,7 +50,7 @@ graph TB
 | **CLI** | `cli.py` | Typer-based command interface (`run`, `list`, `health`, `dlq`, `metrics`) |
 | **Runtime** | `runtime.py` | Service lifecycle, factory wiring, migration orchestration, health aggregation |
 | **Event Bus** | `bus.py` | Publish/subscribe, dead-letter queue, rate limiter, idempotency guard |
-| **State Store** | `store.py` | Key-value persistence (Memory/File/Postgres), CQRS wrapper |
+| **State Store** | `store.py` | SQLite persistence (file or `:memory:`) |
 | **Authz** | `authz.py` | Allow/deny policy evaluation, Ed25519 signature verification |
 | **Identity** | `identity.py` | Ed25519 keypair creation, rotation, TTL management |
 | **Saga** | `saga.py` | Multi-step transaction orchestration with compensating rollback |
@@ -150,18 +150,18 @@ flowchart LR
 
 ## State Persistence
 
-The `Store` ABC abstracts persistence with three backends:
+The platform persists state through a single `Sqlite` backend
+backed by the Python standard library `sqlite3`. A `:memory:`
+path gives an ephemeral in-process database; any other path
+creates a file-backed database with WAL journaling.
 
 ```mermaid
 flowchart TB
-    subgraph Stores["Store Backends"]
-        MEM["MemoryStore<br/>dict-backed, ephemeral"]
-        FILE["FileStore<br/>JSON files, fsync-safe"]
-        PG["PostgresStore<br/>connection pool, UPSERT"]
+    subgraph Stores["Store"]
+        SQL["Sqlite<br/>file or :memory:, WAL, busy_timeout"]
     end
     subgraph Patterns["Usage Patterns"]
         KV["Key-Value: get/set/delete/exists"]
-        CQRS["CQRSStore: write→primary, read→replica"]
         MIG["migrate(): transactional schema updates"]
     end
 ```

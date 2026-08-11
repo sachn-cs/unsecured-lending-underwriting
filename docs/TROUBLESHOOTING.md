@@ -78,7 +78,7 @@ For production deployments, this is a core dependency and is always installed. T
 
 **Symptom**: `CircuitBreakerOpenError: circuit {name} is open` logged. Operations against a store or subscriber are rejected immediately without attempting the call. Failed events go to DLQ with error `"circuit_open"`.
 
-**Root cause**: The `CircuitBreaker` (in `underwrite/circuit.py`) has recorded `failure_threshold` consecutive failures (default 5 for bus subscribers, 3 for `PostgresStore`/`FileStore`). The circuit transitions from CLOSED → OPEN, rejecting all requests until `recovery_timeout` elapses (default 60s for bus, 15s for Postgres, 30s for FileStore).
+**Root cause**: The `CircuitBreaker` (in `underwrite/circuit.py`) has recorded `failure_threshold` consecutive failures (default 5 for bus subscribers). The circuit transitions from CLOSED → OPEN, rejecting all requests until `recovery_timeout` elapses (default 60s for bus subscribers).
 
 **Diagnostic steps**:
 1. Check circuit state via health endpoint:
@@ -90,11 +90,10 @@ For production deployments, this is a core dependency and is always installed. T
    underwrite dlq
    ```
 3. Check the underlying store or handler logs for the root error.
-4. For `PostgresStore`, check `SELECT 1` connectivity and `pg_stat_activity` for stuck queries.
+4. For `Sqlite`, run `sqlite3 ./store.db ".timeout 30000" ".tables"` to verify the database is readable.
 
 **Resolution**:
-- Wait for `recovery_timeout` seconds (default 15s for Postgres, 30s for FileStore). The circuit transitions to HALF_OPEN → CLOSED on the next successful probe.
-- Fix the underlying store issue (Postgres down, disk full, etc.).
+- For `Sqlite` contention: increase `Configuration.store.busy_timeout` (or the `UNDERWRITE_STORE_BUSY_TIMEOUT` env var).
 - If the circuit is persistently opening, increase `failure_threshold` or `recovery_timeout` in the constructor.
 - To reset immediately: restart the runtime.
 
@@ -112,7 +111,7 @@ For production deployments, this is a core dependency and is always installed. T
    SELECT * FROM migrations ORDER BY version;
    ```
 2. Check the failing migration SQL in `underwrite/migrate.py` (the `default_plan()` function).
-3. Check Postgres logs for the exact SQL error.
+3. Check `sqlite3 ./store.db` output for the exact SQL error.
 
 **Resolution**:
 - Roll back the failed migration version:
@@ -212,30 +211,25 @@ Inspect the `error` field — it contains the exception type and message.
 
 ---
 
-## 9. Postgres connection failures
+## 9. SQLite database is locked or corrupted
 
-**Symptom**: `StoreError: Postgres health check failed`, `OperationalError: could not connect to server`, or circuit breaker trips on `PostgresStore`.
+**Symptom**: `StoreError: sqlite operation failed: database is locked`, `StoreError: sqlite database is corrupted: ...`, or `Sqlite.health()` returns `{"ok": false, "detail": "..."}`.
 
-**Root cause**: The Postgres server is unreachable, credentials are wrong, or the connection pool is exhausted.
+**Root cause**: A long-running transaction holds the WAL writer lock past the configured `busy_timeout`. Corruption usually means the SQLite file was overwritten or truncated by something external (operator action, fs corruption, copy-mid-write).
 
 **Diagnostic steps**:
-1. Check `UNDERWRITE_STORE_DSN` for correct host, port, database, user, and password.
-2. Test connectivity:
+1. Run an integrity check on the database:
    ```
-   psql "$UNDERWRITE_STORE_DSN" -c "SELECT 1"
+   sqlite3 ./store.db "PRAGMA integrity_check;"
    ```
-3. Check `UNDERWRITE_STORE_POOL_SIZE` (default 5) — too low for concurrent handler threads.
-4. Check `statement_timeout` — PostgresStore sets it to `operation_timeout * 1000` ms (default 30s).
-5. Inspect `pg_stat_activity` for stuck queries or idle-in-transaction connections.
-6. Check `pg_stat_database` for deadlocks or lock contention.
+2. Check `UNDERWRITE_STORE_BUSY_TIMEOUT` (default 30 s) — raise it if contention is the cause.
+3. Verify no other process is writing to the file (e.g. a stray editor or a second runtime instance).
+4. Look for `database is locked` lines in the logs — every occurrence is a contention event.
 
 **Resolution**:
-- Verify DSN format: `postgresql://user:pass@host:port/dbname`.
-- Increase `pool_size` to match the number of concurrent workers.
-- Check network connectivity and firewall rules.
-- Ensure `statement_timeout` is appropriate for your workload.
-- The `PostgresStore` uses `ThreadedConnectionPool` with `keepalives=1`, `keepalives_idle=30`, `keepalives_interval=10`, `keepalives_count=5` for connection health.
-- If the circuit breaker is open, wait `recovery_timeout` (15s) automatically.
+- Raise `Configuration.store.busy_timeout` (or the `UNDERWRITE_STORE_BUSY_TIMEOUT` env var) for contention.
+- For corruption, restore from a backup taken via `sqlite3 ./store.db ".backup '/var/backups/...'"` and re-run `underwrite migrate`. The migration runner skips already-applied versions, so it is safe to re-run on a restored database.
+- For `:memory:` mode, the database disappears with the process — there is nothing to recover. Ensure production deployments use a file path.
 
 ---
 

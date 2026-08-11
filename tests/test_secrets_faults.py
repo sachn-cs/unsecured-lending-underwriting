@@ -27,7 +27,7 @@ class TestEnvSecretsBackend:
 
     def test_get_returns_env_var_value(self) -> None:
         key = "DATABASE_URL"
-        expected = "postgres://localhost:5432/db"
+        expected = "sql://localhost:5432/db"
         with patch.dict(os.environ, {"UNDERWRITE_SECRET_DATABASE_URL": expected}, clear=False):
             backend = EnvSecretsBackend()
             result = backend.get(key)

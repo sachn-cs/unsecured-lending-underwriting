@@ -2,7 +2,7 @@
 
 ## Overview
 
-underwrite is an **event-driven nano-service platform** for delegated unsecured lending underwriting. 28 independent services communicate over a shared in-process event bus, each extending the `NanoService` abstract base class.
+underwrite is an **event-driven nano-service platform** for delegated unsecured lending underwriting. 34 independent services communicate over a shared in-process event bus, each extending the `Core` abstract base class.
 
 ```mermaid
 graph TB
@@ -22,12 +22,12 @@ graph TB
         SUP["ServiceSupervisor"]
     end
 
-    subgraph Services["28 NanoServices"]
+    subgraph Services["34 services"]
         MECH["MechanismService"]
         RISK["RiskService"]
         FRAUD["FraudService"]
         AUDIT["AuditService"]
-        OTHER["... 24 more"]
+        OTHER["... 30 more"]
     end
 
     CLI --> CFG
@@ -59,14 +59,14 @@ graph TB
 | **Circuit Breaker** | `circuit.py` | Failure isolation (CLOSED/OPEN/HALF_OPEN), exponential backoff retry |
 | **Supervisor** | `supervisor.py` | Failure tracking, auto-restart with exponential backoff |
 | **Secrets** | `secrets.py` | Secret retrieval (env vars, Vault, AWS Secrets Manager) |
-| **Services** | `services/*/service.py` | Domain logic — 28 implementations |
+| **Services** | `services/*/service.py` | Domain logic — 34 implementations |
 
 ## Event-Driven Communication
 
-All nano-services communicate exclusively through typed domain events. Each event is an `Event` dataclass with:
+All nano-services communicate exclusively through typed domain events. Each event is a `Message` dataclass with:
 
 - `event_id` — UUID v4
-- `event_type` — string from the `EventType` enum (80+ values)
+- `event_type` — string from the `Type` enum (132 values)
 - `source` — emitting service ID
 - `source_key` — Ed25519 public key
 - `payload` — dict of domain data (max 1 MB, max 1000 keys)
@@ -85,18 +85,18 @@ sequenceDiagram
     Bus->>Bus: find subscribers for event_type
     Bus->>B: dispatch(event)
     Bus->>C: dispatch(event)
-    Note over B: __dispatch → authz → idempotency → trace → handle()
-    Note over C: __dispatch → authz → idempotency → trace → handle()
+    Note over B: dispatch → authz → idempotency → trace → handle()
+    Note over C: dispatch → authz → idempotency → trace → handle()
 ```
 
-## NanoService Base Class
+## Core Base Class
 
-Every service extends `NanoService` (or `StatefulService`) and implements:
+Every service extends `Core` (or `StatefulService`) and implements:
 
 ```python
-class MyService(NanoService):
-    def handle(self, event: Event) -> None:
-        # Domain logic — called by __dispatch
+class MyService(Core):
+    def handle(self, event: Message) -> None:
+        # Domain logic — called by dispatch
         ...
         self.emit("downstream.event", result_payload)
 ```
@@ -105,7 +105,7 @@ The base class handles all cross-cutting concerns automatically:
 
 ```mermaid
 flowchart LR
-    subgraph Dispatch["__dispatch pipeline"]
+    subgraph Dispatch["dispatch pipeline"]
         E["Event received"] --> A1{"Authz check"}
         A1 -->|fail| DROP["Drop (log warning)"]
         A1 -->|pass| I1{"Idempotent?"}
@@ -170,8 +170,8 @@ flowchart TB
 
 Every emitted event is Ed25519-signed by the source service's `Identity`:
 
-1. `NanoService.emit()` creates the event, serializes the payload, signs with `self.__identity.sign(to_sign)`
-2. Downstream `__dispatch()` calls `self.__authz.assert_verified(event)` to verify the signature
+1. `Core.emit()` creates the event, serializes the payload, signs with `self.__identity.sign(to_sign)`
+2. Downstream `dispatch()` calls `self.authz.assert_verified(event)` to verify the signature
 3. `AccessControl` evaluates allow/deny policies (default-deny) for publish and subscribe operations
 4. Ed25519 keys are rotated manually by generating a new `Identity.create(...)` and updating the runtime; rely on `AccessControl.set_replay_window(...)` to keep recent signatures verifiable
 

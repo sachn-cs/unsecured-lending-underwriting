@@ -9,11 +9,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.underwriter import Handler
 from underwrite.services.underwriter import Handler as UnderwriterHandler
-from underwrite.store import InMemory
+from underwrite.store import Sqlite
 
 
 def svc(bus=None) -> Handler:
-    return UnderwriterHandler(name="underwriter", bus=bus or LocalBus(), store=InMemory())
+    return UnderwriterHandler(name="underwriter", bus=bus or LocalBus(), store=Sqlite(":memory:"))
 
 
 def request(svc, bus, **kw) -> None:

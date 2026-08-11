@@ -19,12 +19,12 @@ from underwrite.services.pricing import (
 from underwrite.services.pricing import (
     Handler as PricingHandler,
 )
-from underwrite.store import InMemory
+from underwrite.store import Sqlite
 
 
 def svc(**kwargs) -> Handler:
     kwargs.setdefault("bus", LocalBus())
-    kwargs.setdefault("store", InMemory())
+    kwargs.setdefault("store", Sqlite(":memory:"))
     return PricingHandler(name="pricing", **kwargs)
 
 

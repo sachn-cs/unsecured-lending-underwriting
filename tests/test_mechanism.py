@@ -373,7 +373,7 @@ class TestRevoke:
         command(svc, "revoke", {"sponsor": "bank", "child": "alice", "new_delegation": 10_000})
         state = svc.store.get("protocol:state")
         assert state is not None
-        assert state["delegation"]["bank->alice"] == 10_000
+        assert float(state["delegation"]["bank->alice"]) == 10_000
 
     def test_rejects_negative_new_delegation(self) -> None:
         svc = make_svc()
@@ -383,7 +383,7 @@ class TestRevoke:
         command(svc, "revoke", {"sponsor": "bank", "child": "alice", "new_delegation": -10})
         state = svc.store.get("protocol:state")
         assert state is not None
-        assert state["delegation"]["bank->alice"] == 50_000
+        assert float(state["delegation"]["bank->alice"]) == 50_000
 
     def test_rejects_unknown_edge(self) -> None:
         svc = make_svc()
@@ -505,7 +505,7 @@ class TestEdgeCases:
         command(svc, "revoke", {"sponsor": "bank", "child": "a", "new_delegation": 0})
         state = svc.store.get("protocol:state")
         assert state is not None
-        assert state["delegation"]["bank->a"] == 0
+        assert float(state["delegation"]["bank->a"]) == 0
 
     def test_originate_uses_all_credit(self) -> None:
         svc = make_svc()

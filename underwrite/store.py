@@ -3,33 +3,26 @@
 
 """Persistence abstraction for state and log storage.
 
-Composition over inheritance: InMemory, Disk, and Sqlite are
-standalone backend classes (no ABC). The Store façade wraps one
-backend and delegates every method to it.
+The platform runs on a single backend: SQLite (stdlib ``sqlite3``).
+Pass ``":memory:"`` as the path for an in-process database; pass a
+file path for a persistent one. The ``Store`` façade accepts
+``type="sqlite"`` and a ``path`` keyword for legacy call sites.
 
 Public API:
 
-    InMemory()                  # in-process dict
-    Disk(data_dir="./data")      # JSON-per-file
-    Sqlite(path="./store.db")    # stdlib sqlite3
-    Store(type="memory")         # façade: picks a backend
-    Store(type="disk", data_dir="…")
-    Store(type="sqlite", path="…")
+    Sqlite(path="./store.db")          # file-backed
+    Sqlite(path=":memory:")            # in-process
+    Store(type="sqlite", path="…")     # façade: delegates to Sqlite
 """
 
 from __future__ import annotations
 
 __all__ = [
-    "CQRSStore",
-    "Disk",
-    "InMemory",
     "Sqlite",
-    "ReadStore",
     "Store",
     "StoreBackend",
 ]
 
-import concurrent.futures
 import json
 import sqlite3
 import threading
@@ -38,11 +31,12 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Protocol
 
-from underwrite.circuit import CircuitBreaker
 from underwrite.exceptions import StoreError
 from underwrite.logger import logger
 
-FILE_TIMEOUT_MSG: str = "store operation timed out after %.1fs on %s"
+DEFAULT_BUSY_TIMEOUT_SECONDS: float = 30.0
+
+CORRUPTION_ERRNOS: frozenset[str] = frozenset({"database disk image is malformed", "file is not a database"})
 
 
 class Connection(Protocol):
@@ -69,268 +63,163 @@ class StoreBackend(Protocol):
     def migrate(self, plan: Any) -> None: ...
 
 
-class InMemory:
-    """Thread-safe in-memory store. Data is lost on process exit.
+class Sqlite:
+    """SQLite-backed store using stdlib ``sqlite3``.
 
-    Bounded by *max_entries* — when the limit is reached the oldest
-    entries (by insertion order) are evicted to stay within budget.
+    A *path* of ``":memory:"`` selects a private in-process database;
+    any other path is treated as a file location (parent directories
+    are created on first use). A single ``threading.Lock`` serialises
+    write transactions; reads may run concurrently but the connection
+    is closed at the end of every operation so ``check_same_thread``
+    is irrelevant.
+
+    PRAGMAs applied per connection:
+      - ``journal_mode=WAL`` so readers do not block writers
+      - ``synchronous=NORMAL`` (durable enough for WAL)
+      - ``foreign_keys=ON``
+      - ``busy_timeout`` defaults to 30 s to ride out transient locks
     """
-
-    def __init__(self, max_entries: int = 0) -> None:
-        self.lock: threading.Lock = threading.Lock()
-        self.data: dict[str, Any] = {}
-        self.max_entries: int = max_entries
-        self.insertion_order: list[str] = []  # insertion-order tracking for eviction
-
-    def get(self, key: str) -> Any | None:
-        with self.lock:
-            return self.data.get(key)
-
-    def set(self, key: str, value: Any) -> None:
-        with self.lock:
-            is_new: bool = key not in self.data
-            if is_new and self.max_entries > 0:
-                while len(self.insertion_order) >= self.max_entries:
-                    evicted = self.insertion_order.pop(0)
-                    self.data.pop(evicted, None)
-                self.insertion_order.append(key)
-            self.data[key] = value
-
-    def delete(self, key: str) -> bool:
-        with self.lock:
-            return self.data.pop(key, None) is not None
-
-    def exists(self, key: str) -> bool:
-        with self.lock:
-            return key in self.data
-
-    def keys(self, pattern: str | None = None, limit: int = 0, offset: int = 0) -> list[str]:
-        with self.lock:
-            all_keys = [k for k in self.data if pattern is None or pattern.rstrip("*") in k]
-            if offset > 0:
-                all_keys = all_keys[offset:]
-            if limit > 0:
-                all_keys = all_keys[:limit]
-            return all_keys
-
-    def shutdown(self) -> None:
-        return None
-
-    def health(self) -> dict[str, Any]:
-        return {"ok": True}
-
-    def migrate(self, plan: Any) -> None:
-        return None
-
-
-class Disk:
-    """Filesystem-backed store. Each key maps to a JSON file under *data_dir*."""
 
     def __init__(
         self,
-        data_dir: str = "./data",
-        operation_timeout: float = 0.0,
-        use_circuit_breaker: bool = False,
-        failure_threshold: int = 3,
-        fsync: bool = True,
-        metrics_collector: Any | None = None,
+        path: str = ":memory:",
+        busy_timeout: float = DEFAULT_BUSY_TIMEOUT_SECONDS,
     ) -> None:
-        self.data_dir: Path = Path(data_dir)
-        self.data_dir.mkdir(parents=True, exist_ok=True)
-        self.lock: threading.Lock = threading.Lock()
-        self.operation_timeout: float = operation_timeout
-        self.executor: concurrent.futures.ThreadPoolExecutor | None = (
-            concurrent.futures.ThreadPoolExecutor(max_workers=1) if operation_timeout > 0 else None
-        )
-        self.circuit: CircuitBreaker | None = (
-            CircuitBreaker(failure_threshold=failure_threshold, recovery_timeout=30.0, name="disk")
-            if use_circuit_breaker
-            else None
-        )
-        self.fsync: bool = fsync
-        self.metrics: Any | None = metrics_collector
-
-    def shutdown(self, wait: bool = True) -> None:
-        if self.executor is not None:
-            self.executor.shutdown(wait=wait)
-            self.executor = None
-
-    def timeout(self, fn: Any, *args: Any, **kwargs: Any) -> Any:
-        if self.executor is None:
-            return fn(*args, **kwargs)
-        fut = self.executor.submit(fn, *args, **kwargs)
-        try:
-            return fut.result(timeout=self.operation_timeout)
-        except concurrent.futures.TimeoutError:
-            raise TimeoutError(FILE_TIMEOUT_MSG % (self.operation_timeout, fn.__name__)) from None
-
-    def circuit_call(self, fn: Any, *args: Any, **kwargs: Any) -> Any:
-        if self.circuit is None:
-            return fn(*args, **kwargs)
-        return self.circuit.call(fn, *args, **kwargs)
-
-    def get(self, key: str) -> Any | None:
-        def _read() -> Any | None:
-            path = self.path(key)
-            if not path.exists():
-                return None
-            try:
-                with open(path) as f:
-                    return json.load(f)
-            except OSError as exc:
-                logger.warning("failed to read store key {}: {}", key, exc)
-                if self.metrics is not None and hasattr(self.metrics, "increment"):
-                    self.metrics.increment("store.io_error")
-                raise StoreError(f"io error reading store key {key!r}: {exc}") from None
-            except ValueError as exc:
-                logger.warning("failed to read store key {}: {}", key, exc)
-                if self.metrics is not None and hasattr(self.metrics, "increment"):
-                    self.metrics.increment("store.corruption")
-                raise StoreError(f"corrupted store file for {key!r}: {exc}") from None
-
-        try:
-            return self.timeout(_read) if self.executor else self.circuit_call(_read)
-        except TimeoutError:
-            return None
-
-    def set(self, key: str, value: Any) -> None:
-        def _write() -> None:
-            path = self.path(key)
-            tmp = path.with_suffix(path.suffix + ".tmp")
-            try:
-                with open(tmp, "w") as f:
-                    json.dump(value, f, default=str)
-                    if self.fsync:
-                        f.flush()
-                        import os as _os
-
-                        _os.fsync(f.fileno())
-                tmp.replace(path)
-            except OSError:
-                logger.exception("failed to write store key {}", key)
-
-        if self.executor:
-            self.timeout(_write)
-        else:
-            self.circuit_call(_write)
-
-    def delete(self, key: str) -> bool:
-        def _delete() -> bool:
-            path = self.path(key)
-            if path.exists():
-                path.unlink()
-                return True
-            return False
-
-        if self.executor:
-            return bool(self.timeout(_delete))
-        return bool(self.circuit_call(_delete))
-
-    def exists(self, key: str) -> bool:
-        return self.path(key).exists()
-
-    def keys(self, pattern: str | None = None, limit: int = 0, offset: int = 0) -> list[str]:
-        def _list() -> list[str]:
-            out: list[str] = []
-            for child in self.data_dir.iterdir():
-                if child.suffix == ".tmp":
-                    continue
-                name = child.name
-                if pattern is None or pattern.rstrip("*") in name:
-                    out.append(name)
-            return out
-
-        result = self.timeout(_list) if self.executor else self.circuit_call(_list)
-        result.sort()
-        if offset > 0:
-            result = result[offset:]
-        if limit > 0:
-            result = result[:limit]
-        return result
-
-    def path(self, key: str) -> Path:
-        if not key or ".." in key or key.startswith("/") or key.startswith("\\"):
-            raise StoreError(f"invalid store key: {key!r}")
-        safe = key.replace("/", "_").replace("\\", "_")
-        # Verify resolved path stays inside data_dir
-        candidate = (self.data_dir / safe).resolve()
-        if not str(candidate).startswith(str(self.data_dir.resolve())):
-            raise StoreError(f"store key {key!r} escapes data_dir")
-        return candidate
-
-    def health(self) -> dict[str, Any]:
-        return {"ok": True, "data_dir": str(self.data_dir)}
-
-    def migrate(self, plan: Any) -> None:
-        return None
-
-
-class Sqlite:
-    """SQLite-backed store using stdlib sqlite3.
-
-    Single file at *path*. Thread-safe via per-call connection.
-    """
-
-    def __init__(self, path: str = "./store.db") -> None:
         self.path: Path = Path(path)
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.busy_timeout: float = busy_timeout
         self.lock: threading.Lock = threading.Lock()
-        self._init_schema()
+        self._shared_conn: sqlite3.Connection | None = None
+        self._init_error: str | None = None
+        if self.path_str() != ":memory:":
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            self._init_schema()
+        except sqlite3.DatabaseError as exc:
+            self._init_error = str(exc)
+            logger.warning("sqlite store init failed for {}: {}", self.path_str(), exc)
+
+    def path_str(self) -> str:
+        return str(self.path)
+
+    def is_memory(self) -> bool:
+        return self.path_str() == ":memory:"
 
     def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(str(self.path), timeout=10.0)
+        if self._shared_conn is not None:
+            return self._shared_conn
+        conn = sqlite3.connect(
+            self.path_str(),
+            timeout=self.busy_timeout,
+            check_same_thread=False,
+        )
+        conn.execute(f"PRAGMA busy_timeout = {int(self.busy_timeout * 1000)}")
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA synchronous=NORMAL")
         conn.execute("PRAGMA foreign_keys=ON")
         return conn
 
     def _init_schema(self) -> None:
-        with self._connect() as conn:
+        if self.is_memory():
+            self._shared_conn = self._connect()
+            self._shared_conn.execute("CREATE TABLE IF NOT EXISTS store (  key TEXT PRIMARY KEY,  value BLOB NOT NULL)")
+            self._shared_conn.commit()
+            return
+        conn = self._connect()
+        try:
             conn.execute("CREATE TABLE IF NOT EXISTS store (  key TEXT PRIMARY KEY,  value BLOB NOT NULL)")
             conn.commit()
+        finally:
+            conn.close()
 
     @contextmanager
     def _txn(self) -> Generator[sqlite3.Connection, None, None]:
+        shared = self._shared_conn is not None
+        conn = self._connect()
+        try:
+            yield conn
+            conn.commit()
+        except sqlite3.DatabaseError as exc:
+            try:
+                conn.rollback()
+            except sqlite3.DatabaseError:
+                pass
+            self._raise_for_corruption(exc)
+            raise StoreError(f"sqlite operation failed: {exc}") from None
+        except Exception:
+            try:
+                conn.rollback()
+            except sqlite3.DatabaseError:
+                pass
+            raise
+        finally:
+            if not shared:
+                conn.close()
+
+    @staticmethod
+    def _raise_for_corruption(exc: BaseException) -> None:
+        msg = str(exc).lower()
+        if any(needle in msg for needle in CORRUPTION_ERRNOS):
+            raise StoreError(f"sqlite database is corrupted: {exc}") from None
+
+    def get(self, key: str) -> Any | None:
         with self.lock:
             conn = self._connect()
             try:
-                yield conn
-                conn.commit()
+                row = conn.execute("SELECT value FROM store WHERE key = ?", (key,)).fetchone()
+            except sqlite3.DatabaseError as exc:
+                self._raise_for_corruption(exc)
+                raise StoreError(f"sqlite read failed: {exc}") from None
             finally:
-                conn.close()
-
-    def get(self, key: str) -> Any | None:
-        with self._txn() as conn:
-            row = conn.execute("SELECT value FROM store WHERE key = ?", (key,)).fetchone()
-            if row is None:
-                return None
-            try:
-                return json.loads(row[0])
-            except (ValueError, TypeError):
-                logger.warning("failed to decode sqlite value for {}", key)
-                return None
+                if self._shared_conn is None:
+                    conn.close()
+        if row is None:
+            return None
+        try:
+            return json.loads(row[0])
+        except (ValueError, TypeError):
+            logger.warning("failed to decode sqlite value for {}", key)
+            return None
 
     def set(self, key: str, value: Any) -> None:
         encoded = json.dumps(value, default=str).encode("utf-8")
-        with self._txn() as conn:
-            conn.execute(
-                "INSERT OR REPLACE INTO store (key, value) VALUES (?, ?)",
-                (key, encoded),
-            )
+        with self.lock:
+            with self._txn() as conn:
+                conn.execute(
+                    "INSERT INTO store (key, value) VALUES (?, ?) "
+                    "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                    (key, encoded),
+                )
 
     def delete(self, key: str) -> bool:
-        with self._txn() as conn:
-            cur = conn.execute("DELETE FROM store WHERE key = ?", (key,))
-            return cur.rowcount > 0
+        with self.lock:
+            with self._txn() as conn:
+                cur = conn.execute("DELETE FROM store WHERE key = ?", (key,))
+                return cur.rowcount > 0
 
     def exists(self, key: str) -> bool:
-        with self._txn() as conn:
-            row = conn.execute("SELECT 1 FROM store WHERE key = ?", (key,)).fetchone()
-            return row is not None
+        with self.lock:
+            conn = self._connect()
+            try:
+                row = conn.execute("SELECT 1 FROM store WHERE key = ?", (key,)).fetchone()
+            except sqlite3.DatabaseError as exc:
+                self._raise_for_corruption(exc)
+                raise StoreError(f"sqlite read failed: {exc}") from None
+            finally:
+                if self._shared_conn is None:
+                    conn.close()
+        return row is not None
 
     def keys(self, pattern: str | None = None, limit: int = 0, offset: int = 0) -> list[str]:
-        with self._txn() as conn:
-            all_keys = [r[0] for r in conn.execute("SELECT key FROM store ORDER BY key").fetchall()]
+        with self.lock:
+            conn = self._connect()
+            try:
+                all_keys = [r[0] for r in conn.execute("SELECT key FROM store ORDER BY key").fetchall()]
+            except sqlite3.DatabaseError as exc:
+                self._raise_for_corruption(exc)
+                raise StoreError(f"sqlite read failed: {exc}") from None
+            finally:
+                if self._shared_conn is None:
+                    conn.close()
         if pattern is not None:
             needle = pattern.rstrip("*")
             all_keys = [k for k in all_keys if needle in k]
@@ -344,44 +233,95 @@ class Sqlite:
         return None
 
     def health(self) -> dict[str, Any]:
-        return {"ok": True, "path": str(self.path)}
+        try:
+            with self.lock:
+                conn = self._connect()
+                try:
+                    conn.execute("SELECT 1").fetchone()
+                finally:
+                    if self._shared_conn is None:
+                        conn.close()
+        except Exception as exc:
+            return {"ok": False, "detail": str(exc), "path": self.path_str()}
+        return {"ok": True, "path": self.path_str()}
 
     def migrate(self, plan: Any) -> None:
-        return None
+        if plan is None:
+            return
+        from underwrite.migrate import MigrationPlan
+
+        if not isinstance(plan, MigrationPlan):
+            raise StoreError(f"migrate() expects MigrationPlan, got {type(plan).__name__}")
+        shared = self._shared_conn is not None
+        conn = self._connect()
+        try:
+            cur = conn.execute("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'migrations'")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "CREATE TABLE migrations ("
+                    "  version INTEGER PRIMARY KEY,"
+                    "  description TEXT NOT NULL,"
+                    "  applied_at TEXT NOT NULL DEFAULT (datetime('now'))"
+                    ")"
+                )
+            conn.commit()
+        finally:
+            if not shared:
+                conn.close()
+        conn = self._connect()
+        try:
+            applied_rows = conn.execute("SELECT version FROM migrations").fetchall()
+            applied = {int(r[0]) for r in applied_rows}
+            for migration in plan.pending(applied):
+                try:
+                    conn.execute("BEGIN IMMEDIATE")
+                    for stmt in migration.statements:
+                        conn.execute(stmt)
+                    conn.execute(
+                        "INSERT OR IGNORE INTO migrations (version, description) VALUES (?, ?)",
+                        (migration.version, migration.description),
+                    )
+                    conn.commit()
+                    logger.info("migration v{} applied: {}", migration.version, migration.description)
+                except Exception as exc:
+                    conn.rollback()
+                    from underwrite.exceptions import MigrationError
+
+                    raise MigrationError(
+                        f"migration v{migration.version} ({migration.description}) failed: {exc}"
+                    ) from exc
+        finally:
+            if not shared:
+                conn.close()
 
 
 class Store:
-    """Façade that picks one of InMemory/Disk/Sqlite based on *type*.
+    """Façade that delegates to ``Sqlite``.
 
-    Composition, not inheritance: every method delegates to the
-    configured backend instance stored as ``self.implementation``.
+    The legacy ``type="memory"`` selector is preserved for existing
+    call sites: it returns ``Sqlite(":memory:")``. The only other
+    accepted type is ``"sqlite"``.
     """
 
-    MEMORY = "memory"
-    DISK = "disk"
     SQLITE = "sqlite"
+    MEMORY = "memory"
 
     def __init__(
         self,
-        type: str = MEMORY,
+        type: str = SQLITE,
         *,
         path: str | None = None,
-        max_entries: int = 0,
         **kwargs: Any,
     ) -> None:
         self.type: str = type
-        if type == self.MEMORY:
-            self.implementation: StoreBackend = InMemory(max_entries=max_entries)
-        elif type == self.DISK:
-            kwargs.pop("data_dir", None)
-            data_dir: str = path if path is not None else "./data"
-            self.implementation = Disk(data_dir=data_dir, **kwargs)
-        elif type == self.SQLITE:
-            kwargs.pop("path", None)
-            db_path: str = path if path is not None else "./store.db"
-            self.implementation = Sqlite(path=db_path, **kwargs)
+        kwargs.pop("data_dir", None)
+        if type == self.SQLITE:
+            db_path: str = path if path is not None else ":memory:"
+            self.implementation: StoreBackend = Sqlite(path=db_path, **kwargs)
+        elif type == self.MEMORY:
+            self.implementation = Sqlite(path=":memory:", **kwargs)
         else:
-            raise ValueError(f"unknown store type: {type!r}")
+            raise ValueError(f"unknown store type: {type!r}; expected 'sqlite' or 'memory'")
 
     def get(self, key: str) -> Any | None:
         return self.implementation.get(key)
@@ -406,79 +346,3 @@ class Store:
 
     def migrate(self, plan: Any) -> None:
         self.implementation.migrate(plan)
-
-
-class ReadStore:
-    """Read-only store for CQRS query side.
-
-    Same backend can be passed in read-only mode; writes raise StoreError.
-    """
-
-    def __init__(self, backend: StoreBackend) -> None:
-        self.implementation: StoreBackend = backend
-
-    def get(self, key: str) -> Any | None:
-        return self.implementation.get(key)
-
-    def exists(self, key: str) -> bool:
-        return self.implementation.exists(key)
-
-    def delete(self, key: str) -> bool:
-        raise StoreError("ReadStore is read-only")
-
-    def keys(self, pattern: str | None = None, limit: int = 0, offset: int = 0) -> list[str]:
-        return self.implementation.keys(pattern=pattern, limit=limit, offset=offset)
-
-    def shutdown(self) -> None:
-        self.implementation.shutdown()
-
-    def health(self) -> dict[str, Any]:
-        return self.implementation.health()
-
-
-class CQRSStore(Store):
-    """A store that delegates writes to write-store and reads from read-store.
-
-    For now it is a thin wrapper around a single Store; future versions
-    can split the read and write paths into separate backends.
-    """
-
-    def __init__(self, write_store: Store, read_store: ReadStore | None = None) -> None:
-        self.write_store: Store = write_store
-        self.read_store: ReadStore = read_store or ReadStore(write_store)
-
-    def get(self, key: str) -> Any | None:
-        return self.read_store.get(key)
-
-    def set(self, key: str, value: Any) -> None:
-        self.write_store.set(key, value)
-
-    def delete(self, key: str) -> bool:
-        return self.write_store.delete(key)
-
-    def exists(self, key: str) -> bool:
-        return self.read_store.exists(key)
-
-    def keys(self, pattern: str | None = None, limit: int = 0, offset: int = 0) -> list[str]:
-        return self.write_store.keys(pattern=pattern, limit=limit, offset=offset)
-
-    def shutdown(self) -> None:
-        self.write_store.shutdown()
-        self.read_store.shutdown()
-
-    def health(self) -> dict[str, Any]:
-        result: dict[str, Any] = {"ok": True}
-        try:
-            result["write_store"] = self.write_store.health()
-        except Exception as exc:
-            result["write_store"] = {"ok": False, "error": str(exc)}
-            result["ok"] = False
-        try:
-            result["read_store"] = self.read_store.health()
-        except Exception as exc:
-            result["read_store"] = {"ok": False, "error": str(exc)}
-            result["ok"] = False
-        return result
-
-    def migrate(self, plan: Any) -> None:
-        self.write_store.migrate(plan)

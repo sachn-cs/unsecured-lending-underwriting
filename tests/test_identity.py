@@ -15,12 +15,12 @@ import pytest
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.identity import Handler as IdentityHandler
-from underwrite.store import InMemory
+from underwrite.store import Sqlite
 
 
 class TestIdentityService:
     def test_register_creates_key_in_store(self) -> None:
-        store = InMemory()
+        store = Sqlite(":memory:")
         svc = IdentityHandler(name="identity", store=store, bus=LocalBus())
         svc.handle(Message(event_type=Type.IDENTITY_REGISTER, source="test", payload={"name": "risk"}))
         stored = store.get("identity:risk")
@@ -32,7 +32,7 @@ class TestIdentityService:
         bus = LocalBus()
         received: list[Message] = []
         bus.subscribe(Type.IDENTITY_REGISTERED, lambda e: received.append(e))
-        store = InMemory()
+        store = Sqlite(":memory:")
         svc = IdentityHandler(name="identity", store=store, bus=bus or LocalBus())
         bus.start()
         svc.handle(Message(event_type=Type.IDENTITY_REGISTER, source="test", payload={"name": "fraud"}))
@@ -41,7 +41,7 @@ class TestIdentityService:
         assert len(received[0].payload["public_key"]) > 0
 
     def test_rotate_updates_public_key(self) -> None:
-        store = InMemory()
+        store = Sqlite(":memory:")
         svc = IdentityHandler(name="identity", store=store, bus=LocalBus())
         svc.handle(Message(event_type=Type.IDENTITY_REGISTER, source="test", payload={"name": "audit"}))
         orig_rec = store.get("identity:audit")
@@ -57,7 +57,7 @@ class TestIdentityService:
         bus = LocalBus()
         received: list[Message] = []
         bus.subscribe(Type.IDENTITY_ROTATED, lambda e: received.append(e))
-        store = InMemory()
+        store = Sqlite(":memory:")
         svc = IdentityHandler(name="identity", store=store, bus=bus or LocalBus())
         bus.start()
         svc.handle(Message(event_type=Type.IDENTITY_REGISTER, source="test", payload={"name": "gov"}))
@@ -65,7 +65,7 @@ class TestIdentityService:
         assert len(received) == 1
 
     def test_multiple_registrations_independent(self) -> None:
-        store = InMemory()
+        store = Sqlite(":memory:")
         svc = IdentityHandler(name="identity", store=store, bus=LocalBus())
         svc.handle(Message(event_type=Type.IDENTITY_REGISTER, source="test", payload={"name": "a"}))
         svc.handle(Message(event_type=Type.IDENTITY_REGISTER, source="test", payload={"name": "b"}))
@@ -78,7 +78,7 @@ class TestIdentityService:
         assert key_a["public_key"] != key_b["public_key"]
 
     def test_ignores_unrelated_events(self) -> None:
-        store = InMemory()
+        store = Sqlite(":memory:")
         svc = IdentityHandler(name="identity", store=store, bus=LocalBus())
         svc.handle(Message(event_type="seed.added", source="test", payload={}))
         svc.handle(Message(event_type=Type.LOAN_ORIGINATED, source="test", payload={}))
@@ -87,6 +87,6 @@ class TestIdentityService:
     def test_rejects_empty_service_id(self) -> None:
         from underwrite.exceptions import ProtocolError
 
-        svc = IdentityHandler(name="identity", store=InMemory(), bus=LocalBus())
+        svc = IdentityHandler(name="identity", store=Sqlite(":memory:"), bus=LocalBus())
         with pytest.raises(ProtocolError):
             svc.handle(Message(event_type=Type.IDENTITY_REGISTER, source="test", payload={"name": ""}))

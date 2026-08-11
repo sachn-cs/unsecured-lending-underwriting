@@ -111,30 +111,34 @@ The platform uses two layers of circuit breakers:
 
 Tracks failures per subscriber ID (not per service). After 5 consecutive failures, the circuit opens for 60 seconds. While open, events are sent directly to the DLQ without invoking the handler. A successful request on the half-open state resets the circuit.
 
-### Store Circuit Breaker
+### Store Resilience
 
-| Store | Failure Threshold | Recovery Timeout |
-|-------|-------------------|------------------|
-| PostgresStore | 3 | 15 seconds |
-| FileStore | 3 | 30 seconds |
+The `Sqlite` store does not embed a per-store circuit breaker. The
+SQLite `busy_timeout` PRAGMA (default 30 s, configurable via
+`UNDERWRITE_STORE_BUSY_TIMEOUT`) covers transient contention by
+making contending callers wait rather than fail. Operators who want
+circuit-breaker semantics around the store can wrap calls in their
+own `CircuitBreaker` (`underwrite.circuit`).
 
-When tripped, all store operations raise `CircuitBreakerOpenError`. Check state via health:
+Health:
 
 ```bash
 underwrite health
-# [OK] store — circuit=closed
+# [OK] store — {"ok": true, "path": "./store.db"}
 ```
 
 Or programmatically:
 
 ```python
-from underwrite.circuit import CircuitBreaker, CircuitState
+from underwrite.store import Sqlite
 
-cb = CircuitBreaker(failure_threshold=3, recovery_timeout=15.0)
-# cb.state → CircuitState.CLOSED / OPEN / HALF_OPEN
+s = Sqlite(path="./store.db")
+h = s.health()
 ```
 
-Recovery is automatic after the cooldown period. No manual reset required.
+Recovery from a corrupted file is manual: replace the SQLite file
+from a backup and re-run `underwrite migrate` so the migration
+runner no-ops.
 
 ---
 
@@ -168,10 +172,10 @@ Replayed events are re-published to the bus. Services with idempotency guards sk
 
 ### Persistence
 
-When `FileStore` or `PostgresStore` is used, the DLQ persists across restarts:
-
-- **FileStore**: `data/bus/dlq.json`
-- **PostgresStore**: `dead_letters` table
+When the `Sqlite` store is configured with a file path, the DLQ
+persists across restarts in the `store` table under the key
+`bus:dlq`. The dead-letter table created by migration v2 is also
+available for downstream tooling that prefers SQL access.
 
 ### Programmatic
 
@@ -194,8 +198,8 @@ The migration engine applies pending schema changes on startup (auto-migrate ena
 # Run pending migrations manually
 underwrite migrate
 
-# Check applied versions (Postgres)
-psql $DATABASE_URL -c "SELECT * FROM migrations ORDER BY version;"
+# Check applied versions
+sqlite3 ./store.db "SELECT * FROM migrations ORDER BY version;"
 ```
 
 ### Migration Plan
@@ -364,25 +368,23 @@ Requires `underwrite[otlp]` extra. Console exporter is also available for develo
 
 ## Backup
 
-### FileStore Backup
+### Sqlite Backup
 
-Data is stored as individual JSON files in `data/`:
+The store is a single file (default `./store.db`). The simplest
+production backup is to copy the file while the runtime is paused or
+to use SQLite's `.backup` command:
 
 ```bash
-# Backup
-tar czf underwrite-data-$(date +%Y%m%d).tar.gz data/
+# Hot backup via the sqlite3 CLI
+sqlite3 ./store.db ".backup '/var/backups/underwrite-$(date +%Y%m%d).db'"
 
 # Restore
-tar xzf underwrite-data-20260608.tar.gz
+cp /var/backups/underwrite-YYYYMMDD.db ./store.db
 ```
 
-Keys map to file paths: `saga:<id>` → `data/saga/<id>.json`.
-
-### PostgresStore Backup
-
-```bash
-pg_dump $DATABASE_URL -t store -t migrations -t dead_letters -t metrics_snapshots > underwrite-backup.sql
-```
+If WAL is enabled (the default), include `-wal` and `-shm` siblings
+in the copy or use the `.backup` command which freezes the
+write-ahead log atomically.
 
 ---
 
@@ -497,13 +499,12 @@ Install extras with `pip install underwrite[<extra>]`:
 | Extra | Provides |
 |-------|----------|
 | `serve` | FastAPI + uvicorn HTTP server |
-| `postgres` | PostgreSQL store backend |
 | `otlp` | OpenTelemetry distributed tracing |
 | `risk` | NumPy + scikit-learn for risk scoring |
 | `vault` | HashiCorp Vault secrets backend |
 | `aws` | AWS Secrets Manager / S3 / SQS backends |
 | `gcs` | Google Cloud Storage backend |
-| `dev` | Pytest, ruff, mypy, bandit, testcontainers |
+| `dev` | Pytest, ruff, mypy, bandit |
 | `mutation` | Mutation testing (mutmut) |
 | `security` | Bandit + pip-audit |
 | `all` | All extras combined |

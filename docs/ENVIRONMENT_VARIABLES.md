@@ -20,11 +20,9 @@ Parsed by `Configuration.__apply_env_overrides()` in
 | `UNDERWRITE_SQS_QUEUE_URL` | No | `""` | AWS SQS queue URL (required when `BUS_BACKEND=sqs`) |
 | `UNDERWRITE_SQS_REGION` | No | `""` | AWS region for SQS |
 | `UNDERWRITE_MODAL_QUEUE_NAME` | No | `""` | Modal queue name (required when `BUS_BACKEND=modal`) |
-| `UNDERWRITE_STORE_BACKEND` | No | `memory` | Store backend (`memory`, `filesystem`, `postgres`) |
-| `UNDERWRITE_STORE_DSN` | No | `""` | Store connection string |
-| `UNDERWRITE_STORE_POOL_SIZE` | No | `5` | Database connection pool size |
-| `UNDERWRITE_STORE_READ_BACKEND` | No | `""` | Read-replica store backend (empty = use `STORE_BACKEND`) |
-| `UNDERWRITE_STORE_READ_DSN` | No | `""` | Read-replica DSN (empty = use `STORE_DSN`) |
+| `UNDERWRITE_STORE_BACKEND` | No | `sqlite` | Store backend (`sqlite`, `memory`) |
+| `UNDERWRITE_STORE_PATH` | No | `./store.db` | SQLite database path. Use `:memory:` for ephemeral. |
+| `UNDERWRITE_STORE_BUSY_TIMEOUT` | No | `30.0` | Seconds to wait for a busy SQLite lock before raising. |
 | `UNDERWRITE_LOG_LEVEL` | No | `INFO` | Log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`) |
 | `UNDERWRITE_LOG_OUTPUT` | No | `stdout` | Log output target |
 | `UNDERWRITE_LOG_FORMAT` | No | `text` | Log format (`text`, `json`) |
@@ -202,7 +200,7 @@ post-hoc clamping.
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `UNDERWRITE_TEST_PG_DSN` | No | `""` | PostgreSQL DSN for integration tests |
+| `UNDERWRITE_TEST_PG_DSN` | No | `""` | Reserved. PostgreSQL backend is no longer supported; ignore. |
 
 ---
 

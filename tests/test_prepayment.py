@@ -9,11 +9,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.prepayment import Handler
 from underwrite.services.prepayment import Handler as PrepaymentHandler
-from underwrite.store import InMemory
+from underwrite.store import Sqlite
 
 
 def svc(bus=None) -> Handler:
-    return PrepaymentHandler(name="prepayment", bus=bus or LocalBus(), store=InMemory())
+    return PrepaymentHandler(name="prepayment", bus=bus or LocalBus(), store=Sqlite(":memory:"))
 
 
 class TestPrepaymentService:

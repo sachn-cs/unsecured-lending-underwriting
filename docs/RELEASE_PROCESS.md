@@ -155,12 +155,12 @@ make test
 Before deploying to production, verify the following:
 
 - [ ] **Authorization enabled**: Bearer token auth configured in config
-- [ ] **Postgres configured**: `store.backend = "postgres"` with connection string
+- [ ] **Sqlite configured**: `store.backend = "sqlite"` with `store.path` pointing at a persistent volume
 - [ ] **API token set**: `UNDERWRITE_API_TOKEN` or `UNDERWRITE_AUTHZ_TOKEN`
 - [ ] **Tracing enabled**: OTLP exporter configured (`tracing.exporter = "otlp"`)
 - [ ] **Metrics enabled**: Prometheus endpoint on `/metrics`
 - [ ] **Secrets backend configured**: Vault or AWS Secrets Manager (not env vars)
-- [ ] **Saga persistence enabled**: `saga.store_backend = "file"` or `"postgres"`
+- [ ] **Saga persistence enabled**: the saga orchestrator writes to the configured store; no extra flag is required
 - [ ] **Rate limiting configured**: Non-default rate limits per subscriber
 - [ ] **Health checks passing**: `/healthz` and `/readyz` return 200
 - [ ] **PII redaction enabled**: `logging.redact_pii = true`

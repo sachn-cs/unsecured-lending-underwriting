@@ -39,53 +39,19 @@ beyond a single process requires implementing an `EventBus` subclass.
 
 ## Store Performance
 
-### MemoryStore (`underwrite/store.py`)
+### Sqlite (`underwrite/store.py`)
 
-`MemoryStore` is backed by a `dict`.  All operations are **O(1)**:
-
-| Operation | Complexity |
-|---|---|
-| `get` | O(1) — dict lookup |
-| `set` | O(1) — dict insert; O(n) eviction when at capacity, amortised O(1) |
-| `delete` | O(1) — dict pop |
-| `exists` | O(1) — key in dict |
-| `keys` | O(n) — full scan with optional substring filter |
-
-Bounded by `max_entries` (default 0 = unlimited).  When the limit is
-reached, the oldest key (by insertion order) is evicted.
-
-### FileStore (`underwrite/store.py`)
-
-Each key maps to a `.json` file on disk.  Writes are atomic (`write` →
-`os.replace`):
-
-| Operation | Complexity |
-|---|---|
-| `get` | O(1) — file read + `json.load` |
-| `set` | O(1) — atomic write with fsync |
-| `delete` | O(1) — file unlink |
-| `exists` | O(1) — `Path.exists()` |
-| `keys` | **O(n)** — `Path.rglob("*.json")` scans entire directory tree (no pagination) |
-
-Configurable `operation_timeout` wraps I/O in a single-thread executor.
-Optional `CircuitBreaker` (3 failures, 30s recovery) guards against
-stuck filesystems.
-
-**Path traversal protection:** `__path()` validates the resolved path is
-inside `data_dir` and that symlinks do not escape.
-
-### PostgresStore (`underwrite/store.py`)
-
-Connection pool via `psycopg2.pool.ThreadedConnectionPool`:
+`Sqlite` is backed by the standard library `sqlite3` module. All
+operations run inside a `threading.Lock`; file-backed mode opens a
+fresh `sqlite3.Connection` per call (the connection is closed in a
+`finally`), while `:memory:` mode reuses a single shared connection
+because SQLite gives each private in-memory connection its own
+anonymous database.
 
 | Parameter | Default | Description |
 |---|---|---|
-| `pool_size` | `5` | `maxconn = pool_size`, `minconn = pool_size // 2` |
-| `operation_timeout` | `30.0` | `statement_timeout` set per connection (ms) |
-| `dsn` | `""` | Postgres connection string |
-
-TCP keepalives: `keepalives=1, keepalives_idle=30, keepalives_interval=10,
-keepalives_count=5`.
+| `path` | `":memory:"` | SQLite path. `":memory:"` is ephemeral. |
+| `busy_timeout` | `30.0` | Seconds the driver waits on a busy lock. |
 
 | Operation | Complexity |
 |---|---|
@@ -93,10 +59,11 @@ keepalives_count=5`.
 | `set` | O(log n) — UPSERT |
 | `delete` | O(log n) |
 | `exists` | O(log n) |
-| `keys` | O(log n + m) — indexed scan with `LIKE` filter |
+| `keys` | O(log n + m) — indexed scan with substring filter |
 
-Circuit breaker: 3 failures → open, 15s recovery.  Retry policy: 2
-retries, 50ms base delay with jitter (exponential backoff).
+PRAGMAs: `journal_mode=WAL`, `synchronous=NORMAL`, `foreign_keys=ON`.
+The migration runner uses `BEGIN IMMEDIATE` for transactional
+schema updates.
 
 ---
 
@@ -136,12 +103,13 @@ Each `execute_step` call writes:
 For an N-step saga, this is 2N store sets + the initial `start_saga`
 write and the final completion write.
 
-### 4. FileStore.keys() — Unbounded rglob scan
+### 4. Sqlite.keys() — Unbounded table scan
 
-`keys()` calls `Path.rglob("*.json")` which scans every file in the
-data directory tree.  There is **no server-side pagination** and no
-index.  For data directories with 100k+ files this becomes a
-multi-second operation.
+`keys()` returns every row from the `store` table sorted by `key`
+and then applies the optional substring filter in Python. For
+tables with 100k+ rows the scan is single-digit milliseconds but
+loads everything into memory; use `limit`/`offset` for pagination
+when callers need bounded slices.
 
 ---
 
@@ -169,7 +137,8 @@ delay = min(base_delay * 2^attempt + random(0, 0.1), max_delay)
 ```
 
 Defaults: `max_retries=3, base_delay=0.1s, max_delay=5.0s`.  Used by
-`PostgresStore.__execute()` (2 retries, 50ms base delay).
+Callers that want retry semantics around the store can wrap calls
+in their own `RetryPolicy` (`underwrite.circuit`).
 
 ### Dead-Letter Queue
 
@@ -191,7 +160,7 @@ re-starts failed services with exponential backoff.
 | Concern | Current State | Path Forward |
 |---|---|---|
 | **Inter-service communication** | Single-process `LocalBus` | Implement `SQSBackend` or `ModalBackend` |
-| **State storage** | MemoryStore, FileStore, PostgresStore | Shard by key prefix or use distributed KV |
+| **State storage** | Sqlite (file or `:memory:`) | Shard by key prefix or replace with a distributed KV for multi-node |
 | **Concurrent dispatch** | `ThreadPoolExecutor` per service (optional) | Increase `max_workers` for I/O-bound handlers |
 | **Audit ledger size** | Bounded in-memory deque + batched persist | Offload to append-only log (Kafka, PGD) |
 | **Metrics collection** | Single `MetricsCollector` instance | Push to Prometheus Pushgateway for multi-process |
@@ -205,4 +174,5 @@ re-starts failed services with exponential backoff.
 - Enable tracing with `tracing.exporter=console` to see per-handler
   duration at `INFO` level.
 - The `underwrite metrics` CLI command dumps current counters and timers.
-- `FileStore` and `PostgresStore` expose `circuit` state in health checks.
+- `Sqlite` reports `path` and `ok` in `health()` and surfaces a
+  `StoreError` on corruption.

@@ -9,11 +9,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.razorpay import Handler
 from underwrite.services.razorpay import Handler as RazorpayHandler
-from underwrite.store import InMemory
+from underwrite.store import Sqlite
 
 
 def svc(bus=None) -> Handler:
-    return RazorpayHandler(name="razorpay", bus=bus or LocalBus(), store=InMemory())
+    return RazorpayHandler(name="razorpay", bus=bus or LocalBus(), store=Sqlite(":memory:"))
 
 
 def _configure_webhook_secret(svc_inst, secret: str) -> None:

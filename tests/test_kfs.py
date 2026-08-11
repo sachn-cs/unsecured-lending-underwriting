@@ -9,11 +9,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.kfs import Handler
 from underwrite.services.kfs import Handler as KfsHandler
-from underwrite.store import InMemory
+from underwrite.store import Sqlite
 
 
 def svc(bus=None) -> Handler:
-    return KfsHandler(name="kfs", bus=bus or LocalBus(), store=InMemory())
+    return KfsHandler(name="kfs", bus=bus or LocalBus(), store=Sqlite(":memory:"))
 
 
 class TestKfsService:

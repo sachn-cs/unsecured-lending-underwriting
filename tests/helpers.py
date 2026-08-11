@@ -12,7 +12,7 @@ from typing import Any
 
 from underwrite.message import Message
 from underwrite.services.base import Core
-from underwrite.store import ReadStore, Store
+from underwrite.store import Store
 
 
 class BrokenStore:
@@ -86,28 +86,6 @@ class MockStore(Store):
 
     def exists(self, key: str) -> bool:
         return key in self.data
-
-    def keys(self, pattern: str | None = None, limit: int = 0, offset: int = 0) -> list[str]:
-        return list(self.data.keys())
-
-    def health(self) -> dict[str, Any]:
-        return {"ok": True}
-
-
-class MockReadStore(ReadStore):
-    """A minimal read-only Store implementation backed by an in-memory dict."""
-
-    def __init__(self) -> None:
-        self.data: dict[str, Any] = {}
-
-    def get(self, key: str) -> Any | None:
-        return self.data.get(key)
-
-    def exists(self, key: str) -> bool:
-        return key in self.data
-
-    def delete(self, key: str) -> bool:
-        return self.data.pop(key, None) is not None
 
     def keys(self, pattern: str | None = None, limit: int = 0, offset: int = 0) -> list[str]:
         return list(self.data.keys())

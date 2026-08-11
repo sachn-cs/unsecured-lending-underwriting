@@ -29,7 +29,7 @@ from underwrite.services.credit_bureau.client import (
 )
 from underwrite.services.persistence import TypedStoreRepository
 from underwrite.services.providers import ProvidersConfig
-from underwrite.store import Sqlite, Store
+from underwrite.store import StoreBackend
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
 
@@ -45,7 +45,7 @@ class Handler(StatefulService):
         self,
         name: str,
         bus: EventBus | LocalBus,
-        store: Store | Sqlite | Store | Sqlite | Store | Sqlite | Store | Sqlite,
+        store: StoreBackend,
         cibil_api_key: str = "",
         allow_mock: bool = False,
         kyc_provider_config: ProvidersConfig | None = None,
@@ -278,6 +278,8 @@ class Handler(StatefulService):
                 name=event.payload.get("name", ""),
                 dob=event.payload.get("dob", ""),
                 score=score,
+                credit_utilization_pct=details.get("credit_utilization_pct", 0.0),
+                delinquent_accounts=int(details.get("delinquent_accounts", 0)),
                 tradelines=int(details.get("tradelines", 0)),
                 enquiries_last_30_days=int(details.get("enquiries_last_30_days", 0)),
                 defaults=list(details.get("defaults", [])),
@@ -293,6 +295,8 @@ class Handler(StatefulService):
                     "score": report.score,
                     "score_band": details.get("score_band", ""),
                     "tradelines": report.tradelines,
+                    "delinquent_accounts": report.delinquent_accounts,
+                    "credit_utilization_pct": report.credit_utilization_pct,
                     "provider_reference": result.reference,
                 },
                 correlation_id=event.correlation_id,

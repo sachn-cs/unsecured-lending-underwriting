@@ -107,7 +107,7 @@ Run: `mypy underwrite/`
 | Category              | Convention         | Examples                              |
 |-----------------------|--------------------|---------------------------------------|
 | Functions/variables   | `snake_case`       | `get_log_correlation_id()`, `sync_interval` |
-| Classes               | `PascalCase`       | `NanoService`, `DeadLetterQueue`, `LocalBus` |
+| Classes               | `PascalCase`       | `Core`, `DeadLetterQueue`, `LocalBus` |
 | Constants             | `UPPER_CASE`       | `MAX_PAYLOAD_SIZE`, `EPSILON`, `FILE_TIMEOUT_MSG` |
 | Private attributes    | `__double_underscore` | `self.__service_id`, `self.__batch_lock` |
 | Public methods        | `snake_case`       | `safe_store_get()`, `force_sync()`    |
@@ -130,7 +130,7 @@ Run: `mypy underwrite/`
   ```
 - **`all`** explicitly in every public module to define the public surface:
   ```python
-  __all__ = ["Event", "EventType", "MAX_PAYLOAD_SIZE"]
+  __all__ = ["Message", "Type", "MAX_PAYLOAD_SIZE"]
   ```
 
 ## ABC Pattern
@@ -154,7 +154,7 @@ Key ABCs in the codebase:
 |----------------------|------------------|---------------------------------------|
 | `Store`              | `store.py`   | `Sqlite` (file path or `:memory:`), `Store` façade |
 | `EventBus`           | `bus.py`     | `LocalBus`, `AsyncLocalBus`           |
-| `NanoService`        | `services/base.py` | 28 service classes                  |
+| `Core`        | `services/base.py` | 34 service classes                  |
 | `StatefulService`    | `services/base.py` | Services with mutable state         |
 | `SecretsBackend`     | `secrets.py` | `EnvSecretsBackend`, `VaultSecretsBackend`, `AwsSecretsBackend` |
 
@@ -226,9 +226,9 @@ from underwrite.exceptions import (
     ConfigurationError,
     UnderwriteError,
 )
-from underwrite.services import NanoService
+from underwrite.services import Core
 
-__all__: list[str] = ["Runtime", "Configuration", "NanoService", "Event", ...]
+__all__: list[str] = ["Runtime", "Configuration", "Core", "Message", ...]
 ```
 
 ## Dataclass Usage
@@ -237,7 +237,7 @@ Prefer `@dataclass(frozen=True, slots=True)` for immutable data carriers:
 
 ```python
 @dataclass(frozen=True, slots=True)
-class Event:
+class Message:
     event_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     event_type: str = ""
     payload: dict[str, Any] = field(default_factory=dict)

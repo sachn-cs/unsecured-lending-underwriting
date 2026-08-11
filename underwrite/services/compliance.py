@@ -29,7 +29,7 @@ from underwrite.saga import Orchestrator
 from underwrite.services.base import Dependencies, StatefulService
 from underwrite.services.persistence import TypedStoreRepository
 from underwrite.services.providers import ProvidersConfig, Verdict
-from underwrite.store import Sqlite, Store
+from underwrite.store import StoreBackend
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
 
@@ -180,7 +180,7 @@ class Handler(StatefulService):
         self,
         name: str,
         bus: EventBus | LocalBus,
-        store: Store | Sqlite | Store | Sqlite | Store | Sqlite | Store | Sqlite,
+        store: StoreBackend,
         identity: Keypair | None = None,
         metrics: Collector | None = None,
         health: Checks | None = None,
@@ -323,7 +323,7 @@ class Handler(StatefulService):
             }
             if result.verdict == Verdict.VERIFIED:
                 pan_verdict = "verified"
-            elif result.verdict in (Verdict.REJECTED, Verdict.NOT_FOUND, Verdict.MISMATCH):
+            elif result.verdict in (Verdict.REJECTED, Verdict.NOT_FOUND, Verdict.MISMATCH, Verdict.AMBIGUOUS):
                 self.emit(
                     Type.KYC_REJECTED,
                     {
@@ -335,8 +335,18 @@ class Handler(StatefulService):
                     correlation_id=event.correlation_id,
                 )
                 return
-            else:
-                pan_verdict = f"error:{result.error}"
+            elif result.verdict == Verdict.ERROR:
+                self.emit(
+                    Type.KYC_REJECTED,
+                    {
+                        "user": user,
+                        "kyc_status": "rejected",
+                        "reason": "pan_provider_error",
+                        **pan_provider_result,
+                    },
+                    correlation_id=event.correlation_id,
+                )
+                return
 
         kyc_data: dict[str, Any] = {
             "user": user,
@@ -432,14 +442,6 @@ class Handler(StatefulService):
                     self.kyc_records[user]["aml_status"] = "flagged"
                     self.kyc_records[user]["aml_risk_score"] = risk_score
                     self.repo.save({"kyc_records": self.kyc_records})
-            self.emit(
-                Type.AML_CLEARED,
-                {
-                    "user": user,
-                    "aml_status": "flagged_review",
-                },
-                correlation_id=event.correlation_id,
-            )
         else:
             self.emit(
                 Type.AML_CLEARED,

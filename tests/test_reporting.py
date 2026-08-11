@@ -12,11 +12,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.reporting import Handler
 from underwrite.services.reporting import Handler as ReportingHandler
-from underwrite.store import InMemory
+from underwrite.store import Sqlite
 
 
 def reporting() -> Handler:
-    return ReportingHandler(name="reporting", bus=LocalBus(), store=InMemory())
+    return ReportingHandler(name="reporting", bus=LocalBus(), store=Sqlite(":memory:"))
 
 
 class TestReportingService:

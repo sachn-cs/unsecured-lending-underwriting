@@ -104,7 +104,7 @@ jobs:
             BUILD_VERSION=${{ steps.meta.outputs.VERSION }}
             GIT_COMMIT=${{ steps.meta.outputs.GIT_SHA }}
             PYTHON_VERSION=3.12
-            EXTRAS=serve,postgres,otlp,vault
+            EXTRAS=serve,otlp,vault
           platforms: linux/amd64,linux/arm64
           provenance: false
           sbom: false

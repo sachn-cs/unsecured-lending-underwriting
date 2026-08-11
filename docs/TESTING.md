@@ -34,8 +34,8 @@ All shared fixtures are defined in `tests/conftest.py`:
 
 | Fixture | Type | Description |
 |---------|------|-------------|
-| `store` | `MemoryStore` | Fresh in-memory store per test |
-| `pg_store` | `PostgresStore` | Postgres-backed store via `testcontainers` (session-scoped `postgres_dsn`) |
+| `store` | `Sqlite(":memory:")` | Fresh in-memory store per test |
+| `sqlite_store` | `Sqlite` | File-backed store with a temp path; cleaned up after the test |
 | `bus` | `LocalBus` | Fresh local event bus per test |
 | `client` | `TestClient` | FastAPI `TestClient` wrapping `create_app()` (requires `serve` extra) |
 | `event` | `Event` | Minimal `LOAN_ORIGINATED` event with known payload |
@@ -55,14 +55,12 @@ def test_store_and_bus(store, bus):
     assert store.get("k") == "v"
 ```
 
-### Writing Tests with pg_store
-
-Requires `testcontainers` and the `postgres` extra:
+### Writing Tests with sqlite_store
 
 ```python
-def test_pg_persistence(pg_store):
-    pg_store.set("key", {"nested": True})
-    assert pg_store.get("key") == {"nested": True}
+def test_sqlite_persistence(sqlite_store):
+    sqlite_store.set("key", {"nested": True})
+    assert sqlite_store.get("key") == {"nested": True}
 ```
 
 ### Constructing an in-test failing store or bus
@@ -72,7 +70,7 @@ shipped — neither was imported by any test. Tests that need a
 failing store or bus should construct one inline:
 
 ```python
-class FailAfterCountStore(MemoryStore):
+class FailAfterCountStore(Sqlite(":memory:")):
     def __init__(self, fail_after: int) -> None:
         super().__init__()
         self._fail_after = fail_after
@@ -136,7 +134,7 @@ python_files = ["test_*.py"]
 
 CI runs against Python 3.10–3.13 plus a separate secrets-scan job
 (TruffleHog). Each Python matrix entry installs the dev, risk,
-serve, postgres, otlp, vault, and aws extras, then runs:
+serve, otlp, vault, and aws extras, then runs:
 
 1. `ruff format --check` (formatting)
 2. `ruff check` (lint)
@@ -160,7 +158,7 @@ Every service extends `NanoService` and processes events via `handle(event)`. Te
 ```python
 from underwrite.bus import LocalBus
 from underwrite.message import Event, EventType
-from underwrite.store import MemoryStore
+from underwrite.store import Sqlite(":memory:")
 from underwrite.services.fee.service import FeeService
 
 
@@ -286,7 +284,7 @@ Fault injection test files:
 
 ## Writing End-to-End Tests
 
-E2E tests use a `Runtime` instance backed by `MemoryStore`:
+E2E tests use a `Runtime` instance backed by `Sqlite(":memory:")`:
 
 ```python
 from underwrite.config import Configuration

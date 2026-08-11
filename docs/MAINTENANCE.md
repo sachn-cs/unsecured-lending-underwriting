@@ -26,7 +26,7 @@ Before each release, run `ruff check underwrite/ tests/` and `mypy underwrite/ t
 
 ## Test Maintenance
 
-- **Pre-release**: Run `pytest tests/ -q` (1167 tests as of v0.9). All tests must pass.
+- **Pre-release**: Run `pytest tests/ -q` (1276 tests as of v0.9). All tests must pass.
 - **Coverage**: Run `pytest --cov=underwrite tests/` — keep coverage ≥ 80% (gate enforced in CI).
 - **Regression tests**: Every bug fix must include a test that fails before the fix and passes after.
 - **Mutation testing**: `mutmut run` (config in `pyproject.toml`: paths `["underwrite"]`, runner `python -m pytest tests/ -x --timeout=30`). Run before major releases.

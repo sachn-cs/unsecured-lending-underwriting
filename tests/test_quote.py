@@ -14,11 +14,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.quote import Handler
 from underwrite.services.quote import Handler as QuoteHandler
-from underwrite.store import InMemory
+from underwrite.store import Sqlite
 
 
 def quote(bus=None) -> Handler:
-    return QuoteHandler(name="quote", bus=bus, store=InMemory())
+    return QuoteHandler(name="quote", bus=bus, store=Sqlite(":memory:"))
 
 
 def emit_quote(svc, **overrides) -> None:

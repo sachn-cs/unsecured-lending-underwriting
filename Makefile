@@ -4,7 +4,7 @@ install:
 	pip install -e .
 
 dev:
-	pip install -e ".[dev,risk,postgres]"
+	pip install -e ".[dev,risk,serve,otlp,vault,aws]"
 
 test:
 	python -m pytest tests/ -v --tb=short -q

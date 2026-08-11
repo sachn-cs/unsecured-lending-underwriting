@@ -239,9 +239,11 @@ def serve(
 @app.command()
 def migrate() -> None:
     """Runs pending schema migrations."""
-    load_config()
-    Runtime()  # triggers auto-migrate on construction
+    config = load_config()
+    rt = Runtime(config)
+    rt.start([])
     typer.echo("Migrations applied")
+    rt.stop()
 
 
 def main() -> None:

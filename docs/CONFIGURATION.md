@@ -302,7 +302,7 @@ config.save("path")  # → JSON file (creates parent directories)
 ```python
 Configuration(
     store=StoreConfig(backend="sqlite", path="./store.db"),
-    services={name: ServiceConfig(enabled=False) for name in SERVICE_NAMES},
+    services={name: ServiceConfig(enabled=False) for name in HANDLER_NAMES},
 )
 ```
 
@@ -339,10 +339,11 @@ logging level=INFO, metrics enabled, etc.).
 
 ## Available Services
 
-The platform defines 28 nano services (`underwrite/config.py:461`):
+The platform defines 34 nano services (`HANDLER_MAP` in `underwrite/handler.py:21`):
 
-`audit`, `collateral`, `collection`, `communication`, `consent`, `credit_bureau`,
-`decision`, `disbursement`, `document`, `dsr`, `fee`, `fraud`, `governance`,
-`graph`, `identity`, `kfs`, `mechanism`, `npa`, `notification`, `origination`,
-`payment`, `pricing`, `quote`, `recovery`, `reporting`, `risk`, `servicing`,
-`settlement`, `statement`, `underwriter`, `workflow`
+`audit`, `collateral`, `collection`, `communication`, `compliance`, `consent`,
+`credit_bureau`, `decision`, `disbursement`, `document`, `dsr`, `fee`, `fraud`,
+`governance`, `graph`, `identity`, `kfs`, `mechanism`, `npa`, `notification`,
+`origination`, `payment`, `prepayment`, `pricing`, `quote`, `razorpay`,
+`recovery`, `reporting`, `risk`, `servicing`, `settlement`, `statement`,
+`underwriter`, `workflow`

@@ -62,7 +62,7 @@ jobs:
             GIT_COMMIT=${{ steps.meta.outputs.GIT_SHA }}
             BUILD_DATE=${{ steps.meta.outputs.BUILD_DATE }}
             PYTHON_VERSION=${{ matrix.python-version }}
-            EXTRAS=serve,postgres,otlp,vault
+            EXTRAS=serve,otlp,vault
           provenance: false
           sbom: false
           cache-from: type=gha
@@ -100,6 +100,6 @@ jobs:
             GIT_COMMIT=${{ steps.meta.outputs.GIT_SHA }}
             BUILD_DATE=${{ steps.meta.outputs.BUILD_DATE }}
             PYTHON_VERSION=${{ matrix.python-version }}
-            EXTRAS=serve,postgres,otlp,vault
+            EXTRAS=serve,otlp,vault
           provenance: false
           sbom: false

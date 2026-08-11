@@ -652,6 +652,8 @@ class Cibil(Provider):
                 "score_band": response.get("score_band", ""),
                 "tradelines": response.get("tradelines", 0),
                 "enquiries_last_30_days": response.get("enquiries_last_30_days", 0),
+                "credit_utilization_pct": response.get("credit_utilization_pct", 0.0),
+                "delinquent_accounts": response.get("delinquent_accounts", 0),
                 "defaults": response.get("defaults", []),
             },
         )

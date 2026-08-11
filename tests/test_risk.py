@@ -17,11 +17,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.risk import Handler
 from underwrite.services.risk import Handler as RiskHandler
-from underwrite.store import InMemory
+from underwrite.store import Sqlite
 
 
 def risk(bus=None) -> Handler:
-    return RiskHandler(name="risk", bus=bus or LocalBus(), store=InMemory())
+    return RiskHandler(name="risk", bus=bus or LocalBus(), store=Sqlite(":memory:"))
 
 
 class TestEarlyWarning:

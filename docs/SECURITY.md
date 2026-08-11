@@ -53,9 +53,9 @@ Set `authz.policy_file` in config or `UNDERWRITE_AUTHZ_POLICY_FILE`.
 
 ### Enforcement Points
 
-- `NanoService.subscribe()` — checks `check_subscribe()` before
+- `Core.subscribe()` — checks `check_subscribe()` before
   registering the handler.
-- `NanoService.emit()` — calls `assert_publish()` before publishing.
+- `Core.emit()` — calls `assert_publish()` before publishing.
 - `AccessControl.assert_verified()` — verifies event signature at
   dispatch time (`services/base.py:294-306`).
 
@@ -69,7 +69,7 @@ of any trusted key cannot re-stamp events under another service id.
 
 ### Signing (`services/base.py:233-285`)
 
-The signing bytes are produced by `Event.canonical_sign_bytes()`:
+The signing bytes are produced by `Message.canonical_sign_bytes()`:
 
 ```python
 to_sign = f"{event.event_id}|{event.timestamp}|{event.event_type}|{event.source}|{payload_str}"
@@ -79,7 +79,7 @@ signature = identity.sign(to_sign)
 The pipe-separated form binds the source into the signed bytes, and
 the payload is JSON-encoded with sorted keys so the signature is stable
 across dict iteration order. The signature and public key
-(`source_key`) are attached to the `Event` envelope.
+(`source_key`) are attached to the `Message` envelope.
 
 ### Verification (`authz.py:155-203`)
 

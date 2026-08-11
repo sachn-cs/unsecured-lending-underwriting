@@ -47,6 +47,8 @@ class CibilProviderStub(Provider):
                 "score_band": "Excellent",
                 "tradelines": 5,
                 "enquiries_last_30_days": 1,
+                "credit_utilization_pct": 35.0,
+                "delinquent_accounts": 1,
                 "defaults": ["LATE_PAYMENT"],
             },
         )
@@ -343,11 +345,15 @@ class TestCibilProviderIntegration:
         )
         assert len(received) == 1
         assert received[0].payload["tradelines"] == 5
+        assert received[0].payload["delinquent_accounts"] == 1
+        assert received[0].payload["credit_utilization_pct"] == 35.0
         report = s.get_report("ABCDE1234F")
         assert report is not None
         assert report.score == 750
         assert report.tradelines == 5
         assert report.enquiries_last_30_days == 1
+        assert report.credit_utilization_pct == 35.0
+        assert report.delinquent_accounts == 1
         assert report.defaults == ["LATE_PAYMENT"]
 
     def test_check_bureau_persists_and_reloads_credit_report_fields(self) -> None:
@@ -381,6 +387,8 @@ class TestCibilProviderIntegration:
         assert report is not None
         assert report.tradelines == 5
         assert report.enquiries_last_30_days == 1
+        assert report.credit_utilization_pct == 35.0
+        assert report.delinquent_accounts == 1
         assert report.defaults == ["LATE_PAYMENT"]
 
 

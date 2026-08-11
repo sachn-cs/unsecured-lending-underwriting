@@ -32,7 +32,7 @@ from underwrite.services.underwriter.engine import (
     RuleSeverity,
     UnderwritingDecision,
 )
-from underwrite.store import Sqlite, Store
+from underwrite.store import StoreBackend
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
 from underwrite.validate import PayloadValidator
@@ -164,7 +164,7 @@ class Handler(StatefulService):
         self,
         name: str,
         bus: EventBus | LocalBus,
-        store: Store | Sqlite | Store | Sqlite | Store | Sqlite | Store | Sqlite,
+        store: StoreBackend,
         identity: Keypair | None = None,
         metrics: Collector | None = None,
         health: Checks | None = None,

@@ -14,7 +14,7 @@ from underwrite.bus import DistributedLimiter, Guard, Limiter, Queue
 from underwrite.exceptions import RateLimitError
 from underwrite.local import LocalBus
 from underwrite.message import Message
-from underwrite.store import InMemory
+from underwrite.store import Sqlite
 
 
 class TestQueue:
@@ -94,18 +94,18 @@ class TestDistributedLimiterTTL:
     def test_expired_window_is_recycled(self) -> None:
         """A window whose end has passed must allow the next event
         even on stores that lack a native TTL."""
-        from underwrite.store import InMemory
+        from underwrite.store import Sqlite
 
-        store = InMemory()
+        store = Sqlite(":memory:")
         limiter = DistributedLimiter(max_rate=1.0, interval=1.0, store=store)
         # Manually inject an "expired" window entry
         store.set("ratelimit:alice:0", {"expires_at": 0.0})
         assert limiter.check("alice") is True
 
     def test_active_window_blocks(self) -> None:
-        from underwrite.store import InMemory
+        from underwrite.store import Sqlite
 
-        store = InMemory()
+        store = Sqlite(":memory:")
         limiter = DistributedLimiter(max_rate=1.0, interval=10.0, store=store)
         assert limiter.check("alice") is True
         assert limiter.check("alice") is False
@@ -172,7 +172,7 @@ class TestEventBusDLQ:
 
 class TestQueuePersistence:
     def test_put_persists_to_store(self) -> None:
-        store = InMemory()
+        store = Sqlite(":memory:")
         dlq = Queue(store=store, sync_interval=1)
         dlq.put(Message(event_type="t", source="s", payload={"k": "v"}), "err", "sub1")
         raw = store.get("bus:dlq")
@@ -184,7 +184,7 @@ class TestQueuePersistence:
         assert raw[0]["event"]["event_type"] == "t"
 
     def test_loads_from_store_on_init(self) -> None:
-        store = InMemory()
+        store = Sqlite(":memory:")
         dlq1 = Queue(store=store, sync_interval=1)
         dlq1.put(Message(event_type="t1", source="s"), "err1", "sub1")
         dlq1.put(Message(event_type="t2", source="s"), "err2", "sub2")
@@ -196,7 +196,7 @@ class TestQueuePersistence:
         assert "t2" in types
 
     def test_clear_removes_from_store(self) -> None:
-        store = InMemory()
+        store = Sqlite(":memory:")
         dlq = Queue(store=store, sync_interval=1)
         dlq.put(Message(event_type="t", source="s"), "err", "sub1")
         dlq.clear()
@@ -204,7 +204,7 @@ class TestQueuePersistence:
         assert raw == []
 
     def test_replay_removes_from_store(self) -> None:
-        store = InMemory()
+        store = Sqlite(":memory:")
         bus = LocalBus()
         dlq = Queue(store=store, sync_interval=1)
         dlq.put(Message(event_type="t", source="s"), "err", "sub1")
@@ -219,19 +219,19 @@ class TestDistributedLimiter:
         assert rl.check("key") is True
 
     def test_store_backed_allows_first_call(self) -> None:
-        store = InMemory()
+        store = Sqlite(":memory:")
         rl = DistributedLimiter(max_rate=10, store=store)
         assert rl.check("key") is True
 
     def test_store_backed_blocks_excessive_calls(self) -> None:
-        store = InMemory()
+        store = Sqlite(":memory:")
         rl = DistributedLimiter(max_rate=1000, store=store)
         rl.check("key")
         allowed = [rl.check("key") for _ in range(10)]
         assert not all(allowed)
 
     def test_store_backed_shares_state(self) -> None:
-        store = InMemory()
+        store = Sqlite(":memory:")
         rl1 = DistributedLimiter(max_rate=1000, store=store, prefix="shared")
         rl2 = DistributedLimiter(max_rate=1000, store=store, prefix="shared")
         rl1.check("k")
@@ -240,7 +240,7 @@ class TestDistributedLimiter:
         assert not all(allowed)
 
     def test_respects_custom_prefix(self) -> None:
-        store = InMemory()
+        store = Sqlite(":memory:")
         rl1 = DistributedLimiter(max_rate=1000, store=store, prefix="p1")
         rl2 = DistributedLimiter(max_rate=1000, store=store, prefix="p2")
         rl1.check("k")

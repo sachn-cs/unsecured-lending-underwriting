@@ -149,7 +149,7 @@ For production deployments, this is a core dependency and is always installed. T
 
 **Resolution**:
 - Enable sagas: `UNDERWRITE_SAGA_ENABLED=true`.
-- Ensure the emitter service calls `saga.register_emitter(saga_name, self)` (done automatically in `NanoService.__init__` when a `SagaOrchestrator` is passed).
+- Ensure the emitter service calls `saga.register_emitter(saga_name, self)` (done automatically in `Core.__init__` when a `SagaOrchestrator` is passed).
 - Call `orchestrator.start_saga(name, steps)` followed by `orchestrator.execute_all(saga_id)`.
 - For crashed sagas, use `orchestrator.replay_saga(saga_id)` or `Runtime.replay_saga(saga_id)`.
 
@@ -191,7 +191,7 @@ Inspect the `error` field — it contains the exception type and message.
 
 **Root cause**: The service is not wired to the event types it should receive. Either:
 - The service is not registered in `WIRING` in `underwrite/handler.py`.
-- The service name is missing from the `WIRING` entry for the relevant `EventType`.
+- The service name is missing from the `WIRING` entry for the relevant `Type`.
 - The service was not started with `runtime.start([...])`.
 - The service's `subscribe()` method found no matching entries in `WIRING`.
 
@@ -240,7 +240,7 @@ Inspect the `error` field — it contains the exception type and message.
 **Root cause**: The `IdempotencyGuard` is not working, or the event was published with a duplicate `event_id`. The guard tracks `(handler_id, event_id)` pairs, but if the guard's `max_ids_per_handler` limit is reached, oldest entries are evicted and duplicates may be accepted.
 
 **Diagnostic steps**:
-1. Check that `IdempotencyGuard.is_duplicate()` is being called (it is called in `NanoService.__dispatch()` at `underwrite/services/base.py:307`).
+1. Check that `IdempotencyGuard.is_duplicate()` is being called (it is called in `Core.dispatch()` at `underwrite/services/base.py:377`).
 2. Check `bus.idempotency.total_tracked_events` to see if the guard is populated.
 3. Check event IDs for collisions — `event_id` is a UUID4 by default, but if manually set, verify uniqueness.
 4. Check `max_ids_per_handler` (default 100000) — if the service handles many unique events, old entries are evicted and duplicates may slip through.

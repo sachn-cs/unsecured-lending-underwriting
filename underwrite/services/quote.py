@@ -5,8 +5,11 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 from underwrite.message import Message, Type
 from underwrite.services.base import Core
+from underwrite.services.mechanism.graph import to_money
 from underwrite.validate import PayloadValidator
 
 
@@ -24,8 +27,8 @@ class Handler(Core):
         if event.event_type != Type.QUOTE:
             return
         p = event.payload
-        principal: float = PayloadValidator().non_negative(p, "principal")
-        term: float = PayloadValidator().positive(p, "term")
+        principal: Decimal = to_money(PayloadValidator().non_negative(p, "principal"))
+        term: Decimal = to_money(PayloadValidator().positive(p, "term"))
         dp: float = PayloadValidator().finite(p, "default_probability", 0.02)
         pr: float = PayloadValidator().finite(p, "protocol_rate", 0.10)
         mdr: float = PayloadValidator().finite(p, "max_delegation_rate", 0.05)
@@ -37,11 +40,11 @@ class Handler(Core):
         # with downstream services; the value is *total interest in
         # currency units*, not a per-period rate.  Use a more descriptive
         # alias in the emitted payload.
-        total_interest: float = pr * principal * term
+        total_interest: Decimal = to_money(pr) * principal * term
         break_even: float = 0.0
         if 0.0 < dp < 1.0 and term > 0:
             break_even = min(
-                dp / ((1.0 - dp) * term),
+                dp / ((1.0 - dp) * float(term)),
                 1e6,
             )
 
@@ -49,14 +52,14 @@ class Handler(Core):
             Type.QUOTE_CALCULATED,
             {
                 "borrower": borrower,
-                "principal": principal,
-                "term": term,
+                "principal": float(principal),
+                "term": float(term),
                 "default_probability": dp,
                 "protocol_rate": pr,
                 "max_delegation_rate": mdr,
-                "protocol_premium": total_interest,
+                "protocol_premium": float(total_interest),
                 "break_even_rate": break_even,
-                "total_interest": total_interest,
+                "total_interest": float(total_interest),
             },
             correlation_id=event.correlation_id,
         )

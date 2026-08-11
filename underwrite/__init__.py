@@ -36,7 +36,7 @@ from underwrite.keypair import Keypair
 from underwrite.message import Message, Type
 from underwrite.runtime import Runtime
 from underwrite.services import Core
-from underwrite.store import Disk, InMemory, Store
+from underwrite.store import Sqlite, Store
 
 try:
     from underwrite.__version__ import __version__ as _version
@@ -56,8 +56,7 @@ __all__: list[str] = [
     "Keypair",
     "EventBus",
     "Store",
-    "InMemory",
-    "Disk",
+    "Sqlite",
     "UnderwriteError",
     "ConfigurationError",
     "ServiceNotFoundError",

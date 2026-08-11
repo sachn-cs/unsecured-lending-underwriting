@@ -124,7 +124,7 @@ Create a minimal test script that instantiates a `Runtime` with one service:
 
 ```python
 from underwrite.config import Configuration
-from underwrite.message import Event
+from underwrite.message import Message
 from underwrite.runtime import Runtime
 
 cfg = Configuration.default()
@@ -139,7 +139,7 @@ rt.bus.start()
 rt.start(["fee"])
 
 svc = rt.get("fee")
-svc.handle(Event(event_type="fee.assess", source="debug", payload={"loan_id": "DBG1", "fee_type": "late_payment"}))
+svc.handle(Message(event_type="fee.assess", source="debug", payload={"loan_id": "DBG1", "fee_type": "late_payment"}))
 print("Keys:", svc.store.keys("fee:"))
 rt.stop()
 ```

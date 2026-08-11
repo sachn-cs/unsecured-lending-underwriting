@@ -17,11 +17,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.npa import Handler
 from underwrite.services.npa import Handler as NpaHandler
-from underwrite.store import InMemory
+from underwrite.store import Sqlite
 
 
 def npa(bus=None) -> Handler:
-    return NpaHandler(name="npa", bus=bus or LocalBus(), store=InMemory())
+    return NpaHandler(name="npa", bus=bus or LocalBus(), store=Sqlite(":memory:"))
 
 
 class TestBucketClassification:

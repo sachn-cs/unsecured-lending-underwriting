@@ -13,7 +13,7 @@ COPY underwrite/ underwrite/
 RUN pip install --no-cache-dir build && \
     pip install --no-cache-dir cryptography pydantic typer && \
     python -m build --wheel && \
-    pip install --no-cache-dir dist/*.whl[serve,postgres,otlp]
+    pip install --no-cache-dir dist/*.whl[serve,otlp]
 
 # Stage 2: runtime — minimal image
 FROM python:3.12-slim
@@ -61,10 +61,10 @@ curl -sf http://localhost:8000/healthz | python -m json.tool
 nodeSelector:
   topology.kubernetes.io/region: ap-south-1
 
-# RDS PostgreSQL in Mumbai region
+# SQLite file lives on the same volume as the runtime
 store:
-  backend: postgres
-  dsn: postgresql://user:pass@underwrite.cluster-xxx.ap-south-1.rds.amazonaws.com:5432/underwrite
+  backend: sqlite
+  path: /data/store.db
 ```
 
 ### Azure (Central India)
@@ -73,10 +73,9 @@ store:
 nodeSelector:
   topology.kubernetes.io/region: centralindia
 
-# Azure Database for PostgreSQL
 store:
-  backend: postgres
-  dsn: postgresql://user:pass@underwrite.postgres.database.azure.com:5432/underwrite
+  backend: sqlite
+  path: /data/store.db
 ```
 
 ### GCP (asia-south1 — Mumbai)
@@ -85,10 +84,9 @@ store:
 nodeSelector:
   topology.kubernetes.io/region: asia-south1
 
-# Cloud SQL PostgreSQL
 store:
-  backend: postgres
-  dsn: postgresql://user:pass@10.x.x.x:5432/underwrite
+  backend: sqlite
+  path: /data/store.db
 ```
 
 ### Data Localisation Requirements
@@ -105,7 +103,7 @@ For MeitY-empanelled cloud providers, refer to the [MeitY Cloud Framework](https
 
 ## Docker Compose
 
-`docker-compose.yml` configures a production-grade deployment with PostgreSQL 16, HashiCorp Vault, and OpenTelemetry Collector:
+`docker-compose.yml` configures a production-grade deployment with HashiCorp Vault and OpenTelemetry Collector. State is stored in a SQLite file mounted as a volume on the underwrite container — no external database is required:
 
 ```yaml
 services:
@@ -115,30 +113,20 @@ services:
     ports:
       - "8000:8080"
     environment:
-      - UNDERWRITE_STORE_BACKEND=postgres
-      - UNDERWRITE_STORE_DSN=postgresql://underwrite:${POSTGRES_PASSWORD}@postgres:5432/underwrite
+      - UNDERWRITE_STORE_BACKEND=sqlite
+      - UNDERWRITE_STORE_PATH=/data/store.db
+      - UNDERWRITE_STORE_BUSY_TIMEOUT=30
       - UNDERWRITE_SECRETS_BACKEND=vault
       - UNDERWRITE_SECRETS_VAULT_URL=http://vault:8200
       - UNDERWRITE_TRACING_ENABLED=true
       - UNDERWRITE_TRACING_EXPORTER=otlp
       - UNDERWRITE_API_TOKEN=${UNDERWRITE_API_TOKEN:-}
     depends_on:
-      postgres:
-        condition: service_healthy
       vault:
         condition: service_healthy
-    command: ["serve", "--services", "mechanism,audit,risk,fraud,compliance,pricing,consent,kfs,credit_bureau,underwriter,decision", "--rate-limit", "100"]
-
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: underwrite
-      POSTGRES_USER: underwrite
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U underwrite"]
+      - underwrite_data:/data
+    command: ["serve", "--services", "mechanism,audit,risk,fraud,compliance,pricing,consent,kfs,credit_bureau,underwriter,decision", "--rate-limit", "100"]
 
   vault:
     image: hashicorp/vault:latest
@@ -202,7 +190,7 @@ metadata:
 data:
   underwrite.json: |
     {
-      "store": { "backend": "postgres", "dsn": "postgresql://..." },
+      "store": { "backend": "sqlite", "path": "/data/store.db" },
       "logging": { "level": "INFO", "log_format": "json" },
       "metrics": { "enabled": true },
       "authz": { "enabled": true },
@@ -224,7 +212,6 @@ metadata:
 type: Opaque
 stringData:
   UNDERWRITE_API_TOKEN: <production-token>
-  UNDERWRITE_STORE_DSN: postgresql://user:pass@host:5432/underwrite
 ```
 
 ```yaml
@@ -257,7 +244,9 @@ spec:
             - containerPort: 8080
           env:
             - name: UNDERWRITE_STORE_BACKEND
-              value: postgres
+              value: sqlite
+            - name: UNDERWRITE_STORE_PATH
+              value: /data/store.db
             - name: UNDERWRITE_LOG_FORMAT
               value: json
           envFrom:
@@ -296,7 +285,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -e '.[dev,risk,serve,postgres,otlp,vault,aws]'
+      - run: pip install -e '.[dev,risk,serve,otlp,vault,aws]'
       - run: ruff check underwrite/ tests/        # lint
       - run: mypy underwrite/                      # type check
       - run: bandit -r underwrite/ -c pyproject.toml  # security audit
@@ -328,8 +317,8 @@ The pipeline matrix lints with `ruff`, type-checks with `mypy`, audits with `ban
 ```json
 {
   "store": {
-    "backend": "postgres",
-    "dsn": "postgresql://user:pass@host:5432/underwrite"
+    "backend": "sqlite",
+    "path": "/data/store.db"
   },
   "logging": {
     "level": "INFO",
@@ -376,7 +365,7 @@ For secrets, use `UNDERWRITE_API_TOKEN` in the environment (not in config files)
 ## Production Checklist
 
 - [ ] **Set `UNDERWRITE_API_TOKEN`** — authentication for HTTP endpoints
-- [ ] **Configure store backend** — `postgres` for production, set `UNDERWRITE_STORE_DSN`
+- [ ] **Configure store backend** — `sqlite` with persistent `UNDERWRITE_STORE_PATH` volume mount
 - [ ] **Enable authz** — `authz.enabled: true` with a policy file
 - [ ] **Configure observability**
   - Set `UNDERWRITE_LOG_FORMAT=json` for structured logging
@@ -421,25 +410,17 @@ All health endpoints return the same JSON body:
 
 | Backend | Config Value | Use Case |
 |---------|-------------|----------|
-| Filesystem | `filesystem` | Single-node, dev/staging (JSON files in `data/`) |
-| In-memory | `memory` | Testing, ephemeral workloads |
-| PostgreSQL | `postgres` | Production multi-node (requires `underwrite[postgres]`) |
-
-### CQRS
-
-Configure a separate read store for query side:
-
-```json
-{
-  "store": {
-    "backend": "postgres",
-    "read_backend": "postgres",
-    "read_dsn": "postgresql://readonly:pass@replica:5432/underwrite"
-  }
-}
-```
+| SQLite file | `sqlite` | Production single-node. Path on a persistent volume. |
+| SQLite memory | `memory` | Testing, ephemeral workloads (alias of `sqlite` with path `:memory:`). |
 
 ---
+
+> **Breaking change.** Earlier releases shipped a `postgres` backend,
+> a filesystem (`Disk`) backend, and a separate `CQRSStore` wrapper.
+> Those have been removed in this revision. There is one backend
+> (`Sqlite`) with two path modes. Data from the previous backends
+> is not migrated automatically — extract it with your own tooling
+> before upgrading, then start fresh on SQLite.
 
 ## Service Registration
 

@@ -13,16 +13,16 @@ from underwrite.services.document import Handler as DocumentHandler
 from underwrite.services.pricing import Handler as PricingHandler
 from underwrite.services.settlement import Handler as SettlementHandler
 from underwrite.services.underwriter import Handler as UnderwriterHandler
-from underwrite.store import InMemory
+from underwrite.store import Sqlite
 
 
 class TestUnderwriterService:
     def test_ignores_unrelated_event(self) -> None:
-        svc = UnderwriterHandler(name="underwriter", bus=LocalBus(), store=InMemory())
+        svc = UnderwriterHandler(name="underwriter", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(Message(event_type="other", source="test", payload={}))
 
     def test_rejects_high_default_probability(self) -> None:
-        svc = UnderwriterHandler(name="underwriter", bus=LocalBus(), store=InMemory())
+        svc = UnderwriterHandler(name="underwriter", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(
             Message(
                 event_type=Type.UNDERWRITE_REQUEST,
@@ -36,7 +36,7 @@ class TestUnderwriterService:
         )
 
     def test_approves_low_risk_loan(self) -> None:
-        svc = UnderwriterHandler(name="underwriter", bus=LocalBus(), store=InMemory())
+        svc = UnderwriterHandler(name="underwriter", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(
             Message(
                 event_type=Type.UNDERWRITE_REQUEST,
@@ -52,11 +52,11 @@ class TestUnderwriterService:
 
 class TestPricingService:
     def test_ignores_unrelated_event(self) -> None:
-        svc = PricingHandler(name="pricing", bus=LocalBus(), store=InMemory())
+        svc = PricingHandler(name="pricing", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(Message(event_type="other", source="test", payload={}))
 
     def test_computes_pricing(self) -> None:
-        svc = PricingHandler(name="pricing", bus=LocalBus(), store=InMemory())
+        svc = PricingHandler(name="pricing", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(
             Message(
                 event_type=Type.PRICING_REQUEST,
@@ -72,11 +72,11 @@ class TestPricingService:
 
 class TestDocumentService:
     def test_ignores_unrelated_event(self) -> None:
-        svc = DocumentHandler(name="document", bus=LocalBus(), store=InMemory())
+        svc = DocumentHandler(name="document", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(Message(event_type="other", source="test", payload={}))
 
     def test_generates_document_on_approval(self) -> None:
-        svc = DocumentHandler(name="document", bus=LocalBus(), store=InMemory())
+        svc = DocumentHandler(name="document", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(
             Message(
                 event_type=Type.UNDERWRITER_APPROVED,
@@ -90,7 +90,7 @@ class TestDocumentService:
         assert docs[0]["status"] == "generated"
 
     def test_multiple_documents(self) -> None:
-        svc = DocumentHandler(name="document", bus=LocalBus(), store=InMemory())
+        svc = DocumentHandler(name="document", bus=LocalBus(), store=Sqlite(":memory:"))
         for _ in range(3):
             svc.handle(
                 Message(
@@ -104,11 +104,11 @@ class TestDocumentService:
 
 class TestDisbursementService:
     def test_ignores_unrelated_event(self) -> None:
-        svc = DisbursementHandler(name="disbursement", bus=LocalBus(), store=InMemory())
+        svc = DisbursementHandler(name="disbursement", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(Message(event_type="other", source="test", payload={}))
 
     def test_records_disbursement(self) -> None:
-        svc = DisbursementHandler(name="disbursement", bus=LocalBus(), store=InMemory())
+        svc = DisbursementHandler(name="disbursement", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(
             Message(
                 event_type=Type.DOCUMENT_GENERATED,
@@ -124,11 +124,11 @@ class TestDisbursementService:
 
 class TestCollectionService:
     def test_ignores_unrelated_event(self) -> None:
-        svc = CollectionHandler(name="collection", bus=LocalBus(), store=InMemory())
+        svc = CollectionHandler(name="collection", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(Message(event_type="other", source="test", payload={}))
 
     def test_records_originated_loan(self) -> None:
-        svc = CollectionHandler(name="collection", bus=LocalBus(), store=InMemory())
+        svc = CollectionHandler(name="collection", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(
             Message(
                 event_type=Type.LOAN_ORIGINATED,
@@ -147,7 +147,7 @@ class TestCollectionService:
         assert loan["status"] == "active"
 
     def test_marks_loan_closed_on_full_repayment(self) -> None:
-        svc = CollectionHandler(name="collection", bus=LocalBus(), store=InMemory())
+        svc = CollectionHandler(name="collection", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(
             Message(
                 event_type=Type.LOAN_ORIGINATED,
@@ -173,11 +173,11 @@ class TestCollectionService:
 
 class TestSettlementService:
     def test_ignores_unrelated_event(self) -> None:
-        svc = SettlementHandler(name="settlement", bus=LocalBus(), store=InMemory())
+        svc = SettlementHandler(name="settlement", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(Message(event_type="other", source="test", payload={}))
 
     def test_records_settlement_on_default(self) -> None:
-        svc = SettlementHandler(name="settlement", bus=LocalBus(), store=InMemory())
+        svc = SettlementHandler(name="settlement", bus=LocalBus(), store=Sqlite(":memory:"))
         svc.handle(
             Message(
                 event_type=Type.DEFAULT_OCCURRED,
@@ -191,7 +191,7 @@ class TestSettlementService:
         assert svc.settlements[0]["status"] == "settled"
 
     def test_tracks_multiple_settlements(self) -> None:
-        svc = SettlementHandler(name="settlement", bus=LocalBus(), store=InMemory())
+        svc = SettlementHandler(name="settlement", bus=LocalBus(), store=Sqlite(":memory:"))
         for borrower in ["alice", "bob"]:
             svc.handle(
                 Message(

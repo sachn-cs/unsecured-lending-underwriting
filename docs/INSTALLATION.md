@@ -18,7 +18,6 @@ Install with extras for additional backends and integrations:
 
 ```bash
 pip install underwrite[serve]       # HTTP daemon (uvicorn + FastAPI)
-pip install underwrite[postgres]    # PostgreSQL store backend
 pip install underwrite[risk]        # ML risk scoring (numpy, scikit-learn)
 pip install underwrite[otlp]        # OpenTelemetry tracing
 pip install underwrite[vault]       # HashiCorp Vault secrets backend
@@ -58,16 +57,15 @@ pip install -e ".[dev]"
 
 | Extra       | Packages                                            | Purpose                          |
 |-------------|-----------------------------------------------------|----------------------------------|
-| `[dev]`     | pytest, pytest-cov, hypothesis, ruff, mypy, bandit, pip-audit, testcontainers, httpx | Local development and testing    |
+| `[dev]`     | pytest, pytest-cov, hypothesis, ruff, mypy, bandit, pip-audit, httpx
 | `[risk]`    | numpy, scikit-learn                                | ML-based default probability scoring |
-| `[postgres]`| psycopg2-binary                                    | PostgreSQL store/persistence backend |
 | `[serve]`   | uvicorn, fastapi                                    | HTTP daemon for REST API         |
 | `[otlp]`    | opentelemetry-api, opentelemetry-sdk, opentelemetry-exporter-otlp-proto-grpc, opentelemetry-instrumentation-fastapi | Distributed tracing via OTLP     |
 | `[vault]`   | hvac                                               | HashiCorp Vault secrets backend  |
 | `[aws]`     | boto3                                              | AWS S3 export (audit, reporting) |
 | `[gcs]`     | google-cloud-storage                               | GCS export (audit, reporting)    |
 | `[security]`| bandit, pip-audit                                  | Static analysis and dependency auditing |
-| `[all]`     | postgres + otlp + serve + vault + aws + gcs         | Everything except dev and security |
+| `[all]`     | otlp + serve + vault + aws + gcs         | Everything except dev and security |
 
 > **Note:** `[mutation]` extra provides `mutmut` for mutation testing but is not included in `[all]`.
 
@@ -87,7 +85,7 @@ docker run -p 8080:8080 underwrite
 
 The Docker image uses a multi-stage build (Python 3.12-slim):
 
-- **Builder stage**: builds the wheel and installs the package with `[serve,postgres,otlp]` extras
+- **Builder stage**: builds the wheel and installs the package with `[serve,otlp,vault]` extras
 - **Runtime stage**: copies only the installed site-packages, runs as non-root `underwrite` user, exposes port 8080, includes a health check on `/healthz`
 
 ## Docker Compose
@@ -99,7 +97,7 @@ docker compose up
 This starts a single `underwrite` container with:
 
 - Port mapping: `8000:8080`
-- Filesystem store backed by a named volume
+- Sqlite store backed by a named volume mounted at `/data`
 - Services: `mechanism`, `audit`, `risk`, `fraud`
 - Rate limit of 100 req/s
 - Environment variables read from your `.env` file

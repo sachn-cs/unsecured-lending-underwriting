@@ -9,11 +9,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.collection import Handler
 from underwrite.services.collection import Handler as CollectionHandler
-from underwrite.store import InMemory
+from underwrite.store import Sqlite
 
 
 def svc(bus=None) -> Handler:
-    return CollectionHandler(name="collection", bus=bus or LocalBus(), store=InMemory())
+    return CollectionHandler(name="collection", bus=bus or LocalBus(), store=Sqlite(":memory:"))
 
 
 class TestCollectionService:

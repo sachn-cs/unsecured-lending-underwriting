@@ -424,7 +424,7 @@ All health endpoints return the same JSON body:
 
 ## Service Registration
 
-The Runtime discovers services via `SERVICE_MAP` in `handler.py`. Available services:
+The Runtime discovers services via `HANDLER_MAP` in `handler.py`. Available services:
 
 | Service | Description |
 |---------|-------------|

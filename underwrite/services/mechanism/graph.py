@@ -11,10 +11,28 @@ infrastructure - making it testable in isolation.
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any
 
 from underwrite.exceptions import InfeasibleOperationError, ProtocolError
 from underwrite.logger import logger
+
+ZERO: Decimal = Decimal("0")
+
+
+def to_money(value: Any) -> Decimal:
+    """Convert an int/float/str to an exact ``Decimal``.
+
+    Floats are routed through ``str()`` first so ``0.1`` becomes
+    ``Decimal("0.1")`` rather than the binary float expansion.
+
+    Args:
+        value: A numeric value or numeric string.
+
+    Returns:
+        The value as a Decimal.
+    """
+    return Decimal(str(value))
 
 
 class DelegationGraph:
@@ -28,10 +46,10 @@ class DelegationGraph:
         self.seeds: set[str] = set()
         self.parent: dict[str, str] = {}
         self.children: dict[str, list[str]] = {}
-        self.delegation: dict[tuple[str, str], float] = {}
-        self.base_budget: dict[str, float] = {}
-        self.earned: dict[str, float] = {}
-        self.principal: dict[str, float] = {}
+        self.delegation: dict[tuple[str, str], Decimal] = {}
+        self.base_budget: dict[str, Decimal] = {}
+        self.earned: dict[str, Decimal] = {}
+        self.principal: dict[str, Decimal] = {}
         self.loans: dict[str, list[dict[str, Any]]] = {}
 
     def require_user(self, user: str) -> None:
@@ -46,7 +64,7 @@ class DelegationGraph:
         if user not in self.earned:
             raise ProtocolError(f"unknown user: {user}")
 
-    def credit_limit(self, user: str) -> float:
+    def credit_limit(self, user: str) -> Decimal:
         """Return the available credit limit for a user.
 
         Args:
@@ -55,22 +73,25 @@ class DelegationGraph:
         Returns:
             Available credit limit (budget + earned - outgoing).
         """
-        budget = self.base_budget.get(user, 0.0) + self.earned.get(user, 0.0)
+        budget = self.base_budget.get(user, ZERO) + self.earned.get(user, ZERO)
         if user in self.parent:
             sponsor = self.parent[user]
-            budget = self.delegation.get((sponsor, user), 0.0) + self.earned.get(user, 0.0)
-        outgoing = sum(self.delegation.get((user, child), 0.0) for child in self.children.get(user, []))
+            budget = self.delegation.get((sponsor, user), ZERO) + self.earned.get(user, ZERO)
+        outgoing = sum(
+            (self.delegation.get((user, child), ZERO) for child in self.children.get(user, [])),
+            ZERO,
+        )
         return budget - outgoing
 
-    def total_credit_limit(self) -> float:
+    def total_credit_limit(self) -> Decimal:
         """Return the sum of all users' credit limits.
 
         Returns:
             Aggregate credit limit across all participants.
         """
-        return sum(self.credit_limit(u) for u in self.earned)
+        return sum((self.credit_limit(u) for u in self.earned), ZERO)
 
-    def required_delegation(self, user: str, depth: int = 0) -> float:
+    def required_delegation(self, user: str, depth: int = 0) -> Decimal:
         """Minimum delegation a user must receive to remain solvent.
 
         Recursively accounts for downstream obligations.
@@ -88,11 +109,11 @@ class DelegationGraph:
         if depth > 50:
             raise ProtocolError(f"delegation chain too deep for {user}")
         if user in self.seeds:
-            return 0.0
-        child_req = sum(self.required_delegation(c, depth + 1) for c in self.children.get(user, []))
+            return ZERO
+        child_req = sum((self.required_delegation(c, depth + 1) for c in self.children.get(user, [])), ZERO)
         return max(
-            0.0,
-            self.principal.get(user, 0.0) + child_req - self.earned.get(user, 0.0),
+            ZERO,
+            self.principal.get(user, ZERO) + child_req - self.earned.get(user, ZERO),
         )
 
     def path_to_seed(self, user: str) -> list[str]:
@@ -120,7 +141,7 @@ class DelegationGraph:
         path.reverse()
         return path
 
-    def add_seed(self, user: str, budget: float) -> None:
+    def add_seed(self, user: str, budget: Decimal) -> None:
         """Register a new seed participant.
 
         Args:
@@ -134,11 +155,11 @@ class DelegationGraph:
             raise ProtocolError(f"user already exists: {user}")
         self.seeds.add(user)
         self.base_budget[user] = budget
-        self.earned[user] = 0.0
-        self.principal[user] = 0.0
+        self.earned[user] = ZERO
+        self.principal[user] = ZERO
         self.children[user] = []
 
-    def add_user(self, sponsor: str, user: str, amount: float) -> None:
+    def add_user(self, sponsor: str, user: str, amount: Decimal) -> None:
         """Add a new downstream participant sponsored by a seed/participant.
 
         Args:
@@ -159,10 +180,10 @@ class DelegationGraph:
         self.children[user] = []
         self.children[sponsor].append(user)
         self.delegation[(sponsor, user)] = amount
-        self.earned[user] = 0.0
-        self.principal[user] = 0.0
+        self.earned[user] = ZERO
+        self.principal[user] = ZERO
 
-    def repay(self, user: str, delta: float) -> None:
+    def repay(self, user: str, delta: Decimal) -> None:
         """Increase a user's earned amount by delta.
 
         Args:
@@ -178,8 +199,8 @@ class DelegationGraph:
     def originate(
         self,
         borrower: str,
-        principal: float,
-        term: float,
+        principal: Decimal,
+        term: Decimal,
         default_probability: float,
         protocol_rate: float,
         max_delegation_rate: float,
@@ -203,8 +224,8 @@ class DelegationGraph:
         self.require_user(borrower)
         if self.credit_limit(borrower) < principal:
             raise InfeasibleOperationError("principal exceeds credit limit")
-        protocol_premium: float = protocol_rate * principal * term
-        self.principal[borrower] = self.principal.get(borrower, 0.0) + principal
+        protocol_premium: Decimal = to_money(protocol_rate) * principal * term
+        self.principal[borrower] = self.principal.get(borrower, ZERO) + principal
         loan: dict[str, Any] = {
             "borrower": borrower,
             "principal": principal,
@@ -228,22 +249,22 @@ class DelegationGraph:
             InfeasibleOperationError: If no outstanding principal.
         """
         self.require_user(borrower)
-        borrower_principal: float = self.principal.get(borrower, 0.0)
+        borrower_principal: Decimal = self.principal.get(borrower, ZERO)
         if borrower_principal <= 0:
             raise InfeasibleOperationError("no outstanding principal")
-        absorb: float = min(self.earned.get(borrower, 0.0), borrower_principal)
-        self.earned[borrower] = self.earned.get(borrower, 0.0) - absorb
-        loss: float = borrower_principal - absorb
+        absorb: Decimal = min(self.earned.get(borrower, ZERO), borrower_principal)
+        self.earned[borrower] = self.earned.get(borrower, ZERO) - absorb
+        loss: Decimal = borrower_principal - absorb
 
         current: str = borrower
         while loss > 0 and current not in self.seeds:
             sponsor: str = self.parent[current]
             edge: tuple[str, str] = (sponsor, current)
-            sponsor_absorb: float = min(self.earned.get(sponsor, 0.0), loss)
-            self.earned[sponsor] = self.earned.get(sponsor, 0.0) - sponsor_absorb
+            sponsor_absorb: Decimal = min(self.earned.get(sponsor, ZERO), loss)
+            self.earned[sponsor] = self.earned.get(sponsor, ZERO) - sponsor_absorb
             loss -= sponsor_absorb
             if loss > 0:
-                current_edge_amount: float = self.delegation.get(edge, 0.0)
+                current_edge_amount: Decimal = self.delegation.get(edge, ZERO)
                 if current_edge_amount < loss:
                     raise ProtocolError("insufficient delegation for default propagation")
                 self.delegation[edge] = current_edge_amount - loss
@@ -252,15 +273,15 @@ class DelegationGraph:
         if loss > 0:
             if current not in self.seeds:
                 raise ProtocolError("residual loss did not reach seed")
-            seed_budget: float = self.base_budget.get(current, 0.0)
+            seed_budget: Decimal = self.base_budget.get(current, ZERO)
             if seed_budget < loss:
                 raise ProtocolError("seed base budget overdraft")
             self.base_budget[current] = seed_budget - loss
 
-        self.principal[borrower] = 0.0
+        self.principal[borrower] = ZERO
         self.loans.pop(borrower, None)
 
-    def revoke(self, sponsor: str, child: str, new_amount: float) -> None:
+    def revoke(self, sponsor: str, child: str, new_amount: Decimal) -> None:
         """Change the delegation amount on a sponsor-child edge.
 
         Args:
@@ -277,15 +298,15 @@ class DelegationGraph:
         self.require_user(child)
         if self.parent.get(child) != sponsor:
             raise ProtocolError("not the parent-child edge")
-        needed: float = self.required_delegation(child)
+        needed: Decimal = self.required_delegation(child)
         if new_amount < needed:
             raise InfeasibleOperationError("revocation would make subtree insolvent")
         edge: tuple[str, str] = (sponsor, child)
         if edge not in self.delegation:
             raise ProtocolError("unknown delegation edge")
-        old_amount: float = self.delegation[edge]
+        old_amount: Decimal = self.delegation[edge]
         if new_amount > old_amount:
-            delta: float = new_amount - old_amount
+            delta: Decimal = new_amount - old_amount
             if self.credit_limit(sponsor) < delta:
                 raise InfeasibleOperationError("insufficient credit limit to increase delegation")
         self.delegation[edge] = new_amount
@@ -325,6 +346,9 @@ class DelegationGraph:
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a JSON-safe dict for store persistence.
 
+        Money fields are stored as strings so exact Decimal values
+        survive the JSON round-trip.
+
         Returns:
             JSON-serializable dict.
         """
@@ -332,11 +356,20 @@ class DelegationGraph:
             "seeds": sorted(self.seeds),
             "parent": dict(self.parent),
             "children": {k: list(v) for k, v in self.children.items()},
-            "delegation": {f"{s}->{c}": v for (s, c), v in self.delegation.items()},
-            "base_budget": dict(self.base_budget),
-            "earned": dict(self.earned),
-            "principal": dict(self.principal),
-            "loans": [loan for borrower_loans in self.loans.values() for loan in borrower_loans],
+            "delegation": {f"{s}->{c}": str(v) for (s, c), v in self.delegation.items()},
+            "base_budget": {k: str(v) for k, v in self.base_budget.items()},
+            "earned": {k: str(v) for k, v in self.earned.items()},
+            "principal": {k: str(v) for k, v in self.principal.items()},
+            "loans": [
+                {
+                    **loan,
+                    "principal": str(loan["principal"]),
+                    "term": str(loan["term"]),
+                    "protocol_premium": str(loan["protocol_premium"]),
+                }
+                for borrower_loans in self.loans.values()
+                for loan in borrower_loans
+            ],
         }
 
     @classmethod
@@ -357,12 +390,13 @@ class DelegationGraph:
         g.delegation = {}
         for k, v in delegation_raw.items():
             s, c = k.split("->", 1)
-            g.delegation[(s, c)] = v
-        g.base_budget = dict(data.get("base_budget", {}))
-        g.earned = dict(data.get("earned", {}))
-        g.principal = dict(data.get("principal", {}))
+            g.delegation[(s, c)] = to_money(v)
+        g.base_budget = {k: to_money(v) for k, v in data.get("base_budget", {}).items()}
+        g.earned = {k: to_money(v) for k, v in data.get("earned", {}).items()}
+        g.principal = {k: to_money(v) for k, v in data.get("principal", {}).items()}
         g.loans = {}
-        for loan in data.get("loans", []):
+        for raw_loan in data.get("loans", []):
+            loan = dict(raw_loan)
             b = loan.get("borrower", "")
             if not b:
                 logger.warning(
@@ -370,5 +404,8 @@ class DelegationGraph:
                     loan.get("loan_id", "unknown"),
                 )
                 continue
+            loan["principal"] = to_money(loan["principal"])
+            loan["term"] = to_money(loan["term"])
+            loan["protocol_premium"] = to_money(loan["protocol_premium"])
             g.loans.setdefault(b, []).append(loan)
         return g

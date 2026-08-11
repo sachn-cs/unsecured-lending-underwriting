@@ -59,6 +59,10 @@ Thumbs.db
 data/
 !underwrite/data/
 *.sha256
+store.db
+store.db-wal
+store.db-shm
+*.db-journal
 
 # Build artifacts
 underwrite/__version__.py

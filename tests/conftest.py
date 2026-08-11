@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import os
 from collections.abc import Generator
 from pathlib import Path
 from typing import Any, cast
@@ -15,9 +14,7 @@ import pytest
 from underwrite.bus import EventBus
 from underwrite.local import LocalBus
 from underwrite.message import Message, Type
-from underwrite.store import InMemory, Sqlite, Store
-
-# -- Domain event fixture ------------------------------------------------------
+from underwrite.store import Sqlite
 
 
 @pytest.fixture
@@ -32,68 +29,33 @@ def event() -> Message:
     )
 
 
-# -- Store fixtures ------------------------------------------------------------
+@pytest.fixture
+def store() -> Sqlite:
+    """Return a fresh in-memory Sqlite instance."""
+    return Sqlite(":memory:")
 
 
 @pytest.fixture
-def store() -> InMemory:
-    """Return a fresh InMemory instance."""
-    return InMemory()
-
-
-@pytest.fixture(scope="session")
-def postgres_dsn() -> Generator[str, None, None]:
-    """Return a Postgres DSN from env or start a testcontainer."""
-    dsn = os.environ.get("UNDERWRITE_TEST_PG_DSN", "")
-    if dsn:
-        yield dsn
-        return
-    try:
-        from testcontainers.postgres import PostgresContainer
-    except ImportError:
-        pytest.skip("testcontainers not installed")
-    with PostgresContainer("postgres:16-alpine") as pg:
-        yield pg.get_connection_url()
-
-
-@pytest.fixture
-def pg_store(postgres_dsn: str) -> Generator[Store | Sqlite, None, None]:
-    """Return a Sqlite backed by a temporary table.
-
-    Requires the ``postgres`` extra and ``testcontainers``.
-    """
+def sqlite_store(tmp_path: Path) -> Generator[Sqlite, None, None]:
+    """Return a file-backed Sqlite store with a temporary path."""
     import tempfile
-    from pathlib import Path
-
-    from underwrite.store import Sqlite
 
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         path = f.name
-    store: Store | Sqlite = Sqlite(path=path)
-    store.migrate(_empty_plan())
-    yield store
+    s = Sqlite(path=path)
     try:
-        Path(path).unlink(missing_ok=True)
-    except Exception:
-        pass
-
-
-def _empty_plan() -> Any:
-    from underwrite.migrate import MigrationPlan
-
-    return MigrationPlan()
-
-
-# -- Bus fixture ---------------------------------------------------------------
+        yield s
+    finally:
+        try:
+            Path(path).unlink(missing_ok=True)
+        except Exception:
+            pass
 
 
 @pytest.fixture
 def bus() -> EventBus:
     """Return a fresh EventBus instance."""
     return cast(EventBus, LocalBus())
-
-
-# -- Config fixture ------------------------------------------------------------
 
 
 @pytest.fixture
@@ -108,9 +70,6 @@ def tmp_config(tmp_path: Path) -> dict[str, Any]:
     p = tmp_path / "config.json"
     p.write_text(__import__("json").dumps(data))
     return {"path": str(p), "data": data}
-
-
-# -- HTTP test client fixture --------------------------------------------------
 
 
 @pytest.fixture

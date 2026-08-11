@@ -49,10 +49,9 @@ Each group is declared in `[project.optional-dependencies]` and must be installe
 | `mypy` | >=1.10 | Project-wide | Static type checking. Configured in `[tool.mypy]` with `ignore_missing_imports = true`. |
 | `bandit` | >=1.7 | Security scanning | Also part of `security` extra. Configured in `[tool.bandit]`. |
 | `pip-audit` | >=2.7 | Security scanning | Also part of `security` extra. |
-| `testcontainers` | >=4.0 | Integration tests | Docker-based Postgres test containers. |
 | `httpx` | >=0.27 | Tests for `serve` | Async HTTP client for testing FastAPI endpoints. |
 
-**Upgrade considerations**: ruff 0.6+ may introduce new lint rules; pin or update `select` accordingly. mypy 1.10+ is compatible with Python 3.10–3.13. `testcontainers` 4.x requires Docker to be running.
+**Upgrade considerations**: ruff 0.6+ may introduce new lint rules; pin or update `select` accordingly. mypy 1.10+ is compatible with Python 3.10–3.13.
 
 ### risk (risk scoring)
 
@@ -63,13 +62,12 @@ Each group is declared in `[project.optional-dependencies]` and must be installe
 
 **Upgrade considerations**: scikit-learn 1.5+ drops Python 3.9 support (already satisfied). Joblib model serialization format is backward-compatible within the 1.x line. The `JoblibModelStrategy` requires `UNDERWRITE_ALLOW_JOBLIB=true` to activate joblib loading (see `identity.py` line 234–248 for the gating logic).
 
-### postgres
+### store (SQLite)
 
-| Dependency | Version | Used In | Purpose |
-|------------|---------|---------|---------|
-| `psycopg2-binary` | >=2.9 | `underwrite/store.py` (PostgresStore) | PostgreSQL connection pool (`psycopg2.pool.ThreadedConnectionPool`) with circuit breaker and retry policy. |
-
-**Upgrade considerations**: `psycopg2-binary` 2.9 is the last major version (maintenance-only). Consider migrating to `psycopg[c]` 3.x for the `postgres` extra. The API differences (connection pool API, cursor context managers) would require changes in `PostgresStore.__connection()` and `__execute()`.
+The store layer depends only on the Python standard library
+(`sqlite3`). No third-party database driver is required — the
+SQLite store uses `BEGIN IMMEDIATE` transactions and WAL
+journaling, with a configurable `busy_timeout` (default 30 s).
 
 ### serve (HTTP gateway)
 

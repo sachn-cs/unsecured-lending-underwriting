@@ -20,7 +20,7 @@ from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator, SagaStep
 from underwrite.services.audit import Handler
 from underwrite.services.mechanism import Handler as MechanismHandler
-from underwrite.store import Disk, InMemory
+from underwrite.store import Sqlite
 from underwrite.tracer import Tracer
 
 NUM_THREADS: int = 10
@@ -98,7 +98,7 @@ class TestBusConcurrency:
 
 class TestStoreConcurrency:
     def test_concurrent_filestore_set_get(self, tmp_path: Any) -> None:
-        store = Disk(str(tmp_path))
+        store = Sqlite(path=str(tmp_path / "store.db"))
         errors: list[Exception] = []
 
         def set_get() -> None:
@@ -117,10 +117,10 @@ class TestStoreConcurrency:
             t.start()
         for t in threads:
             t.join(timeout=15)
-        assert not errors, f"concurrent Disk raised: {errors[0] if errors else 'unknown'}"
+        assert not errors, f"concurrent Sqlite raised: {errors[0] if errors else 'unknown'}"
 
     def test_concurrent_memorystore_set_get(self) -> None:
-        store = InMemory()
+        store = Sqlite(":memory:")
         errors: list[Exception] = []
 
         def set_get() -> None:
@@ -138,7 +138,7 @@ class TestStoreConcurrency:
             t.start()
         for t in threads:
             t.join(timeout=15)
-        assert not errors, f"concurrent InMemory raised: {errors[0] if errors else 'unknown'}"
+        assert not errors, f"concurrent Sqlite raised: {errors[0] if errors else 'unknown'}"
 
 
 class TestCircuitBreakerConcurrency:
@@ -283,7 +283,7 @@ class TestMechanismConcurrency:
     """Stress tests for Handler thread safety."""
 
     def test_concurrent_add_user(self) -> None:
-        svc = MechanismHandler(name="test-mech", store=InMemory(), bus=LocalBus())
+        svc = MechanismHandler(name="test-mech", store=Sqlite(":memory:"), bus=LocalBus())
         errors: list[Exception] = []
         err_lock = threading.Lock()
 
@@ -307,7 +307,7 @@ class TestMechanismConcurrency:
         assert "bank" in svc.seeds
 
     def test_concurrent_mixed_operations(self) -> None:
-        svc = MechanismHandler(name="test-mech", store=InMemory(), bus=LocalBus())
+        svc = MechanismHandler(name="test-mech", store=Sqlite(":memory:"), bus=LocalBus())
         errors: list[Exception] = []
         err_lock = threading.Lock()
 
@@ -354,7 +354,7 @@ class TestMechanismConcurrency:
 
     def test_concurrent_quote_queries(self) -> None:
         """Quote is read-only — safe to call concurrently from many threads."""
-        svc = MechanismHandler(name="test-mech", store=InMemory(), bus=LocalBus())
+        svc = MechanismHandler(name="test-mech", store=Sqlite(":memory:"), bus=LocalBus())
         errors: list[Exception] = []
         err_lock = threading.Lock()
 

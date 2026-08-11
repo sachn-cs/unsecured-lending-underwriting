@@ -59,22 +59,49 @@
 
 ---
 
-## 4. Pluggable Store Abstraction
+## 4. SQLite as the Single Store Backend
 
-**Context:** Different deployment environments need different persistence: in-memory for tests, filesystem for dev, Postgres for production, read replicas for CQRS.
+**Context:** The platform originally shipped three store backends —
+`MemoryStore`, `FileStore`, and `PostgresStore` — plus a `CQRSStore`
+wrapper. Operators reported that the cognitive load of choosing,
+wiring and operating the right backend outweighed the flexibility
+it gave them, and the in-memory and filesystem backends had
+separate reliability problems (process restart, path traversal)
+that made them unsuitable for production.
 
-**Decision:** Define a `Store` ABC with `get`/`set`/`delete`/`exists`/`keys`. Implement `MemoryStore`, `FileStore` (JSON files with atomic write), and `PostgresStore` (psycopg2 with connection pooling, circuit breaker, and retry). The `CQRSStore` wrapper separates read and write stores with read-store invalidation on write.
+**Decision:** Ship one backend — `Sqlite` — backed by the Python
+standard library `sqlite3` module. The platform relies on WAL
+journaling, a configurable `busy_timeout`, and a migration engine
+that runs each schema change inside a single `BEGIN IMMEDIATE`
+transaction. A `:memory:` path is provided for tests; everything
+else points at a file on a persistent volume.
 
 **Alternatives Considered:**
-- **SQLAlchemy ORM:** Overkill for a key-value interface. The store abstraction is intentionally limited to `(key, value)` to keep all backends swappable.
-- **Single Postgres-only store:** Locks out in-memory test usage and filesystem-based local development.
-- **Custom query interface:** Every store would need to implement SQL parsing. The simple `keys(pattern)` with substring matching is sufficient for the delegation graph's needs.
+- **Keep `MemoryStore`/`FileStore`/`PostgresStore`:** Carries the
+  operational overhead, requires three sets of tests, and the file
+  backend had multiple `os` failure modes that needed retry and
+  circuit-breaker code in the runtime.
+- **SQLAlchemy ORM:** Overkill for a key-value interface. The store
+  abstraction is intentionally limited to `(key, value)` to keep
+  the surface minimal.
+- **External Postgres-only store:** Locks out single-node deployments
+  and forces every developer to run a database.
 
 **Consequences:**
-- (+) Backend-agnostic: tests use `MemoryStore`, CI uses `FileStore`, production uses `PostgresStore` — zero code changes.
-- (+) CQRS support: `CQRSStore(WriteStore, ReadStore)` with automatic read invalidation on `set()`.
-- (-) Limited to key-value operations: no relational queries, no joins, no transactions across keys. Services must manage their own consistency.
-- (-) `keys()` is O(n) on `FileStore` (directory traversal) and `MemoryStore` (full scan). Acceptable for <100k keys.
+- (+) One code path: every service talks to one backend through one
+  set of invariants.
+- (+) Zero extra dependencies: `sqlite3` is in the stdlib.
+- (+) Transactional migrations out of the box: `BEGIN IMMEDIATE`
+  with a `migrations` table gives idempotency and atomicity.
+- (+) Fast in tests: `Sqlite(":memory:")` matches the convenience of
+  the deleted `MemoryStore`.
+- (-) Existing Postgres data and on-disk JSON files are not
+  migrated automatically. Operators must extract and load.
+- (-) Single-node by default: multi-node deployments still need
+  out-of-process coordination via the event bus.
+- (-) Limited to key-value operations: no relational queries, no
+  joins, no transactions across keys. Services must manage their
+  own consistency.
 
 ---
 
@@ -86,7 +113,7 @@
 
 **Alternatives Considered:**
 - **Distributed transactions (XA / two-phase commit):** Adds a transaction coordinator, database lock contention, and is impractical across different store backends.
-- **Outbox pattern with CDC:** Appropriate for跨-service transactions with Kafka, but adds infrastructure complexity not justified in a single-process system.
+- **Outbox pattern with CDC:** Appropriate for cross-service transactions with Kafka, but adds infrastructure complexity not justified in a single-process system.
 - **Choreographed sagas (each service manages its own compensation):** Harder to reason about, debug, and test. The central orchestrator provides a single execution trace.
 
 **Consequences:**
@@ -116,25 +143,6 @@
 - (+) Rich built-in features: rate limiter, circuit breaker, DLQ, idempotency guard — no external services needed.
 - (-) Single-process only: cannot distribute services across machines. The `EventBus` ABC exists for future SQS/Modal backends.
 - (-) Thread-pool dispatch loses ordering guarantees: concurrent handlers may process events out of order.
-
----
-
-## 7. CQRS via CQRSStore
-
-**Context:** The delegation graph is read-heavy (every quote, origination, and path query reads graph state) and write-sparse (only mechanism service writes). A read replica can reduce contention.
-
-**Decision:** Implement `CQRSStore` that wraps a write `Store` and a read `ReadStore`. Writes go to the primary store; reads go to the read store. On `set()`, the read store key is deleted (lazy invalidation) so the next read fetches from the write store. The `postgres` store backend can use a read replica for the read store.
-
-**Alternatives Considered:**
-- **Single store:** Simple, but read-heavy workloads contend with writes on the same connection pool/table.
-- **Eventual-consistency read replica:** Postgres streaming replication as read store. Requires `CQRSStore` to be configured with different DSNs for read and write.
-- **Separate read model (materialized views):** Overkill for key-value access. The current approach is a lightweight compromise.
-
-**Consequences:**
-- (+) Reduced write-contention on read path: reads go to a separate store (memory or replica).
-- (+) Backend-agnostic CQRS: works with any combination of MemoryStore, FileStore, PostgresStore.
-- (-) Read-after-write inconsistency: the read store delete is asynchronous relative to the write. A read immediately after a write may see stale data. Mitigated by the fact that most reads are from the same service that wrote (cached in memory via `StatefulService`).
-- (-) Lazy invalidation means the first read after a write is slow (misses the read store cache).
 
 ---
 
@@ -216,9 +224,9 @@
 
 ## 12. Circuit Breaker + Retry Pattern
 
-**Context:** `FileStore` and `PostgresStore` interact with I/O subsystems that can fail transiently (disk full, connection timeout, deadlock). Without resilience, a single I/O failure propagates to all services using the store.
+**Context:** Earlier releases shipped file and Postgres stores that interact with I/O subsystems that can fail transiently (disk full, connection timeout, deadlock). The runtime needs a generic resilience pattern for callers that want to wrap their own I/O.
 
-**Decision:** Implement `CircuitBreaker` (CLOSED → OPEN → HALF_OPEN state machine) and `RetryPolicy` (exponential backoff with jitter). `FileStore` wraps every I/O operation in `CircuitBreaker.call()` with configurable threshold and recovery timeout. `PostgresStore` uses both `CircuitBreaker` (per-op) and `RetryPolicy` (per-op with 2 retries, 50ms base delay). The bus has a separate `CircuitBreaker` per subscriber for event-handler failures.
+**Decision:** Keep `CircuitBreaker` (CLOSED → OPEN → HALF_OPEN state machine) and `RetryPolicy` (exponential backoff with jitter) in `underwrite/circuit.py` as utilities. The `Sqlite` store does not embed them directly; SQLite's `busy_timeout` covers transient contention and surfaces as a `StoreError` if exceeded. The bus keeps its per-subscriber `CircuitBreaker` for event-handler failures.
 
 **Alternatives Considered:**
 - **Try/except everywhere:** Ad-hoc, no centralized state. A circuit breaker provides a fails-fast mechanism that prevents cascading failures.

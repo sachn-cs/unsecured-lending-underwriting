@@ -11,6 +11,7 @@ state-transition commands. Every other service either queries this state
 from __future__ import annotations
 
 from collections.abc import Callable
+from decimal import Decimal
 from typing import Any
 
 from underwrite.authz import AccessControl
@@ -24,8 +25,8 @@ from underwrite.message import Message, Type
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
 from underwrite.services.base import Core, Dependencies
-from underwrite.services.mechanism.graph import DelegationGraph
-from underwrite.store import Sqlite, Store
+from underwrite.services.mechanism.graph import DelegationGraph, to_money
+from underwrite.store import StoreBackend
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
 from underwrite.validate import PayloadValidator
@@ -50,7 +51,7 @@ class Handler(Core):
         self,
         name: str,
         bus: EventBus | LocalBus,
-        store: Store | Sqlite | Store | Sqlite | Store | Sqlite | Store | Sqlite,
+        store: StoreBackend,
         identity: Keypair | None = None,
         metrics: Collector | None = None,
         health: Checks | None = None,
@@ -106,7 +107,7 @@ class Handler(Core):
         """Return the loan book for testing access."""
         return self.graph.loans
 
-    def credit_limit(self, user: str) -> float:
+    def credit_limit(self, user: str) -> Decimal:
         """Return the available credit limit for a user.
 
         Args:
@@ -117,7 +118,7 @@ class Handler(Core):
         """
         return self.graph.credit_limit(user)
 
-    def required_delegation(self, user: str, depth: int = 0) -> float:
+    def required_delegation(self, user: str, depth: int = 0) -> Decimal:
         """Return the minimum delegation a user must receive.
 
         Args:
@@ -136,13 +137,13 @@ class Handler(Core):
             return set(self.graph.seeds)
 
     @property
-    def earned(self) -> dict[str, float]:
+    def earned(self) -> dict[str, Decimal]:
         """Return a copy of the earned amounts dict."""
         with self.state_lock:
             return dict(self.graph.earned)
 
     @property
-    def principal(self) -> dict[str, float]:
+    def principal(self) -> dict[str, Decimal]:
         """Return a copy of the principal amounts dict."""
         with self.state_lock:
             return dict(self.graph.principal)
@@ -190,7 +191,7 @@ class Handler(Core):
         v = PayloadValidator()
         p = event.payload
         user: str = v.non_empty(p, "user")
-        budget: float = v.positive(p, "base_budget")
+        budget: Decimal = to_money(v.positive(p, "base_budget"))
         with self.state_lock:
             snap = self.graph.snapshot()
             self.graph.add_seed(user, budget)
@@ -203,7 +204,7 @@ class Handler(Core):
         p = event.payload
         sponsor: str = v.non_empty(p, "sponsor")
         user: str = v.non_empty(p, "user")
-        amount: float = v.positive(p, "delegation_amount")
+        amount: Decimal = to_money(v.positive(p, "delegation_amount"))
         with self.state_lock:
             snap = self.graph.snapshot()
             self.graph.add_user(sponsor, user, amount)
@@ -215,7 +216,7 @@ class Handler(Core):
         v = PayloadValidator()
         p = event.payload
         user: str = v.non_empty(p, "user")
-        delta: float = v.non_negative(p, "delta_earned")
+        delta: Decimal = to_money(v.non_negative(p, "delta_earned"))
         with self.state_lock:
             snap = self.graph.snapshot()
             self.graph.repay(user, delta)
@@ -227,8 +228,8 @@ class Handler(Core):
         v = PayloadValidator()
         p = event.payload
         borrower: str = v.non_empty(p, "borrower")
-        principal: float = v.positive(p, "principal")
-        term: float = v.positive(p, "term")
+        principal: Decimal = to_money(v.positive(p, "principal"))
+        term: Decimal = to_money(v.positive(p, "term"))
         dp: float = v.finite(p, "default_probability", 0.0)
         pr: float = v.finite(p, "protocol_rate", 0.0)
         mdr: float = v.finite(p, "max_delegation_rate", 0.0)
@@ -244,9 +245,9 @@ class Handler(Core):
         with self.state_lock:
             snap = self.graph.snapshot()
             self.graph.originate(borrower, principal, term, dp, pr, mdr)
-        total_interest = pr * principal * term
-        p["protocol_premium"] = total_interest
-        p["total_interest"] = total_interest
+        total_interest: Decimal = to_money(pr) * principal * term
+        p["protocol_premium"] = float(total_interest)
+        p["total_interest"] = float(total_interest)
         p["annual_rate"] = annual_rate
         self.persist_or_rollback(snap)
         self.emit(Type.LOAN_ORIGINATED, p, correlation_id=event.correlation_id)
@@ -259,7 +260,7 @@ class Handler(Core):
         with self.state_lock:
             snap = self.graph.snapshot()
             self.graph.default(borrower)
-            p["principal"] = self.graph.principal.get(borrower, 0.0)
+            p["principal"] = float(self.graph.principal.get(borrower, Decimal("0")))
         self.persist_or_rollback(snap)
         self.emit(Type.DEFAULT_OCCURRED, p, correlation_id=event.correlation_id)
 
@@ -269,7 +270,7 @@ class Handler(Core):
         p = event.payload
         sponsor: str = v.non_empty(p, "sponsor")
         child: str = v.non_empty(p, "child")
-        new_amount: float = v.non_negative(p, "new_delegation")
+        new_amount: Decimal = to_money(v.non_negative(p, "new_delegation"))
         with self.state_lock:
             snap = self.graph.snapshot()
             self.graph.revoke(sponsor, child, new_amount)
@@ -281,28 +282,28 @@ class Handler(Core):
         v = PayloadValidator()
         p = event.payload
         borrower: str = v.non_empty(p, "borrower")
-        principal: float = v.finite(p, "principal", 0.0)
-        term: float = v.positive(p, "term")
+        principal: Decimal = to_money(v.finite(p, "principal", 0.0))
+        term: Decimal = to_money(v.positive(p, "term"))
         dp: float = v.finite(p, "default_probability", 0.02)
         pr: float = v.finite(p, "protocol_rate", 0.0)
 
         if not (0.0 < dp < 1.0):
             raise ProtocolError("default probability must be in (0,1)")
         clamped_dp: float = max(min(dp, 1.0 - EPSILON), EPSILON)
-        clamped_term: float = max(term, EPSILON)
+        clamped_term: float = max(float(term), EPSILON)
         one_minus_dp: float = max(1.0 - clamped_dp, EPSILON)
         break_even: float = min(clamped_dp / (one_minus_dp * clamped_term), 1e6)
-        total_interest: float = pr * principal * term
+        total_interest: Decimal = to_money(pr) * principal * term
         self.emit(
             Type.QUOTE_CALCULATED,
             {
                 "borrower": borrower,
-                "principal": principal,
-                "term": term,
+                "principal": float(principal),
+                "term": float(term),
                 "default_probability": dp,
                 "protocol_rate": pr,
-                "protocol_premium": total_interest,
-                "total_interest": total_interest,
+                "protocol_premium": float(total_interest),
+                "total_interest": float(total_interest),
                 "break_even_rate": break_even,
             },
             correlation_id=event.correlation_id,

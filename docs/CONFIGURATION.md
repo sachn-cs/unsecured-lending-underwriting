@@ -94,11 +94,9 @@ config.save("audit-only.json")  # secrets are redacted
 
 | Field | Type | Default | Valid values |
 |-------|------|---------|--------------|
-| `backend` | `str` | `"memory"` | `memory`, `filesystem`, `postgres` |
-| `dsn` | `str` | `""` | Connection string |
-| `pool_size` | `int` | `5` | >= 1 |
-| `read_backend` | `str` | `""` | Read-replica backend (empty = same as `backend`) |
-| `read_dsn` | `str` | `""` | Read-replica DSN (empty = same as `dsn`) |
+| `backend` | `str` | `"sqlite"` | `sqlite`, `memory` |
+| `path` | `str` | `"./store.db"` | SQLite path. Use `:memory:` for an in-process database. |
+| `busy_timeout` | `float` | `30.0` | Seconds. >= 0. |
 
 ### LoggingConfig
 
@@ -303,7 +301,7 @@ config.save("path")  # → JSON file (creates parent directories)
 
 ```python
 Configuration(
-    store=StoreConfig(backend="filesystem"),
+    store=StoreConfig(backend="sqlite", path="./store.db"),
     services={name: ServiceConfig(enabled=False) for name in SERVICE_NAMES},
 )
 ```
@@ -322,8 +320,8 @@ logging level=INFO, metrics enabled, etc.).
         "max_buffer_size": 10000
     },
     "store": {
-        "backend": "filesystem",
-        "dsn": "./data"
+        "backend": "sqlite",
+        "path": "./store.db"
     },
     "services": {
         "mechanism": {"enabled": true},

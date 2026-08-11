@@ -29,7 +29,7 @@ from typing import Any
 from underwrite.logger import logger
 from underwrite.message import Message
 from underwrite.pii import redact_event
-from underwrite.store import Disk, InMemory, Sqlite, Store
+from underwrite.store import Sqlite, Store
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,13 +50,11 @@ class Queue:
     durability across restarts.
     """
 
-    def __init__(
-        self, max_records: int = 10000, store: Store | InMemory | Disk | Sqlite | None = None, sync_interval: int = 10
-    ) -> None:
+    def __init__(self, max_records: int = 10000, store: Store | Sqlite | None = None, sync_interval: int = 10) -> None:
         self.lock: threading.Lock = threading.Lock()
         self.records: deque[Record] = deque(maxlen=max_records)
         self.max_records: int = max_records
-        self.store: Store | InMemory | Disk | Sqlite | None = store
+        self.store: Store | Sqlite | None = store
         self.sync_interval: int = max(sync_interval, 1)
         self.sync_counter: int = 0
         if store is not None:

@@ -64,8 +64,9 @@ config.save("underwrite.json")
 
 # Access
 config.bus.backend  # "local" | "sqs" | "modal"
-config.store.backend  # "memory" | "filesystem" | "postgres"
-config.store.dsn  # postgres DSN
+config.store.backend  # "sqlite" | "memory"
+config.store.path  # SQLite database path (default "./store.db")
+config.store.busy_timeout  # float seconds (default 30.0)
 config.services["risk"].enabled  # bool
 config.services["mechanism"].priority  # int
 config.logging.level  # "DEBUG" | "INFO" | "WARNING" | "ERROR" | "CRITICAL"
@@ -81,11 +82,11 @@ config.audit.max_ledger  # 100000
 
 # Env overrides
 # All config keys can be set via UNDERWRITE_* env vars:
-#   UNDERWRITE_STORE_BACKEND=postgres
-#   UNDERWRITE_STORE_DSN=postgresql://...
+#   UNDERWRITE_STORE_BACKEND=sqlite
+#   UNDERWRITE_STORE_PATH=./store.db
 #   UNDERWRITE_LOG_LEVEL=DEBUG
 #   UNDERWRITE_AUTHZ_ENABLED=false
-# (full list in config.py:403)
+# (full list in config.py)
 ```
 
 ### NanoService
@@ -272,7 +273,7 @@ Convention: events ending in `.past_tense` (e.g. `loan.originated`) are **notifi
 ### Store
 
 ```python
-from underwrite import Store, MemoryStore, FileStore
+from underwrite import Store, Sqlite
 
 # Abstract interface
 store.get("key")  # → Any | None
@@ -283,14 +284,13 @@ store.keys(pattern="substring")  # → list[str]
 store.keys(pattern="prefix:*", limit=100, offset=0)
 
 # Concrete implementations
-MemoryStore(max_entries=10000)  # in-memory, LRU eviction
-FileStore(data_dir="./data")  # JSON files, atomic writes, fsync
-PostgresStore(dsn="...", table="store", pool_size=5)
-CQRSStore(write_store, read_store)  # read/write separation
+Sqlite(":memory:")  # ephemeral in-process database
+Sqlite(path="./store.db")  # persistent on disk
 
-# Store features
-file_store = FileStore(
-    data_dir="./data",
+# Migration runner
+from underwrite.migrate import default_plan
+store.migrate(default_plan())  # idempotent; runs pending versions in BEGIN IMMEDIATE
+```
     operation_timeout=5.0,  # timeout per I/O op
     use_circuit_breaker=True,  # 3 fails → open 30s
     fsync=True,  # safe but slower

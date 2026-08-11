@@ -11,11 +11,11 @@ from underwrite.local import LocalBus
 from underwrite.message import Message, Type
 from underwrite.services.settlement import Handler
 from underwrite.services.settlement import Handler as SettlementHandler
-from underwrite.store import InMemory
+from underwrite.store import Sqlite
 
 
 def svc(bus=None) -> Handler:
-    return SettlementHandler(name="settlement", bus=bus or LocalBus(), store=InMemory())
+    return SettlementHandler(name="settlement", bus=bus or LocalBus(), store=Sqlite(":memory:"))
 
 
 class TestSettlementService:

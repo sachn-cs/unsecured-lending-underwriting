@@ -27,7 +27,7 @@ from underwrite.pii import PIISanitizer
 from underwrite.saga import Orchestrator
 from underwrite.services.base import Dependencies, StatefulService
 from underwrite.services.persistence import BatchedStoreRepository
-from underwrite.store import Sqlite, Store
+from underwrite.store import StoreBackend
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
 
@@ -47,7 +47,7 @@ class Handler(StatefulService):
         self,
         name: str,
         bus: EventBus | LocalBus,
-        store: Store | Sqlite | Store | Sqlite | Store | Sqlite | Store | Sqlite,
+        store: StoreBackend,
         max_ledger: int = 100000,
         export_url: str = "",
         identity: Keypair | None = None,

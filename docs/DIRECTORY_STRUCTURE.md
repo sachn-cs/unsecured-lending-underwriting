@@ -2,7 +2,7 @@
 
 ```
 underwrite/                          # Main package (49 source modules + 34 wired service dirs + 4 KYC provider clients)
-├── init.py                     # Public API exports (Runtime, NanoService, LocalBus, Store, etc.)
+├── init.py                     # Public API exports (Runtime, Core, LocalBus, Store, etc.)
 ├── bus.py                      # Event bus: LocalBus, AsyncLocalBus, DeadLetterQueue,
 │                                   #   IdempotencyGuard, RateLimiter, CircuitBreaker (per-subscriber)
 ├── store.py                    # State store ABC + implementations: Sqlite(":memory:"), underwrite.store.Sqlite,
@@ -16,7 +16,7 @@ underwrite/                          # Main package (49 source modules + 34 wire
 ├── config.py                   # Pydantic-based configuration engine: Configuration model,
 │                                   #   nested configs for bus/store/logging/identity/authz/metrics/
 │                                   #   tracing/saga/secrets/recovery/fee/governance/audit.
-│                                   #   Loads JSON config, env overrides, defines SERVICE_NAMES (28)
+│                                   #   Loads JSON config, env overrides, defines HANDLER_NAMES (34)
 ├── runtime.py                  # Service lifecycle manager: Runtime class wires, starts,
 │                                   #   stops, and restarts all nano services; builds bus, store,
 │                                   #   tracer, authz, saga orchestrator, supervisor, metrics export
@@ -32,8 +32,8 @@ underwrite/                          # Main package (49 source modules + 34 wire
 │                                   #   gauges, TimerContext; bounded eviction
 ├── health.py                   # Health-check registry: HealthRegistry with per-subsystem
 │                                   #   callables aggregated into single status report
-├── events.py                   # Event type definitions: Event dataclass (frozen, signed),
-│                                   #   EventType enum with 80+ domain event types
+├── message.py                   # Event type definitions: Message dataclass (frozen, signed),
+│                                   #   Type enum with 132 domain event types
 ├── exceptions.py               # All custom exceptions: UnderwriteError base, 14 subtypes
 │                                   #   (ConfigurationError, ProtocolError, AuthzError, etc.)
 ├── secrets.py                  # Secrets management: SecretsBackend ABC with EnvSecretsBackend,
@@ -48,8 +48,8 @@ underwrite/                          # Main package (49 source modules + 34 wire
 │                                   #   for Aadhaar, PAN, SSN, phone, email, bank account, etc.
 ├── plugins.py                  # Plugin system: discover_plugins() via importlib.metadata
 │                                   #   entry_points under "underwrite.services"
-├── handler.py         # Service registry: SERVICE_MAP (name -> module path),
-│                                   #   SERVICE_CLASSES (name -> class name),
+├── handler.py         # Service registry: HANDLER_MAP (name -> module path),
+│                                   #   HANDLER_CLASSES (name -> class name),
 │                                   #   WIRING (event_type -> subscriber list)
 ├── migrate.py                  # Schema migration engine: Migration, MigrationPlan,
 │                                   #   default_plan() for store schema versioning
@@ -61,9 +61,9 @@ underwrite/                          # Main package (49 source modules + 34 wire
 ├── prometheus_export.py            # Prometheus text-format export: MetricsExporter,
 │                                   #   PrometheusMiddleware for FastAPI, metrics_as_text()
 ├── py.typed                        # PEP 561 marker for typed package
-└── services/                       # 28 nano-service implementations
-    ├── init.py                 # Exports NanoService, StatefulService
-    ├── base.py                     # NanoService (ABC), StatefulService, BatchPersistenceMixin
+└── services/                       # 34 nano-service implementations
+    ├── init.py                 # Exports Core, StatefulService
+    ├── base.py                     # Core (ABC), StatefulService, BatchPersistenceMixin
     │                               #   — event emission/signing, subscription, dispatch
     │                               #   — ThreadPoolExecutor for concurrent handlers
     │                               #   — idempotency, authz gating, tracing, metrics, supervisor
@@ -157,10 +157,10 @@ underwrite/                          # Main package (49 source modules + 34 wire
     │   └── service.py
     └── (more service dirs)        # Each follows: __init__.py + handler.py
 
-tests/                              # 59 test files (828+ tests)
+tests/                              # 72 test files (1276 tests)
 ├── conftest.py                    # Shared fixtures, mock bus/store/identity
 ├── test_mechanism.py              # Largest test file (767 lines)
-├── test_framework.py              # Core framework tests (NanoService, LocalBus, Store)
+├── test_framework.py              # Core framework tests (Core, LocalBus, Store)
 ├── test_runtime_e2e.py            # End-to-end integration tests
 ├── test_saga.py                   # Saga orchestration tests
 ├── test_error_paths.py            # Fault injection tests

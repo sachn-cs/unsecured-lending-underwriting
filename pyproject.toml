@@ -94,7 +94,7 @@ Repository = "https://github.com/sachncs/underwrite"
 Issues = "https://github.com/sachncs/underwrite/issues"
 
 [project.scripts]
-underwrite = "underwrite.__cli__:main"
+underwrite = "underwrite.cli:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

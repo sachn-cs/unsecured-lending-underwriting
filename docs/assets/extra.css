@@ -173,6 +173,42 @@ code, pre, kbd, samp {
   border-bottom: 1px solid rgba(10, 14, 20, 0.06);
 }
 
+/* ---------- Markdown <p> wrappers inside brand components ----------
+   pymdownx wraps inline content in <p>. Our flex/grid components need
+   direct children, not paragraphs. Reset the <p> margins and ensure
+   the inner elements flow correctly. */
+.uw-hero__eyebrow p,
+.uw-hero__lede p,
+.uw-hero__ctas p,
+.uw-hero__links p,
+.uw-trust__item p,
+.uw-card p,
+.uw-card__icon p,
+.uw-stage p,
+.uw-stage__index p,
+.uw-stage__name p,
+.uw-stage__meta p,
+.uw-stage__event p,
+.uw-eventflow p,
+.uw-architecture p,
+.uw-persona p,
+.uw-terminal p,
+.uw-persona__link p,
+.uw-lede p {
+  margin: 0;
+}
+.uw-hero__lede p,
+.uw-lede p,
+.uw-stage__meta p {
+  margin: 0;
+}
+.uw-hero__ctas p { display: inline-flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; }
+.uw-hero__links p { display: block; }
+.uw-card__icon p { display: inline-flex; align-items: center; justify-content: center; }
+.uw-trust__item p { display: flex; flex-direction: column; gap: 4px; }
+.uw-stage__event p { display: inline; }
+.uw-terminal p { margin: 0; padding: 0; }
+
 [data-md-color-scheme="slate"] .md-header {
   border-bottom-color: rgba(255, 255, 255, 0.08);
 }

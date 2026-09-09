@@ -93,7 +93,7 @@ class TestConfigSkipBadFile:
 
 class TestEventNonSerializablePayload:
     def test_raises_protocol_error_on_bad_payload(self) -> None:
-        with pytest.raises(ProtocolError, match="MAX_PAYLOAD_SIZE"):
+        with pytest.raises(ProtocolError, match="not JSON-serialisable"):
             Message(
                 event_type="test.bad",
                 source="test",

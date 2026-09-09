@@ -48,21 +48,32 @@ class Message:
     parent_span_id: str = ""
 
     def __post_init__(self) -> None:
+        from underwrite.exceptions import ProtocolError
+
         payload_size: int = 0
         if len(self.payload) > MAX_PAYLOAD_KEYS:
-            from underwrite.exceptions import ProtocolError
-
             raise ProtocolError(f"event payload has too many keys ({len(self.payload)} > {MAX_PAYLOAD_KEYS})")
         try:
             import json as json_mod
 
-            payload_str = json_mod.dumps(self.payload, default=str)
+            # Use the strict default to avoid non-deterministic `str()`
+            # coercion of datetime/Decimal/UUID across Python versions —
+            # a sender and receiver using different default reprs would
+            # produce different canonical bytes and signatures would not
+            # verify. Callers must serialise non-JSON-native values
+            # before publishing.
+            payload_str = json_mod.dumps(self.payload)
             payload_size = len(payload_str.encode("utf-8"))
-        except (TypeError, ValueError):
-            payload_size = MAX_PAYLOAD_SIZE + 1
+        except (TypeError, ValueError) as exc:
+            # Non-JSON-native values (datetime, Decimal, UUID, set,
+            # custom objects, cyclic references) raise TypeError. We
+            # re-raise as ProtocolError so the framework has a single
+            # exception type to catch at the bus boundary. The previous
+            # implementation misreported this as a size violation.
+            raise ProtocolError(
+                f"event payload is not JSON-serialisable: {exc.__class__.__name__}: {exc}",
+            ) from exc
         if payload_size > MAX_PAYLOAD_SIZE:
-            from underwrite.exceptions import ProtocolError
-
             raise ProtocolError(f"event payload exceeds MAX_PAYLOAD_SIZE ({payload_size} > {MAX_PAYLOAD_SIZE})")
 
     def to_dict(self) -> dict[str, Any]:
@@ -78,10 +89,16 @@ class Message:
         is stable across dict iteration order. The source is included so
         an attacker holding one trusted key cannot re-stamp events under
         another service id.
+
+        Note: payloads must be JSON-native (``str``, ``int``, ``float``,
+        ``bool``, ``None``, ``list``, ``dict``). Non-JSON-native values
+        (``datetime``, ``Decimal``, ``UUID``) raise ``TypeError`` rather
+        than being coerced through ``str`` — that coercion is what made
+        signatures brittle across Python versions and locales.
         """
         import json as _json
 
-        payload_str = _json.dumps(self.payload, sort_keys=True, default=str)
+        payload_str = _json.dumps(self.payload, sort_keys=True)
         canonical = f"{self.event_id}|{self.timestamp}|{self.event_type}|{self.source}|{payload_str}"
         return canonical.encode("utf-8")
 
@@ -100,9 +117,16 @@ class Message:
     ) -> Message:
         """Construct a Message and sign it with *keypair* in one step.
 
+        The signature is computed over the canonical signing bytes and
+        applied via :func:`dataclasses.replace`, so :meth:`__post_init__`
+        runs exactly once and ``event_id`` / ``timestamp`` /
+        ``correlation_id`` are preserved end-to-end.
+
         Returns:
             A new Message with the signature field populated.
         """
+        import dataclasses
+
         payload = payload if payload is not None else {}
         msg = cls(
             event_type=type,
@@ -114,19 +138,7 @@ class Message:
             parent_span_id=parent_span_id,
         )
         signature = keypair.sign(msg.canonical_sign_bytes().decode("utf-8"))
-        # signature is already a str (hex) from Keypair.sign
-        return cls(
-            event_id=msg.event_id,
-            event_type=msg.event_type,
-            source=msg.source,
-            source_key=msg.source_key,
-            timestamp=msg.timestamp,
-            payload=msg.payload,
-            correlation_id=msg.correlation_id,
-            trace_id=msg.trace_id,
-            parent_span_id=msg.parent_span_id,
-            signature=signature,
-        )
+        return dataclasses.replace(msg, signature=signature)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Message:

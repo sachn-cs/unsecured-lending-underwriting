@@ -56,7 +56,7 @@ class TestQueuePersistence:
 
         dlq2 = Queue(store=store, sync_interval=1)
         assert dlq2.count == 1
-        records = dlq2.records
+        records = list(dlq2.records.values())
         assert records[0].error == "test error"
         assert records[0].event.event_type == "test"
 
@@ -114,7 +114,7 @@ class TestAsyncBusTimeout:
         await asyncio.sleep(0.5)
 
         assert bus.dlq.count >= 1, f"expected timed-out event in DLQ, got {bus.dlq.count}"
-        dlq_records = bus.dlq.records
+        dlq_records = list(bus.dlq.records.values())
         assert any("timed out" in rec.error for rec in dlq_records), (
             f"DLQ record should carry the timeout error, got {[r.error for r in dlq_records]}"
         )

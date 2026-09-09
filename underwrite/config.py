@@ -161,6 +161,14 @@ class AuthzConfig(ForbidExtra):
 
     enabled: bool = True
     policy_file: str = ""
+    default_allow_when_no_policy: bool = Field(
+        default=False,
+        description=(
+            "When True and no policy_file is configured, fall back to "
+            "allow(\"*\", \"*\") instead of default-deny. Off by default "
+            "(secure-by-default)."
+        ),
+    )
 
 
 class MetricsConfig(ForbidExtra):

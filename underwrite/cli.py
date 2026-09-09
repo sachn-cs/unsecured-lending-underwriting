@@ -164,7 +164,7 @@ def dlq(
         typer.echo(f"Replayed {replayed} dead-letter event(s)")
         return
     typer.echo(f"Dead-letter queue: {dq.count} entries")
-    records = list(dq.records)
+    records = list(dq.records.values())
     for r in records[:20]:
         typer.echo(
             f"  [{r.timestamp:.1f}] {r.subscriber_id}: {r.event.event_type} — {r.error[:60]}",

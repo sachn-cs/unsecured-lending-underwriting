@@ -10,7 +10,8 @@ import time
 import pytest
 
 from underwrite.async_bus import AsyncLocalBus
-from underwrite.bus import DistributedLimiter, Guard, Limiter, Queue
+from underwrite.bus import DistributedLimiter, Guard, Limiter
+from underwrite.dlq import Queue
 from underwrite.exceptions import RateLimitError
 from underwrite.local import LocalBus
 from underwrite.message import Message
@@ -21,7 +22,7 @@ class TestQueue:
     def test_empty_by_default(self) -> None:
         dlq = Queue()
         assert dlq.count == 0
-        assert list(dlq.records) == []
+        assert list(dlq.records.values()) == []
 
     def test_put_and_count(self) -> None:
         dlq = Queue()
@@ -60,7 +61,7 @@ class TestQueue:
             "err",
             "s1",
         )
-        record = dlq.records[0]
+        record = next(iter(dlq.records.values()))
         assert record.event.payload["pan"] == "***REDACTED***"
         assert record.event.payload["loan_id"] == "L100"
 
@@ -70,7 +71,7 @@ class TestQueue:
             dlq.put(Message(event_type=f"e{i}", source="s"), "err", "s1")
         assert dlq.count == 3
         # oldest two evicted; youngest three remain
-        remaining = [r.event.event_type for r in dlq.records]
+        remaining = [r.event.event_type for r in dlq.records.values()]
         assert remaining == ["e2", "e3", "e4"]
 
 
@@ -191,7 +192,7 @@ class TestQueuePersistence:
 
         dlq2 = Queue(store=store, sync_interval=1)
         assert dlq2.count == 2
-        types = [r.event.event_type for r in dlq2.records]
+        types = [r.event.event_type for r in dlq2.records.values()]
         assert "t1" in types
         assert "t2" in types
 

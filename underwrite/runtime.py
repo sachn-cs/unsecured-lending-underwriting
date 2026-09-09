@@ -218,11 +218,21 @@ def build_event_bus(bus_config: Any, store: Store) -> EventBus:
 
 
 def build_authz(authz_config: Any) -> AccessControl | None:
-    """Build an AccessControl from AuthzConfig."""
+    """Build an AccessControl from AuthzConfig.
+
+    When authz is enabled, the resulting :class:`AccessControl` is
+    **default-deny**, matching the documented semantics of the class
+    itself. If no policy file is configured and ``default_allow`` is
+    explicitly enabled in the config, the runtime falls back to a
+    permissive ``allow("*", "*")`` policy — this preserves the
+    pre-hardening behaviour for callers that opted into authz but did
+    not yet author a policy file.
+    """
     if not authz_config.enabled:
         return None
     acl = AccessControl()
     policy_file = authz_config.policy_file
+    default_allow = bool(getattr(authz_config, "default_allow_when_no_policy", False))
     if policy_file:
         import json as json_mod
 
@@ -238,8 +248,19 @@ def build_authz(authz_config: Any) -> AccessControl | None:
                 acl.allow(rule.get("subject", "*"), rule.get("resource", "*"))
             for rule in rules.get("deny", []):
                 acl.deny(rule.get("subject", "*"), rule.get("resource", "*"))
-    else:
+        else:
+            logger.warning(
+                "authz.policy_file configured but file does not exist: {} — running default-deny",
+                policy_file,
+            )
+    elif default_allow:
         acl.allow("*", "*")
+        logger.warning(
+            "authz enabled without a policy file; defaulting to allow(\"*\", \"*\"). "
+            "Set authz.policy_file to lock this down."
+        )
+    else:
+        logger.info("authz enabled without a policy file; default-deny in effect")
     return acl
 
 

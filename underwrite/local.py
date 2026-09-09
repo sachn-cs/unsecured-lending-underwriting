@@ -162,6 +162,13 @@ class LocalBus:
                     self.dispatch_sync(handler, event, sid)
 
     def dispatch_sync(self, handler: Callable[[Message], None], event: Message, sid: str) -> None:
+        """Run a single dispatch synchronously on the calling thread.
+
+        On success the per-subscriber circuit breaker records a hit;
+        on any handler exception the event is forwarded to the DLQ
+        with the original error attached, and the breaker increments
+        its failure tally.
+        """
         try:
             handler(event)
             self.circuit_breaker.record_success(sid)
@@ -171,13 +178,16 @@ class LocalBus:
             self.circuit_breaker.record_failure(sid)
 
     def dispatch(self, handler: Callable[[Message], None], event: Message, sid: str) -> None:
-        try:
-            handler(event)
-            self.circuit_breaker.record_success(sid)
-        except Exception as exc:
-            logger.exception("subscriber {} failed on {} ({}), sent to DLQ", sid, event.event_type, exc)
-            self.dlq.put(event, f"{type(exc).__name__}: {exc}", sid)
-            self.circuit_breaker.record_failure(sid)
+        """Run a single dispatch on the calling thread.
+
+        Historically this method was byte-identical to
+        :meth:`dispatch_sync`. It is kept as a separate method so the
+        async bus implementation can override it without touching the
+        synchronous path, but the implementation delegates to the same
+        shared body — divergence between the two paths is a bug, not a
+        feature.
+        """
+        self.dispatch_sync(handler, event, sid)
 
 
 # Register LocalBus as a virtual subclass of EventBus (avoids the

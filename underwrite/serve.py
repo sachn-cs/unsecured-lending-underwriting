@@ -202,15 +202,17 @@ def create_app(
         return runtime.health.status()
 
     @app.get(
-        "/v1/metrics",
+        "/metrics",
         summary="Prometheus metrics",
         description="Exposes runtime and service metrics in Prometheus "
         "text-format (``text/plain; version=0.0.4``).  Requires the "
-        "``underwrite[serve]`` extra.",
+        "``underwrite[serve]`` extra.  This is the conventional scrape "
+        "path; ``/v1/metrics`` and ``/metrics-prometheus`` are kept as "
+        "aliases for backward compatibility with existing dashboards.",
         response_description="Prometheus-format metrics text.",
         response_model=None,
     )
-    async def v1_metrics_endpoint():
+    async def metrics_endpoint():
         try:
             from underwrite.exporter import prometheus_text
 
@@ -220,6 +222,17 @@ def create_app(
             )
         except ImportError:
             return __error_response(501, "prometheus export not available; install underwrite[serve]")
+
+    @app.get(
+        "/v1/metrics",
+        summary="Prometheus metrics (versioned alias)",
+        description="Versioned alias of ``/metrics``.  Identical response.",
+        response_description="Prometheus-format metrics text.",
+        response_model=None,
+        include_in_schema=False,
+    )
+    async def v1_metrics_endpoint():
+        return await metrics_endpoint()
 
     @app.post(
         "/v1/publish",
@@ -282,21 +295,5 @@ def create_app(
     )
     async def health_endpoint() -> dict:
         return runtime.health.status()
-
-    @app.get(
-        "/metrics",
-        include_in_schema=False,
-        response_model=None,
-    )
-    async def metrics_endpoint():
-        try:
-            from underwrite.exporter import prometheus_text
-
-            return PlainTextResponse(
-                prometheus_text(runtime),
-                media_type="text/plain; version=0.0.4",
-            )
-        except ImportError:
-            return __error_response(501, "prometheus export not available; install underwrite[serve]")
 
     return app

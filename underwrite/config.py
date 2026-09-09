@@ -418,10 +418,43 @@ class Configuration(ForbidExtra):
             raise ValueError(f"invalid data_dir: {v!r}")
         from pathlib import Path
 
+        # Reject parent-directory traversal up front — both absolute
+        # and relative paths can climb out of the working directory
+        # via "..".
+        if ".." in Path(v).parts:
+            raise ValueError(
+                f"data_dir {v!r} must not contain '..' segments",
+            )
+
         path = Path(v)
         parts = path.parts
         if parts and parts[0] == "/":
-            dangerous = {"/", "/etc", "/proc", "/sys", "/var", "/usr"}
+            # Block every well-known system path on POSIX systems —
+            # mounting the data store at any of these can corrupt the
+            # host OS, fill the root filesystem, or expose secrets.
+            dangerous = {
+                "/",
+                "/bin",
+                "/boot",
+                "/dev",
+                "/etc",
+                "/home",
+                "/lib",
+                "/lib32",
+                "/lib64",
+                "/media",
+                "/mnt",
+                "/opt",
+                "/proc",
+                "/root",
+                "/run",
+                "/sbin",
+                "/srv",
+                "/sys",
+                "/tmp",
+                "/usr",
+                "/var",
+            }
             if str(path) in dangerous or str(path).startswith(tuple(p + "/" for p in dangerous)):
                 raise ValueError(f"data_dir {v!r} points at a sensitive system path")
         return v

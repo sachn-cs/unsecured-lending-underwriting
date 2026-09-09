@@ -80,6 +80,7 @@ class Counter:
     name: str
     tags: dict[str, str] = field(default_factory=dict)
     value: int = 0
+    last_touched: float = 0.0
 
 
 @dataclass(slots=True)
@@ -89,6 +90,7 @@ class Gauge:
     name: str
     tags: dict[str, str] = field(default_factory=dict)
     value: float = 0.0
+    last_touched: float = 0.0
 
 
 @dataclass(slots=True)
@@ -101,6 +103,7 @@ class Timer:
     total_ms: float = 0.0
     min_ms: float = float("inf")
     max_ms: float = 0.0
+    last_touched: float = 0.0
 
 
 class Collector:
@@ -123,16 +126,35 @@ class Collector:
         self.max_metrics: int = max_metrics
 
     def evict(self) -> None:
+        """Drops the least-recently-touched entries when the cap is exceeded.
+
+        Each map (counters, timers, gauges) gets a proportional share
+        of the cap (``max_metrics // 3``). When a map overflows its
+        share, we drop the entries with the smallest ``last_touched``
+        timestamp until we are back within the per-map target.
+
+        The previous implementation used dict insertion order, which
+        dropped fresh metrics under high-cardinality traffic — e.g.
+        when a single map saturated while another was still receiving
+        updates. Tracking ``last_touched`` per entry lets us drop the
+        genuinely stale metrics first while preserving per-map balance.
+        """
         total = len(self.counters) + len(self.timers) + len(self.gauges)
         if total <= self.max_metrics:
             return
-        target = self.max_metrics // 3
+        per_map_target = max(1, self.max_metrics // 3)
         for metric_map in (self.counters, self.timers, self.gauges):
-            excess = len(metric_map) - target
+            excess = len(metric_map) - per_map_target
             if excess <= 0:
                 continue
-            for key in list(metric_map)[:excess]:
-                del metric_map[key]
+            # Sort entries by last_touched ascending and drop the
+            # least-recently-touched until we are within budget.
+            ranked = sorted(
+                metric_map.items(),
+                key=lambda kv: getattr(kv[1], "last_touched", 0.0),
+            )
+            for key, _ in ranked[:excess]:
+                metric_map.pop(key, None)
 
     def key(self, name: str, tags: dict[str, str]) -> str:
         parts = [name]
@@ -153,7 +175,9 @@ class Collector:
         with self.lock:
             if key not in self.counters:
                 self.counters[key] = Counter(name=name, tags=dict(tags))
-            self.counters[key].value += delta
+            counter = self.counters[key]
+            counter.value += delta
+            counter.last_touched = time.monotonic()
             self.evict()
 
     def gauge(self, name: str, value: float, tags: dict[str, str] | None = None) -> None:
@@ -167,7 +191,7 @@ class Collector:
         tags = tags or {}
         key = self.key(name, tags)
         with self.lock:
-            self.gauges[key] = Gauge(name=name, tags=dict(tags), value=value)
+            self.gauges[key] = Gauge(name=name, tags=dict(tags), value=value, last_touched=time.monotonic())
             self.evict()
 
     def timer(self, name: str, duration_ms: float, tags: dict[str, str] | None = None) -> None:
@@ -190,6 +214,7 @@ class Collector:
                 t.min_ms = duration_ms
             if duration_ms > t.max_ms:
                 t.max_ms = duration_ms
+            t.last_touched = time.monotonic()
             self.evict()
 
     def time(self, name: str, tags: dict[str, str] | None = None) -> TimerContext:

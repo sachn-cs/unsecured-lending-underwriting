@@ -68,6 +68,24 @@ jobs:
           packages-dir: dist/
           skip-existing: true
 
+  republish-pypi:
+    name: Re-publish to PyPI (manual)
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    environment:
+      name: pypi
+      url: https://pypi.org/p/underwrite
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # pinned commit
+        with:
+          packages-dir: dist/
+          skip-existing: true
+
   publish-ghcr:
     name: Publish image to GHCR
     needs: build

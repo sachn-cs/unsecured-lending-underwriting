@@ -50,32 +50,34 @@ jobs:
 
   docker:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+      fail-fast: false
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
       - name: Build Docker image
         run: |
           docker build \
+              --build-arg "PYTHON_VERSION=${{ matrix.python-version }}" \
               --build-arg "BUILD_VERSION=ci-${GITHUB_SHA::12}" \
               --build-arg "GIT_COMMIT=${GITHUB_SHA::12}" \
               --build-arg "BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-              --tag "underwrite:ci" \
+              --tag "underwrite:ci-${{ matrix.python-version }}" \
               --provenance=false \
               --sbom=false \
               -f Dockerfile .
       - name: Smoke test
         run: |
-          docker run -d --name underwrite-ci \
+          docker run -d --name "underwrite-ci-${{ matrix.python-version }}" \
               -p 8080:8080 \
               -e UNDERWRITE_REQUIRE_AUTH=false \
               -e UNDERWRITE_DATA_DIR=/tmp/uw-data \
-              underwrite:ci
+              "underwrite:ci-${{ matrix.python-version }}"
           sleep 5
-          curl -sf http://localhost:8080/healthz || { docker logs underwrite-ci; exit 1; }
+          curl -sf http://localhost:8080/healthz || { docker logs "underwrite-ci-${{ matrix.python-version }}"; exit 1; }
           curl -sf -X POST http://localhost:8080/v1/health || exit 1
-          docker stop underwrite-ci
+          docker stop "underwrite-ci-${{ matrix.python-version }}"
 
   secrets-scan:
     runs-on: ubuntu-latest

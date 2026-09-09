@@ -5,7 +5,7 @@ __pycache__/
 *.egg-info/
 .eggs/
 dist/
-build/
+/build/
 *.egg
 *.manifest
 *.spec
@@ -74,3 +74,4 @@ var/
 
 # Agent tooling
 AGENTS.md
+site/

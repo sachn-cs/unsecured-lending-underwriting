@@ -18,7 +18,7 @@ from underwrite.logger import logger
 from underwrite.message import Message, Type
 from underwrite.metrics import Collector
 from underwrite.saga import Orchestrator
-from underwrite.services.base import Core, Dependencies
+from underwrite.services.base import BoundedExecutor, Core, Dependencies
 from underwrite.store import StoreBackend
 from underwrite.supervisor import Watcher
 from underwrite.tracer import Tracer
@@ -75,9 +75,7 @@ class Handler(Core):
             secrets_manager=deps.secrets_manager,
             max_concurrent=deps.max_concurrent,
         )
-        self.thread_pool: concurrent.futures.ThreadPoolExecutor | None = concurrent.futures.ThreadPoolExecutor(
-            max_workers=4
-        )
+        self.thread_pool: BoundedExecutor | None = BoundedExecutor(max_workers=4)
         self.handlers: dict[str, Any] = {
             Type.FRAUD_ALERT: self.on_notify_event,
             Type.WASH_FLAG: self.on_notify_event,
@@ -88,12 +86,12 @@ class Handler(Core):
         }
 
     @property
-    def executor(self) -> concurrent.futures.ThreadPoolExecutor | None:
+    def executor(self) -> "BoundedExecutor | None":
         """Test/extension hook for the notification thread pool."""
         return self.thread_pool
 
     @executor.setter
-    def executor(self, value: concurrent.futures.ThreadPoolExecutor | None) -> None:
+    def executor(self, value: "BoundedExecutor | None") -> None:
         self.thread_pool = value
 
     def stop(self) -> None:

@@ -10,7 +10,7 @@ import time
 
 import pytest
 
-from underwrite.services.base import BoundedExecutor, MAX_EXECUTOR_QUEUE_FACTOR
+from underwrite.services.base import BoundedExecutor
 
 
 class TestBoundedExecutor:

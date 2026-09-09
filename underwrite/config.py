@@ -165,7 +165,7 @@ class AuthzConfig(ForbidExtra):
         default=False,
         description=(
             "When True and no policy_file is configured, fall back to "
-            "allow(\"*\", \"*\") instead of default-deny. Off by default "
+            'allow("*", "*") instead of default-deny. Off by default '
             "(secure-by-default)."
         ),
     )

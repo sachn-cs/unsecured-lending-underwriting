@@ -17,11 +17,11 @@ Each service:
 
 from __future__ import annotations
 
-import concurrent.futures
 import contextlib
 import threading
 import time
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 

@@ -38,7 +38,7 @@ class TestDlqSizeBounds:
         # to fit ~3 events.
         dlq = Queue(max_records=1_000, store=store, sync_interval=1, max_bytes=2_000)
         for i in range(20):
-            dlq.put(_event(event_id=f"evt-{i}-{i*1000}"), "boom", "subscriber")
+            dlq.put(_event(event_id=f"evt-{i}-{i * 1000}"), "boom", "subscriber")
         assert dlq.count <= 5
 
     def test_constructor_rejects_invalid_args(self) -> None:

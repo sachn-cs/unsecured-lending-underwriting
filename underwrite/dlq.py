@@ -89,7 +89,7 @@ class Queue:
         self.lock: threading.Lock = threading.Lock()
         # OrderedDict preserves insertion order; we evict from the front
         # when we exceed max_records.
-        self.records: "OrderedDict[str, Record]" = OrderedDict()
+        self.records: OrderedDict[str, Record] = OrderedDict()
         self.max_records: int = max_records
         self.max_bytes: int = max_bytes
         self.store: Store | Sqlite | None = store

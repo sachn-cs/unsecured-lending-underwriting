@@ -51,7 +51,7 @@ class Limiter:
         self.max_buckets: int = max_buckets
         self.lock: threading.Lock = threading.Lock()
         # OrderedDict gives us LRU semantics in O(1).
-        self.buckets: "OrderedDict[str, float]" = OrderedDict()
+        self.buckets: OrderedDict[str, float] = OrderedDict()
 
     def check(self, key: str) -> bool:
         """Checks whether *key* is allowed under the rate limit.

@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import json
 from datetime import datetime, timezone
 from decimal import Decimal
 from uuid import UUID
@@ -92,10 +91,9 @@ class TestSignedClassmethod:
             payload={"x": 1, "y": 2},
         )
         # Re-derive the canonical bytes and verify the signature.
-        from cryptography.exceptions import InvalidSignature
-        from cryptography.hazmat.primitives.asymmetric import ed25519
-
         import base64
+
+        from cryptography.hazmat.primitives.asymmetric import ed25519
 
         public = ed25519.Ed25519PublicKey.from_public_bytes(base64.b64decode(kp.public_key))
         public.verify(base64.b64decode(msg.signature), msg.canonical_sign_bytes())
@@ -147,7 +145,7 @@ class TestPostInitCircularRef:
 
         class Node:
             def __init__(self) -> None:
-                self.next: "Node | None" = None
+                self.next: Node | None = None
 
         a = Node()
         b = Node()

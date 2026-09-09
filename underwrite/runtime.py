@@ -107,7 +107,8 @@ def build_kyc_provider_config(config: Configuration, secrets: Manager | None) ->
     )
     if not has_any_credential:
         logger.warning(
-            "kyc_provider_config is empty — PAN/Aadhaar/CIBIL/CKYC calls will return ERROR until credentials are configured",
+            "kyc_provider_config is empty — PAN/Aadhaar/CIBIL/CKYC "
+            "calls will return ERROR until credentials are configured",
         )
     return kp
 
@@ -276,7 +277,7 @@ def build_authz(authz_config: Any) -> AccessControl | None:
     elif default_allow:
         acl.allow("*", "*")
         logger.warning(
-            "authz enabled without a policy file; defaulting to allow(\"*\", \"*\"). "
+            'authz enabled without a policy file; defaulting to allow("*", "*"). '
             "Set authz.policy_file to lock this down."
         )
     else:

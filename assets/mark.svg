@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Underwrite mark">
+  <title>Underwrite mark</title>
+  <desc>A geometric mark: parallel risk signals converging through controlled state transitions into a single decision point.</desc>
+
+  <defs>
+    <style>
+      .uw-stroke { fill: none; stroke: #0A0E14; stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
+      .uw-stroke-thin { fill: none; stroke: #0A0E14; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+      .uw-fill { fill: #0A0E14; }
+      .uw-accent { fill: #2F6BFF; }
+      .uw-accent-stroke { fill: none; stroke: #2F6BFF; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </defs>
+
+  <!-- Three parallel signal lanes from the left (risk signals). -->
+  <g class="uw-stroke-thin" opacity="0.55">
+    <line x1="32" y1="80"  x2="120" y2="128" />
+    <line x1="32" y1="128" x2="120" y2="128" />
+    <line x1="32" y1="176" x2="120" y2="128" />
+  </g>
+
+  <!-- Risk nodes (three discrete signal sources) -->
+  <g class="uw-fill">
+    <circle cx="32" cy="80"  r="6" />
+    <circle cx="32" cy="128" r="6" />
+    <circle cx="32" cy="176" r="6" />
+  </g>
+
+  <!-- Convergence hub: a layered square (controlled state transition). -->
+  <g>
+    <rect x="108" y="106" width="44" height="44" rx="6" class="uw-stroke" />
+    <rect x="118" y="116" width="24" height="24" rx="3" class="uw-accent-stroke" />
+    <rect x="126" y="124" width="8"  height="8"  class="uw-accent" />
+  </g>
+
+  <!-- Output path: signed event leaving the hub toward the right. -->
+  <g class="uw-stroke">
+    <line x1="152" y1="128" x2="216" y2="128" />
+  </g>
+
+  <!-- Signature flourish — small chevron at the output. -->
+  <g class="uw-stroke">
+    <polyline points="200,114 216,128 200,142" />
+  </g>
+
+  <!-- Layered risk curve below: an ambient signal-strength trace. -->
+  <g class="uw-accent-stroke" opacity="0.65">
+    <path d="M 48 196 C 88 196, 96 168, 132 168 S 184 196, 224 168" />
+  </g>
+
+  <!-- Sub-tick marks on the lower curve (signal sampling). -->
+  <g class="uw-fill" opacity="0.5">
+    <rect x="71"  y="194" width="3" height="6" />
+    <rect x="119" y="166" width="3" height="6" />
+    <rect x="167" y="178" width="3" height="6" />
+    <rect x="215" y="166" width="3" height="6" />
+  </g>
+</svg>

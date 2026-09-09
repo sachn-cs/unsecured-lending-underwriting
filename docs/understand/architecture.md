@@ -28,7 +28,7 @@ Underwrite is an **event-driven nano-service platform** for delegated unsecured 
 </style>
 </defs>
 
-<text x="40" y="32" class="arch-layer">APPLICATIONDOMAIN</text>
+<text x="40" y="32" class="arch-layer">APPLICATION DOMAIN</text>
 <g>
 <rect class="arch-domain" x="40"  y="48" width="120" height="56" rx="6" />
 <text class="arch-domain-text" x="100" y="74" text-anchor="middle">KYC</text>

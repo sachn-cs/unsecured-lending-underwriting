@@ -1,5 +1,3 @@
-# Underwrite
-
 <!-- HERO ============================================================ -->
 <section class="uw-hero" markdown>
 <span class="uw-hero__eyebrow">Open-source lending infrastructure</span>
@@ -12,7 +10,7 @@ Underwrite turns underwriting capabilities into composable nano-services communi
 
 <div class="uw-hero__ctas" markdown>
 <a href="start/" class="md-button md-button--primary">Get started</a>
-<a href="architecture/" class="md-button md-button--secondary">Explore the architecture</a>
+<a href="understand/architecture/" class="md-button md-button--secondary">Explore the architecture</a>
 </div>
 
 <div class="uw-hero__links" markdown>
@@ -56,7 +54,9 @@ Underwrite turns underwriting capabilities into composable nano-services communi
 
 <div class="grid grid-2" markdown>
 <div class="uw-card" markdown>
-<div class="uw-card__icon" markdown>⊟</div>
+<div class="uw-card__icon" markdown>
+<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+</div>
 <h3>Domain services</h3>
 <p>KYC, AML, credit, pricing, compliance, consent, KFS, origination, and related workflows. These are the parts that change when a lender changes policy.</p>
 <ul>
@@ -67,7 +67,9 @@ Underwrite turns underwriting capabilities into composable nano-services communi
 </div>
 
 <div class="uw-card" markdown>
-<div class="uw-card__icon" markdown>↯</div>
+<div class="uw-card__icon" markdown>
+<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7 H17 M3 12 H21 M3 17 H13"/><circle cx="21" cy="12" r="1.6" fill="currentColor"/></svg>
+</div>
 <h3>Event runtime</h3>
 <p>Typed events with Ed25519 attestation, idempotent dispatch, replay, and routing. The runtime decides <em>how</em> events flow; the services decide <em>what</em> they mean.</p>
 <ul>
@@ -78,7 +80,9 @@ Underwrite turns underwriting capabilities into composable nano-services communi
 </div>
 
 <div class="uw-card" markdown>
-<div class="uw-card__icon" markdown>◊</div>
+<div class="uw-card__icon" markdown>
+<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 L4 6 V12 C4 17 7.5 21 12 22 C16.5 21 20 17 20 12 V6 Z"/><path d="M9 12 L11 14 L15 10"/></svg>
+</div>
 <h3>Control plane</h3>
 <p>Authorization, identity, saga coordination, supervision, and failure handling. Policies and rules live here, so individual services stay focused on domain logic.</p>
 <ul>
@@ -89,7 +93,9 @@ Underwrite turns underwriting capabilities into composable nano-services communi
 </div>
 
 <div class="uw-card" markdown>
-<div class="uw-card__icon" markdown>⌗</div>
+<div class="uw-card__icon" markdown>
+<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9 H21"/><circle cx="7" cy="6" r="0.6" fill="currentColor"/><circle cx="10" cy="6" r="0.6" fill="currentColor"/><path d="M7 14 L10 14 M7 17 L13 17"/></svg>
+</div>
 <h3>Operational layer</h3>
 <p>Metrics, health, readiness, tracing, persistence, and deployable infrastructure. The runtime exports signals in formats operators already use.</p>
 <ul>
@@ -415,7 +421,7 @@ Underwrite turns underwriting capabilities into composable nano-services communi
 </svg>
 </div>
 
-<p style="margin-top: 1.5rem;">The full architecture — including the layered rationale, event lifecycle, and runtime injection points — lives on the <a href="architecture/">architecture page</a>.</p>
+<p style="margin-top: 1.5rem;">The full architecture — including the layered rationale, event lifecycle, and runtime injection points — lives on the <a href="understand/architecture/">architecture page</a>.</p>
 </section>
 
 <!-- DEVELOPER EXPERIENCE =========================================== -->
@@ -656,7 +662,7 @@ Underwrite turns underwriting capabilities into composable nano-services communi
 <div class="uw-persona" markdown>
 <span class="uw-persona__role">Architect</span>
 <h3 class="uw-persona__name">View architecture</h3>
-<a href="architecture/" class="uw-persona__link">Runtime, events, control plane</a>
+<a href="understand/architecture/" class="uw-persona__link">Runtime, events, control plane</a>
 </div>
 
 <div class="uw-persona" markdown>

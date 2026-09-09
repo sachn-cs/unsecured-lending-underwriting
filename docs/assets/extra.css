@@ -1,0 +1,205 @@
+/* Underwrite brand CSS — extends the Material for MkDocs theme. */
+
+:root {
+  --uw-navy: #0F2A47;
+  --uw-blue: #1E5A8A;
+  --uw-blue-light: #3B82F6;
+  --uw-amber: #F59E0B;
+  --uw-amber-light: #FBBF24;
+  --uw-bg: #f7faff;
+  --uw-surface: #ffffff;
+  --uw-text: #1f2937;
+  --uw-text-muted: #4b5563;
+  --uw-border: #e5e7eb;
+  --uw-link: var(--uw-blue);
+}
+
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: var(--uw-navy);
+  --md-primary-bg-color: #ffffff;
+  --md-accent-fg-color: var(--uw-amber);
+  --md-accent-bg-color: var(--uw-navy);
+  --md-typeset-a-color: var(--uw-blue);
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: var(--uw-blue-light);
+  --md-primary-bg-color: var(--uw-navy);
+  --md-accent-fg-color: var(--uw-amber-light);
+  --md-accent-bg-color: #ffffff;
+  --md-typeset-a-color: var(--uw-amber-light);
+  --md-default-bg-color: #0e1b2c;
+  --md-default-fg-color: #e5e7eb;
+}
+
+/* Brand ribbon under the site name */
+.md-header__title .md-ellipsis {
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+/* Hero on the landing page */
+.uw-hero {
+  margin: 2rem 0 2.5rem;
+  padding: 3rem 2.5rem;
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(15, 42, 71, 0.92) 0%, rgba(30, 90, 138, 0.85) 55%, rgba(59, 130, 246, 0.78) 100%),
+    radial-gradient(circle at 80% 20%, rgba(251, 191, 36, 0.25), transparent 50%);
+  color: #ffffff;
+}
+
+.uw-hero h1 {
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  margin: 0 0 0.5rem;
+  line-height: 1.15;
+}
+
+.uw-hero p {
+  margin: 0.5rem 0;
+  font-size: 1.05rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.uw-hero a {
+  color: var(--uw-amber-light);
+}
+
+.uw-hero .md-button {
+  background: var(--uw-amber);
+  color: var(--uw-navy);
+  border: 0;
+  font-weight: 600;
+}
+
+.uw-hero .md-button:hover {
+  background: var(--uw-amber-light);
+  color: var(--uw-navy);
+}
+
+.uw-hero .md-button--secondary {
+  background: transparent;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.uw-hero .md-button--secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+/* Stat cards */
+.uw-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.uw-stats .uw-stat {
+  background: var(--md-default-bg-color);
+  border: 1px solid var(--uw-border);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+}
+
+[data-md-color-scheme="slate"] .uw-stats .uw-stat {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.uw-stats .uw-stat .uw-stat-value {
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: var(--uw-blue);
+  margin: 0;
+}
+
+[data-md-color-scheme="slate"] .uw-stats .uw-stat .uw-stat-value {
+  color: var(--uw-amber-light);
+}
+
+.uw-stats .uw-stat .uw-stat-label {
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
+  color: var(--uw-text-muted);
+}
+
+/* Feature grid */
+.uw-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0 2rem;
+}
+
+.uw-features .uw-feature {
+  border: 1px solid var(--uw-border);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  background: var(--md-default-bg-color);
+}
+
+.uw-features .uw-feature h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+}
+
+.uw-features .uw-feature p {
+  margin: 0;
+  color: var(--uw-text-muted);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+[data-md-color-scheme="slate"] .uw-features .uw-feature {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-md-color-scheme="slate"] .uw-features .uw-feature p {
+  color: rgba(229, 231, 235, 0.85);
+}
+
+/* Pill / badge */
+.uw-pill {
+  display: inline-block;
+  padding: 2px 10px;
+  margin-right: 4px;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--uw-blue);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+[data-md-color-scheme="slate"] .uw-pill {
+  background: rgba(251, 191, 36, 0.18);
+  color: var(--uw-amber-light);
+}
+
+/* Hide right-hand TOC on very wide pages where it dominates */
+@media (min-width: 76.25em) {
+  .md-sidebar--secondary {
+    display: block;
+  }
+}
+
+/* Slightly tighter spacing on landing */
+.md-typeset .uw-hero + h2 {
+  margin-top: 0.5rem;
+}
+
+/* Inline code styling — match brand */
+.md-typeset code {
+  border-radius: 4px;
+  padding: 0.05em 0.35em;
+}
+
+/* Make admonitions feel a touch more branded */
+.md-typeset .admonition {
+  border-radius: 10px;
+}

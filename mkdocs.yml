@@ -1,27 +1,115 @@
-site_name: underwrite
-site_description: Delegated Underwriting Protocol — nano-service platform for unsecured lending
+site_name: Underwrite
+site_description: Event-driven nano-service platform for Indian retail lending, DPDPA/RBI aligned with Ed25519 cryptographic attestation.
+site_url: https://sachncs.github.io/underwrite/
 repo_url: https://github.com/sachncs/underwrite
+repo_name: sachncs/underwrite
 edit_uri: edit/master/docs/
+
+docs_dir: docs
+site_dir: site
 
 theme:
   name: material
+  language: en
+  favicon: assets/favicon.svg
+  logo: assets/branding/logo-128.png
+  icon:
+    repo: fontawesome/brands/github
+    edit: material/file-edit-outline
+    view: material/eye-outline
   palette:
-    primary: indigo
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: amber
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: amber
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - navigation.tracking
+    - navigation.footer
+    - search.highlight
+    - search.share
+    - search.suggest
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - content.tooltips
+    - toc.follow
+    - announce.dismiss
+  font:
+    text: Inter
+    code: JetBrains Mono
+  icon:
+    admonition:
+      note: material/note-edit-outline
+      tip: material/lightbulb-on-outline
+      warning: material/alert-outline
+      danger: material/skull-outline
+      info: material/information-outline
+  plugins:
+    - search
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/sachncs/underwrite
+      name: GitHub repository
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/underwrite/
+      name: PyPI package
+  generator: false
+  analytics:
+    feedback:
+      title: Was this page helpful?
+      ratings:
+        - icon: material/emoticon-happy-outline
+          name: This page was helpful
+          data: 1
+          note: >-
+            Thanks for the feedback!
+        - icon: material/emoticon-sad-outline
+          name: This page could be improved
+          data: 0
+          note: >-
+            Thanks — file an issue so we can fix it.
+
+extra_css:
+  - assets/extra.css
 
 nav:
-  - Home: README.md
-  - Getting Started:
+  - Home: index.md
+  - Getting started:
+    - getting-started.md
     - INSTALLATION.md
     - QUICKSTART.md
     - CONFIGURATION.md
     - ENVIRONMENT_VARIABLES.md
-  - Architecture & Design:
-    - ARCHITECTURE.md
+  - Tutorials:
+    - TUTORIAL_FIRST_SERVICE.md
+    - TUTORIAL_EVENT_BUS.md
+    - TUTORIAL_CUSTOM_NANO.md
+    - TUTORIAL_PLUGINS.md
+  - Architecture & design:
+    - architecture.md
     - SYSTEM_DESIGN.md
     - DIRECTORY_STRUCTURE.md
     - DESIGN_DECISIONS.md
     - DOMAIN_MODEL.md
-  - API & Interfaces:
+  - API & interfaces:
+    - reference.md
     - API.md
   - Development:
     - DEVELOPMENT.md
@@ -47,10 +135,11 @@ nav:
     - GLOSSARY.md
     - RELEASE_PROCESS.md
     - CHANGELOG_GUIDE.md
-  - Project Management:
-    - MAINTENANCE.md
+  - Project:
     - ROADMAP.md
-  - Architecture Decisions:
+    - MAINTENANCE.md
+    - SUPPORT.md
+  - Decisions:
     - ADR/README.md
     - ADR/001-nano-service-architecture.md
     - ADR/002-event-driven-communication.md
@@ -59,9 +148,53 @@ nav:
 
 markdown_extensions:
   - admonition
-  - codehilite
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - meta
+  - tables
   - toc:
       permalink: true
-  - pymdownx.superfences
-  - pymdownx.tabbed
+      permalink_title: Anchor link to this section
+      toc_depth: 3
+  - pymdownx.betterem
+  - pymdownx.caret
   - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      check_paths: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+plugins:
+  - search:
+      separator: '[\s\-\.\_]+'
+
+validation:
+  nav:
+    omitted_files: ignore
+    not_found: warn
+  links:
+    not_found: ignore
+    absolute_links: ignore
+    unrecognized_links: ignore

@@ -1,5 +1,5 @@
 site_name: Underwrite
-site_description: Event-driven nano-service platform for Indian retail lending, DPDPA/RBI aligned with Ed25519 cryptographic attestation.
+site_description: Underwriting infrastructure for Indian retail lending — programmable, auditable, composable.
 site_url: https://sachncs.github.io/underwrite/
 repo_url: https://github.com/sachncs/underwrite
 repo_name: sachncs/underwrite
@@ -10,6 +10,7 @@ site_dir: site
 
 exclude_docs: |
   README.md
+  _refactor_plan.md
 
 theme:
   name: material
@@ -23,15 +24,15 @@ theme:
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: custom
-      accent: amber
+      primary: black
+      accent: indigo
       toggle:
         icon: material/weather-night
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: custom
-      accent: amber
+      primary: black
+      accent: indigo
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
@@ -51,7 +52,6 @@ theme:
     - content.tabs.link
     - content.tooltips
     - toc.follow
-    - announce.dismiss
   font:
     text: Inter
     code: JetBrains Mono
@@ -62,8 +62,9 @@ theme:
       warning: material/alert-outline
       danger: material/skull-outline
       info: material/information-outline
-  plugins:
-    - search
+
+extra_css:
+  - assets/extra.css
 
 extra:
   social:
@@ -74,76 +75,70 @@ extra:
       link: https://pypi.org/project/underwrite/
       name: PyPI package
   generator: false
-  analytics:
-    feedback:
-      title: Was this page helpful?
-      ratings:
-        - icon: material/emoticon-happy-outline
-          name: This page was helpful
-          data: 1
-          note: >-
-            Thanks for the feedback!
-        - icon: material/emoticon-sad-outline
-          name: This page could be improved
-          data: 0
-          note: >-
-            Thanks — file an issue so we can fix it.
-
-extra_css:
-  - assets/extra.css
 
 nav:
   - Home: index.md
-  - Getting started:
-    - getting-started.md
-    - INSTALLATION.md
-    - QUICKSTART.md
-    - CONFIGURATION.md
-    - ENVIRONMENT_VARIABLES.md
-  - Tutorials:
-    - TUTORIAL_FIRST_SERVICE.md
-    - TUTORIAL_EVENT_BUS.md
-    - TUTORIAL_CUSTOM_NANO.md
-    - TUTORIAL_PLUGINS.md
-  - Architecture & design:
-    - architecture.md
-    - SYSTEM_DESIGN.md
-    - DIRECTORY_STRUCTURE.md
-    - DESIGN_DECISIONS.md
-    - DOMAIN_MODEL.md
-  - API & interfaces:
-    - reference.md
-    - API.md
-  - Development:
-    - DEVELOPMENT.md
-    - BUILD.md
-    - TESTING.md
-    - DEBUGGING.md
-    - CODE_STYLE.md
-    - CONTRIBUTING.md
-  - Operations:
-    - DEPLOYMENT.md
-    - OPERATIONS.md
-    - OBSERVABILITY.md
-    - PERFORMANCE.md
-    - SECURITY.md
-    - DATABASE.md
-    - MIGRATIONS.md
+  - Start:
+    - start/index.md
+    - start/install.md
+    - start/quickstart.md
+    - start/first-service.md
+    - start/event-bus.md
+    - start/custom-nano.md
+    - start/plugins.md
+    - start/indian-lending-example.md
+  - Understand:
+    - understand/index.md
+    - understand/architecture.md
+    - understand/lifecycle.md
+    - understand/compliance.md
+    - understand/security.md
+    - understand/runtime.md
+    - understand/events.md
+    - understand/failure-handling.md
+    - understand/system-design.md
+    - understand/directory-structure.md
+    - understand/design-decisions.md
+    - understand/domain-model.md
+  - Build:
+    - build/index.md
+    - build/services.md
+    - build/configuration.md
+    - build/sagas.md
+    - build/kyc-integrations.md
+    - build/environment-variables.md
+    - build/dependencies.md
+    - build/code-style.md
+    - build/testing.md
+    - build/build.md
+  - Operate:
+    - operate/index.md
+    - operate/observability.md
+    - operate/deployment.md
+    - operate/operations.md
+    - operate/health.md
+    - operate/dlq.md
+    - operate/performance.md
+    - operate/database.md
+    - operate/migrations.md
+    - operate/debugging.md
+    - operate/release-process.md
+    - operate/changelog-guide.md
+    - operate/docker.md
   - Reference:
-    - DEPENDENCIES.md
-    - KYC_INTEGRATIONS.md
-    - SERVICES.md
-    - TROUBLESHOOTING.md
-    - FAQ.md
-    - GLOSSARY.md
-    - RELEASE_PROCESS.md
-    - CHANGELOG_GUIDE.md
+    - reference/index.md
+    - reference/api.md
+    - reference/glossary.md
+    - reference/troubleshooting.md
+    - reference/faq.md
+    - reference/maintenance.md
   - Project:
-    - ROADMAP.md
-    - MAINTENANCE.md
-    - SUPPORT.md
-  - Decisions:
-    - ADR:
+    - project/roadmap.md
+    - project/support.md
+    - project/contributing.md
+    - project/security.md
+    - project/code-of-conduct.md
+    - Decisions:
       - ADR/001-nano-service-architecture.md
       - ADR/002-event-driven-communication.md
       - ADR/003-ed25519-cryptographic-provenance.md
@@ -177,7 +172,10 @@ markdown_extensions:
   - pymdownx.mark
   - pymdownx.smartsymbols
   - pymdownx.snippets:
-      check_paths: true
+      check_paths: false
+      base_path:
+        - docs/start
+        - docs
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid

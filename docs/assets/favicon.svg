@@ -1,6 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <rect width="64" height="64" rx="12" fill="#3776AB"/>
-  <text x="50%" y="55%" text-anchor="middle" dominant-baseline="middle"
-        font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif"
-        font-size="40" font-weight="700" fill="#FFFFFF">U</text>
+  <defs>
+    <linearGradient id="favGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F2A47"/>
+      <stop offset="60%" stop-color="#1E5A8A"/>
+      <stop offset="100%" stop-color="#3B82F6"/>
+    </linearGradient>
+    <linearGradient id="favAccent" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#FBBF24"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="12" fill="url(#favGrad)"/>
+  <g transform="translate(32 34)" fill="none" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M -16 -10 L 0 12 L 16 -10" />
+  </g>
+  <g transform="translate(32 34)" fill="none" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round">
+    <line x1="0" y1="12" x2="0" y2="18" />
+  </g>
+  <circle cx="49" cy="16" r="4.5" fill="url(#favAccent)" />
+  <circle cx="49" cy="16" r="2" fill="#0F2A47" />
 </svg>

@@ -46,7 +46,7 @@ mypy underwrite/
 3. Make your changes.
 4. Ensure all checks pass (lint, typecheck, tests).
 5. Commit using [Conventional Commits](https://www.conventionalcommits.org/).
-6. Open a PR against `main`.
+6. Open a PR against `master`.
 7. All checks must pass before merge.
 
 ## Commit Messages

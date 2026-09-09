@@ -44,8 +44,8 @@ Pre-releases focus on critical bug fixes and blocking issues from the v0.9 harde
 ### 1. Create Release Branch
 
 ```bash
-git checkout main
-git pull origin main
+git checkout master
+git pull origin master
 git checkout -b release/v0.1.0
 ```
 
@@ -125,9 +125,9 @@ It exposes port `8080` and runs `underwrite serve` by default.
 ### 8. Merge Release Branch
 
 ```bash
-git checkout main
+git checkout master
 git merge --no-ff release/v0.1.0
-git push origin main
+git push origin master
 ```
 
 Delete the release branch:
@@ -174,7 +174,7 @@ Before deploying to production, verify the following:
 If a release introduces a critical issue:
 
 1. Identify the last stable tag: `git tag --sort=-version:refname`
-2. Revert the release commit on `main`: `git revert HEAD`
+2. Revert the release commit on `master`: `git revert HEAD`
 3. Push the revert and tag a patch release: `v0.1.1`
 4. Update the Docker image tag to the patch version
 5. Notify downstream consumers

@@ -2,7 +2,7 @@
 
 ## Branching Strategy
 
-All development happens on feature branches forked from `main`. Use one of these prefixes:
+All development happens on feature branches forked from `master`. Use one of these prefixes:
 
 | Prefix       | Purpose                          |
 |--------------|----------------------------------|
@@ -17,7 +17,7 @@ Branch names should be short and descriptive: `feat/sqs-event-bus`, `fix/path-tr
 ## PR Process
 
 1. Fork the repository and clone your fork.
-2. Create a feature branch from `main`.
+2. Create a feature branch from `master`.
 3. Make your changes, keeping commits small and focused.
 4. Run all checks locally:
    ```bash
@@ -26,7 +26,7 @@ Branch names should be short and descriptive: `feat/sqs-event-bus`, `fix/path-tr
    make test        # pytest tests/ -v --tb=short -q
    ```
 5. Commit using [Conventional Commits](https://www.conventionalcommits.org/).
-6. Push your branch and open a pull request against `main`.
+6. Push your branch and open a pull request against `master`.
 7. A maintainer will review; address all feedback before merge.
 
 ### Review Expectations

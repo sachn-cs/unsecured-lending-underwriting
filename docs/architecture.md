@@ -190,7 +190,7 @@ Every emitted event is Ed25519-signed by the source service's `Identity`:
 
 | Concern | Mechanism | Export |
 |---------|-----------|--------|
-| Logging | stdlib logging, JSON formatter, PII redaction | stdout/stderr |
+| Logging | loguru with PII-redacting sink, JSON formatter, level + output configurable | stdout/stderr |
 | Metrics | Counters, timers, gauges | /v1/metrics (Prometheus) |
 | Tracing | Span lifecycle with parent/child | Console or OTLP/gRPC |
 | Health | Named check registry | /healthz, /readyz, /v1/health |

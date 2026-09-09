@@ -8,6 +8,9 @@ edit_uri: edit/master/docs/
 docs_dir: docs
 site_dir: site
 
+exclude_docs: |
+  README.md
+
 theme:
   name: material
   language: en
@@ -140,11 +143,11 @@ nav:
     - MAINTENANCE.md
     - SUPPORT.md
   - Decisions:
-    - ADR/README.md
-    - ADR/001-nano-service-architecture.md
-    - ADR/002-event-driven-communication.md
-    - ADR/003-ed25519-cryptographic-provenance.md
-    - ADR/004-saga-orchestration.md
+    - ADR:
+      - ADR/001-nano-service-architecture.md
+      - ADR/002-event-driven-communication.md
+      - ADR/003-ed25519-cryptographic-provenance.md
+      - ADR/004-saga-orchestration.md
 
 markdown_extensions:
   - admonition

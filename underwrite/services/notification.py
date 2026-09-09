@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import concurrent.futures
 import os
 from typing import Any
 
@@ -86,12 +85,12 @@ class Handler(Core):
         }
 
     @property
-    def executor(self) -> "BoundedExecutor | None":
+    def executor(self) -> BoundedExecutor | None:
         """Test/extension hook for the notification thread pool."""
         return self.thread_pool
 
     @executor.setter
-    def executor(self, value: "BoundedExecutor | None") -> None:
+    def executor(self, value: BoundedExecutor | None) -> None:
         self.thread_pool = value
 
     def stop(self) -> None:

@@ -56,6 +56,84 @@ from underwrite.validate import PayloadValidator
 MAX_EXECUTOR_QUEUE_FACTOR: int = 2
 
 
+class BoundedExecutor:
+    """Thread-pool wrapper that exposes public queue-depth introspection.
+
+    The default :class:`concurrent.futures.ThreadPoolExecutor` exposes
+    its work queue and worker count as ``_work_queue`` and
+    ``_max_workers`` — both are private, undocumented attributes that
+    may change between Python releases. This wrapper keeps its own
+    counter so the dispatch pipeline can apply back-pressure without
+    reaching into the executor's internals.
+    """
+
+    def __init__(self, max_workers: int, max_queue_factor: int = MAX_EXECUTOR_QUEUE_FACTOR) -> None:
+        if max_workers <= 0:
+            raise ValueError(f"max_workers must be > 0, got {max_workers}")
+        from concurrent.futures import ThreadPoolExecutor
+
+        self._executor: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=max_workers)
+        self._max_workers: int = max_workers
+        self._pending: int = 0
+        self._running: int = 0
+        self._pending_lock: threading.Lock = threading.Lock()
+        self._max_queue_factor: int = max_queue_factor
+        self._closed: bool = False
+
+    @property
+    def max_workers(self) -> int:
+        """Maximum number of worker threads."""
+        return self._max_workers
+
+    @property
+    def queue_depth(self) -> int:
+        """Number of tasks waiting for a worker thread.
+
+        This is the count of tasks that have been submitted but not yet
+        picked up by a worker. Running tasks are not counted. Use this
+        for back-pressure decisions rather than the executor's private
+        ``_work_queue.qsize()`` which may raise ``NotImplementedError``
+        on some thread pool implementations.
+        """
+        with self._pending_lock:
+            return self._pending
+
+    @property
+    def in_flight(self) -> int:
+        """Number of tasks currently running on a worker thread."""
+        with self._pending_lock:
+            return self._running
+
+    @property
+    def is_overloaded(self) -> bool:
+        """Whether the queue has more pending tasks than the configured factor allows."""
+        return self.queue_depth > self._max_workers * self._max_queue_factor
+
+    def submit(self, fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
+        """Submit a callable to the underlying executor, tracking depth."""
+        if self._closed:
+            raise RuntimeError("executor is shut down")
+        with self._pending_lock:
+            self._pending += 1
+
+        def _wrapped() -> Any:
+            with self._pending_lock:
+                self._pending -= 1
+                self._running += 1
+            try:
+                return fn(*args, **kwargs)
+            finally:
+                with self._pending_lock:
+                    self._running -= 1
+
+        return self._executor.submit(_wrapped)
+
+    def shutdown(self, wait: bool = True) -> None:
+        """Shut down the executor. Subsequent :meth:`submit` calls raise."""
+        self._closed = True
+        self._executor.shutdown(wait=wait)
+
+
 @dataclass
 class Dependencies:
     """Group of optional dependencies every service handler may receive.
@@ -224,8 +302,8 @@ class Core(ABC):
         self.events_failed: int = 0
         self.last_event_time: float = 0.0
         self.state_lock: threading.RLock = threading.RLock()
-        self.executor: concurrent.futures.ThreadPoolExecutor | None = (
-            concurrent.futures.ThreadPoolExecutor(max_workers=max_concurrent) if max_concurrent > 0 else None
+        self.executor: BoundedExecutor | None = (
+            BoundedExecutor(max_workers=max_concurrent) if max_concurrent > 0 else None
         )
 
         self.validator: PayloadValidator = PayloadValidator()
@@ -380,14 +458,12 @@ class Core(ABC):
                 self.bus.dlq.put(event, "duplicate", self.name)
             return
         if self.executor is not None:
-            worker_count = self.executor._max_workers if hasattr(self.executor, "_max_workers") else 0
-            queue_size = self.executor._work_queue.qsize() if hasattr(self.executor, "_work_queue") else 0
-            if worker_count > 0 and queue_size > worker_count * MAX_EXECUTOR_QUEUE_FACTOR:
+            if self.executor.is_overloaded:
                 logger.warning(
                     "{} executor queue full ({} queued, {} workers), dropping event {}",
                     self.name,
-                    queue_size,
-                    worker_count,
+                    self.executor.queue_depth,
+                    self.executor.max_workers,
                     event.event_id,
                 )
                 if hasattr(self.bus, "dlq") and self.bus.dlq:

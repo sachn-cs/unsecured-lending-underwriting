@@ -79,16 +79,36 @@ def build_supervisor(config: Configuration) -> Watcher | None:
 def build_kyc_provider_config(config: Configuration, secrets: Manager | None) -> ProvidersConfig:
     """Resolve the configured KYC provider configuration.
 
-    Returns the ``ProvidersConfig`` from the runtime configuration
-    so that the compliance and credit_bureau services can construct
+    Returns the ``ProvidersConfig`` from the runtime configuration so
+    that the compliance and credit_bureau services can construct
     per-call client instances bound to the supplied identifier.
-    Returns a default ``ProvidersConfig`` when the configuration
-    block is absent; in that case provider clients will report
-    ``ERROR`` until credentials are wired in.
+
+    If the configured block is empty (no provider credentials
+    wired in), a warning is logged at startup. Operators who do not
+    configure any providers will see provider clients report
+    ``ERROR`` for every call until credentials are wired in.
     """
     kp = getattr(config, "kyc_provider_config", None)
     if kp is None:
-        return ProvidersConfig()
+        kp = ProvidersConfig()
+    # Surface the "no providers configured" case explicitly so it
+    # does not silently fall through. The runtime will continue to
+    # start; provider-bound services just report ERROR until the
+    # operator wires in real credentials.
+    has_any_credential = bool(
+        kp.pan_client_id
+        or kp.pan_client_secret
+        or kp.aadhaar_kua_id
+        or kp.aadhaar_kua_license_key
+        or kp.cibil_partner_id
+        or kp.cibil_partner_key
+        or kp.ckyc_search_provider_id
+        or kp.ckyc_search_provider_key
+    )
+    if not has_any_credential:
+        logger.warning(
+            "kyc_provider_config is empty — PAN/Aadhaar/CIBIL/CKYC calls will return ERROR until credentials are configured",
+        )
     return kp
 
 
@@ -315,15 +335,21 @@ class Runtime:
         self.runtime_identity = None
         self.secrets = build_secrets(self.config)
         self.runtime_identity = Keypair.create("runtime", secrets_manager=self.secrets)
+        # Build authz and trust the runtime identity *before* the bus
+        # is created so that any event the runtime publishes during
+        # the rest of __init__ is verified against a trusted key.
+        # This eliminates the startup race where the bus could attempt
+        # to dispatch a runtime-signed event against an authz that
+        # does not yet trust the runtime.
+        self.authz = build_authz(self.config.authz)
+        if self.authz is not None and self.runtime_identity is not None:
+            self.authz.trust(self.runtime_identity.name, self.runtime_identity.public_key)
         self.kyc_provider_config = build_kyc_provider_config(self.config, self.secrets)
         self.tracer = build_tracer(self.config)
         self.bus = cast(EventBus | LocalBus, build_event_bus(self.config.bus, self.store))
         self.saga = Orchestrator(store=self.store) if self.config.saga.enabled else None
         self.health = Checks()
         self.metrics = Collector() if self.config.metrics.enabled else None
-        self.authz = build_authz(self.config.authz)
-        if self.authz is not None and self.runtime_identity is not None:
-            self.authz.trust(self.runtime_identity.name, self.runtime_identity.public_key)
         self.supervisor = build_supervisor(self.config)
         self.metrics_exporter = None
 
